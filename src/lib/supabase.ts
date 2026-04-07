@@ -1,13 +1,18 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn('⚠️ Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.');
+let _supabase: SupabaseClient | null = null;
+
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  console.warn('⚠️ Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment. Running in demo mode.');
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Export a proxy that won't crash when Supabase isn't configured
+export const supabase = _supabase as SupabaseClient;
 
 // Types based on existing tables
 export interface LeadRecoveryCampaign {
