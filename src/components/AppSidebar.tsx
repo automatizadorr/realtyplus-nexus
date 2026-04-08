@@ -1,6 +1,7 @@
-import { ScanSearch, Megaphone, MessageSquare } from "lucide-react";
+import { ScanSearch, Megaphone, MessageSquare, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -9,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -22,6 +24,12 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const displayName =
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "Usuario";
 
   return (
     <Sidebar collapsible="icon">
@@ -60,6 +68,31 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold shrink-0">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</span>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-1 text-xs text-sidebar-foreground/60 hover:text-destructive transition-colors text-left"
+              >
+                <LogOut className="h-3 w-3" />
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+          {collapsed && (
+            <button onClick={signOut} title="Cerrar sesión" className="sr-only">
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }
