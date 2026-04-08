@@ -371,6 +371,7 @@ export default function Auth() {
               ¿Qué incluye el Portal CRM?
             </button>
           </div>
+          )}
         </CardContent>
 
         <CardFooter className="bg-slate-50 border-t flex flex-col space-y-1 text-xs text-center text-slate-500 py-4 rounded-b-xl">
