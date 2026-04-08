@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, UserPlus, Info, X } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 // Colores corporativos extraídos del logo de Realtyplus
 const BRAND = {
