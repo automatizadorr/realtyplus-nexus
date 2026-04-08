@@ -84,6 +84,7 @@ export type Database = {
           nombre: string
           pais: string | null
           telefono: string | null
+          ultimo_contacto_at: string | null
           updated_at: string | null
           user_id: string
         }
@@ -99,6 +100,7 @@ export type Database = {
           nombre: string
           pais?: string | null
           telefono?: string | null
+          ultimo_contacto_at?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -114,6 +116,7 @@ export type Database = {
           nombre?: string
           pais?: string | null
           telefono?: string | null
+          ultimo_contacto_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
