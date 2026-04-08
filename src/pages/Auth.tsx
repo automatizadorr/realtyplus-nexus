@@ -372,6 +372,7 @@ export default function Auth() {
               ¿Qué incluye el Portal CRM?
             </button>
           </div>
+          </>
           )}
         </CardContent>
 
