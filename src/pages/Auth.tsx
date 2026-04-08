@@ -22,6 +22,7 @@ const REALTYPLUS_ROLES = [
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -36,7 +37,28 @@ export default function Auth() {
 
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
+    setIsForgotPassword(false);
     setPassword("");
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({ title: "Error", description: "Ingresa un correo válido.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Correo enviado", description: "Revisa tu bandeja para restablecer tu contraseña." });
+      setIsForgotPassword(false);
+    }
   };
 
   const validateForm = () => {
@@ -178,11 +200,48 @@ export default function Auth() {
             Portal CRM Integrado
           </CardTitle>
           <CardDescription className="text-sm font-medium">
-            {isLogin ? "Introduce tus credenciales corporativas" : "Solicita tu alta en el sistema"}
+            {isForgotPassword
+              ? "Te enviaremos un enlace para restablecer tu contraseña"
+              : isLogin
+              ? "Introduce tus credenciales corporativas"
+              : "Solicita tu alta en el sistema"}
           </CardDescription>
         </CardHeader>
 
         <CardContent>
+          {isForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-slate-700">Correo electrónico</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ejemplo@realty-plus.org"
+                  disabled={loading}
+                  className="focus-visible:ring-[#0f2b5a]"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full text-white shadow-md hover:opacity-90"
+                style={{ backgroundColor: BRAND.red }}
+                disabled={loading}
+              >
+                {loading ? "Enviando…" : "Enviar enlace de recuperación"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(false)}
+                className="w-full text-sm font-semibold transition-colors"
+                style={{ color: BRAND.navy }}
+              >
+                Volver al inicio de sesión
+              </button>
+            </form>
+          ) : (
+          <>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
@@ -250,9 +309,13 @@ export default function Auth() {
                   Contraseña
                 </Label>
                 {isLogin && (
-                  <span className="text-xs text-slate-500 hover:text-[#cf142b] cursor-pointer transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
+                    className="text-xs text-slate-500 hover:text-[#cf142b] cursor-pointer transition-colors"
+                  >
                     ¿Olvidaste tu clave?
-                  </span>
+                  </button>
                 )}
               </div>
               <Input
@@ -309,6 +372,8 @@ export default function Auth() {
               ¿Qué incluye el Portal CRM?
             </button>
           </div>
+          </>
+          )}
         </CardContent>
 
         <CardFooter className="bg-slate-50 border-t flex flex-col space-y-1 text-xs text-center text-slate-500 py-4 rounded-b-xl">
