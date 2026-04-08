@@ -271,9 +271,13 @@ export default function Auth() {
                   Contraseña
                 </Label>
                 {isLogin && (
-                  <span className="text-xs text-slate-500 hover:text-[#cf142b] cursor-pointer transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
+                    className="text-xs text-slate-500 hover:text-[#cf142b] cursor-pointer transition-colors"
+                  >
                     ¿Olvidaste tu clave?
-                  </span>
+                  </button>
                 )}
               </div>
               <Input
