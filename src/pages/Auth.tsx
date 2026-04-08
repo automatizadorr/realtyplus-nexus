@@ -241,6 +241,7 @@ export default function Auth() {
               </button>
             </form>
           ) : (
+          <>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
