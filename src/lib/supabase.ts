@@ -24,6 +24,17 @@ export interface LeadCampana {
   email?: string | null;
 }
 
+export interface VistaSeguimientoCampana {
+  id: string;
+  nombre_campana?: string;
+  total_leads?: number;
+  enviados?: number;
+  respondidos?: number;
+  tasa_respuesta?: number;
+  estado?: string;
+  fecha_creacion?: string;
+}
+
 export interface MensajeWhatsapp {
   id: string;
   telefono: string;
