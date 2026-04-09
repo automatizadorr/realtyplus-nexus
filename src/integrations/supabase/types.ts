@@ -291,65 +291,6 @@ export type Database = {
       }
     }
     Views: {
-      vista_leads_activos_hoy: {
-        Row: {
-          campaign_id: string | null
-          created_at: string | null
-          dias_reales: number | null
-          email: string | null
-          estado: string | null
-          fase_secuencia: number | null
-          fecha_proximo_contacto: string | null
-          id: string | null
-          nombre: string | null
-          pais: string | null
-          telefono: string | null
-          ultimo_contacto_at: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          campaign_id?: string | null
-          created_at?: string | null
-          dias_reales?: number | null
-          email?: string | null
-          estado?: string | null
-          fase_secuencia?: number | null
-          fecha_proximo_contacto?: string | null
-          id?: string | null
-          nombre?: string | null
-          pais?: string | null
-          telefono?: string | null
-          ultimo_contacto_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          campaign_id?: string | null
-          created_at?: string | null
-          dias_reales?: number | null
-          email?: string | null
-          estado?: string | null
-          fase_secuencia?: number | null
-          fecha_proximo_contacto?: string | null
-          id?: string | null
-          nombre?: string | null
-          pais?: string | null
-          telefono?: string | null
-          ultimo_contacto_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leads_campana_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "lead_recovery_campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       vista_seguimiento_campana: {
         Row: {
           campaign_id: string | null
