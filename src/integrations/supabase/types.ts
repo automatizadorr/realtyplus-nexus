@@ -73,6 +73,7 @@ export type Database = {
       }
       leads_campana: {
         Row: {
+          bot_activo: boolean | null
           campaign_id: string | null
           created_at: string | null
           dias_reales: number | null
@@ -89,6 +90,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bot_activo?: boolean | null
           campaign_id?: string | null
           created_at?: string | null
           dias_reales?: number | null
@@ -105,6 +107,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bot_activo?: boolean | null
           campaign_id?: string | null
           created_at?: string | null
           dias_reales?: number | null
@@ -240,6 +243,7 @@ export type Database = {
       }
       mensajes_whatsapp: {
         Row: {
+          autor: string | null
           contenido: string
           created_at: string | null
           direccion: string
@@ -248,6 +252,7 @@ export type Database = {
           telefono: string
         }
         Insert: {
+          autor?: string | null
           contenido: string
           created_at?: string | null
           direccion: string
@@ -256,6 +261,7 @@ export type Database = {
           telefono: string
         }
         Update: {
+          autor?: string | null
           contenido?: string
           created_at?: string | null
           direccion?: string

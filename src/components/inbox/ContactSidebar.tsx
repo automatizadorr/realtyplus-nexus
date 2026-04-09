@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Search, Loader2 } from "lucide-react";
+import { MessageSquare, Search, Loader2, Bot, BotOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana } from "@/lib/supabase";
 
@@ -21,7 +21,7 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       setLoading(true);
       const { data } = await supabase
         .from("leads_campana")
-        .select("id, nombre, telefono, pais, estado, campaign_id, email")
+        .select("id, nombre, telefono, pais, estado, bot_activo")
         .order("nombre", { ascending: true });
 
       if (data) {
@@ -49,14 +49,17 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
     <div className="w-80 border-r flex flex-col bg-card">
       <div className="p-3 border-b">
         <div className="flex items-center gap-2 mb-3">
-          <MessageSquare className="h-5 w-5 text-accent" />
-          <h2 className="font-bold text-foreground">Mensajes</h2>
+          <MessageSquare className="h-5 w-5 text-primary" />
+          <h2 className="font-bold text-foreground">Contactos</h2>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {contacts.length}
+          </span>
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Buscar contacto..."
+            placeholder="Buscar por nombre o teléfono..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -77,12 +80,19 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
               onClick={() => onSelectContact(contact)}
               className={`w-full text-left px-4 py-3 border-b transition-colors hover:bg-muted/50 ${
                 selectedContact?.telefono === contact.telefono
-                  ? "bg-muted border-l-2 border-l-accent"
+                  ? "bg-muted border-l-2 border-l-primary"
                   : ""
               }`}
             >
-              <div className="font-semibold text-sm text-foreground truncate">
-                {contact.nombre || "Sin nombre"}
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm text-foreground truncate">
+                  {contact.nombre || "Sin nombre"}
+                </span>
+                {contact.bot_activo ? (
+                  <Bot className="h-3.5 w-3.5 text-primary shrink-0" />
+                ) : (
+                  <BotOff className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                )}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 {contact.telefono}
