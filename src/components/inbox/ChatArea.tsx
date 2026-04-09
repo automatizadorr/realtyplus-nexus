@@ -2,33 +2,26 @@ import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Send, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { MessageSquare, Send, Loader2, Bot, BotOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { LeadCampana } from "@/lib/supabase";
+import type { LeadCampana, MensajeWhatsapp } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-
-interface Message {
-  id: string;
-  telefono: string;
-  contenido: string;
-  direccion: string;
-  created_at: string;
-  leido: boolean | null;
-}
 
 interface ChatAreaProps {
   selectedContact: LeadCampana | null;
+  onContactUpdate?: (contact: LeadCampana) => void;
 }
 
-export function ChatArea({ selectedContact }: ChatAreaProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
+  const [messages, setMessages] = useState<MensajeWhatsapp[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [togglingBot, setTogglingBot] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Fetch messages when contact changes
   useEffect(() => {
     if (!selectedContact?.telefono) {
       setMessages([]);
@@ -44,12 +37,11 @@ export function ChatArea({ selectedContact }: ChatAreaProps) {
         .select("*")
         .eq("telefono", phone)
         .order("created_at", { ascending: true });
-      if (data) setMessages(data as Message[]);
+      if (data) setMessages(data as MensajeWhatsapp[]);
       setLoading(false);
     };
     fetchMessages();
 
-    // Realtime subscription
     const channel = supabase
       .channel(`messages-${phone}`)
       .on(
@@ -60,7 +52,7 @@ export function ChatArea({ selectedContact }: ChatAreaProps) {
           table: "mensajes_whatsapp",
         },
         (payload) => {
-          const msg = payload.new as Message;
+          const msg = payload.new as MensajeWhatsapp;
           if (msg.telefono === phone) {
             setMessages((prev) => [...prev, msg]);
           }
@@ -73,10 +65,24 @@ export function ChatArea({ selectedContact }: ChatAreaProps) {
     };
   }, [selectedContact?.telefono]);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const toggleBot = async () => {
+    if (!selectedContact) return;
+    setTogglingBot(true);
+    const newVal = !selectedContact.bot_activo;
+    const { error } = await supabase
+      .from("leads_campana")
+      .update({ bot_activo: newVal })
+      .eq("id", selectedContact.id);
+
+    if (!error && onContactUpdate) {
+      onContactUpdate({ ...selectedContact, bot_activo: newVal });
+    }
+    setTogglingBot(false);
+  };
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedContact?.telefono) return;
@@ -87,11 +93,11 @@ export function ChatArea({ selectedContact }: ChatAreaProps) {
         telefono: selectedContact.telefono,
         contenido: newMessage,
         direccion: "outbound",
+        autor: "admin",
       });
 
       if (error) throw error;
 
-      // TODO: POST al webhook de n8n para envío real
       console.log("[n8n Webhook] Preparado para enviar:", {
         telefono: selectedContact.telefono,
         mensaje: newMessage,
@@ -124,9 +130,26 @@ export function ChatArea({ selectedContact }: ChatAreaProps) {
         <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
           {selectedContact.nombre?.[0]?.toUpperCase() || "?"}
         </div>
-        <div>
-          <div className="font-semibold text-sm text-foreground">{selectedContact.nombre}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-sm text-foreground truncate">{selectedContact.nombre}</div>
           <div className="text-xs text-muted-foreground">{selectedContact.telefono}</div>
+        </div>
+        {/* Bot toggle */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {selectedContact.bot_activo ? (
+            <Bot className="h-4 w-4 text-primary" />
+          ) : (
+            <BotOff className="h-4 w-4 text-muted-foreground" />
+          )}
+          <span className="hidden sm:inline">
+            {selectedContact.bot_activo ? "IA activa" : "IA silenciada"}
+          </span>
+          <Switch
+            checked={!!selectedContact.bot_activo}
+            onCheckedChange={toggleBot}
+            disabled={togglingBot}
+            className="scale-90"
+          />
         </div>
       </div>
 
@@ -138,34 +161,47 @@ export function ChatArea({ selectedContact }: ChatAreaProps) {
           </div>
         ) : (
           <div className="space-y-3 max-w-2xl mx-auto">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.direccion === "outbound" ? "justify-end" : "justify-start"}`}
-              >
+            {messages.map((msg) => {
+              const isOutbound = msg.direccion === "outbound";
+              return (
                 <div
-                  className={`max-w-[70%] rounded-xl px-4 py-2 text-sm ${
-                    msg.direccion === "outbound"
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted text-foreground rounded-bl-sm"
-                  }`}
+                  key={msg.id}
+                  className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                 >
-                  <p>{msg.contenido}</p>
-                  <span
-                    className={`text-[10px] mt-1 block ${
-                      msg.direccion === "outbound"
-                        ? "text-primary-foreground/60"
-                        : "text-muted-foreground"
+                  <div
+                    className={`max-w-[70%] rounded-xl px-4 py-2 text-sm ${
+                      isOutbound
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-muted text-foreground rounded-bl-sm"
                     }`}
                   >
-                    {new Date(msg.created_at).toLocaleTimeString("es-ES", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                    {/* Show autor label for outbound */}
+                    {isOutbound && msg.autor && (
+                      <span className={`text-[10px] font-medium block mb-0.5 ${
+                        msg.autor === "bot"
+                          ? "text-primary-foreground/70"
+                          : "text-primary-foreground/70"
+                      }`}>
+                        {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
+                      </span>
+                    )}
+                    <p>{msg.contenido}</p>
+                    <span
+                      className={`text-[10px] mt-1 block ${
+                        isOutbound
+                          ? "text-primary-foreground/60"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {new Date(msg.created_at).toLocaleTimeString("es-ES", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {messages.length === 0 && !loading && (
               <p className="text-center text-muted-foreground text-sm py-12">
                 No hay mensajes con este contacto.
@@ -189,7 +225,7 @@ export function ChatArea({ selectedContact }: ChatAreaProps) {
           <Button
             onClick={sendMessage}
             disabled={!newMessage.trim() || sending}
-            className="bg-accent text-accent-foreground hover:bg-accent/80"
+            size="icon"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
