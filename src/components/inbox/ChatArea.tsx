@@ -7,6 +7,7 @@ import { MessageSquare, Send, Loader2, Bot, BotOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, MensajeWhatsapp } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ChatAreaProps {
   selectedContact: LeadCampana | null;
@@ -42,6 +43,7 @@ export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
     };
     fetchMessages();
 
+    // Suscripción Realtime para animar mensajes entrantes al instante
     const channel = supabase
       .channel(`messages-${phone}`)
       .on(
@@ -54,9 +56,13 @@ export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
         (payload) => {
           const msg = payload.new as MensajeWhatsapp;
           if (msg.telefono === phone) {
-            setMessages((prev) => [...prev, msg]);
+            setMessages((prev) => {
+              // Evitar duplicados visuales si el mensaje ya está en estado
+              if (prev.find((m) => m.id === msg.id)) return prev;
+              return [...prev, msg];
+            });
           }
-        }
+        },
       )
       .subscribe();
 
@@ -73,10 +79,7 @@ export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
     if (!selectedContact) return;
     setTogglingBot(true);
     const newVal = !selectedContact.bot_activo;
-    const { error } = await supabase
-      .from("leads_campana")
-      .update({ bot_activo: newVal })
-      .eq("id", selectedContact.id);
+    const { error } = await supabase.from("leads_campana").update({ bot_activo: newVal }).eq("id", selectedContact.id);
 
     if (!error && onContactUpdate) {
       onContactUpdate({ ...selectedContact, bot_activo: newVal });
@@ -89,20 +92,36 @@ export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
     setSending(true);
 
     try {
-      const { error } = await supabase.from("mensajes_whatsapp").insert({
-        telefono: selectedContact.telefono,
-        contenido: newMessage,
-        direccion: "outbound",
-        autor: "admin",
-      });
+      // 1. Apagado automático del bot por intervención humana
+      if (selectedContact.bot_activo) {
+        await supabase.from("leads_campana").update({ bot_activo: false }).eq("id", selectedContact.id);
 
-      if (error) throw error;
+        if (onContactUpdate) {
+          onContactUpdate({ ...selectedContact, bot_activo: false });
+        }
+      }
 
-      console.log("[n8n Webhook] Preparado para enviar:", {
+      // 2. Disparo del Payload al Webhook de n8n
+      const payload = {
         telefono: selectedContact.telefono,
         mensaje: newMessage,
+        autor: "admin",
+      };
+
+      const response = await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/crmrp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
+      if (!response.ok) {
+        throw new Error("El Webhook rechazó la conexión.");
+      }
+
+      // NOTA: Ya no hacemos insert manual aquí. n8n recibe el webhook,
+      // guarda en la BD y Supabase Realtime lo inyectará en la pantalla automáticamente.
       setNewMessage("");
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
@@ -114,121 +133,151 @@ export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
   if (!selectedContact) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
-        <div className="text-center text-muted-foreground">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, type: "spring" }}
+          className="text-center text-muted-foreground"
+        >
           <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">Selecciona un contacto</p>
           <p className="text-sm">para ver la conversación</p>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background h-full">
       {/* Header */}
-      <div className="h-14 px-4 flex items-center border-b bg-card gap-3">
-        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
+      <div className="h-14 px-4 flex items-center border-b bg-card gap-3 shadow-sm z-10">
+        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-inner">
           {selectedContact.nombre?.[0]?.toUpperCase() || "?"}
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm text-foreground truncate">{selectedContact.nombre}</div>
           <div className="text-xs text-muted-foreground">{selectedContact.telefono}</div>
         </div>
-        {/* Bot toggle */}
+
+        {/* Bot toggle animado */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {selectedContact.bot_activo ? (
-            <Bot className="h-4 w-4 text-primary" />
-          ) : (
-            <BotOff className="h-4 w-4 text-muted-foreground" />
-          )}
-          <span className="hidden sm:inline">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedContact.bot_activo ? "bot-on" : "bot-off"}
+              initial={{ opacity: 0, rotate: -90 }}
+              animate={{ opacity: 1, rotate: 0 }}
+              exit={{ opacity: 0, rotate: 90 }}
+              transition={{ duration: 0.2 }}
+            >
+              {selectedContact.bot_activo ? (
+                <Bot className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <BotOff className="h-4 w-4 text-rose-500" />
+              )}
+            </motion.div>
+          </AnimatePresence>
+          <span className="hidden sm:inline font-medium">
             {selectedContact.bot_activo ? "IA activa" : "IA silenciada"}
           </span>
           <Switch
             checked={!!selectedContact.bot_activo}
             onCheckedChange={toggleBot}
             disabled={togglingBot}
-            className="scale-90"
+            className="scale-90 data-[state=checked]:bg-emerald-500"
           />
         </div>
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4 bg-slate-50/50 dark:bg-zinc-950/50">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-3 max-w-2xl mx-auto">
-            {messages.map((msg) => {
-              const isOutbound = msg.direccion === "outbound";
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[70%] rounded-xl px-4 py-2 text-sm ${
-                      isOutbound
-                        ? "bg-primary text-primary-foreground rounded-br-sm"
-                        : "bg-muted text-foreground rounded-bl-sm"
-                    }`}
+          <div className="space-y-4 max-w-3xl mx-auto pb-4">
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => {
+                const isOutbound = msg.direccion === "outbound";
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                      duration: 0.4,
+                      type: "spring",
+                      bounce: 0.4,
+                      damping: 20,
+                    }}
+                    className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                   >
-                    {/* Show autor label for outbound */}
-                    {isOutbound && msg.autor && (
-                      <span className={`text-[10px] font-medium block mb-0.5 ${
-                        msg.autor === "bot"
-                          ? "text-primary-foreground/70"
-                          : "text-primary-foreground/70"
-                      }`}>
-                        {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
-                      </span>
-                    )}
-                    <p>{msg.contenido}</p>
-                    <span
-                      className={`text-[10px] mt-1 block ${
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                         isOutbound
-                          ? "text-primary-foreground/60"
-                          : "text-muted-foreground"
+                          ? "bg-primary text-primary-foreground rounded-br-sm"
+                          : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
                       }`}
                     >
-                      {new Date(msg.created_at).toLocaleTimeString("es-ES", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                      {isOutbound && msg.autor && (
+                        <span
+                          className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
+                            msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                          }`}
+                        >
+                          {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
+                        </span>
+                      )}
+                      <p className="leading-relaxed whitespace-pre-wrap">{msg.contenido}</p>
+                      <div
+                        className={`text-[10px] mt-1.5 flex justify-end ${
+                          isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
+                        }`}
+                      >
+                        {new Date(msg.created_at).toLocaleTimeString("es-ES", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
             {messages.length === 0 && !loading && (
-              <p className="text-center text-muted-foreground text-sm py-12">
-                No hay mensajes con este contacto.
-              </p>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center text-muted-foreground text-sm py-12"
+              >
+                Inicia la conversación con este lead.
+              </motion.p>
             )}
             <div ref={messagesEndRef} />
           </div>
         )}
       </ScrollArea>
 
-      {/* Input */}
-      <div className="p-3 border-t bg-card">
-        <div className="flex gap-2 max-w-2xl mx-auto">
+      {/* Input de Envío */}
+      <div className="p-3 bg-card border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+        <div className="flex gap-2 max-w-3xl mx-auto items-end">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
             placeholder="Escribe un mensaje..."
-            className="flex-1"
+            className="flex-1 rounded-xl bg-muted/50 focus-visible:ring-primary focus-visible:bg-background transition-all border-transparent focus-visible:border-primary"
           />
-          <Button
-            onClick={sendMessage}
-            disabled={!newMessage.trim() || sending}
-            size="icon"
-          >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              onClick={sendMessage}
+              disabled={!newMessage.trim() || sending}
+              size="icon"
+              className="rounded-xl h-10 w-10 shadow-md"
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </motion.div>
         </div>
       </div>
     </div>
