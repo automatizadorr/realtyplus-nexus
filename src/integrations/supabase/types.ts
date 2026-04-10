@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      documentos_rag: {
+        Row: {
+          contenido: string
+          embedding: string | null
+          id: number
+          metadata: Json | null
+        }
+        Insert: {
+          contenido: string
+          embedding?: string | null
+          id?: never
+          metadata?: Json | null
+        }
+        Update: {
+          contenido?: string
+          embedding?: string | null
+          id?: never
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          content: string | null
+          embedding: string | null
+          id: number
+          metadata: Json | null
+        }
+        Insert: {
+          content?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      knowledge_base: {
+        Row: {
+          content: string
+          embedding: string | null
+          id: number
+          metadata: Json | null
+        }
+        Insert: {
+          content: string
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       lead_recovery_campaigns: {
         Row: {
           campaign_name: string
@@ -74,64 +137,65 @@ export type Database = {
       leads_campana: {
         Row: {
           bot_activo: boolean | null
-          campaign_id: string | null
           created_at: string | null
           dias_reales: number | null
           email: string | null
           estado: string | null
           fase_secuencia: number | null
           fecha_proximo_contacto: string | null
+          fecha_respuesta: string | null
+          ha_respondido: boolean | null
           id: string
+          motivo_cierre: string | null
           nombre: string
+          origen: string | null
           pais: string | null
-          telefono: string | null
+          puntuacion: number | null
+          telefono: string
           ultimo_contacto_at: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           bot_activo?: boolean | null
-          campaign_id?: string | null
           created_at?: string | null
           dias_reales?: number | null
           email?: string | null
           estado?: string | null
           fase_secuencia?: number | null
           fecha_proximo_contacto?: string | null
+          fecha_respuesta?: string | null
+          ha_respondido?: boolean | null
           id?: string
+          motivo_cierre?: string | null
           nombre: string
+          origen?: string | null
           pais?: string | null
-          telefono?: string | null
+          puntuacion?: number | null
+          telefono: string
           ultimo_contacto_at?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           bot_activo?: boolean | null
-          campaign_id?: string | null
           created_at?: string | null
           dias_reales?: number | null
           email?: string | null
           estado?: string | null
           fase_secuencia?: number | null
           fecha_proximo_contacto?: string | null
+          fecha_respuesta?: string | null
+          ha_respondido?: boolean | null
           id?: string
+          motivo_cierre?: string | null
           nombre?: string
+          origen?: string | null
           pais?: string | null
-          telefono?: string | null
+          puntuacion?: number | null
+          telefono?: string
           ultimo_contacto_at?: string | null
           updated_at?: string | null
-          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "leads_campana_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "lead_recovery_campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       leads_realtyplus: {
         Row: {
@@ -184,60 +248,6 @@ export type Database = {
           telefono?: string | null
           ultima_tarea?: string | null
           zona?: string | null
-        }
-        Relationships: []
-      }
-      "LEx HOUSE AI BD": {
-        Row: {
-          apellidos: string | null
-          asignado: string | null
-          ciudad: string | null
-          codigo_pais: string | null
-          dias_transcurridos: number | null
-          email: string | null
-          estado: string | null
-          fecha_registro: string | null
-          id_contacto: number
-          nombres: string | null
-          origen: string | null
-          pais: string | null
-          PUNTUACION: number | null
-          sub_estado: string | null
-          telefono: string | null
-        }
-        Insert: {
-          apellidos?: string | null
-          asignado?: string | null
-          ciudad?: string | null
-          codigo_pais?: string | null
-          dias_transcurridos?: number | null
-          email?: string | null
-          estado?: string | null
-          fecha_registro?: string | null
-          id_contacto?: number
-          nombres?: string | null
-          origen?: string | null
-          pais?: string | null
-          PUNTUACION?: number | null
-          sub_estado?: string | null
-          telefono?: string | null
-        }
-        Update: {
-          apellidos?: string | null
-          asignado?: string | null
-          ciudad?: string | null
-          codigo_pais?: string | null
-          dias_transcurridos?: number | null
-          email?: string | null
-          estado?: string | null
-          fecha_registro?: string | null
-          id_contacto?: number
-          nombres?: string | null
-          origen?: string | null
-          pais?: string | null
-          PUNTUACION?: number | null
-          sub_estado?: string | null
-          telefono?: string | null
         }
         Relationships: []
       }
@@ -297,124 +307,18 @@ export type Database = {
       }
     }
     Views: {
-      vista_leads_activos_hoy: {
-        Row: {
-          campaign_id: string | null
-          created_at: string | null
-          dias_reales: number | null
-          email: string | null
-          estado: string | null
-          fase_secuencia: number | null
-          fecha_proximo_contacto: string | null
-          id: string | null
-          nombre: string | null
-          pais: string | null
-          telefono: string | null
-          ultimo_contacto_at: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          campaign_id?: string | null
-          created_at?: string | null
-          dias_reales?: number | null
-          email?: string | null
-          estado?: string | null
-          fase_secuencia?: number | null
-          fecha_proximo_contacto?: string | null
-          id?: string | null
-          nombre?: string | null
-          pais?: string | null
-          telefono?: string | null
-          ultimo_contacto_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          campaign_id?: string | null
-          created_at?: string | null
-          dias_reales?: number | null
-          email?: string | null
-          estado?: string | null
-          fase_secuencia?: number | null
-          fecha_proximo_contacto?: string | null
-          id?: string | null
-          nombre?: string | null
-          pais?: string | null
-          telefono?: string | null
-          ultimo_contacto_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leads_campana_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "lead_recovery_campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vista_seguimiento_campana: {
-        Row: {
-          campaign_id: string | null
-          created_at: string | null
-          dias_reales: number | null
-          email: string | null
-          estado: string | null
-          fase_secuencia: number | null
-          fecha_proximo_contacto: string | null
-          id: string | null
-          lead_name: string | null
-          origin: string | null
-          phone: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          campaign_id?: string | null
-          created_at?: string | null
-          dias_reales?: number | null
-          email?: string | null
-          estado?: string | null
-          fase_secuencia?: number | null
-          fecha_proximo_contacto?: string | null
-          id?: string | null
-          lead_name?: string | null
-          origin?: string | null
-          phone?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          campaign_id?: string | null
-          created_at?: string | null
-          dias_reales?: number | null
-          email?: string | null
-          estado?: string | null
-          fase_secuencia?: number | null
-          fecha_proximo_contacto?: string | null
-          id?: string | null
-          lead_name?: string | null
-          origin?: string | null
-          phone?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leads_campana_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "lead_recovery_campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_documents: {
+        Args: { filter?: Json; match_count?: number; query_embedding: string }
+        Returns: {
+          content: string
+          id: number
+          metadata: Json
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
