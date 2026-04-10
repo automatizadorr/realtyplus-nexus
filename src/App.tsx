@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
+import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
 import Campaigns from "./pages/Campaigns";
 import Inbox from "./pages/Inbox";
@@ -31,7 +32,8 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <Routes>
-                      <Route path="/" element={<Scanner />} />
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/scanner" element={<Scanner />} />
                       <Route path="/campaigns" element={<Campaigns />} />
                       <Route path="/inbox" element={<Inbox />} />
                       <Route path="*" element={<NotFound />} />

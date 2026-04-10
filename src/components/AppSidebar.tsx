@@ -1,4 +1,4 @@
-import { ScanSearch, Megaphone, MessageSquare, LogOut } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Escáner", url: "/", icon: ScanSearch },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Escáner", url: "/scanner", icon: ScanSearch },
   { title: "Campañas", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes", url: "/inbox", icon: MessageSquare },
 ];
