@@ -80,7 +80,7 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "mensajes_whatsapp" },
-        () => fetchUnread()
+        () => fetchUnreadAndTimestamps()
       )
       .subscribe();
 
