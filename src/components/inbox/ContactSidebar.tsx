@@ -102,8 +102,17 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       result = result.filter((c) => c.bot_activo === false);
     }
 
+    // Sort by most recent message (like WhatsApp/Telegram)
+    result.sort((a, b) => {
+      const tA = lastMessageAt[a.telefono] || "";
+      const tB = lastMessageAt[b.telefono] || "";
+      if (tB > tA) return 1;
+      if (tA > tB) return -1;
+      return 0;
+    });
+
     setFilteredContacts(result);
-  }, [searchQuery, contacts, filter, unreadCounts]);
+  }, [searchQuery, contacts, filter, unreadCounts, lastMessageAt]);
 
   return (
     <div className="w-80 border-r flex flex-col bg-card">
