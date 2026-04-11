@@ -27,6 +27,8 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
   const [loading, setLoading] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [lastMessageAt, setLastMessageAt] = useState<Record<string, string>>({});
+  const [lastMessageText, setLastMessageText] = useState<Record<string, string>>({});
+  const [lastMessageDir, setLastMessageDir] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<FilterType>("all");
 
   // Fetch contacts
@@ -54,22 +56,28 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
     const fetchUnreadAndTimestamps = async () => {
       const { data } = await supabase
         .from("mensajes_whatsapp")
-        .select("telefono, leido, direccion, created_at")
+        .select("telefono, leido, direccion, created_at, contenido")
         .order("created_at", { ascending: false });
 
       if (data) {
         const counts: Record<string, number> = {};
         const timestamps: Record<string, string> = {};
+        const texts: Record<string, string> = {};
+        const dirs: Record<string, string> = {};
         data.forEach((msg) => {
           if (msg.direccion === "inbound" && !msg.leido) {
             counts[msg.telefono] = (counts[msg.telefono] || 0) + 1;
           }
           if (!timestamps[msg.telefono]) {
             timestamps[msg.telefono] = msg.created_at || "";
+            texts[msg.telefono] = msg.contenido || "";
+            dirs[msg.telefono] = msg.direccion || "";
           }
         });
         setUnreadCounts(counts);
         setLastMessageAt(timestamps);
+        setLastMessageText(texts);
+        setLastMessageDir(dirs);
       }
     };
     fetchUnreadAndTimestamps();
@@ -186,14 +194,18 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
                     )}
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {contact.telefono}
-                  {contact.estado && (
-                    <span className="ml-2 text-[10px] uppercase tracking-wide opacity-70">
-                      · {contact.estado}
-                    </span>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]">
+                  {lastMessageText[contact.telefono] ? (
+                    <>
+                      <span className="opacity-60">
+                        {lastMessageDir[contact.telefono] === "outbound" ? "Tú: " : ""}
+                      </span>
+                      {lastMessageText[contact.telefono]}
+                    </>
+                  ) : (
+                    contact.telefono
                   )}
-                </div>
+                </p>
               </button>
             );
           })
