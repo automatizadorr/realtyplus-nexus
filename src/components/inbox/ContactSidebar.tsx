@@ -26,6 +26,7 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [lastMessageAt, setLastMessageAt] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<FilterType>("all");
 
   // Fetch contacts
