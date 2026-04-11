@@ -49,24 +49,30 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
     fetchContacts();
   }, []);
 
-  // Fetch unread counts
+  // Fetch unread counts + last message timestamps
   useEffect(() => {
-    const fetchUnread = async () => {
+    const fetchUnreadAndTimestamps = async () => {
       const { data } = await supabase
         .from("mensajes_whatsapp")
-        .select("telefono")
-        .eq("leido", false)
-        .eq("direccion", "inbound");
+        .select("telefono, leido, direccion, created_at")
+        .order("created_at", { ascending: false });
 
       if (data) {
         const counts: Record<string, number> = {};
+        const timestamps: Record<string, string> = {};
         data.forEach((msg) => {
-          counts[msg.telefono] = (counts[msg.telefono] || 0) + 1;
+          if (msg.direccion === "inbound" && !msg.leido) {
+            counts[msg.telefono] = (counts[msg.telefono] || 0) + 1;
+          }
+          if (!timestamps[msg.telefono]) {
+            timestamps[msg.telefono] = msg.created_at || "";
+          }
         });
         setUnreadCounts(counts);
+        setLastMessageAt(timestamps);
       }
     };
-    fetchUnread();
+    fetchUnreadAndTimestamps();
 
     // Realtime para actualizar conteo
     const channel = supabase
