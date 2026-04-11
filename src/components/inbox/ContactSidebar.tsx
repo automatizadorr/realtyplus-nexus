@@ -26,6 +26,7 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [lastMessageAt, setLastMessageAt] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<FilterType>("all");
 
   // Fetch contacts
@@ -48,24 +49,30 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
     fetchContacts();
   }, []);
 
-  // Fetch unread counts
+  // Fetch unread counts + last message timestamps
   useEffect(() => {
-    const fetchUnread = async () => {
+    const fetchUnreadAndTimestamps = async () => {
       const { data } = await supabase
         .from("mensajes_whatsapp")
-        .select("telefono")
-        .eq("leido", false)
-        .eq("direccion", "inbound");
+        .select("telefono, leido, direccion, created_at")
+        .order("created_at", { ascending: false });
 
       if (data) {
         const counts: Record<string, number> = {};
+        const timestamps: Record<string, string> = {};
         data.forEach((msg) => {
-          counts[msg.telefono] = (counts[msg.telefono] || 0) + 1;
+          if (msg.direccion === "inbound" && !msg.leido) {
+            counts[msg.telefono] = (counts[msg.telefono] || 0) + 1;
+          }
+          if (!timestamps[msg.telefono]) {
+            timestamps[msg.telefono] = msg.created_at || "";
+          }
         });
         setUnreadCounts(counts);
+        setLastMessageAt(timestamps);
       }
     };
-    fetchUnread();
+    fetchUnreadAndTimestamps();
 
     // Realtime para actualizar conteo
     const channel = supabase
@@ -73,7 +80,7 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "mensajes_whatsapp" },
-        () => fetchUnread()
+        () => fetchUnreadAndTimestamps()
       )
       .subscribe();
 
@@ -95,8 +102,17 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       result = result.filter((c) => c.bot_activo === false);
     }
 
+    // Sort by most recent message (like WhatsApp/Telegram)
+    result.sort((a, b) => {
+      const tA = lastMessageAt[a.telefono] || "";
+      const tB = lastMessageAt[b.telefono] || "";
+      if (tB > tA) return 1;
+      if (tA > tB) return -1;
+      return 0;
+    });
+
     setFilteredContacts(result);
-  }, [searchQuery, contacts, filter, unreadCounts]);
+  }, [searchQuery, contacts, filter, unreadCounts, lastMessageAt]);
 
   return (
     <div className="w-80 border-r flex flex-col bg-card">
