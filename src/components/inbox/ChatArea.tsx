@@ -40,6 +40,14 @@ export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
         .order("created_at", { ascending: true });
       if (data) setMessages(data as MensajeWhatsapp[]);
       setLoading(false);
+
+      // Marcar como leídos los mensajes inbound no leídos
+      await supabase
+        .from("mensajes_whatsapp")
+        .update({ leido: true })
+        .eq("telefono", phone)
+        .eq("direccion", "inbound")
+        .eq("leido", false);
     };
     fetchMessages();
 
