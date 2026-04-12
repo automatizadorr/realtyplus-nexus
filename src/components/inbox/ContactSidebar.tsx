@@ -89,7 +89,12 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "mensajes_whatsapp" },
-        () => fetchUnreadAndTimestamps()
+        (payload) => {
+          fetchUnreadAndTimestamps();
+          if (payload.eventType === "INSERT" && (payload.new as any)?.direccion === "inbound") {
+            playNotificationSound();
+          }
+        }
       )
       .subscribe();
 
