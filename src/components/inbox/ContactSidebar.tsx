@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Search, Loader2, Bot, BotOff, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana } from "@/lib/supabase";
+import { playNotificationSound } from "@/hooks/use-notification-sound";
 import {
   Select,
   SelectContent,
