@@ -33,7 +33,7 @@ export function AppSidebar() {
     "Usuario";
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="offcanvas">
       <SidebarContent>
         <div className="p-4 flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm shrink-0">
