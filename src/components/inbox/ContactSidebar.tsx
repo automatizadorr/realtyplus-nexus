@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Search, Loader2, Bot, BotOff, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana } from "@/lib/supabase";
+import { playNotificationSound } from "@/hooks/use-notification-sound";
 import {
   Select,
   SelectContent,
@@ -88,7 +89,12 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "mensajes_whatsapp" },
-        () => fetchUnreadAndTimestamps()
+        (payload) => {
+          fetchUnreadAndTimestamps();
+          if (payload.eventType === "INSERT" && (payload.new as any)?.direccion === "inbound") {
+            playNotificationSound();
+          }
+        }
       )
       .subscribe();
 
