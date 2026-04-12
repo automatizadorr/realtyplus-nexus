@@ -10,16 +10,24 @@ export default function Inbox() {
     setSelectedContact(updated);
   };
 
+  const handleBack = () => setSelectedContact(null);
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
-      <ContactSidebar
-        selectedContact={selectedContact}
-        onSelectContact={setSelectedContact}
-      />
-      <ChatArea
-        selectedContact={selectedContact}
-        onContactUpdate={handleContactUpdate}
-      />
+      {/* Mobile: show sidebar or chat, not both */}
+      <div className={`${selectedContact ? "hidden md:flex" : "flex"} w-full md:w-80 shrink-0`}>
+        <ContactSidebar
+          selectedContact={selectedContact}
+          onSelectContact={setSelectedContact}
+        />
+      </div>
+      <div className={`${selectedContact ? "flex" : "hidden md:flex"} flex-1 min-w-0`}>
+        <ChatArea
+          selectedContact={selectedContact}
+          onContactUpdate={handleContactUpdate}
+          onBack={handleBack}
+        />
+      </div>
     </div>
   );
 }

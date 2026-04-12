@@ -129,7 +129,7 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
   }, [searchQuery, contacts, filter, unreadCounts, lastMessageAt]);
 
   return (
-    <div className="w-80 border-r flex flex-col bg-card">
+    <div className="w-full md:w-80 border-r flex flex-col bg-card">
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" />

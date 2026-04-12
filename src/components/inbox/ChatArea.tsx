@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, Send, Loader2, Bot, BotOff } from "lucide-react";
+import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, MensajeWhatsapp } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -12,9 +12,10 @@ import { motion, AnimatePresence } from "framer-motion";
 interface ChatAreaProps {
   selectedContact: LeadCampana | null;
   onContactUpdate?: (contact: LeadCampana) => void;
+  onBack?: () => void;
 }
 
-export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
+export function ChatArea({ selectedContact, onContactUpdate, onBack }: ChatAreaProps) {
   const [messages, setMessages] = useState<MensajeWhatsapp[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -158,8 +159,13 @@ export function ChatArea({ selectedContact, onContactUpdate }: ChatAreaProps) {
   return (
     <div className="flex-1 flex flex-col bg-background h-full">
       {/* Header */}
-      <div className="h-14 px-4 flex items-center border-b bg-card gap-3 shadow-sm z-10">
-        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-inner">
+      <div className="h-14 px-2 sm:px-4 flex items-center border-b bg-card gap-2 sm:gap-3 shadow-sm z-10">
+        {onBack && (
+          <Button variant="ghost" size="icon" className="md:hidden shrink-0 h-8 w-8" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-inner shrink-0">
           {selectedContact.nombre?.[0]?.toUpperCase() || "?"}
         </div>
         <div className="flex-1 min-w-0">
