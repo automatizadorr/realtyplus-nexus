@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogIn, UserPlus, Info, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
+import { BrandShowcase } from "@/components/auth/BrandShowcase";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
 // Colores corporativos extraídos del logo de Realtyplus
