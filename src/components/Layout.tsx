@@ -51,11 +51,12 @@ function SidebarHoverWrapper({ closeTimerRef }: { closeTimerRef: React.MutableRe
 }
 
 export function Layout({ children }: LayoutProps) {
+  const closeTimerRef = useRef<number | null>(null);
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
-        <HoverEdge />
-        <SidebarHoverWrapper />
+        <HoverEdge closeTimerRef={closeTimerRef} />
+        <SidebarHoverWrapper closeTimerRef={closeTimerRef} />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b bg-card px-4 gap-3">
             <SidebarTrigger />
