@@ -236,7 +236,7 @@ export default function Auth() {
         </div>
       </div>
 
-      <Card className="w-full max-w-md shadow-2xl border-t-8" style={{ borderTopColor: BRAND.navy }}>
+      <Card className="relative z-10 w-full max-w-md shadow-2xl border-t-8 bg-white/95 backdrop-blur-md ring-1 ring-white/60" style={{ borderTopColor: BRAND.navy }}>
         <CardHeader className="text-center space-y-2 pb-4">
           <CardTitle className="text-2xl font-extrabold tracking-tight" style={{ color: BRAND.navy }}>
             Portal CRM Integrado
