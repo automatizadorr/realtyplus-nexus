@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogIn, UserPlus, Info, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
+import { BrandShowcase } from "@/components/auth/BrandShowcase";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
 // Colores corporativos extraídos del logo de Realtyplus
@@ -128,7 +129,14 @@ export default function Auth() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 font-sans overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="relative min-h-screen grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] font-sans overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Panel lateral izquierdo (solo desktop) */}
+      <aside className="hidden lg:block relative">
+        <BrandShowcase />
+      </aside>
+
+      {/* Columna derecha: formulario con fondo plexus */}
+      <div className="relative flex flex-col items-center justify-center p-4 py-8 overflow-hidden">
       {/* Capa de gradiente radial corporativo */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -456,6 +464,7 @@ export default function Auth() {
           <p>contacto@realty-plus.org | www.realty-plus.org</p>
         </CardFooter>
       </Card>
+      </div>
     </div>
   );
 }
