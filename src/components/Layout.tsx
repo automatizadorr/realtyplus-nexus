@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 
@@ -5,22 +6,45 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-function HoverEdge() {
+const CLOSE_DELAY_MS = 300;
+
+function HoverEdge({ closeTimerRef }: { closeTimerRef: React.MutableRefObject<number | null> }) {
   const { setOpen, open, isMobile } = useSidebar();
   if (isMobile) return null;
   return (
     <div
-      onMouseEnter={() => !open && setOpen(true)}
+      onMouseEnter={() => {
+        if (closeTimerRef.current) {
+          window.clearTimeout(closeTimerRef.current);
+          closeTimerRef.current = null;
+        }
+        if (!open) setOpen(true);
+      }}
       className="fixed left-0 top-0 h-screen w-2 z-40"
       aria-hidden
     />
   );
 }
 
-function SidebarHoverWrapper() {
+function SidebarHoverWrapper({ closeTimerRef }: { closeTimerRef: React.MutableRefObject<number | null> }) {
   const { setOpen, isMobile } = useSidebar();
   return (
-    <div onMouseLeave={() => !isMobile && setOpen(false)}>
+    <div
+      onMouseEnter={() => {
+        if (closeTimerRef.current) {
+          window.clearTimeout(closeTimerRef.current);
+          closeTimerRef.current = null;
+        }
+      }}
+      onMouseLeave={() => {
+        if (isMobile) return;
+        if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = window.setTimeout(() => {
+          setOpen(false);
+          closeTimerRef.current = null;
+        }, CLOSE_DELAY_MS);
+      }}
+    >
       <AppSidebar />
     </div>
   );
