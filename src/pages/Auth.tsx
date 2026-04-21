@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, UserPlus, Info, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
+import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
 // Colores corporativos extraídos del logo de Realtyplus
 const BRAND = {
@@ -126,13 +128,50 @@ export default function Auth() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center bg-slate-100 p-4 font-sans">
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 font-sans overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Capa de gradiente radial corporativo */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(15,43,90,0.10), transparent 60%), radial-gradient(ellipse 70% 55% at 85% 90%, rgba(207,20,43,0.08), transparent 65%)",
+        }}
+        aria-hidden
+      />
+      {/* Plexus animado de red inmobiliaria */}
+      <div className="absolute inset-0 pointer-events-none">
+        <RealEstatePlexus />
+      </div>
+      {/* Grid sutil tipo plano arquitectónico */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.18]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(15,43,90,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(15,43,90,0.18) 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+          maskImage:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, black 40%, transparent 90%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, black 40%, transparent 90%)",
+        }}
+        aria-hidden
+      />
+      {/* Viñeta para concentrar la atención */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, transparent 40%, rgba(15,43,90,0.18) 100%)",
+        }}
+        aria-hidden
+      />
+
       {/* --- INICIO DEL MODAL EMERGENTE DE INFORMACIÓN --- */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-all duration-300">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-5 border-b" style={{ borderColor: BRAND.navy }}>
-              <img src="/logo.png" alt="Realtyplus Logo" className="h-8 object-contain" />
+              <img src={realtyplusLogo} alt="Realtyplus Logo" className="h-8 object-contain" />
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-400 hover:text-slate-700 transition-colors rounded-full p-1 hover:bg-slate-100"
@@ -187,12 +226,14 @@ export default function Auth() {
       {/* --- FIN DEL MODAL --- */}
 
       {/* CABECERA CON LOGO REAL */}
-      <div className="mb-6 text-center w-full max-w-md">
-        <img
-          src="/logo.png"
-          alt="Realtyplus Servicios Inmobiliarios"
-          className="mx-auto h-20 md:h-24 object-contain mb-4"
-        />
+      <div className="relative z-10 mb-6 text-center w-full max-w-md">
+        <div className="inline-block bg-white/70 backdrop-blur-md rounded-2xl px-6 py-4 shadow-xl ring-1 ring-white/60">
+          <img
+            src={realtyplusLogo}
+            alt="Realtyplus Servicios Inmobiliarios"
+            className="mx-auto h-16 md:h-20 object-contain drop-shadow-sm"
+          />
+        </div>
       </div>
 
       <Card className="w-full max-w-md shadow-2xl border-t-8" style={{ borderTopColor: BRAND.navy }}>
