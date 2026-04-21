@@ -464,6 +464,7 @@ export default function Auth() {
           <p>contacto@realty-plus.org | www.realty-plus.org</p>
         </CardFooter>
       </Card>
+      </div>
     </div>
   );
 }
