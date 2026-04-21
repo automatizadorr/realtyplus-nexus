@@ -56,6 +56,30 @@ export type Database = {
         }
         Relationships: []
       }
+      franquiciados: {
+        Row: {
+          calendar_id: string | null
+          created_at: string | null
+          id: string
+          nombre: string
+          timezone_base: string | null
+        }
+        Insert: {
+          calendar_id?: string | null
+          created_at?: string | null
+          id?: string
+          nombre: string
+          timezone_base?: string | null
+        }
+        Update: {
+          calendar_id?: string | null
+          created_at?: string | null
+          id?: string
+          nombre?: string
+          timezone_base?: string | null
+        }
+        Relationships: []
+      }
       knowledge_base: {
         Row: {
           content: string
@@ -144,6 +168,7 @@ export type Database = {
           fase_secuencia: number | null
           fecha_proximo_contacto: string | null
           fecha_respuesta: string | null
+          franquiciado_id: string | null
           ha_respondido: boolean | null
           id: string
           motivo_cierre: string | null
@@ -152,6 +177,7 @@ export type Database = {
           pais: string | null
           puntuacion: number | null
           telefono: string
+          timezone: string | null
           ultimo_contacto_at: string | null
           updated_at: string | null
         }
@@ -164,6 +190,7 @@ export type Database = {
           fase_secuencia?: number | null
           fecha_proximo_contacto?: string | null
           fecha_respuesta?: string | null
+          franquiciado_id?: string | null
           ha_respondido?: boolean | null
           id?: string
           motivo_cierre?: string | null
@@ -172,6 +199,7 @@ export type Database = {
           pais?: string | null
           puntuacion?: number | null
           telefono: string
+          timezone?: string | null
           ultimo_contacto_at?: string | null
           updated_at?: string | null
         }
@@ -184,6 +212,7 @@ export type Database = {
           fase_secuencia?: number | null
           fecha_proximo_contacto?: string | null
           fecha_respuesta?: string | null
+          franquiciado_id?: string | null
           ha_respondido?: boolean | null
           id?: string
           motivo_cierre?: string | null
@@ -192,10 +221,19 @@ export type Database = {
           pais?: string | null
           puntuacion?: number | null
           telefono?: string
+          timezone?: string | null
           ultimo_contacto_at?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leads_campana_franquiciado_id_fkey"
+            columns: ["franquiciado_id"]
+            isOneToOne: false
+            referencedRelation: "franquiciados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leads_realtyplus: {
         Row: {
