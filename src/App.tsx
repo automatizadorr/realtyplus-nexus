@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { AdminRoute } from "@/components/AdminRoute";
 import { Layout } from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
@@ -36,7 +35,7 @@ const App = () => (
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/scanner" element={<Scanner />} />
                       <Route path="/campaigns" element={<Campaigns />} />
-                      <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />
+                      <Route path="/inbox" element={<Inbox />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
