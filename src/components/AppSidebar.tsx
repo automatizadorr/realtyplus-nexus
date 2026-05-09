@@ -1,10 +1,8 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, LogOut, Lock } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsAdmin } from "@/hooks/use-is-admin";
 import { motion } from "framer-motion";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sidebar,
   SidebarContent,
@@ -18,10 +16,10 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, adminOnly: false },
-  { title: "Escáner", url: "/scanner", icon: ScanSearch, adminOnly: false },
-  { title: "Campañas", url: "/campaigns", icon: Megaphone, adminOnly: false },
-  { title: "Mensajes", url: "/inbox", icon: MessageSquare, adminOnly: true },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Escáner", url: "/scanner", icon: ScanSearch },
+  { title: "Campañas", url: "/campaigns", icon: Megaphone },
+  { title: "Mensajes", url: "/inbox", icon: MessageSquare },
 ];
 
 function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
@@ -42,7 +40,6 @@ export function AppSidebar() {
   const { setOpenMobile, isMobile, toggleSidebar } = useSidebar();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { isAdmin } = useIsAdmin();
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -70,7 +67,9 @@ export function AppSidebar() {
           </motion.div>
           <div className="flex flex-col">
             <span className="font-bold text-sm text-sidebar-foreground">Realtyplus</span>
-            <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Hub Inmobiliario</span>
+            <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">
+              Hub Inmobiliario
+            </span>
           </div>
         </div>
 
@@ -78,8 +77,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item, index) => {
-                const isActive = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
-                const locked = item.adminOnly && !isAdmin;
+                const isActive =
+                  item.url === "/"
+                    ? location.pathname === "/"
+                    : location.pathname.startsWith(item.url);
+
                 return (
                   <motion.div
                     key={item.title}
@@ -88,38 +90,18 @@ export function AppSidebar() {
                     transition={{ delay: index * 0.05, duration: 0.3 }}
                   >
                     <SidebarMenuItem>
-                      {locked ? (
-                        <TooltipProvider delayDuration={150}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                aria-disabled="true"
-                                className="flex items-center w-full px-2 py-2 rounded-md text-sidebar-foreground/40 cursor-not-allowed select-none"
-                              >
-                                <AnimatedIcon icon={item.icon} isActive={false} />
-                                <span className="ml-2 flex-1">{item.title}</span>
-                                <Lock className="h-3.5 w-3.5 ml-2 opacity-70" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              Acceso solo para administradores
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to={item.url}
-                            end={item.url === "/"}
-                            className="hover:bg-sidebar-accent/50"
-                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                            onClick={handleNavClick}
-                          >
-                            <AnimatedIcon icon={item.icon} isActive={isActive} />
-                            <span className="ml-2">{item.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      )}
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          end={item.url === "/"}
+                          className="hover:bg-sidebar-accent/50"
+                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                          onClick={handleNavClick}
+                        >
+                          <AnimatedIcon icon={item.icon} isActive={isActive} />
+                          <span className="ml-2">{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                   </motion.div>
                 );
@@ -135,7 +117,9 @@ export function AppSidebar() {
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</span>
+            <span className="text-sm font-medium text-sidebar-foreground truncate">
+              {displayName}
+            </span>
             <motion.button
               whileHover={{ x: 3 }}
               whileTap={{ scale: 0.95 }}
