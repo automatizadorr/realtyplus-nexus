@@ -67,7 +67,9 @@ export function AppSidebar() {
           </motion.div>
           <div className="flex flex-col">
             <span className="font-bold text-sm text-sidebar-foreground">Realtyplus</span>
-            <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Hub Inmobiliario</span>
+            <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">
+              Hub Inmobiliario
+            </span>
           </div>
         </div>
 
@@ -75,7 +77,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item, index) => {
-                const isActive = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
+                const isActive =
+                  item.url === "/"
+                    ? location.pathname === "/"
+                    : location.pathname.startsWith(item.url);
+
                 return (
                   <motion.div
                     key={item.title}
@@ -111,7 +117,9 @@ export function AppSidebar() {
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</span>
+            <span className="text-sm font-medium text-sidebar-foreground truncate">
+              {displayName}
+            </span>
             <motion.button
               whileHover={{ x: 3 }}
               whileTap={{ scale: 0.95 }}
