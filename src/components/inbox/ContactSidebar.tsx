@@ -2,57 +2,56 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Search, Loader2, Bot, BotOff, Filter } from "lucide-react";
+import { MessageSquare, Search, Loader2, Bot, BotOff, Filter, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { LeadCampana } from "@/lib/supabase";
+import type { LeadCampana, LeadTag } from "@/lib/supabase";
 import { playNotificationSound } from "@/hooks/use-notification-sound";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useIsAdmin } from "@/hooks/use-is-admin";
+import { ContactContextMenu } from "./ContactContextMenu";
+import { TagChips } from "./TagsManager";
 
 interface ContactSidebarProps {
   selectedContact: LeadCampana | null;
   onSelectContact: (contact: LeadCampana) => void;
+  allTags: LeadTag[];
 }
 
-type FilterType = "all" | "unread" | "bot_on" | "bot_off";
+type FilterType = "all" | "unread" | "bot_on" | "bot_off" | "archived";
 
-export function ContactSidebar({ selectedContact, onSelectContact }: ContactSidebarProps) {
+export function ContactSidebar({ selectedContact, onSelectContact, allTags }: ContactSidebarProps) {
   const [contacts, setContacts] = useState<LeadCampana[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<LeadCampana[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [lastMessageAt, setLastMessageAt] = useState<Record<string, string>>({});
   const [lastMessageText, setLastMessageText] = useState<Record<string, string>>({});
   const [lastMessageDir, setLastMessageDir] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<FilterType>("all");
+  const { isAdmin } = useIsAdmin();
 
-  // Fetch contacts
+  const fetchContacts = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("leads_campana")
+      .select("id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids")
+      .order("nombre", { ascending: true });
+
+    if (data) {
+      const unique = data.filter(
+        (c, i, arr) => arr.findIndex((x) => x.telefono === c.telefono) === i
+      ) as LeadCampana[];
+      setContacts(unique);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchContacts = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("leads_campana")
-        .select("id, nombre, telefono, pais, estado, bot_activo")
-        .order("nombre", { ascending: true });
-
-      if (data) {
-        const unique = data.filter(
-          (c, i, arr) => arr.findIndex((x) => x.telefono === c.telefono) === i
-        ) as LeadCampana[];
-        setContacts(unique);
-      }
-      setLoading(false);
-    };
     fetchContacts();
   }, []);
 
-  // Fetch unread counts + last message timestamps
   useEffect(() => {
     const fetchUnreadAndTimestamps = async () => {
       const { data } = await supabase
@@ -83,7 +82,6 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
     };
     fetchUnreadAndTimestamps();
 
-    // Realtime para actualizar conteo
     const channel = supabase
       .channel("unread-counts")
       .on(
@@ -101,12 +99,18 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Apply search + filter
   useEffect(() => {
     const q = searchQuery.toLowerCase();
     let result = contacts.filter(
       (c) => c.nombre?.toLowerCase().includes(q) || c.telefono?.includes(q)
     );
+
+    // Archived split
+    if (filter === "archived") {
+      result = result.filter((c) => c.archivado === true);
+    } else {
+      result = result.filter((c) => c.archivado !== true);
+    }
 
     if (filter === "unread") {
       result = result.filter((c) => (unreadCounts[c.telefono] || 0) > 0);
@@ -116,7 +120,10 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
       result = result.filter((c) => c.bot_activo === false);
     }
 
-    // Sort by most recent message (like WhatsApp/Telegram)
+    if (tagFilter !== "all") {
+      result = result.filter((c) => (c.tag_ids || []).includes(tagFilter));
+    }
+
     result.sort((a, b) => {
       const tA = lastMessageAt[a.telefono] || "";
       const tB = lastMessageAt[b.telefono] || "";
@@ -126,7 +133,7 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
     });
 
     setFilteredContacts(result);
-  }, [searchQuery, contacts, filter, unreadCounts, lastMessageAt]);
+  }, [searchQuery, contacts, filter, tagFilter, unreadCounts, lastMessageAt]);
 
   return (
     <div className="w-full md:w-80 border-r flex flex-col bg-card">
@@ -147,10 +154,10 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex items-center gap-1.5">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <Select value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-8 text-xs flex-1">
               <SelectValue placeholder="Filtrar" />
             </SelectTrigger>
             <SelectContent>
@@ -158,6 +165,20 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
               <SelectItem value="unread">No leídos</SelectItem>
               <SelectItem value="bot_on">Bot activo</SelectItem>
               <SelectItem value="bot_off">Bot inactivo</SelectItem>
+              <SelectItem value="archived">Archivados</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={tagFilter} onValueChange={setTagFilter}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <SelectValue placeholder="Etiqueta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las etiquetas</SelectItem>
+              {allTags.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.nombre}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -174,45 +195,54 @@ export function ContactSidebar({ selectedContact, onSelectContact }: ContactSide
           filteredContacts.map((contact) => {
             const unread = unreadCounts[contact.telefono] || 0;
             return (
-              <button
+              <div
                 key={contact.id}
-                onClick={() => onSelectContact(contact)}
-                className={`w-full text-left px-4 py-3 border-b transition-colors hover:bg-muted/50 ${
+                className={`group relative border-b transition-colors hover:bg-muted/50 ${
                   selectedContact?.telefono === contact.telefono
                     ? "bg-muted border-l-2 border-l-primary"
                     : ""
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm text-foreground truncate">
-                    {contact.nombre || "Sin nombre"}
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {unread > 0 && (
-                      <Badge className="h-5 min-w-[20px] px-1.5 text-[10px] flex items-center justify-center">
-                        {unread}
-                      </Badge>
-                    )}
-                    {contact.bot_activo ? (
-                      <Bot className="h-3.5 w-3.5 text-primary" />
-                    ) : (
-                      <BotOff className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
+                <button
+                  onClick={() => onSelectContact(contact)}
+                  className="w-full text-left px-4 py-3 pr-10"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
+                      {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
+                      {contact.nombre || "Sin nombre"}
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {unread > 0 && (
+                        <Badge className="h-5 min-w-[20px] px-1.5 text-[10px] flex items-center justify-center">
+                          {unread}
+                        </Badge>
+                      )}
+                      {contact.bot_activo ? (
+                        <Bot className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <BotOff className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </div>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]">
+                    {lastMessageText[contact.telefono] ? (
+                      <>
+                        <span className="opacity-60">
+                          {lastMessageDir[contact.telefono] === "outbound" ? "Tú: " : ""}
+                        </span>
+                        {lastMessageText[contact.telefono]}
+                      </>
+                    ) : (
+                      contact.telefono
+                    )}
+                  </p>
+                  <TagChips tagIds={contact.tag_ids} allTags={allTags} />
+                </button>
+                <div className="absolute right-1 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ContactContextMenu isAdmin={isAdmin} contact={contact} onChanged={fetchContacts} />
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]">
-                  {lastMessageText[contact.telefono] ? (
-                    <>
-                      <span className="opacity-60">
-                        {lastMessageDir[contact.telefono] === "outbound" ? "Tú: " : ""}
-                      </span>
-                      {lastMessageText[contact.telefono]}
-                    </>
-                  ) : (
-                    contact.telefono
-                  )}
-                </p>
-              </button>
+              </div>
             );
           })
         )}
