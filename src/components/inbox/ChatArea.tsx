@@ -134,14 +134,42 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         if (onContactUpdate) onContactUpdate({ ...selectedContact, bot_activo: false });
       }
 
+      const contenido = newMessage;
+      const media = pendingMedia;
+
+      // Optimistic insert into mensajes_whatsapp
+      const { data: inserted, error: insertError } = await supabase
+        .from("mensajes_whatsapp")
+        .insert({
+          telefono: selectedContact.telefono,
+          contenido,
+          direccion: "outbound",
+          autor: "admin",
+          leido: true,
+          media_url: media?.url ?? null,
+          media_type: media?.type ?? null,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      if (inserted) {
+        const newMsg = inserted as MensajeWhatsapp;
+        setMessages((prev) => (prev.find((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
+      }
+
+      setNewMessage("");
+      setPendingMedia(null);
+
       const payload: Record<string, any> = {
         telefono: selectedContact.telefono,
-        mensaje: newMessage,
+        mensaje: contenido,
         autor: "admin",
       };
-      if (pendingMedia) {
-        payload.media_url = pendingMedia.url;
-        payload.media_type = pendingMedia.type;
+      if (media) {
+        payload.media_url = media.url;
+        payload.media_type = media.type;
       }
 
       const response = await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/crmrp", {
@@ -151,9 +179,6 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       });
 
       if (!response.ok) throw new Error("El Webhook rechazó la conexión.");
-
-      setNewMessage("");
-      setPendingMedia(null);
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
