@@ -22,6 +22,30 @@ export interface LeadCampana {
   bot_activo?: boolean | null;
   campaign_id?: string | null;
   email?: string | null;
+  archivado?: boolean | null;
+  tag_ids?: string[] | null;
+}
+
+export interface LeadTag {
+  id: string;
+  nombre: string;
+  color: string;
+}
+
+export interface QuickReply {
+  id: string;
+  user_id: string;
+  titulo: string;
+  contenido: string;
+  created_at: string;
+}
+
+export interface LeadNote {
+  id: string;
+  lead_id: string;
+  user_id: string;
+  contenido: string;
+  created_at: string;
 }
 
 export interface VistaSeguimientoCampana {
@@ -43,4 +67,6 @@ export interface MensajeWhatsapp {
   autor?: string | null;
   leido?: boolean | null;
   created_at: string;
+  media_url?: string | null;
+  media_type?: string | null;
 }
