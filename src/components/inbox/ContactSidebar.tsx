@@ -34,7 +34,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
 
   const fetchContacts = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("leads_campana")
       .select("id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids")
       .order("nombre", { ascending: true });
