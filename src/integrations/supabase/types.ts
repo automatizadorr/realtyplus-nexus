@@ -101,6 +101,30 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_notes: {
+        Row: {
+          contenido: string
+          created_at: string
+          id: string
+          lead_id: string
+          user_id: string
+        }
+        Insert: {
+          contenido: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          user_id: string
+        }
+        Update: {
+          contenido?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lead_recovery_campaigns: {
         Row: {
           campaign_name: string
@@ -158,8 +182,30 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_tags: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          nombre: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          nombre: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
+      }
       leads_campana: {
         Row: {
+          archivado: boolean | null
           bot_activo: boolean | null
           created_at: string | null
           dias_reales: number | null
@@ -176,12 +222,14 @@ export type Database = {
           origen: string | null
           pais: string | null
           puntuacion: number | null
+          tag_ids: string[] | null
           telefono: string
           timezone: string | null
           ultimo_contacto_at: string | null
           updated_at: string | null
         }
         Insert: {
+          archivado?: boolean | null
           bot_activo?: boolean | null
           created_at?: string | null
           dias_reales?: number | null
@@ -198,12 +246,14 @@ export type Database = {
           origen?: string | null
           pais?: string | null
           puntuacion?: number | null
+          tag_ids?: string[] | null
           telefono: string
           timezone?: string | null
           ultimo_contacto_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          archivado?: boolean | null
           bot_activo?: boolean | null
           created_at?: string | null
           dias_reales?: number | null
@@ -220,6 +270,7 @@ export type Database = {
           origen?: string | null
           pais?: string | null
           puntuacion?: number | null
+          tag_ids?: string[] | null
           telefono?: string
           timezone?: string | null
           ultimo_contacto_at?: string | null
@@ -297,6 +348,8 @@ export type Database = {
           direccion: string
           id: string
           leido: boolean | null
+          media_type: string | null
+          media_url: string | null
           telefono: string
         }
         Insert: {
@@ -306,6 +359,8 @@ export type Database = {
           direccion: string
           id?: string
           leido?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           telefono: string
         }
         Update: {
@@ -315,6 +370,8 @@ export type Database = {
           direccion?: string
           id?: string
           leido?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           telefono?: string
         }
         Relationships: []
@@ -340,6 +397,30 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      quick_replies: {
+        Row: {
+          contenido: string
+          created_at: string
+          id: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          contenido: string
+          created_at?: string
+          id?: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          contenido?: string
+          created_at?: string
+          id?: string
+          titulo?: string
+          user_id?: string
         }
         Relationships: []
       }

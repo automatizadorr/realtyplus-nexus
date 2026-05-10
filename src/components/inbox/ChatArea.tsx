@@ -1,28 +1,46 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft } from "lucide-react";
+import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { LeadCampana, MensajeWhatsapp } from "@/lib/supabase";
+import type { LeadCampana, MensajeWhatsapp, LeadTag } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsAdmin } from "@/hooks/use-is-admin";
+import { ChatSearchBar } from "./ChatSearchBar";
+import { QuickRepliesPopover } from "./QuickRepliesPopover";
+import { EmojiPickerButton } from "./EmojiPickerButton";
+import { AttachmentButton } from "./AttachmentButton";
+import { MediaBubble } from "./MediaBubble";
+import { NotesPanel } from "./NotesPanel";
+import { TagsButton, TagChips } from "./TagsManager";
+import { FormattedText } from "@/lib/whatsappFormat";
 
 interface ChatAreaProps {
   selectedContact: LeadCampana | null;
   onContactUpdate?: (contact: LeadCampana) => void;
   onBack?: () => void;
+  allTags: LeadTag[];
+  onTagsRefresh: () => void;
 }
 
-export function ChatArea({ selectedContact, onContactUpdate, onBack }: ChatAreaProps) {
+export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, onTagsRefresh }: ChatAreaProps) {
   const [messages, setMessages] = useState<MensajeWhatsapp[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [pendingMedia, setPendingMedia] = useState<{ url: string; type: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [togglingBot, setTogglingBot] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchIdx, setSearchIdx] = useState(0);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { isAdmin } = useIsAdmin();
 
   useEffect(() => {
     if (!selectedContact?.telefono) {
@@ -42,7 +60,6 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack }: ChatAreaP
       if (data) setMessages(data as MensajeWhatsapp[]);
       setLoading(false);
 
-      // Marcar como leídos los mensajes inbound no leídos
       await supabase
         .from("mensajes_whatsapp")
         .update({ leido: true })
@@ -52,24 +69,15 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack }: ChatAreaP
     };
     fetchMessages();
 
-    // Suscripción Realtime para animar mensajes entrantes al instante
     const channel = supabase
       .channel(`messages-${phone}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "mensajes_whatsapp",
-        },
+        { event: "INSERT", schema: "public", table: "mensajes_whatsapp" },
         (payload) => {
           const msg = payload.new as MensajeWhatsapp;
           if (msg.telefono === phone) {
-            setMessages((prev) => {
-              // Evitar duplicados visuales si el mensaje ya está en estado
-              if (prev.find((m) => m.id === msg.id)) return prev;
-              return [...prev, msg];
-            });
+            setMessages((prev) => (prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]));
           }
         },
       )
@@ -81,57 +89,71 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack }: ChatAreaP
   }, [selectedContact?.telefono]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!searchOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, searchOpen]);
+
+  // Search match indices
+  const matchIds = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return messages.filter((m) => m.contenido?.toLowerCase().includes(q)).map((m) => m.id);
+  }, [searchQuery, messages]);
+
+  useEffect(() => {
+    setSearchIdx(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (matchIds.length > 0) {
+      const id = matchIds[searchIdx];
+      document.getElementById(`msg-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [searchIdx, matchIds]);
 
   const toggleBot = async () => {
     if (!selectedContact) return;
     setTogglingBot(true);
     const newVal = !selectedContact.bot_activo;
     const { error } = await supabase.from("leads_campana").update({ bot_activo: newVal }).eq("id", selectedContact.id);
-
-    if (!error && onContactUpdate) {
-      onContactUpdate({ ...selectedContact, bot_activo: newVal });
-    }
+    if (!error && onContactUpdate) onContactUpdate({ ...selectedContact, bot_activo: newVal });
     setTogglingBot(false);
   };
 
+  const insertText = (text: string) => {
+    setNewMessage((prev) => (prev ? prev + text : text));
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedContact?.telefono) return;
+    if ((!newMessage.trim() && !pendingMedia) || !selectedContact?.telefono) return;
     setSending(true);
 
     try {
-      // 1. Apagado automático del bot por intervención humana
       if (selectedContact.bot_activo) {
         await supabase.from("leads_campana").update({ bot_activo: false }).eq("id", selectedContact.id);
-
-        if (onContactUpdate) {
-          onContactUpdate({ ...selectedContact, bot_activo: false });
-        }
+        if (onContactUpdate) onContactUpdate({ ...selectedContact, bot_activo: false });
       }
 
-      // 2. Disparo del Payload al Webhook de n8n
-      const payload = {
+      const payload: Record<string, any> = {
         telefono: selectedContact.telefono,
         mensaje: newMessage,
         autor: "admin",
       };
+      if (pendingMedia) {
+        payload.media_url = pendingMedia.url;
+        payload.media_type = pendingMedia.type;
+      }
 
       const response = await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/crmrp", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error("El Webhook rechazó la conexión.");
-      }
+      if (!response.ok) throw new Error("El Webhook rechazó la conexión.");
 
-      // NOTA: Ya no hacemos insert manual aquí. n8n recibe el webhook,
-      // guarda en la BD y Supabase Realtime lo inyectará en la pantalla automáticamente.
       setNewMessage("");
+      setPendingMedia(null);
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
@@ -157,143 +179,200 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack }: ChatAreaP
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background h-full">
-      {/* Header */}
-      <div className="h-14 px-2 sm:px-4 flex items-center border-b bg-card gap-2 sm:gap-3 shadow-sm z-10">
-        {onBack && (
-          <Button variant="ghost" size="icon" className="md:hidden shrink-0 h-8 w-8" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-inner shrink-0">
-          {selectedContact.nombre?.[0]?.toUpperCase() || "?"}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-sm text-foreground truncate">{selectedContact.nombre}</div>
-          <div className="text-xs text-muted-foreground">{selectedContact.telefono}</div>
-        </div>
-
-        {/* Bot toggle animado */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={selectedContact.bot_activo ? "bot-on" : "bot-off"}
-              initial={{ opacity: 0, rotate: -90 }}
-              animate={{ opacity: 1, rotate: 0 }}
-              exit={{ opacity: 0, rotate: 90 }}
-              transition={{ duration: 0.2 }}
-            >
-              {selectedContact.bot_activo ? (
-                <Bot className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <BotOff className="h-4 w-4 text-rose-500" />
-              )}
-            </motion.div>
-          </AnimatePresence>
-          <span className="hidden sm:inline font-medium">
-            {selectedContact.bot_activo ? "IA activa" : "IA silenciada"}
-          </span>
-          <Switch
-            checked={!!selectedContact.bot_activo}
-            onCheckedChange={toggleBot}
-            disabled={togglingBot}
-            className="scale-90 data-[state=checked]:bg-emerald-500"
-          />
-        </div>
-      </div>
-
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4 bg-slate-50/50 dark:bg-zinc-950/50">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <div className="flex-1 flex h-full min-w-0">
+      <div className="flex-1 flex flex-col bg-background h-full min-w-0">
+        {/* Header */}
+        <div className="h-14 px-2 sm:px-4 flex items-center border-b bg-card gap-2 sm:gap-3 shadow-sm z-10">
+          {onBack && (
+            <Button variant="ghost" size="icon" className="md:hidden shrink-0 h-8 w-8" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-inner shrink-0">
+            {selectedContact.nombre?.[0]?.toUpperCase() || "?"}
           </div>
-        ) : (
-          <div className="space-y-4 max-w-3xl mx-auto pb-4">
-            <AnimatePresence initial={false}>
-              {messages.map((msg) => {
-                const isOutbound = msg.direccion === "outbound";
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{
-                      duration: 0.4,
-                      type: "spring",
-                      bounce: 0.4,
-                      damping: 20,
-                    }}
-                    className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
-                        isOutbound
-                          ? "bg-primary text-primary-foreground rounded-br-sm"
-                          : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
-                      }`}
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm text-foreground truncate">{selectedContact.nombre}</div>
+            <div className="text-xs text-muted-foreground">{selectedContact.telefono}</div>
+            <TagChips tagIds={selectedContact.tag_ids} allTags={allTags} />
+          </div>
+
+          <TagsButton
+            isAdmin={isAdmin}
+            contact={selectedContact}
+            allTags={allTags}
+            onChange={(ids) => onContactUpdate?.({ ...selectedContact, tag_ids: ids })}
+            onTagsRefresh={onTagsRefresh}
+          />
+
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSearchOpen((v) => !v)}>
+            <Search className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 ${notesOpen ? "text-primary" : ""}`}
+            onClick={() => setNotesOpen((v) => !v)}
+          >
+            <StickyNote className="h-3.5 w-3.5" />
+          </Button>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selectedContact.bot_activo ? "bot-on" : "bot-off"}
+                initial={{ opacity: 0, rotate: -90 }}
+                animate={{ opacity: 1, rotate: 0 }}
+                exit={{ opacity: 0, rotate: 90 }}
+                transition={{ duration: 0.2 }}
+              >
+                {selectedContact.bot_activo ? (
+                  <Bot className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <BotOff className="h-4 w-4 text-rose-500" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+            <span className="hidden sm:inline font-medium">
+              {selectedContact.bot_activo ? "IA activa" : "IA silenciada"}
+            </span>
+            <Switch
+              checked={!!selectedContact.bot_activo}
+              onCheckedChange={toggleBot}
+              disabled={togglingBot}
+              className="scale-90 data-[state=checked]:bg-emerald-500"
+            />
+          </div>
+        </div>
+
+        {searchOpen && (
+          <ChatSearchBar
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            matches={matchIds.length}
+            current={searchIdx}
+            onPrev={() => setSearchIdx((i) => (i - 1 + matchIds.length) % matchIds.length)}
+            onNext={() => setSearchIdx((i) => (i + 1) % matchIds.length)}
+            onClose={() => {
+              setSearchOpen(false);
+              setSearchQuery("");
+            }}
+          />
+        )}
+
+        {/* Messages */}
+        <ScrollArea className="flex-1 p-4 bg-slate-50/50 dark:bg-zinc-950/50">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-4 max-w-3xl mx-auto pb-4">
+              <AnimatePresence initial={false}>
+                {messages.map((msg) => {
+                  const isOutbound = msg.direccion === "outbound";
+                  const isCurrentMatch = matchIds[searchIdx] === msg.id;
+                  return (
+                    <motion.div
+                      key={msg.id}
+                      id={`msg-${msg.id}`}
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
+                      className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                     >
-                      {isOutbound && msg.autor && (
-                        <span
-                          className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
-                            msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                      <div
+                        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                          isOutbound
+                            ? "bg-primary text-primary-foreground rounded-br-sm"
+                            : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
+                        } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""}`}
+                      >
+                        {isOutbound && msg.autor && (
+                          <span
+                            className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
+                              msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                            }`}
+                          >
+                            {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
+                          </span>
+                        )}
+                        {msg.media_url && (
+                          <div className="mb-1.5">
+                            <MediaBubble url={msg.media_url} type={msg.media_type} />
+                          </div>
+                        )}
+                        {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
+                        <div
+                          className={`text-[10px] mt-1.5 flex justify-end ${
+                            isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
                           }`}
                         >
-                          {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
-                        </span>
-                      )}
-                      <p className="leading-relaxed whitespace-pre-wrap">{msg.contenido}</p>
-                      <div
-                        className={`text-[10px] mt-1.5 flex justify-end ${
-                          isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
-                        }`}
-                      >
-                        {new Date(msg.created_at).toLocaleTimeString("es-ES", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                          {new Date(msg.created_at).toLocaleTimeString("es-ES", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-            {messages.length === 0 && !loading && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center text-muted-foreground text-sm py-12"
-              >
-                Inicia la conversación con este lead.
-              </motion.p>
-            )}
-            <div ref={messagesEndRef} />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+              {messages.length === 0 && !loading && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center text-muted-foreground text-sm py-12"
+                >
+                  Inicia la conversación con este lead.
+                </motion.p>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Pending media preview */}
+        {pendingMedia && (
+          <div className="px-3 py-2 bg-muted/40 border-t flex items-center gap-2 text-xs">
+            <span className="font-medium">Adjunto listo:</span>
+            <span className="truncate flex-1">{pendingMedia.type}</span>
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setPendingMedia(null)}>
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         )}
-      </ScrollArea>
 
-      {/* Input de Envío */}
-      <div className="p-3 bg-card border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
-        <div className="flex gap-2 max-w-3xl mx-auto items-end">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-            placeholder="Escribe un mensaje..."
-            className="flex-1 rounded-xl bg-muted/50 focus-visible:ring-primary focus-visible:bg-background transition-all border-transparent focus-visible:border-primary"
-          />
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button
-              onClick={sendMessage}
-              disabled={!newMessage.trim() || sending}
-              size="icon"
-              className="rounded-xl h-10 w-10 shadow-md"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </motion.div>
+        {/* Input */}
+        <div className="p-3 bg-card border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+          <div className="flex gap-1 max-w-3xl mx-auto items-end">
+            <QuickRepliesPopover isAdmin={isAdmin} onPick={insertText} contactName={selectedContact.nombre} />
+            <EmojiPickerButton onPick={insertText} />
+            <AttachmentButton isAdmin={isAdmin} onUploaded={(url, type) => setPendingMedia({ url, type })} />
+            <Input
+              ref={inputRef}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+              placeholder="Escribe un mensaje... (*negrita* _cursiva_ ~tachado~)"
+              className="flex-1 rounded-xl bg-muted/50 focus-visible:ring-primary focus-visible:bg-background transition-all border-transparent focus-visible:border-primary"
+            />
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                onClick={sendMessage}
+                disabled={(!newMessage.trim() && !pendingMedia) || sending}
+                size="icon"
+                className="rounded-xl h-10 w-10 shadow-md"
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </motion.div>
+          </div>
         </div>
       </div>
+
+      <NotesPanel isAdmin={isAdmin} leadId={selectedContact.id} open={notesOpen} onClose={() => setNotesOpen(false)} />
     </div>
   );
 }
