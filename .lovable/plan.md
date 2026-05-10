@@ -1,49 +1,81 @@
+## Mejoras para la sección de Mensajes (solo administradores)
 
+Todas las funciones nuevas estarán protegidas por `useIsAdmin()` (tabla `user_roles`). Los no-admin verán las acciones con candado, igual que el botón actual.
 
-## Plan: Crear campañas reales con contactos existentes de mensajes
+---
 
-### Problema actual
-1. La página **Campaigns** solo muestra un historial — no tiene botón para crear campañas.
-2. La página **Scanner** usa columnas incorrectas (`nombre`, `mensaje_plantilla`) que no coinciden con la tabla `lead_recovery_campaigns` (que usa `campaign_name`, `user_id`, `message_template_whatsapp`, etc.) y no envía `user_id`, lo que viola RLS.
-3. No hay forma de seleccionar contactos existentes de `leads_campana` para añadirlos a una campaña.
+### 1. Búsqueda dentro del chat
+- Botón 🔍 en el header de `ChatArea`.
+- Abre una barra superior con input que filtra/resalta coincidencias en los mensajes cargados.
+- Navegación con ↑ ↓ entre coincidencias y contador "3 de 12".
 
-### Solución
+### 2. Respuestas rápidas / Plantillas
+- Botón ⚡ junto al input de envío → abre un Popover con plantillas guardadas.
+- Click en una plantilla → la inserta en el textarea (editable antes de enviar).
+- Soporte de variables: `{{nombre}}` se reemplaza con `selectedContact.nombre`.
+- Pantalla de gestión (modal "Administrar plantillas") para crear/editar/eliminar.
 
-**1. Rediseñar la página Campaigns** (`src/pages/Campaigns.tsx`)
-- Añadir botón "Nueva Campaña" que abre un Dialog/Sheet.
-- El formulario incluye:
-  - Nombre de campaña
-  - Canal (WhatsApp, Email, ambos)
-  - Plantilla de mensaje WhatsApp
-  - Plantilla de mensaje Email + Asunto
-  - Selector de contactos: carga los contactos de `leads_campana` con búsqueda y selección múltiple (checkboxes)
-  - Filtros para seleccionar contactos: por estado, por país, por bot activo/inactivo
-- Al lanzar: inserta en `lead_recovery_campaigns` con `user_id = auth.uid()` y las columnas correctas (`campaign_name`, `status`, `channel`, `total_leads`, `message_template_whatsapp`, `message_template_email`, `subject_email`).
+### 3. Emojis y formato básico
+- Botón 😊 → picker de emojis (`emoji-picker-react`) que inserta en el input.
+- Mini-toolbar con **negrita** (`*texto*`), _cursiva_ (`_texto_`) y ~tachado~ (`~texto~`), siguiendo el estándar de WhatsApp.
+- Renderizar ese formato en las burbujas del chat.
 
-**2. Crear componente `CreateCampaignDialog`** (`src/components/campaigns/CreateCampaignDialog.tsx`)
-- Dialog modal con formulario paso a paso o en un solo panel.
-- Carga contactos de `leads_campana` para selección.
-- Muestra preview de contactos seleccionados con contador.
-- Botón "Lanzar Campaña" que:
-  1. Inserta la campaña en `lead_recovery_campaigns`
-  2. Muestra toast de éxito
-  3. Refresca la lista de campañas
+### 4. Adjuntar archivos / imágenes
+- Botón 📎 → abre selector de archivos (imágenes, PDF, audio).
+- Subida al bucket de Supabase Storage `whatsapp-media` (privado, con URLs firmadas).
+- El payload al webhook de n8n incluirá `media_url` y `media_type` además del texto opcional.
+- Preview en burbuja: imagen inline, PDF/audio como tarjeta con icono y nombre.
 
-**3. Corregir Scanner** (`src/pages/Scanner.tsx`)
-- Actualizar los nombres de columnas para que coincidan con la tabla real (`campaign_name`, `message_template_whatsapp`, `user_id`, `status`).
-- Pasar el `user_id` del contexto de Auth.
+### 5. Marcar como no leído / Archivar contacto
+- Click derecho (o menú "⋮") sobre un contacto en `ContactSidebar`:
+  - **Marcar como no leído** → revierte `leido=false` al último mensaje inbound.
+  - **Archivar / Desarchivar** → setea `archivado=true` en `leads_campana`.
+- Nuevo filtro en el dropdown: "Archivados".
 
-### Archivos a crear/modificar
+### 6. Etiquetas (tags) por contacto
+- Chips de colores debajo del nombre en la lista y en el header del chat.
+- Botón "+" para añadir/quitar tags desde un Popover con buscador.
+- Pantalla "Administrar etiquetas" (color + nombre).
+- Filtro por etiqueta en el sidebar.
 
-| Archivo | Acción |
-|---|---|
-| `src/components/campaigns/CreateCampaignDialog.tsx` | Crear — formulario con selector de contactos |
-| `src/pages/Campaigns.tsx` | Modificar — añadir botón "Nueva Campaña" + integrar dialog |
-| `src/pages/Scanner.tsx` | Modificar — corregir columnas para coincidir con la BD |
+### 7. Notas internas del lead
+- Panel lateral derecho colapsable (icono 📝 en el header del chat).
+- Lista cronológica de notas + textarea para añadir nueva.
+- Solo visibles para administradores; nunca se envían al lead.
 
-### Detalles técnicos
-- Se usa `useAuth()` para obtener `user.id` y pasarlo como `user_id` en los inserts (requerido por RLS).
-- Los contactos se cargan desde `leads_campana` con `supabase.from("leads_campana").select(...)`.
-- El selector de contactos permite buscar por nombre/teléfono y marcar/desmarcar contactos individualmente o todos.
-- No se crean tablas nuevas — se usan las existentes.
+---
 
+### Cambios técnicos
+
+**Base de datos** (requiere aprobación de migración — *nota: contradice la regla "no crear tablas nuevas" guardada en memoria; lo confirmo contigo antes de ejecutar*):
+
+- `leads_campana`: añadir columnas `archivado boolean default false`, `tag_ids uuid[] default '{}'`.
+- Nueva tabla `quick_replies` (id, user_id, titulo, contenido, created_at) — RLS: cada admin ve/edita las suyas.
+- Nueva tabla `lead_tags` (id, nombre, color) — RLS: solo admins escriben, todos los autenticados leen.
+- Nueva tabla `lead_notes` (id, lead_id, user_id, contenido, created_at) — RLS: solo admins.
+- Bucket Storage `whatsapp-media` (privado) + policies de admin.
+- `mensajes_whatsapp`: añadir columnas `media_url text`, `media_type text` (opcionales).
+
+**Frontend**:
+- Nuevos componentes en `src/components/inbox/`:
+  - `ChatSearchBar.tsx`
+  - `QuickRepliesPopover.tsx` + `ManageQuickRepliesDialog.tsx`
+  - `EmojiPicker.tsx` + helper `whatsappFormat.ts` (parser de `*_~`)
+  - `AttachmentButton.tsx` + `MediaBubble.tsx`
+  - `ContactContextMenu.tsx` (no leído / archivar / tags)
+  - `TagsManager.tsx` + `TagChip.tsx`
+  - `NotesPanel.tsx`
+- Hook `useAdminGuard()` que envuelve handlers y muestra toast "Función solo para administradores" + candado visual.
+- Dependencia nueva: `emoji-picker-react`.
+
+**Webhook n8n**: el payload pasará a incluir opcionalmente `media_url`, `media_type`, `formato: "whatsapp"`. Tendrás que adaptar el flujo de n8n para reenviar el archivo a WhatsApp Cloud API (no lo cubre este plan en código, solo el envío del payload).
+
+---
+
+### Orden sugerido de implementación
+1. Migración de BD + bucket de Storage.
+2. Hook `useAdminGuard` + integración del candado en los nuevos botones.
+3. Búsqueda en chat + emojis + formato (frontend puro, rápido).
+4. Respuestas rápidas (CRUD + popover).
+5. Adjuntos (Storage + webhook).
+6. Gestión de contactos (no leído, archivar, tags, notas).
