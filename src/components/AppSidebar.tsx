@@ -58,20 +58,19 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarContent>
-        <div className="p-4 flex items-center gap-3">
+        <div className="p-4">
           <motion.div
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-8 h-8 rounded bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm shrink-0"
+            whileHover={{ scale: 1.05, rotate: -1 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className="bg-white rounded-lg p-3 shadow-md w-full flex items-center justify-center overflow-hidden group"
           >
-            R+
+            <motion.img
+              src={realtyplusLogo}
+              alt="Realtyplus - Servicios Inmobiliarios"
+              className="w-full h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
+            />
           </motion.div>
-          <div className="flex flex-col">
-            <span className="font-bold text-sm text-sidebar-foreground">Realtyplus</span>
-            <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">
-              Hub Inmobiliario
-            </span>
-          </div>
         </div>
 
         <SidebarGroup>
