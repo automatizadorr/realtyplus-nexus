@@ -37,8 +37,12 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [searchQuery, setSearchQuery] = useState("");
   const [searchIdx, setSearchIdx] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const isAtBottomRef = useRef(true);
   const { toast } = useToast();
   const { isAdmin } = useIsAdmin();
 
