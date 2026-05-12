@@ -64,17 +64,27 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     const phone = selectedContact.telefono;
     const normalize = (t?: string | null) => (t || "").split("@")[0];
     const phoneBase = normalize(phone);
+    phoneBaseRef.current = phoneBase;
 
     const fetchMessages = async () => {
       setLoading(true);
-      // Match both raw number ("56971806730") and WhatsApp JID ("56971806730@s.whatsapp.net")
+      hasMoreOlderRef.current = true;
+      setHasMoreOlder(true);
+      oldestCreatedAtRef.current = null;
+      // Load latest PAGE_SIZE messages, descending then reverse for ASC display
       const { data } = await supabase
         .from("mensajes_whatsapp")
         .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
         .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
-        .order("created_at", { ascending: true })
-        .limit(500);
-      if (data) setMessages(data as MensajeWhatsapp[]);
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE);
+      const ordered = (data || []).slice().reverse() as MensajeWhatsapp[];
+      setMessages(ordered);
+      if (ordered.length > 0) oldestCreatedAtRef.current = ordered[0].created_at as any;
+      if ((data || []).length < PAGE_SIZE) {
+        hasMoreOlderRef.current = false;
+        setHasMoreOlder(false);
+      }
       setLoading(false);
 
       await supabase
