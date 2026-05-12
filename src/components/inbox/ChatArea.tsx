@@ -110,11 +110,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
   // Attach scroll listener to the radix viewport
   useEffect(() => {
-    const root = scrollViewportRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null
-      || (scrollViewportRef.current?.parentElement as HTMLElement | null);
-    const viewport = scrollViewportRef.current?.parentElement?.parentElement as HTMLElement | null;
-    // Find the actual radix viewport
-    const el = (scrollViewportRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null) ?? viewport ?? root;
+    const el = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
     if (!el) return;
     const onScroll = () => {
       const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
