@@ -331,76 +331,106 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         )}
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4 bg-slate-50/50 dark:bg-zinc-950/50">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="space-y-4 max-w-3xl mx-auto pb-4">
-              <AnimatePresence initial={false}>
-                {messages.map((msg) => {
-                  const isOutbound = msg.direccion === "outbound";
-                  const isCurrentMatch = matchIds[searchIdx] === msg.id;
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      id={`msg-${msg.id}`}
-                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
-                      className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
-                          isOutbound
-                            ? "bg-primary text-primary-foreground rounded-br-sm"
-                            : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
-                        } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""}`}
+        <div className="flex-1 relative min-h-0">
+          <ScrollArea className="h-full p-4 bg-slate-50/50 dark:bg-zinc-950/50">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-3xl mx-auto pb-4">
+                <AnimatePresence initial={false}>
+                  {messages.map((msg) => {
+                    const isOutbound = msg.direccion === "outbound";
+                    const isCurrentMatch = matchIds[searchIdx] === msg.id;
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        id={`msg-${msg.id}`}
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
+                        className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                       >
-                        {isOutbound && msg.autor && (
-                          <span
-                            className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
-                              msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                        <div
+                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                            isOutbound
+                              ? "bg-primary text-primary-foreground rounded-br-sm"
+                              : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
+                          } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""}`}
+                        >
+                          {isOutbound && msg.autor && (
+                            <span
+                              className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
+                                msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                              }`}
+                            >
+                              {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
+                            </span>
+                          )}
+                          {msg.media_url && (
+                            <div className="mb-1.5">
+                              <MediaBubble url={msg.media_url} type={msg.media_type} />
+                            </div>
+                          )}
+                          {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
+                          <div
+                            className={`text-[10px] mt-1.5 flex justify-end ${
+                              isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
                             }`}
                           >
-                            {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
-                          </span>
-                        )}
-                        {msg.media_url && (
-                          <div className="mb-1.5">
-                            <MediaBubble url={msg.media_url} type={msg.media_type} />
+                            {new Date(msg.created_at).toLocaleTimeString("es-ES", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </div>
-                        )}
-                        {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
-                        <div
-                          className={`text-[10px] mt-1.5 flex justify-end ${
-                            isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
-                          }`}
-                        >
-                          {new Date(msg.created_at).toLocaleTimeString("es-ES", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
                         </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-              {messages.length === 0 && !loading && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center text-muted-foreground text-sm py-12"
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+                {messages.length === 0 && !loading && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center text-muted-foreground text-sm py-12"
+                  >
+                    Inicia la conversación con este lead.
+                  </motion.p>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Floating new-messages pill */}
+          <AnimatePresence>
+            {!isAtBottom && (
+              <motion.div
+                initial={{ opacity: 0, y: 12, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20"
+              >
+                <Button
+                  onClick={scrollToBottom}
+                  size="sm"
+                  className="rounded-full shadow-lg gap-2 h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
-                  Inicia la conversación con este lead.
-                </motion.p>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </ScrollArea>
+                  <ArrowDown className="h-4 w-4" />
+                  {unreadCount > 0 ? (
+                    <span className="font-semibold">
+                      {unreadCount} nuevo{unreadCount > 1 ? "s" : ""}
+                    </span>
+                  ) : (
+                    <span>Ir al final</span>
+                  )}
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Pending media preview */}
         {pendingMedia && (
