@@ -40,12 +40,20 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [highlightId, setHighlightId] = useState<string | number | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
   const lastInboundIdRef = useRef<string | number | null>(null);
+  const oldestCreatedAtRef = useRef<string | null>(null);
+  const loadingOlderRef = useRef(false);
+  const hasMoreOlderRef = useRef(true);
+  const phoneBaseRef = useRef<string>("");
   const { toast } = useToast();
   const { isAdmin } = useIsAdmin();
+
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     if (!selectedContact?.telefono) {
