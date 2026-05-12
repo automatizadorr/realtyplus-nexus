@@ -424,6 +424,25 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
               </div>
             ) : (
               <div className="space-y-4 max-w-3xl mx-auto pb-4">
+                {hasMoreOlder && (
+                  <div className="flex items-center justify-center py-2">
+                    {loadingOlder ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <button
+                        onClick={loadOlder}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Cargar mensajes anteriores
+                      </button>
+                    )}
+                  </div>
+                )}
+                {!hasMoreOlder && messages.length >= PAGE_SIZE && (
+                  <div className="text-center text-[10px] text-muted-foreground/60 py-2">
+                    Inicio de la conversación
+                  </div>
+                )}
                 <AnimatePresence initial={false}>
                   {messages.map((msg) => {
                     const isOutbound = msg.direccion === "outbound";
