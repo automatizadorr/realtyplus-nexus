@@ -62,9 +62,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       // Match both raw number ("56971806730") and WhatsApp JID ("56971806730@s.whatsapp.net")
       const { data } = await supabase
         .from("mensajes_whatsapp")
-        .select("*")
+        .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
         .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .limit(500);
       if (data) setMessages(data as MensajeWhatsapp[]);
       setLoading(false);
 
