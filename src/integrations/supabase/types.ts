@@ -423,7 +423,23 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vista_inbox_contactos: {
+        Row: {
+          archivado: boolean | null
+          bot_activo: boolean | null
+          estado: string | null
+          id: string | null
+          last_message_at: string | null
+          last_message_dir: string | null
+          last_message_text: string | null
+          nombre: string | null
+          pais: string | null
+          tag_ids: string[] | null
+          telefono: string | null
+          unread_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
