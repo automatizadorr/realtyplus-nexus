@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X } from "lucide-react";
+import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X, ArrowDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, MensajeWhatsapp, LeadTag } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -37,8 +37,13 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [searchQuery, setSearchQuery] = useState("");
   const [searchIdx, setSearchIdx] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [highlightId, setHighlightId] = useState<string | number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+  const lastInboundIdRef = useRef<string | number | null>(null);
   const { toast } = useToast();
   const { isAdmin } = useIsAdmin();
 
@@ -80,7 +85,14 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         (payload) => {
           const msg = payload.new as MensajeWhatsapp;
           if (normalize(msg.telefono) === phoneBase) {
-            setMessages((prev) => (prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]));
+            setMessages((prev) => {
+              if (prev.find((m) => m.id === msg.id)) return prev;
+              if (msg.direccion === "inbound" && !isAtBottomRef.current) {
+                setUnreadCount((c) => c + 1);
+                lastInboundIdRef.current = msg.id;
+              }
+              return [...prev, msg];
+            });
           }
         },
       )
@@ -91,9 +103,56 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     };
   }, [selectedContact?.telefono]);
 
+  // Reset unread/scroll state when switching contacts
   useEffect(() => {
-    if (!searchOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, searchOpen]);
+    setUnreadCount(0);
+    setIsAtBottom(true);
+    isAtBottomRef.current = true;
+    lastInboundIdRef.current = null;
+    setHighlightId(null);
+  }, [selectedContact?.telefono]);
+
+  // Attach scroll listener to the radix viewport
+  useEffect(() => {
+    const el = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
+    if (!el) return;
+    const onScroll = () => {
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const atBottom = distance < 80;
+      isAtBottomRef.current = atBottom;
+      setIsAtBottom(atBottom);
+      if (atBottom) {
+        setUnreadCount(0);
+        lastInboundIdRef.current = null;
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [selectedContact?.telefono, loading]);
+
+  // Auto-scroll only when user is already at bottom (and not actively searching)
+  useEffect(() => {
+    if (searchOpen && searchQuery.trim()) return;
+    if (isAtBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, searchOpen, searchQuery]);
+
+  const scrollToBottom = () => {
+    const targetId = lastInboundIdRef.current;
+    const targetEl = targetId != null ? document.getElementById(`msg-${targetId}`) : null;
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(targetId);
+      window.setTimeout(() => setHighlightId((cur) => (cur === targetId ? null : cur)), 1800);
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    setUnreadCount(0);
+    lastInboundIdRef.current = null;
+    // Keep search query/results intact; just ensure focus stays on chat
+  };
 
   // Search match indices
   const matchIds = useMemo(() => {
@@ -290,76 +349,107 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         )}
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4 bg-slate-50/50 dark:bg-zinc-950/50">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="space-y-4 max-w-3xl mx-auto pb-4">
-              <AnimatePresence initial={false}>
-                {messages.map((msg) => {
-                  const isOutbound = msg.direccion === "outbound";
-                  const isCurrentMatch = matchIds[searchIdx] === msg.id;
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      id={`msg-${msg.id}`}
-                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
-                      className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
-                          isOutbound
-                            ? "bg-primary text-primary-foreground rounded-br-sm"
-                            : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
-                        } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""}`}
+        <div className="flex-1 relative min-h-0">
+          <ScrollArea className="h-full p-4 bg-slate-50/50 dark:bg-zinc-950/50">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-3xl mx-auto pb-4">
+                <AnimatePresence initial={false}>
+                  {messages.map((msg) => {
+                    const isOutbound = msg.direccion === "outbound";
+                    const isCurrentMatch = matchIds[searchIdx] === msg.id;
+                    const isHighlighted = highlightId === msg.id;
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        id={`msg-${msg.id}`}
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
+                        className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                       >
-                        {isOutbound && msg.autor && (
-                          <span
-                            className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
-                              msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                        <div
+                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
+                            isOutbound
+                              ? "bg-primary text-primary-foreground rounded-br-sm"
+                              : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
+                          } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""} ${isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
+                        >
+                          {isOutbound && msg.autor && (
+                            <span
+                              className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
+                                msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                              }`}
+                            >
+                              {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
+                            </span>
+                          )}
+                          {msg.media_url && (
+                            <div className="mb-1.5">
+                              <MediaBubble url={msg.media_url} type={msg.media_type} />
+                            </div>
+                          )}
+                          {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
+                          <div
+                            className={`text-[10px] mt-1.5 flex justify-end ${
+                              isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
                             }`}
                           >
-                            {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
-                          </span>
-                        )}
-                        {msg.media_url && (
-                          <div className="mb-1.5">
-                            <MediaBubble url={msg.media_url} type={msg.media_type} />
+                            {new Date(msg.created_at).toLocaleTimeString("es-ES", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </div>
-                        )}
-                        {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
-                        <div
-                          className={`text-[10px] mt-1.5 flex justify-end ${
-                            isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
-                          }`}
-                        >
-                          {new Date(msg.created_at).toLocaleTimeString("es-ES", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
                         </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-              {messages.length === 0 && !loading && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center text-muted-foreground text-sm py-12"
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+                {messages.length === 0 && !loading && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center text-muted-foreground text-sm py-12"
+                  >
+                    Inicia la conversación con este lead.
+                  </motion.p>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Floating new-messages pill */}
+          <AnimatePresence>
+            {!isAtBottom && (
+              <motion.div
+                initial={{ opacity: 0, y: 12, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20"
+              >
+                <Button
+                  onClick={scrollToBottom}
+                  size="sm"
+                  className="rounded-full shadow-lg gap-2 h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
-                  Inicia la conversación con este lead.
-                </motion.p>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </ScrollArea>
+                  <ArrowDown className="h-4 w-4" />
+                  {unreadCount > 0 ? (
+                    <span className="font-semibold">
+                      {unreadCount} nuevo{unreadCount > 1 ? "s" : ""}
+                    </span>
+                  ) : (
+                    <span>Ir al final</span>
+                  )}
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Pending media preview */}
         {pendingMedia && (
