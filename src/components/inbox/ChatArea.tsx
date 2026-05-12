@@ -129,7 +129,52 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     isAtBottomRef.current = true;
     lastInboundIdRef.current = null;
     setHighlightId(null);
+    loadingOlderRef.current = false;
+    setLoadingOlder(false);
   }, [selectedContact?.telefono]);
+
+  const loadOlder = async () => {
+    if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
+    const phoneBase = phoneBaseRef.current;
+    const cursor = oldestCreatedAtRef.current;
+    if (!phoneBase || !cursor) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    const viewport = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
+    const prevHeight = viewport?.scrollHeight ?? 0;
+    const prevTop = viewport?.scrollTop ?? 0;
+
+    const { data } = await supabase
+      .from("mensajes_whatsapp")
+      .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
+      .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
+      .lt("created_at", cursor)
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
+
+    const older = (data || []).slice().reverse() as MensajeWhatsapp[];
+    if (older.length > 0) {
+      oldestCreatedAtRef.current = older[0].created_at as any;
+      setMessages((prev) => {
+        const existing = new Set(prev.map((m) => m.id));
+        const merged = [...older.filter((m) => !existing.has(m.id)), ...prev];
+        return merged;
+      });
+      // Preserve scroll position after DOM update
+      requestAnimationFrame(() => {
+        if (viewport) {
+          const newHeight = viewport.scrollHeight;
+          viewport.scrollTop = prevTop + (newHeight - prevHeight);
+        }
+      });
+    }
+    if ((data || []).length < PAGE_SIZE) {
+      hasMoreOlderRef.current = false;
+      setHasMoreOlder(false);
+    }
+    loadingOlderRef.current = false;
+    setLoadingOlder(false);
+  };
 
   // Attach scroll listener to the radix viewport
   useEffect(() => {
@@ -143,6 +188,9 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       if (atBottom) {
         setUnreadCount(0);
         lastInboundIdRef.current = null;
+      }
+      if (el.scrollTop < 120 && hasMoreOlderRef.current && !loadingOlderRef.current) {
+        loadOlder();
       }
     };
     el.addEventListener("scroll", onScroll, { passive: true });
