@@ -39,9 +39,11 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [notesOpen, setNotesOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [highlightId, setHighlightId] = useState<string | number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
+  const lastInboundIdRef = useRef<string | number | null>(null);
   const { toast } = useToast();
   const { isAdmin } = useIsAdmin();
 
@@ -87,6 +89,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
               if (prev.find((m) => m.id === msg.id)) return prev;
               if (msg.direccion === "inbound" && !isAtBottomRef.current) {
                 setUnreadCount((c) => c + 1);
+                lastInboundIdRef.current = msg.id;
               }
               return [...prev, msg];
             });
@@ -105,6 +108,8 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     setUnreadCount(0);
     setIsAtBottom(true);
     isAtBottomRef.current = true;
+    lastInboundIdRef.current = null;
+    setHighlightId(null);
   }, [selectedContact?.telefono]);
 
   // Attach scroll listener to the radix viewport
@@ -116,24 +121,37 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       const atBottom = distance < 80;
       isAtBottomRef.current = atBottom;
       setIsAtBottom(atBottom);
-      if (atBottom) setUnreadCount(0);
+      if (atBottom) {
+        setUnreadCount(0);
+        lastInboundIdRef.current = null;
+      }
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => el.removeEventListener("scroll", onScroll);
   }, [selectedContact?.telefono, loading]);
 
-  // Auto-scroll only when user is already at bottom
+  // Auto-scroll only when user is already at bottom (and not actively searching)
   useEffect(() => {
-    if (searchOpen) return;
+    if (searchOpen && searchQuery.trim()) return;
     if (isAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, searchOpen]);
+  }, [messages, searchOpen, searchQuery]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const targetId = lastInboundIdRef.current;
+    const targetEl = targetId != null ? document.getElementById(`msg-${targetId}`) : null;
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(targetId);
+      window.setTimeout(() => setHighlightId((cur) => (cur === targetId ? null : cur)), 1800);
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
     setUnreadCount(0);
+    lastInboundIdRef.current = null;
+    // Keep search query/results intact; just ensure focus stays on chat
   };
 
   // Search match indices
@@ -343,6 +361,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                   {messages.map((msg) => {
                     const isOutbound = msg.direccion === "outbound";
                     const isCurrentMatch = matchIds[searchIdx] === msg.id;
+                    const isHighlighted = highlightId === msg.id;
                     return (
                       <motion.div
                         key={msg.id}
@@ -353,11 +372,11 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                         className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                             isOutbound
                               ? "bg-primary text-primary-foreground rounded-br-sm"
                               : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
-                          } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""}`}
+                          } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""} ${isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
                         >
                           {isOutbound && msg.autor && (
                             <span
