@@ -89,6 +89,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
               if (prev.find((m) => m.id === msg.id)) return prev;
               if (msg.direccion === "inbound" && !isAtBottomRef.current) {
                 setUnreadCount((c) => c + 1);
+                lastInboundIdRef.current = msg.id;
               }
               return [...prev, msg];
             });
