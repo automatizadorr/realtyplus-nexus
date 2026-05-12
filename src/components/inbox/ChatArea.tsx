@@ -49,16 +49,13 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     }
 
     const phone = selectedContact.telefono;
-    const normalize = (t?: string | null) => (t || "").split("@")[0];
-    const phoneBase = normalize(phone);
 
     const fetchMessages = async () => {
       setLoading(true);
-      // Match both raw number ("56971806730") and WhatsApp JID ("56971806730@s.whatsapp.net")
       const { data } = await supabase
         .from("mensajes_whatsapp")
         .select("*")
-        .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
+        .eq("telefono", phone)
         .order("created_at", { ascending: true });
       if (data) setMessages(data as MensajeWhatsapp[]);
       setLoading(false);
@@ -66,20 +63,20 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       await supabase
         .from("mensajes_whatsapp")
         .update({ leido: true })
-        .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
+        .eq("telefono", phone)
         .eq("direccion", "inbound")
         .eq("leido", false);
     };
     fetchMessages();
 
     const channel = supabase
-      .channel(`messages-${phoneBase}`)
+      .channel(`messages-${phone}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "mensajes_whatsapp" },
         (payload) => {
           const msg = payload.new as MensajeWhatsapp;
-          if (normalize(msg.telefono) === phoneBase) {
+          if (msg.telefono === phone) {
             setMessages((prev) => (prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]));
           }
         },

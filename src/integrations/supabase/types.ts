@@ -14,36 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      contactos: {
-        Row: {
-          apellidos: string | null
-          email: string
-          fecha_creacion: string | null
-          id_contacto: number
-          nombres: string
-          pais: string
-          telefono: string | null
-        }
-        Insert: {
-          apellidos?: string | null
-          email: string
-          fecha_creacion?: string | null
-          id_contacto: number
-          nombres: string
-          pais: string
-          telefono?: string | null
-        }
-        Update: {
-          apellidos?: string | null
-          email?: string
-          fecha_creacion?: string | null
-          id_contacto?: number
-          nombres?: string
-          pais?: string
-          telefono?: string | null
-        }
-        Relationships: []
-      }
       documentos_rag: {
         Row: {
           contenido: string
@@ -315,6 +285,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      leads_realtyplus: {
+        Row: {
+          apellidos: string | null
+          ciudad: string | null
+          delegado: string | null
+          email: string | null
+          estado: string | null
+          fec_alta: string | null
+          id_contacto: number
+          inactividad: number | null
+          mod_franquicia: string | null
+          nombres: string | null
+          origen: string | null
+          pais: string | null
+          telefono: string | null
+          ultima_tarea: string | null
+          zona: string | null
+        }
+        Insert: {
+          apellidos?: string | null
+          ciudad?: string | null
+          delegado?: string | null
+          email?: string | null
+          estado?: string | null
+          fec_alta?: string | null
+          id_contacto: number
+          inactividad?: number | null
+          mod_franquicia?: string | null
+          nombres?: string | null
+          origen?: string | null
+          pais?: string | null
+          telefono?: string | null
+          ultima_tarea?: string | null
+          zona?: string | null
+        }
+        Update: {
+          apellidos?: string | null
+          ciudad?: string | null
+          delegado?: string | null
+          email?: string | null
+          estado?: string | null
+          fec_alta?: string | null
+          id_contacto?: number
+          inactividad?: number | null
+          mod_franquicia?: string | null
+          nombres?: string | null
+          origen?: string | null
+          pais?: string | null
+          telefono?: string | null
+          ultima_tarea?: string | null
+          zona?: string | null
+        }
+        Relationships: []
       }
       mensajes_whatsapp: {
         Row: {
