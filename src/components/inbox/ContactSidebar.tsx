@@ -64,14 +64,16 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
         const timestamps: Record<string, string> = {};
         const texts: Record<string, string> = {};
         const dirs: Record<string, string> = {};
+        const norm = (t?: string | null) => (t || "").split("@")[0];
         data.forEach((msg) => {
+          const key = norm(msg.telefono);
           if (msg.direccion === "inbound" && !msg.leido) {
-            counts[msg.telefono] = (counts[msg.telefono] || 0) + 1;
+            counts[key] = (counts[key] || 0) + 1;
           }
-          if (!timestamps[msg.telefono]) {
-            timestamps[msg.telefono] = msg.created_at || "";
-            texts[msg.telefono] = msg.contenido || "";
-            dirs[msg.telefono] = msg.direccion || "";
+          if (!timestamps[key]) {
+            timestamps[key] = msg.created_at || "";
+            texts[key] = msg.contenido || "";
+            dirs[key] = msg.direccion || "";
           }
         });
         setUnreadCounts(counts);
