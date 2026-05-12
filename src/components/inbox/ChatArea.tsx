@@ -40,12 +40,20 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [highlightId, setHighlightId] = useState<string | number | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
   const lastInboundIdRef = useRef<string | number | null>(null);
+  const oldestCreatedAtRef = useRef<string | null>(null);
+  const loadingOlderRef = useRef(false);
+  const hasMoreOlderRef = useRef(true);
+  const phoneBaseRef = useRef<string>("");
   const { toast } = useToast();
   const { isAdmin } = useIsAdmin();
+
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     if (!selectedContact?.telefono) {
@@ -56,17 +64,27 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     const phone = selectedContact.telefono;
     const normalize = (t?: string | null) => (t || "").split("@")[0];
     const phoneBase = normalize(phone);
+    phoneBaseRef.current = phoneBase;
 
     const fetchMessages = async () => {
       setLoading(true);
-      // Match both raw number ("56971806730") and WhatsApp JID ("56971806730@s.whatsapp.net")
+      hasMoreOlderRef.current = true;
+      setHasMoreOlder(true);
+      oldestCreatedAtRef.current = null;
+      // Load latest PAGE_SIZE messages, descending then reverse for ASC display
       const { data } = await supabase
         .from("mensajes_whatsapp")
         .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
         .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
-        .order("created_at", { ascending: true })
-        .limit(500);
-      if (data) setMessages(data as MensajeWhatsapp[]);
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE);
+      const ordered = (data || []).slice().reverse() as MensajeWhatsapp[];
+      setMessages(ordered);
+      if (ordered.length > 0) oldestCreatedAtRef.current = ordered[0].created_at as any;
+      if ((data || []).length < PAGE_SIZE) {
+        hasMoreOlderRef.current = false;
+        setHasMoreOlder(false);
+      }
       setLoading(false);
 
       await supabase
@@ -111,7 +129,52 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     isAtBottomRef.current = true;
     lastInboundIdRef.current = null;
     setHighlightId(null);
+    loadingOlderRef.current = false;
+    setLoadingOlder(false);
   }, [selectedContact?.telefono]);
+
+  const loadOlder = async () => {
+    if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
+    const phoneBase = phoneBaseRef.current;
+    const cursor = oldestCreatedAtRef.current;
+    if (!phoneBase || !cursor) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    const viewport = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
+    const prevHeight = viewport?.scrollHeight ?? 0;
+    const prevTop = viewport?.scrollTop ?? 0;
+
+    const { data } = await supabase
+      .from("mensajes_whatsapp")
+      .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
+      .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
+      .lt("created_at", cursor)
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
+
+    const older = (data || []).slice().reverse() as MensajeWhatsapp[];
+    if (older.length > 0) {
+      oldestCreatedAtRef.current = older[0].created_at as any;
+      setMessages((prev) => {
+        const existing = new Set(prev.map((m) => m.id));
+        const merged = [...older.filter((m) => !existing.has(m.id)), ...prev];
+        return merged;
+      });
+      // Preserve scroll position after DOM update
+      requestAnimationFrame(() => {
+        if (viewport) {
+          const newHeight = viewport.scrollHeight;
+          viewport.scrollTop = prevTop + (newHeight - prevHeight);
+        }
+      });
+    }
+    if ((data || []).length < PAGE_SIZE) {
+      hasMoreOlderRef.current = false;
+      setHasMoreOlder(false);
+    }
+    loadingOlderRef.current = false;
+    setLoadingOlder(false);
+  };
 
   // Attach scroll listener to the radix viewport
   useEffect(() => {
@@ -125,6 +188,9 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       if (atBottom) {
         setUnreadCount(0);
         lastInboundIdRef.current = null;
+      }
+      if (el.scrollTop < 120 && hasMoreOlderRef.current && !loadingOlderRef.current) {
+        loadOlder();
       }
     };
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -358,6 +424,25 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
               </div>
             ) : (
               <div className="space-y-4 max-w-3xl mx-auto pb-4">
+                {hasMoreOlder && (
+                  <div className="flex items-center justify-center py-2">
+                    {loadingOlder ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <button
+                        onClick={loadOlder}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Cargar mensajes anteriores
+                      </button>
+                    )}
+                  </div>
+                )}
+                {!hasMoreOlder && messages.length >= PAGE_SIZE && (
+                  <div className="text-center text-[10px] text-muted-foreground/60 py-2">
+                    Inicio de la conversación
+                  </div>
+                )}
                 <AnimatePresence initial={false}>
                   {messages.map((msg) => {
                     const isOutbound = msg.direccion === "outbound";
