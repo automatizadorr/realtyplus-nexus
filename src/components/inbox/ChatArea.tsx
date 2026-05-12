@@ -84,7 +84,13 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         (payload) => {
           const msg = payload.new as MensajeWhatsapp;
           if (normalize(msg.telefono) === phoneBase) {
-            setMessages((prev) => (prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]));
+            setMessages((prev) => {
+              if (prev.find((m) => m.id === msg.id)) return prev;
+              if (msg.direccion === "inbound" && !isAtBottomRef.current) {
+                setUnreadCount((c) => c + 1);
+              }
+              return [...prev, msg];
+            });
           }
         },
       )
@@ -95,9 +101,45 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     };
   }, [selectedContact?.telefono]);
 
+  // Reset unread/scroll state when switching contacts
   useEffect(() => {
-    if (!searchOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setUnreadCount(0);
+    setIsAtBottom(true);
+    isAtBottomRef.current = true;
+  }, [selectedContact?.telefono]);
+
+  // Attach scroll listener to the radix viewport
+  useEffect(() => {
+    const root = scrollViewportRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null
+      || (scrollViewportRef.current?.parentElement as HTMLElement | null);
+    const viewport = scrollViewportRef.current?.parentElement?.parentElement as HTMLElement | null;
+    // Find the actual radix viewport
+    const el = (scrollViewportRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null) ?? viewport ?? root;
+    if (!el) return;
+    const onScroll = () => {
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const atBottom = distance < 80;
+      isAtBottomRef.current = atBottom;
+      setIsAtBottom(atBottom);
+      if (atBottom) setUnreadCount(0);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [selectedContact?.telefono, loading]);
+
+  // Auto-scroll only when user is already at bottom
+  useEffect(() => {
+    if (searchOpen) return;
+    if (isAtBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, searchOpen]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setUnreadCount(0);
+  };
 
   // Search match indices
   const matchIds = useMemo(() => {
