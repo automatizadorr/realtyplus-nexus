@@ -361,6 +361,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                   {messages.map((msg) => {
                     const isOutbound = msg.direccion === "outbound";
                     const isCurrentMatch = matchIds[searchIdx] === msg.id;
+                    const isHighlighted = highlightId === msg.id;
                     return (
                       <motion.div
                         key={msg.id}
@@ -371,11 +372,11 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                         className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                             isOutbound
                               ? "bg-primary text-primary-foreground rounded-br-sm"
                               : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
-                          } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""}`}
+                          } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""} ${isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
                         >
                           {isOutbound && msg.autor && (
                             <span
