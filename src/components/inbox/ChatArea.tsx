@@ -108,6 +108,8 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     setUnreadCount(0);
     setIsAtBottom(true);
     isAtBottomRef.current = true;
+    lastInboundIdRef.current = null;
+    setHighlightId(null);
   }, [selectedContact?.telefono]);
 
   // Attach scroll listener to the radix viewport
@@ -119,24 +121,37 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       const atBottom = distance < 80;
       isAtBottomRef.current = atBottom;
       setIsAtBottom(atBottom);
-      if (atBottom) setUnreadCount(0);
+      if (atBottom) {
+        setUnreadCount(0);
+        lastInboundIdRef.current = null;
+      }
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => el.removeEventListener("scroll", onScroll);
   }, [selectedContact?.telefono, loading]);
 
-  // Auto-scroll only when user is already at bottom
+  // Auto-scroll only when user is already at bottom (and not actively searching)
   useEffect(() => {
-    if (searchOpen) return;
+    if (searchOpen && searchQuery.trim()) return;
     if (isAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, searchOpen]);
+  }, [messages, searchOpen, searchQuery]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const targetId = lastInboundIdRef.current;
+    const targetEl = targetId != null ? document.getElementById(`msg-${targetId}`) : null;
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(targetId);
+      window.setTimeout(() => setHighlightId((cur) => (cur === targetId ? null : cur)), 1800);
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
     setUnreadCount(0);
+    lastInboundIdRef.current = null;
+    // Keep search query/results intact; just ensure focus stays on chat
   };
 
   // Search match indices
