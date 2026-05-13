@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,18 @@ export default function Auth() {
 
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Cargar el script del widget de voz de ElevenLabs
+  useEffect(() => {
+    const existing = document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]');
+    if (!existing) {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
+      script.async = true;
+      script.type = "text/javascript";
+      document.body.appendChild(script);
+    }
+  }, []);
 
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
@@ -464,6 +476,8 @@ export default function Auth() {
           <p>contacto@realty-plus.org | www.realty-plus.org</p>
         </CardFooter>
       </Card>
+      {/* @ts-ignore — Web Component de ElevenLabs */}
+      <elevenlabs-convai agent-id="agent_0201krfp32xcfc1a3s24s160sc9b"></elevenlabs-convai>
       </div>
     </div>
   );
