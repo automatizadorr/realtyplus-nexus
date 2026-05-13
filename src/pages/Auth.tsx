@@ -476,6 +476,8 @@ export default function Auth() {
           <p>contacto@realty-plus.org | www.realty-plus.org</p>
         </CardFooter>
       </Card>
+      {/* @ts-ignore — Web Component de ElevenLabs */}
+      <elevenlabs-convai agent-id="agent_0201krfp32xcfc1a3s24s160sc9b"></elevenlabs-convai>
       </div>
     </div>
   );
