@@ -29,7 +29,7 @@ interface Params {
 const SELECT_COLS =
   "id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids, last_message_at, unread_count, last_message_text, last_message_dir";
 
-export function useInboxContacts({ search, filter, tagId, pageSize = 50 }: Params) {
+export function useInboxContacts({ search, filter, tagId, country = "all", pageSize = 50 }: Params) {
   const [rows, setRows] = useState<InboxContactRow[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
@@ -42,7 +42,7 @@ export function useInboxContacts({ search, filter, tagId, pageSize = 50 }: Param
     setPage(0);
     setRows([]);
     setHasMore(true);
-  }, [search, filter, tagId]);
+  }, [search, filter, tagId, country]);
 
   const fetchPage = useCallback(
     async (pageToFetch: number, replace: boolean) => {
