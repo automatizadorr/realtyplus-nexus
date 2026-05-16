@@ -163,6 +163,11 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         {contact.nombre || "Sin nombre"}
+                        {contact.pais && (
+                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30">
+                            {contact.pais}
+                          </Badge>
+                        )}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {unread > 0 && (
