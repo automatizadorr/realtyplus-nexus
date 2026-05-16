@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import type { LeadCampana, LeadTag } from "@/lib/supabase";
 import { ContactSidebar } from "@/components/inbox/ContactSidebar";
 import { ChatArea } from "@/components/inbox/ChatArea";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Inbox() {
+  const location = useLocation();
   const [selectedContact, setSelectedContact] = useState<LeadCampana | null>(null);
   const [allTags, setAllTags] = useState<LeadTag[]>([]);
 
@@ -16,6 +18,20 @@ export default function Inbox() {
   useEffect(() => {
     refreshTags();
   }, []);
+
+  // Preselect contact when arriving from another page (e.g. /tagged)
+  useEffect(() => {
+    const phone = (location.state as { contactPhone?: string } | null)?.contactPhone;
+    if (!phone) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("leads_campana")
+        .select("*")
+        .eq("telefono", phone)
+        .maybeSingle();
+      if (data) setSelectedContact(data as LeadCampana);
+    })();
+  }, [location.state]);
 
   const handleContactUpdate = (updated: LeadCampana) => setSelectedContact(updated);
   const handleBack = () => setSelectedContact(null);

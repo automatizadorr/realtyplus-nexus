@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
 import Campaigns from "./pages/Campaigns";
 import Inbox from "./pages/Inbox";
+import TaggedMessages from "./pages/TaggedMessages";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,7 @@ const App = () => (
                       <Route path="/scanner" element={<Scanner />} />
                       <Route path="/campaigns" element={<Campaigns />} />
                       <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />
+                      <Route path="/tagged" element={<AdminRoute><TaggedMessages /></AdminRoute>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
