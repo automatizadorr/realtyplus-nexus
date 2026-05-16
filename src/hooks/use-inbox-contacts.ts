@@ -64,6 +64,7 @@ export function useInboxContacts({ search, filter, tagId, country = "all", pageS
       else if (filter === "bot_off") q = q.eq("bot_activo", false);
 
       if (tagId !== "all") q = q.contains("tag_ids", [tagId]);
+      if (country && country !== "all") q = q.eq("pais", country);
 
       if (search.trim()) {
         const s = search.trim().replace(/[,()]/g, " ");
