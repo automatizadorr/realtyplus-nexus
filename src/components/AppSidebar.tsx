@@ -21,6 +21,7 @@ const items = [
   { title: "Escáner", url: "/scanner", icon: ScanSearch },
   { title: "Campañas", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes", url: "/inbox", icon: MessageSquare },
+  { title: "Etiquetados", url: "/tagged", icon: Tag },
 ];
 
 function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
