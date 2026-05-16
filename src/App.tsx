@@ -38,6 +38,7 @@ const App = () => (
                       <Route path="/scanner" element={<Scanner />} />
                       <Route path="/campaigns" element={<Campaigns />} />
                       <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />
+                      <Route path="/tagged" element={<AdminRoute><TaggedMessages /></AdminRoute>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
