@@ -24,6 +24,8 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const search = useDebouncedValue(searchInput, 400);
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [countries, setCountries] = useState<string[]>([]);
   const { isAdmin } = useIsAdmin();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +33,30 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
     search,
     filter,
     tagId: tagFilter,
+    country: countryFilter,
   });
+
+  // Load distinct countries once
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("leads_campana")
+        .select("pais")
+        .not("pais", "is", null)
+        .limit(5000);
+      if (cancelled || error || !data) return;
+      const set = new Set<string>();
+      for (const r of data as { pais: string | null }[]) {
+        const p = (r.pais || "").trim();
+        if (p) set.add(p);
+      }
+      setCountries(Array.from(set).sort((a, b) => a.localeCompare(b)));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Realtime: refresh ONLY the affected row, not the whole list
   useEffect(() => {
@@ -134,6 +159,19 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
             </SelectContent>
           </Select>
         </div>
+        <Select value={countryFilter} onValueChange={setCountryFilter}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="País" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los países</SelectItem>
+            {countries.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <ScrollArea className="flex-1">

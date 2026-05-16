@@ -22,13 +22,14 @@ interface Params {
   search: string;
   filter: InboxFilter;
   tagId: string; // "all" or uuid
+  country?: string; // "all" or country name
   pageSize?: number;
 }
 
 const SELECT_COLS =
   "id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids, last_message_at, unread_count, last_message_text, last_message_dir";
 
-export function useInboxContacts({ search, filter, tagId, pageSize = 50 }: Params) {
+export function useInboxContacts({ search, filter, tagId, country = "all", pageSize = 50 }: Params) {
   const [rows, setRows] = useState<InboxContactRow[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
@@ -41,7 +42,7 @@ export function useInboxContacts({ search, filter, tagId, pageSize = 50 }: Param
     setPage(0);
     setRows([]);
     setHasMore(true);
-  }, [search, filter, tagId]);
+  }, [search, filter, tagId, country]);
 
   const fetchPage = useCallback(
     async (pageToFetch: number, replace: boolean) => {
@@ -63,6 +64,7 @@ export function useInboxContacts({ search, filter, tagId, pageSize = 50 }: Param
       else if (filter === "bot_off") q = q.eq("bot_activo", false);
 
       if (tagId !== "all") q = q.contains("tag_ids", [tagId]);
+      if (country && country !== "all") q = q.eq("pais", country);
 
       if (search.trim()) {
         const s = search.trim().replace(/[,()]/g, " ");
@@ -86,7 +88,7 @@ export function useInboxContacts({ search, filter, tagId, pageSize = 50 }: Param
       setHasMore(newRows.length === pageSize);
       setLoading(false);
     },
-    [search, filter, tagId, pageSize],
+    [search, filter, tagId, country, pageSize],
   );
 
   useEffect(() => {
