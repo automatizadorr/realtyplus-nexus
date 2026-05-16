@@ -88,7 +88,7 @@ export function useInboxContacts({ search, filter, tagId, country = "all", pageS
       setHasMore(newRows.length === pageSize);
       setLoading(false);
     },
-    [search, filter, tagId, pageSize],
+    [search, filter, tagId, country, pageSize],
   );
 
   useEffect(() => {
