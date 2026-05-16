@@ -22,6 +22,7 @@ interface Params {
   search: string;
   filter: InboxFilter;
   tagId: string; // "all" or uuid
+  country?: string; // "all" or country name
   pageSize?: number;
 }
 
