@@ -29,7 +29,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const { isAdmin } = useIsAdmin();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { rows, loading, total, hasMore, loadMore, refreshPhone, patchPhone } = useInboxContacts({
+  const { rows, loading, total, hasMore, loadMore, refreshPhone, patchPhone, removePhone } = useInboxContacts({
     search,
     filter,
     tagId: tagFilter,
