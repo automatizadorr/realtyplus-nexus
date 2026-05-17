@@ -29,7 +29,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const { isAdmin } = useIsAdmin();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { rows, loading, total, hasMore, loadMore, refreshPhone, patchPhone } = useInboxContacts({
+  const { rows, loading, total, hasMore, loadMore, refreshPhone, patchPhone, removePhone } = useInboxContacts({
     search,
     filter,
     tagId: tagFilter,
@@ -234,7 +234,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     </p>
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
-                  <div className="absolute right-1 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute right-1 top-2">
                     <ContactContextMenu
                       isAdmin={isAdmin}
                       contact={{
@@ -245,6 +245,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         tag_ids: contact.tag_ids,
                       } as LeadCampana}
                       onChanged={() => refreshPhone(contact.telefono)}
+                      onDeleted={() => removePhone(contact.telefono)}
                     />
                   </div>
                 </div>
