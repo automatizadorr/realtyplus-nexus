@@ -135,5 +135,10 @@ export function useInboxContacts({ search, filter, tagId, country = "all", pageS
     setRows((prev) => prev.map((r) => (r.telefono === phoneBase ? { ...r, ...patch } : r)));
   }, []);
 
-  return { rows, loading, page, total, hasMore, loadMore, refreshPhone, patchPhone };
+  const removePhone = useCallback((phoneRaw: string) => {
+    const phoneBase = (phoneRaw || "").split("@")[0];
+    setRows((prev) => prev.filter((r) => r.telefono !== phoneBase));
+  }, []);
+
+  return { rows, loading, page, total, hasMore, loadMore, refreshPhone, patchPhone, removePhone };
 }
