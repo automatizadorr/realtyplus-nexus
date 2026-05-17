@@ -174,6 +174,7 @@ export default function TaggedMessages() {
               const tags = (row.tag_ids || [])
                 .map((id) => tagMap.get(id))
                 .filter(Boolean) as LeadTag[];
+              if (tags.length === 0) return null;
               return (
                 <button
                   key={row.id}
