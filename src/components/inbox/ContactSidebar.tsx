@@ -132,6 +132,59 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
 
   const totalLabel = useMemo(() => (total != null ? `${rows.length}/${total}` : `${rows.length}`), [rows.length, total]);
 
+  const toggleId = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) rows.forEach((r) => next.delete(r.id));
+      else rows.forEach((r) => next.add(r.id));
+      return next;
+    });
+  };
+
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    const ids = Array.from(selectedIds);
+    const phones = rows.filter((r) => selectedIds.has(r.id)).map((r) => r.telefono);
+    const { error: msgErr } = await (supabase as any)
+      .from("mensajes_whatsapp")
+      .delete()
+      .in("telefono", phones);
+    if (msgErr) {
+      toast({ title: "Error al borrar mensajes", description: msgErr.message, variant: "destructive" });
+      setBulkDeleting(false);
+      return;
+    }
+    const { error: leadErr } = await (supabase as any)
+      .from("leads_campana")
+      .delete()
+      .in("id", ids);
+    if (leadErr) {
+      toast({ title: "Error al borrar contactos", description: leadErr.message, variant: "destructive" });
+      setBulkDeleting(false);
+      return;
+    }
+    phones.forEach((p) => removePhone(p));
+    toast({ title: `${ids.length} contacto(s) eliminado(s)` });
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    exitSelection();
+  };
+
   return (
     <div className="w-full md:w-80 border-r flex flex-col bg-card">
       <div className="p-3 border-b space-y-2">
@@ -139,7 +192,39 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
           <MessageSquare className="h-5 w-5 text-primary" />
           <h2 className="font-bold text-foreground">Contactos</h2>
           <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
+          {isAdmin && (
+            selectionMode ? (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={exitSelection} title="Cancelar selección">
+                <X className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectionMode(true)} title="Seleccionar para eliminar">
+                <CheckSquare className="h-4 w-4" />
+              </Button>
+            )
+          )}
         </div>
+        {selectionMode && (
+          <div className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1.5">
+            <Checkbox
+              checked={allVisibleSelected}
+              onCheckedChange={toggleSelectAllVisible}
+              aria-label="Seleccionar todos"
+            />
+            <span className="text-xs text-muted-foreground flex-1">
+              {selectedIds.size} seleccionado(s)
+            </span>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={selectedIds.size === 0}
+              onClick={() => setConfirmBulkDelete(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar
+            </Button>
+          </div>
+        )}
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
