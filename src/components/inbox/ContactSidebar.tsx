@@ -2,7 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Search, Loader2, Bot, BotOff, Filter, Archive } from "lucide-react";
+import { MessageSquare, Search, Loader2, Bot, BotOff, Filter, Archive, Trash2, CheckSquare, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, LeadTag } from "@/lib/supabase";
 import { playNotificationSound } from "@/hooks/use-notification-sound";
@@ -28,6 +41,11 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const [countries, setCountries] = useState<string[]>([]);
   const { isAdmin } = useIsAdmin();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const { rows, loading, total, hasMore, loadMore, refreshPhone, patchPhone, removePhone } = useInboxContacts({
     search,
@@ -114,6 +132,59 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
 
   const totalLabel = useMemo(() => (total != null ? `${rows.length}/${total}` : `${rows.length}`), [rows.length, total]);
 
+  const toggleId = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) rows.forEach((r) => next.delete(r.id));
+      else rows.forEach((r) => next.add(r.id));
+      return next;
+    });
+  };
+
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    const ids = Array.from(selectedIds);
+    const phones = rows.filter((r) => selectedIds.has(r.id)).map((r) => r.telefono);
+    const { error: msgErr } = await (supabase as any)
+      .from("mensajes_whatsapp")
+      .delete()
+      .in("telefono", phones);
+    if (msgErr) {
+      toast({ title: "Error al borrar mensajes", description: msgErr.message, variant: "destructive" });
+      setBulkDeleting(false);
+      return;
+    }
+    const { error: leadErr } = await (supabase as any)
+      .from("leads_campana")
+      .delete()
+      .in("id", ids);
+    if (leadErr) {
+      toast({ title: "Error al borrar contactos", description: leadErr.message, variant: "destructive" });
+      setBulkDeleting(false);
+      return;
+    }
+    phones.forEach((p) => removePhone(p));
+    toast({ title: `${ids.length} contacto(s) eliminado(s)` });
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    exitSelection();
+  };
+
   return (
     <div className="w-full md:w-80 border-r flex flex-col bg-card">
       <div className="p-3 border-b space-y-2">
@@ -121,7 +192,39 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
           <MessageSquare className="h-5 w-5 text-primary" />
           <h2 className="font-bold text-foreground">Contactos</h2>
           <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
+          {isAdmin && (
+            selectionMode ? (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={exitSelection} title="Cancelar selección">
+                <X className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectionMode(true)} title="Seleccionar para eliminar">
+                <CheckSquare className="h-4 w-4" />
+              </Button>
+            )
+          )}
         </div>
+        {selectionMode && (
+          <div className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1.5">
+            <Checkbox
+              checked={allVisibleSelected}
+              onCheckedChange={toggleSelectAllVisible}
+              aria-label="Seleccionar todos"
+            />
+            <span className="text-xs text-muted-foreground flex-1">
+              {selectedIds.size} seleccionado(s)
+            </span>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={selectedIds.size === 0}
+              onClick={() => setConfirmBulkDelete(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar
+            </Button>
+          </div>
+        )}
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -186,16 +289,26 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
             rows.map((contact) => {
               const unread = contact.unread_count || 0;
               const isSelected = selectedContact?.telefono?.split("@")[0] === contact.telefono;
+              const checked = selectedIds.has(contact.id);
               return (
                 <div
                   key={contact.id}
                   className={`group relative border-b transition-colors hover:bg-muted/50 ${
                     isSelected ? "bg-muted border-l-2 border-l-primary" : ""
-                  }`}
+                  } ${checked ? "bg-primary/5" : ""}`}
                 >
+                  {selectionMode && (
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleId(contact.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
                   <button
-                    onClick={() => handleSelect(contact)}
-                    className="w-full text-left px-4 py-3 pr-10"
+                    onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
+                    className={`w-full text-left py-3 pr-10 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
@@ -234,20 +347,22 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     </p>
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
-                  <div className="absolute right-1 top-2">
-                    <ContactContextMenu
-                      isAdmin={isAdmin}
-                      contact={{
-                        id: contact.id,
-                        nombre: contact.nombre || "",
-                        telefono: contact.telefono,
-                        archivado: contact.archivado,
-                        tag_ids: contact.tag_ids,
-                      } as LeadCampana}
-                      onChanged={() => refreshPhone(contact.telefono)}
-                      onDeleted={() => removePhone(contact.telefono)}
-                    />
-                  </div>
+                  {!selectionMode && (
+                    <div className="absolute right-1 top-2">
+                      <ContactContextMenu
+                        isAdmin={isAdmin}
+                        contact={{
+                          id: contact.id,
+                          nombre: contact.nombre || "",
+                          telefono: contact.telefono,
+                          archivado: contact.archivado,
+                          tag_ids: contact.tag_ids,
+                        } as LeadCampana}
+                        onChanged={() => refreshPhone(contact.telefono)}
+                        onDeleted={() => removePhone(contact.telefono)}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -268,6 +383,27 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
           )}
         </div>
       </ScrollArea>
+
+      <AlertDialog open={confirmBulkDelete} onOpenChange={setConfirmBulkDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar {selectedIds.size} contacto(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminarán los contactos seleccionados y todos sus mensajes de WhatsApp. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); bulkDelete(); }}
+              disabled={bulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
