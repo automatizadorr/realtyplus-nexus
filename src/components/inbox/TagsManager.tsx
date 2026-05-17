@@ -47,6 +47,21 @@ export function TagsButton({ isAdmin, contact, allTags, onChange, onTagsRefresh 
   };
 
   const removeTag = async (id: string) => {
+    // Remove the tag id from any lead that still references it
+    const { data: leadsWithTag } = await (supabase as any)
+      .from("leads_campana")
+      .select("id, tag_ids")
+      .contains("tag_ids", [id]);
+    if (leadsWithTag?.length) {
+      await Promise.all(
+        leadsWithTag.map((l: { id: string; tag_ids: string[] | null }) =>
+          (supabase as any)
+            .from("leads_campana")
+            .update({ tag_ids: (l.tag_ids || []).filter((t) => t !== id) })
+            .eq("id", l.id),
+        ),
+      );
+    }
     await (supabase as any).from("lead_tags").delete().eq("id", id);
     onTagsRefresh();
   };
