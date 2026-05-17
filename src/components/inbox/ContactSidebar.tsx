@@ -245,6 +245,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         tag_ids: contact.tag_ids,
                       } as LeadCampana}
                       onChanged={() => refreshPhone(contact.telefono)}
+                      onDeleted={() => removePhone(contact.telefono)}
                     />
                   </div>
                 </div>
