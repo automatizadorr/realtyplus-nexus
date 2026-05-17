@@ -234,7 +234,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     </p>
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
-                  <div className="absolute right-1 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute right-1 top-2">
                     <ContactContextMenu
                       isAdmin={isAdmin}
                       contact={{
