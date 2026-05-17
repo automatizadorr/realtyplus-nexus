@@ -289,16 +289,26 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
             rows.map((contact) => {
               const unread = contact.unread_count || 0;
               const isSelected = selectedContact?.telefono?.split("@")[0] === contact.telefono;
+              const checked = selectedIds.has(contact.id);
               return (
                 <div
                   key={contact.id}
                   className={`group relative border-b transition-colors hover:bg-muted/50 ${
                     isSelected ? "bg-muted border-l-2 border-l-primary" : ""
-                  }`}
+                  } ${checked ? "bg-primary/5" : ""}`}
                 >
+                  {selectionMode && (
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleId(contact.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
                   <button
-                    onClick={() => handleSelect(contact)}
-                    className="w-full text-left px-4 py-3 pr-10"
+                    onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
+                    className={`w-full text-left py-3 pr-10 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
@@ -337,20 +347,22 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     </p>
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
-                  <div className="absolute right-1 top-2">
-                    <ContactContextMenu
-                      isAdmin={isAdmin}
-                      contact={{
-                        id: contact.id,
-                        nombre: contact.nombre || "",
-                        telefono: contact.telefono,
-                        archivado: contact.archivado,
-                        tag_ids: contact.tag_ids,
-                      } as LeadCampana}
-                      onChanged={() => refreshPhone(contact.telefono)}
-                      onDeleted={() => removePhone(contact.telefono)}
-                    />
-                  </div>
+                  {!selectionMode && (
+                    <div className="absolute right-1 top-2">
+                      <ContactContextMenu
+                        isAdmin={isAdmin}
+                        contact={{
+                          id: contact.id,
+                          nombre: contact.nombre || "",
+                          telefono: contact.telefono,
+                          archivado: contact.archivado,
+                          tag_ids: contact.tag_ids,
+                        } as LeadCampana}
+                        onChanged={() => refreshPhone(contact.telefono)}
+                        onDeleted={() => removePhone(contact.telefono)}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })
