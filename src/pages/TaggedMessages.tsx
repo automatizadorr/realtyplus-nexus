@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { LeadTag } from "@/lib/supabase";
+import type { LeadTag, LeadCampana } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tag, Search, Loader2, MessageSquare } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useNavigate } from "react-router-dom";
+import { ChatArea } from "@/components/inbox/ChatArea";
 
 interface TaggedRow {
   id: string;
@@ -31,7 +32,6 @@ interface TaggedRow {
 const PAGE_SIZE = 50;
 
 export default function TaggedMessages() {
-  const navigate = useNavigate();
   const [allTags, setAllTags] = useState<LeadTag[]>([]);
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
@@ -43,25 +43,27 @@ export default function TaggedMessages() {
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState<number | null>(null);
 
-  // Load tags
+  const [openContactState, setOpenContactState] = useState<LeadCampana | null>(null);
+  const [loadingContact, setLoadingContact] = useState(false);
+
+  const refreshTags = async () => {
+    const { data } = await (supabase as any)
+      .from("lead_tags")
+      .select("*")
+      .order("nombre");
+    setAllTags((data || []) as LeadTag[]);
+  };
+
   useEffect(() => {
-    (async () => {
-      const { data } = await (supabase as any)
-        .from("lead_tags")
-        .select("*")
-        .order("nombre");
-      setAllTags((data || []) as LeadTag[]);
-    })();
+    refreshTags();
   }, []);
 
-  // Reset on filter change
   useEffect(() => {
     setPage(0);
     setRows([]);
     setHasMore(true);
   }, [search, tagFilter]);
 
-  // Fetch
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -81,7 +83,6 @@ export default function TaggedMessages() {
       if (tagFilter !== "all") {
         q = q.contains("tag_ids", [tagFilter]);
       } else {
-        // require at least one tag
         q = q.not("tag_ids", "eq", "{}");
       }
 
@@ -118,8 +119,15 @@ export default function TaggedMessages() {
     return m;
   }, [allTags]);
 
-  const openContact = (row: TaggedRow) => {
-    navigate("/inbox", { state: { contactPhone: row.telefono } });
+  const openContact = async (row: TaggedRow) => {
+    setLoadingContact(true);
+    const { data } = await (supabase as any)
+      .from("leads_campana")
+      .select("*")
+      .eq("telefono", row.telefono)
+      .maybeSingle();
+    setLoadingContact(false);
+    if (data) setOpenContactState(data as LeadCampana);
   };
 
   return (
@@ -179,7 +187,8 @@ export default function TaggedMessages() {
                 <button
                   key={row.id}
                   onClick={() => openContact(row)}
-                  className="w-full text-left px-4 py-3 border-b hover:bg-muted/50 transition-colors"
+                  disabled={loadingContact}
+                  className="w-full text-left px-4 py-3 border-b hover:bg-muted/50 transition-colors disabled:opacity-60"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
@@ -245,6 +254,23 @@ export default function TaggedMessages() {
           )}
         </ScrollArea>
       </Card>
+
+      <Sheet open={!!openContactState} onOpenChange={(o) => !o && setOpenContactState(null)}>
+        <SheetContent
+          side="right"
+          className="p-0 w-full sm:max-w-2xl lg:max-w-3xl flex flex-col"
+        >
+          {openContactState && (
+            <ChatArea
+              selectedContact={openContactState}
+              onContactUpdate={(c) => setOpenContactState(c)}
+              onBack={() => setOpenContactState(null)}
+              allTags={allTags}
+              onTagsRefresh={refreshTags}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
