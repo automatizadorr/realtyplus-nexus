@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Smartphone, X, Share } from "lucide-react";
+import { Download, Monitor, Smartphone, X, Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BIPEvent extends Event {
@@ -12,7 +12,18 @@ const DISMISS_DAYS = 7;
 
 function isMobile() {
   if (typeof navigator === "undefined") return false;
-  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  return /android|iphone|ipod/i.test(navigator.userAgent);
+}
+
+function isTablet() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  // iPad (incl. iPadOS 13+ which reports as Mac with touch)
+  const iPad =
+    /ipad/i.test(ua) ||
+    (/Macintosh/.test(ua) && (navigator as any).maxTouchPoints > 1);
+  const androidTablet = /android/i.test(ua) && !/mobile/i.test(ua);
+  return iPad || androidTablet;
 }
 
 function isStandalone() {
@@ -24,8 +35,12 @@ function isStandalone() {
   );
 }
 
-function isIOS() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+function isIOSLike() {
+  const ua = navigator.userAgent;
+  return (
+    /iphone|ipad|ipod/i.test(ua) ||
+    (/Macintosh/.test(ua) && (navigator as any).maxTouchPoints > 1)
+  );
 }
 
 function isInAppBrowser() {
@@ -33,14 +48,21 @@ function isInAppBrowser() {
   return /FBAN|FBAV|Instagram|Line|WhatsApp|wv\)/i.test(ua);
 }
 
+type DeviceKind = "mobile" | "tablet" | "desktop";
+
 export function InstallPrompt() {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [ios, setIos] = useState(false);
+  const [device, setDevice] = useState<DeviceKind>("desktop");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!isMobile() || isStandalone() || isInAppBrowser()) return;
+    if (isStandalone() || isInAppBrowser()) return;
+
+    const mob = isMobile();
+    const tab = isTablet();
+    setDevice(mob ? "mobile" : tab ? "tablet" : "desktop");
 
     const dismissed = localStorage.getItem(DISMISS_KEY);
     if (dismissed) {
@@ -48,7 +70,8 @@ export function InstallPrompt() {
       if (days < DISMISS_DAYS) return;
     }
 
-    if (isIOS()) {
+    // iOS / iPadOS Safari: no beforeinstallprompt, show manual instructions
+    if (isIOSLike()) {
       setIos(true);
       setVisible(true);
       return;
@@ -61,10 +84,10 @@ export function InstallPrompt() {
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Fallback: show generic banner on Android Chrome even if event hasn't fired yet
+    // Fallback: show generic banner with instructions after a short delay
     const fallback = window.setTimeout(() => {
       if (!isStandalone()) setVisible(true);
-    }, 1500);
+    }, 1800);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
@@ -88,8 +111,28 @@ export function InstallPrompt() {
 
   if (!visible) return null;
 
+  const isHandheld = device === "mobile";
+  const Icon = isHandheld ? Smartphone : Monitor;
+  const title = isHandheld
+    ? "Instala Realtyplus en tu móvil"
+    : device === "tablet"
+    ? "Instala Realtyplus en tu tablet"
+    : "Instala Realtyplus en tu PC";
+
+  const manualHint = ios
+    ? null
+    : device === "desktop"
+    ? 'En Chrome/Edge: icono "Instalar" (⊕) en la barra de direcciones, o menú ⋮ → "Instalar Realtyplus".'
+    : 'En Chrome: menú ⋮ → "Instalar app" o "Añadir a pantalla de inicio".';
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[60] p-3 sm:hidden pointer-events-none">
+    <div
+      className={`fixed z-[60] p-3 pointer-events-none ${
+        isHandheld
+          ? "inset-x-0 bottom-0"
+          : "bottom-4 right-4 left-4 sm:left-auto sm:max-w-sm"
+      }`}
+    >
       <div
         className="pointer-events-auto mx-auto max-w-md rounded-2xl shadow-2xl border border-white/10 text-white p-4 flex gap-3 items-start animate-in slide-in-from-bottom-4 duration-300"
         style={{
@@ -97,12 +140,11 @@ export function InstallPrompt() {
         }}
       >
         <div className="shrink-0 rounded-xl bg-white/15 p-2">
-          <Smartphone className="h-5 w-5" />
+          <Icon className="h-5 w-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold leading-tight">
-            Instala Realtyplus en tu móvil
-          </p>
+          <p className="text-sm font-semibold leading-tight">{title}</p>
+
           {ios ? (
             <p className="text-xs text-white/80 mt-1 leading-snug">
               Toca <Share className="inline h-3.5 w-3.5 -mt-0.5" /> "Compartir"
@@ -110,15 +152,19 @@ export function InstallPrompt() {
             </p>
           ) : (
             <p className="text-xs text-white/80 mt-1 leading-snug">
-              Accede más rápido con un acceso directo desde Chrome.
+              {device === "desktop"
+                ? "Tenla siempre a mano como una app de escritorio."
+                : "Acceso directo más rápido sin abrir el navegador."}
             </p>
           )}
+
           {!ios && (
             <div className="mt-2.5 flex gap-2">
               <Button
                 size="sm"
                 onClick={install}
-                className="h-8 px-3 text-xs bg-white text-[#0f2b5a] hover:bg-white/90"
+                disabled={!deferred}
+                className="h-8 px-3 text-xs bg-white text-[#0f2b5a] hover:bg-white/90 disabled:opacity-60"
               >
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 {deferred ? "Instalar app" : "Cómo instalar"}
@@ -133,9 +179,10 @@ export function InstallPrompt() {
               </Button>
             </div>
           )}
-          {!deferred && !ios && (
+
+          {manualHint && !deferred && (
             <p className="text-[10px] text-white/60 mt-2 leading-snug">
-              En Chrome: menú ⋮ → "Añadir a pantalla de inicio".
+              {manualHint}
             </p>
           )}
         </div>
