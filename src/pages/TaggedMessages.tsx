@@ -196,8 +196,11 @@ export default function TaggedMessages() {
                       {row.pais && (
                         <Badge
                           variant="outline"
-                          className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30"
+                          className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1"
                         >
+                          <span aria-hidden className="text-[11px] leading-none">
+                            {countryFlag(row.pais)}
+                          </span>
                           {row.pais}
                         </Badge>
                       )}
