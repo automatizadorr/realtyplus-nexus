@@ -16,6 +16,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tag, Search, Loader2, MessageSquare } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ChatArea } from "@/components/inbox/ChatArea";
+import { countryFlag } from "@/lib/countryFlag";
 
 interface TaggedRow {
   id: string;
