@@ -315,7 +315,8 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         {contact.nombre || "Sin nombre"}
                         {contact.pais && (
-                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30">
+                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1">
+                            <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
                             {contact.pais}
                           </Badge>
                         )}
