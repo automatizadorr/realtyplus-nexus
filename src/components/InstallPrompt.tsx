@@ -58,11 +58,22 @@ export function InstallPrompt() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (isStandalone() || isInAppBrowser()) return;
 
     const mob = isMobile();
     const tab = isTablet();
     setDevice(mob ? "mobile" : tab ? "tablet" : "desktop");
+
+    const checkAndHide = () => {
+      if (isStandalone() || isInAppBrowser()) {
+        setVisible(false);
+        setDeferred(null);
+        return true;
+      }
+      return false;
+    };
+
+    // Immediately hide if already installed
+    if (checkAndHide()) return;
 
     const dismissed = localStorage.getItem(DISMISS_KEY);
     if (dismissed) {
@@ -77,21 +88,43 @@ export function InstallPrompt() {
       return;
     }
 
+    let fallback: number | undefined;
+
     const handler = (e: Event) => {
       e.preventDefault();
+      if (checkAndHide()) return;
       setDeferred(e as BIPEvent);
       setVisible(true);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
+    // Hide banner as soon as the app is installed
+    const installedHandler = () => {
+      setVisible(false);
+      setDeferred(null);
+    };
+    window.addEventListener("appinstalled", installedHandler);
+
+    // React to display-mode changes (e.g. user opens installed PWA)
+    const mql = window.matchMedia?.("(display-mode: standalone)");
+    const mediaHandler = (evt: MediaQueryListEvent) => {
+      if (evt.matches) {
+        setVisible(false);
+        setDeferred(null);
+      }
+    };
+    mql?.addEventListener?.("change", mediaHandler);
+
     // Fallback: show generic banner with instructions after a short delay
-    const fallback = window.setTimeout(() => {
+    fallback = window.setTimeout(() => {
       if (!isStandalone()) setVisible(true);
     }, 1800);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
-      window.clearTimeout(fallback);
+      window.removeEventListener("appinstalled", installedHandler);
+      if (mql) mql.removeEventListener?.("change", mediaHandler);
+      if (fallback) window.clearTimeout(fallback);
     };
   }, []);
 
