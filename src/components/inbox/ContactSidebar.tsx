@@ -25,6 +25,7 @@ import { ContactContextMenu } from "./ContactContextMenu";
 import { TagChips } from "./TagsManager";
 import { useInboxContacts, type InboxFilter } from "@/hooks/use-inbox-contacts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { countryFlag } from "@/lib/countryFlag";
 
 interface ContactSidebarProps {
   selectedContact: LeadCampana | null;
