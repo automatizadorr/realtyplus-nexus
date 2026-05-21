@@ -309,9 +309,9 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                   )}
                   <button
                     onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`w-full text-left py-3 pr-20 ${selectionMode ? "pl-10" : "pl-4"}`}
+                    className={`w-full text-left py-3 pr-24 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
                       <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         {contact.nombre || "Sin nombre"}
@@ -335,7 +335,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         )}
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]">
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[calc(100%-1rem)]">
                       {contact.last_message_text ? (
                         <>
                           <span className="opacity-60">
@@ -350,12 +350,17 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
                   {!selectionMode && (
-                    <div className="absolute right-1 top-2 flex items-center gap-0.5">
+                    <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 shrink-0"
+                        className={`h-8 w-8 shrink-0 border shadow-sm ${
+                          contact.archivado
+                            ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                            : "border-primary/30 bg-background text-primary hover:bg-primary/10 hover:text-primary"
+                        }`}
                         title={contact.archivado ? "Desarchivar" : "Archivar"}
+                        aria-label={contact.archivado ? "Desarchivar contacto" : "Archivar contacto"}
                         onClick={async (e) => {
                           e.stopPropagation();
                           if (!isAdmin) {
@@ -375,7 +380,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                           patchPhone(contact.telefono, { archivado: next });
                         }}
                       >
-                        <Archive className={`h-3.5 w-3.5 ${contact.archivado ? "text-primary" : ""}`} />
+                        <Archive className="h-4 w-4" />
                       </Button>
                       <ContactContextMenu
                         isAdmin={isAdmin}
