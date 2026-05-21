@@ -309,14 +309,14 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                   )}
                   <button
                     onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`min-w-0 flex-1 overflow-hidden text-left py-3 pr-2 ${selectionMode ? "pl-10" : "pl-4"}`}
+                    className={`min-w-0 flex-1 overflow-hidden text-left py-2 pr-1 ${selectionMode ? "pl-10" : "pl-3"}`}
                   >
-                    <div className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <div className="flex min-w-0 items-center justify-between gap-1">
+                      <span className="flex min-w-0 flex-1 items-center gap-1 text-sm font-semibold text-foreground">
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         <span className="min-w-0 truncate">{contact.nombre || "Sin nombre"}</span>
                         {contact.pais && (
-                          <Badge variant="outline" className="h-4 max-w-20 shrink-0 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1 overflow-hidden">
+                          <Badge variant="outline" className="h-4 max-w-16 shrink-0 px-1 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-0.5 overflow-hidden">
                             <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
                             <span className="truncate">{contact.pais}</span>
                           </Badge>
@@ -335,7 +335,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         )}
                       </div>
                     </div>
-                    <p className="mt-0.5 line-clamp-1 w-full text-xs text-muted-foreground">
+                    <p className="mt-0.5 block w-full truncate text-xs leading-4 text-muted-foreground">
                       {contact.last_message_text ? (
                         <>
                           <span className="opacity-60">
@@ -350,11 +350,11 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
                   {!selectionMode && (
-                    <div className="relative z-10 flex w-20 shrink-0 items-center justify-end gap-1 self-stretch pr-2">
+                    <div className="relative z-10 flex w-16 shrink-0 items-center justify-end gap-0.5 self-stretch pr-1.5">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={`h-8 w-8 shrink-0 border shadow-sm ${
+                        className={`h-7 w-7 shrink-0 border shadow-sm ${
                           contact.archivado
                             ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
                             : "border-primary/30 bg-background text-primary hover:bg-primary/10 hover:text-primary"
@@ -380,7 +380,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                           patchPhone(contact.telefono, { archivado: next });
                         }}
                       >
-                        <Archive className="h-4 w-4" />
+                        <Archive className="h-3.5 w-3.5" />
                       </Button>
                       <ContactContextMenu
                         isAdmin={isAdmin}
