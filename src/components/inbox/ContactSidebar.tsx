@@ -294,7 +294,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
               return (
                 <div
                   key={contact.id}
-                  className={`group relative border-b transition-colors hover:bg-muted/50 ${
+                  className={`group relative flex items-stretch border-b transition-colors hover:bg-muted/50 ${
                     isSelected ? "bg-muted border-l-2 border-l-primary" : ""
                   } ${checked ? "bg-primary/5" : ""}`}
                 >
@@ -309,14 +309,14 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                   )}
                   <button
                     onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`w-full text-left py-3 pr-24 ${selectionMode ? "pl-10" : "pl-4"}`}
+                    className={`min-w-0 flex-1 text-left py-3 pr-2 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
                     <div className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
+                      <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold text-foreground">
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         {contact.nombre || "Sin nombre"}
                         {contact.pais && (
-                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1">
+                          <Badge variant="outline" className="h-4 max-w-24 shrink-0 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1 truncate">
                             <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
                             {contact.pais}
                           </Badge>
@@ -350,7 +350,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
                   {!selectionMode && (
-                    <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1">
+                    <div className="relative z-10 flex w-[76px] shrink-0 items-center justify-end gap-1 self-stretch pr-2">
                       <Button
                         variant="ghost"
                         size="icon"
