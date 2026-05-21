@@ -309,7 +309,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                   )}
                   <button
                     onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`w-full text-left py-3 pr-10 ${selectionMode ? "pl-10" : "pl-4"}`}
+                    className={`w-full text-left py-3 pr-20 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
