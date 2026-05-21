@@ -309,7 +309,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                   )}
                   <button
                     onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`w-full text-left py-3 pr-10 ${selectionMode ? "pl-10" : "pl-4"}`}
+                    className={`w-full text-left py-3 pr-20 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
@@ -350,7 +350,33 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
                   {!selectionMode && (
-                    <div className="absolute right-1 top-2">
+                    <div className="absolute right-1 top-2 flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        title={contact.archivado ? "Desarchivar" : "Archivar"}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!isAdmin) {
+                            toast({ title: "Solo administradores", variant: "destructive" });
+                            return;
+                          }
+                          const next = !contact.archivado;
+                          const { error } = await (supabase as any)
+                            .from("leads_campana")
+                            .update({ archivado: next })
+                            .eq("id", contact.id);
+                          if (error) {
+                            toast({ title: "Error", description: error.message, variant: "destructive" });
+                            return;
+                          }
+                          toast({ title: next ? "Archivado" : "Restaurado" });
+                          patchPhone(contact.telefono, { archivado: next });
+                        }}
+                      >
+                        <Archive className={`h-3.5 w-3.5 ${contact.archivado ? "text-primary" : ""}`} />
+                      </Button>
                       <ContactContextMenu
                         isAdmin={isAdmin}
                         contact={{
