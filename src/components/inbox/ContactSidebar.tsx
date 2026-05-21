@@ -25,7 +25,6 @@ import { ContactContextMenu } from "./ContactContextMenu";
 import { TagChips } from "./TagsManager";
 import { useInboxContacts, type InboxFilter } from "@/hooks/use-inbox-contacts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { countryFlag } from "@/lib/countryFlag";
 
 interface ContactSidebarProps {
   selectedContact: LeadCampana | null;
@@ -309,15 +308,14 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                   )}
                   <button
                     onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`w-full text-left py-3 pr-24 ${selectionMode ? "pl-10" : "pl-4"}`}
+                    className={`w-full text-left py-3 pr-10 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
-                    <div className="flex min-w-0 items-center justify-between gap-2">
+                    <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm text-foreground truncate flex items-center gap-1.5">
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         {contact.nombre || "Sin nombre"}
                         {contact.pais && (
-                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1">
-                            <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
+                          <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30">
                             {contact.pais}
                           </Badge>
                         )}
@@ -335,7 +333,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         )}
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[calc(100%-1rem)]">
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]">
                       {contact.last_message_text ? (
                         <>
                           <span className="opacity-60">
@@ -350,38 +348,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
                   {!selectionMode && (
-                    <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`h-8 w-8 shrink-0 border shadow-sm ${
-                          contact.archivado
-                            ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                            : "border-primary/30 bg-background text-primary hover:bg-primary/10 hover:text-primary"
-                        }`}
-                        title={contact.archivado ? "Desarchivar" : "Archivar"}
-                        aria-label={contact.archivado ? "Desarchivar contacto" : "Archivar contacto"}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (!isAdmin) {
-                            toast({ title: "Solo administradores", variant: "destructive" });
-                            return;
-                          }
-                          const next = !contact.archivado;
-                          const { error } = await (supabase as any)
-                            .from("leads_campana")
-                            .update({ archivado: next })
-                            .eq("id", contact.id);
-                          if (error) {
-                            toast({ title: "Error", description: error.message, variant: "destructive" });
-                            return;
-                          }
-                          toast({ title: next ? "Archivado" : "Restaurado" });
-                          patchPhone(contact.telefono, { archivado: next });
-                        }}
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
+                    <div className="absolute right-1 top-2">
                       <ContactContextMenu
                         isAdmin={isAdmin}
                         contact={{

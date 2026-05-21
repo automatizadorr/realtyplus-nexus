@@ -16,7 +16,6 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tag, Search, Loader2, MessageSquare } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ChatArea } from "@/components/inbox/ChatArea";
-import { countryFlag } from "@/lib/countryFlag";
 
 interface TaggedRow {
   id: string;
@@ -197,11 +196,8 @@ export default function TaggedMessages() {
                       {row.pais && (
                         <Badge
                           variant="outline"
-                          className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1"
+                          className="h-4 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30"
                         >
-                          <span aria-hidden className="text-[11px] leading-none">
-                            {countryFlag(row.pais)}
-                          </span>
                           {row.pais}
                         </Badge>
                       )}
