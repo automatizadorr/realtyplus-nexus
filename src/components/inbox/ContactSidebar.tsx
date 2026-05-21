@@ -309,16 +309,16 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                   )}
                   <button
                     onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`min-w-0 flex-1 text-left py-3 pr-2 ${selectionMode ? "pl-10" : "pl-4"}`}
+                    className={`min-w-0 flex-1 overflow-hidden text-left py-3 pr-2 ${selectionMode ? "pl-10" : "pl-4"}`}
                   >
                     <div className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+                      <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-foreground">
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
-                        {contact.nombre || "Sin nombre"}
+                        <span className="min-w-0 truncate">{contact.nombre || "Sin nombre"}</span>
                         {contact.pais && (
-                          <Badge variant="outline" className="h-4 max-w-24 shrink-0 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1 truncate">
+                          <Badge variant="outline" className="h-4 max-w-20 shrink-0 px-1.5 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-1 overflow-hidden">
                             <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
-                            {contact.pais}
+                            <span className="truncate">{contact.pais}</span>
                           </Badge>
                         )}
                       </span>
@@ -335,7 +335,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         )}
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[calc(100%-1rem)]">
+                    <p className="mt-0.5 line-clamp-1 w-full text-xs text-muted-foreground">
                       {contact.last_message_text ? (
                         <>
                           <span className="opacity-60">
@@ -350,7 +350,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </button>
                   {!selectionMode && (
-                    <div className="relative z-10 flex w-[76px] shrink-0 items-center justify-end gap-1 self-stretch pr-2">
+                    <div className="relative z-10 flex w-20 shrink-0 items-center justify-end gap-1 self-stretch pr-2">
                       <Button
                         variant="ghost"
                         size="icon"
