@@ -307,12 +307,12 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       />
                     </div>
                   )}
-                  <button
-                    onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                    className={`min-w-0 flex-1 overflow-hidden text-left py-2 pr-1 ${selectionMode ? "pl-10" : "pl-3"}`}
-                  >
+                  <div className={`min-w-0 flex-1 overflow-hidden py-2 pr-1 ${selectionMode ? "pl-10" : "pl-3"}`}>
                     <div className="flex min-w-0 items-center justify-between gap-1">
-                      <span className="flex min-w-0 flex-1 items-center gap-1 text-sm font-semibold text-foreground">
+                      <button
+                        onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
+                        className="flex min-w-0 flex-1 items-center gap-1 text-left text-sm font-semibold text-foreground"
+                      >
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         <span className="min-w-0 truncate">{contact.nombre || "Sin nombre"}</span>
                         {contact.pais && (
@@ -321,8 +321,22 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                             <span className="truncate">{contact.pais}</span>
                           </Badge>
                         )}
-                      </span>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      </button>
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        {!selectionMode && (
+                          <ContactContextMenu
+                            isAdmin={isAdmin}
+                            contact={{
+                              id: contact.id,
+                              nombre: contact.nombre || "",
+                              telefono: contact.telefono,
+                              archivado: contact.archivado,
+                              tag_ids: contact.tag_ids,
+                            } as LeadCampana}
+                            onChanged={() => refreshPhone(contact.telefono)}
+                            onDeleted={() => removePhone(contact.telefono)}
+                          />
+                        )}
                         {unread > 0 && (
                           <Badge className="h-5 min-w-[20px] px-1.5 text-[10px] flex items-center justify-center">
                             {unread}
@@ -335,7 +349,10 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         )}
                       </div>
                     </div>
-                    <p className="mt-0.5 block w-full truncate text-xs leading-4 text-muted-foreground">
+                    <button
+                      onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
+                      className="mt-0.5 block w-full truncate text-left text-xs leading-4 text-muted-foreground"
+                    >
                       {contact.last_message_text ? (
                         <>
                           <span className="opacity-60">
@@ -346,11 +363,11 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       ) : (
                         contact.telefono
                       )}
-                    </p>
+                    </button>
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
-                  </button>
+                  </div>
                   {!selectionMode && (
-                    <div className="relative z-10 flex w-16 shrink-0 items-center justify-end gap-0.5 self-stretch pr-1.5">
+                    <div className="relative z-10 flex w-9 shrink-0 items-center justify-end self-stretch pr-1.5">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -382,18 +399,6 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       >
                         <Archive className="h-3.5 w-3.5" />
                       </Button>
-                      <ContactContextMenu
-                        isAdmin={isAdmin}
-                        contact={{
-                          id: contact.id,
-                          nombre: contact.nombre || "",
-                          telefono: contact.telefono,
-                          archivado: contact.archivado,
-                          tag_ids: contact.tag_ids,
-                        } as LeadCampana}
-                        onChanged={() => refreshPhone(contact.telefono)}
-                        onDeleted={() => removePhone(contact.telefono)}
-                      />
                     </div>
                   )}
                 </div>
