@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { Layout } from "@/components/Layout";
-import { InstallPrompt } from "@/components/InstallPrompt";
 import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
 import Campaigns from "./pages/Campaigns";
@@ -26,7 +25,6 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <InstallPrompt />
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
