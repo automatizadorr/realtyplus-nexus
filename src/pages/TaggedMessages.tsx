@@ -225,6 +225,17 @@ export default function TaggedMessages() {
                       row.telefono
                     )}
                   </p>
+                  {row.last_message_at && (
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                      {new Date(row.last_message_at).toLocaleString("es-ES", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  )}
                   {tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {tags.map((t) => (
