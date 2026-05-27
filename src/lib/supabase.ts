@@ -24,6 +24,7 @@ export interface LeadCampana {
   email?: string | null;
   archivado?: boolean | null;
   tag_ids?: string[] | null;
+  id_contacto?: string | null;
 }
 
 export interface LeadTag {
