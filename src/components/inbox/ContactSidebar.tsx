@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Search, Loader2, Bot, BotOff, Filter, Archive, Trash2, CheckSquare, X } from "lucide-react";
+import { MessageSquare, Search, Loader2, Bot, BotOff, Filter, Archive, Trash2, CheckSquare, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
