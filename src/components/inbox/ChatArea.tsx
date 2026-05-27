@@ -42,6 +42,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [highlightId, setHighlightId] = useState<string | number | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [idContacto, setIdContacto] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
