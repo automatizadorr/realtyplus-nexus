@@ -47,6 +47,24 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [syncingIds, setSyncingIds] = useState(false);
+
+  const syncIdContactos = async () => {
+    setSyncingIds(true);
+    try {
+      const { data, error } = await (supabase as any).functions.invoke("sync-id-contacto");
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Error desconocido");
+      toast({
+        title: "IDs sincronizados",
+        description: `Actualizados: ${data.updated} · Sin cambios: ${data.unchanged} · Sin match: ${data.unmatched}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Error al sincronizar", description: e.message || String(e), variant: "destructive" });
+    } finally {
+      setSyncingIds(false);
+    }
+  };
 
   const { rows, loading, total, hasMore, loadMore, refreshPhone, patchPhone, removePhone } = useInboxContacts({
     search,
