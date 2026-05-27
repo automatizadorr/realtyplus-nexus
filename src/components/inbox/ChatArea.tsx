@@ -134,6 +134,22 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     setLoadingOlder(false);
   }, [selectedContact?.telefono]);
 
+  // Load id_contacto for the selected contact
+  useEffect(() => {
+    let cancelled = false;
+    setIdContacto(null);
+    if (!selectedContact?.id) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("leads_campana")
+        .select("id_contacto")
+        .eq("id", selectedContact.id)
+        .maybeSingle();
+      if (!cancelled && data?.id_contacto) setIdContacto(String(data.id_contacto));
+    })();
+    return () => { cancelled = true; };
+  }, [selectedContact?.id]);
+
   const loadOlder = async () => {
     if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
     const phoneBase = phoneBaseRef.current;
