@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Search, Loader2, Bot, BotOff, Filter, Archive, Trash2, CheckSquare, X } from "lucide-react";
+import { MessageSquare, Search, Loader2, Bot, BotOff, Filter, Archive, Trash2, CheckSquare, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -47,6 +47,24 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [syncingIds, setSyncingIds] = useState(false);
+
+  const syncIdContactos = async () => {
+    setSyncingIds(true);
+    try {
+      const { data, error } = await (supabase as any).functions.invoke("sync-id-contacto");
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Error desconocido");
+      toast({
+        title: "IDs sincronizados",
+        description: `Actualizados: ${data.updated} · Sin cambios: ${data.unchanged} · Sin match: ${data.unmatched}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Error al sincronizar", description: e.message || String(e), variant: "destructive" });
+    } finally {
+      setSyncingIds(false);
+    }
+  };
 
   const { rows, loading, total, hasMore, loadMore, refreshPhone, patchPhone, removePhone } = useInboxContacts({
     search,
@@ -193,6 +211,18 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
           <MessageSquare className="h-5 w-5 text-primary" />
           <h2 className="font-bold text-foreground">Contactos</h2>
           <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={syncIdContactos}
+              disabled={syncingIds}
+              title="Sincronizar ID_CONTACTO desde Google Sheets (hoja 4)"
+            >
+              {syncingIds ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
+          )}
           {isAdmin && (
             selectionMode ? (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={exitSelection} title="Cancelar selección">

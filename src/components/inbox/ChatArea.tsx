@@ -42,6 +42,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [highlightId, setHighlightId] = useState<string | number | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [idContacto, setIdContacto] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -132,6 +133,22 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     loadingOlderRef.current = false;
     setLoadingOlder(false);
   }, [selectedContact?.telefono]);
+
+  // Load id_contacto for the selected contact
+  useEffect(() => {
+    let cancelled = false;
+    setIdContacto(null);
+    if (!selectedContact?.id) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("leads_campana")
+        .select("id_contacto")
+        .eq("id", selectedContact.id)
+        .maybeSingle();
+      if (!cancelled && data?.id_contacto) setIdContacto(String(data.id_contacto));
+    })();
+    return () => { cancelled = true; };
+  }, [selectedContact?.id]);
 
   const loadOlder = async () => {
     if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
@@ -347,7 +364,14 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm text-foreground truncate">{selectedContact.nombre}</div>
-            <div className="text-xs text-muted-foreground">{selectedContact.telefono}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+              <span>{selectedContact.telefono}</span>
+              {idContacto && (
+                <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono text-foreground/80">
+                  ID: {idContacto}
+                </span>
+              )}
+            </div>
             <TagChips tagIds={selectedContact.tag_ids} allTags={allTags} />
           </div>
 
