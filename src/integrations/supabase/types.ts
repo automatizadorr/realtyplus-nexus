@@ -247,6 +247,7 @@ export type Database = {
           franquiciado_id: string | null
           ha_respondido: boolean | null
           id: string
+          id_contacto: string | null
           motivo_cierre: string | null
           nombre: string
           origen: string | null
@@ -271,6 +272,7 @@ export type Database = {
           franquiciado_id?: string | null
           ha_respondido?: boolean | null
           id?: string
+          id_contacto?: string | null
           motivo_cierre?: string | null
           nombre: string
           origen?: string | null
@@ -295,6 +297,7 @@ export type Database = {
           franquiciado_id?: string | null
           ha_respondido?: boolean | null
           id?: string
+          id_contacto?: string | null
           motivo_cierre?: string | null
           nombre?: string
           origen?: string | null
