@@ -212,6 +212,18 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
           <h2 className="font-bold text-foreground">Contactos</h2>
           <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
           {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={syncIdContactos}
+              disabled={syncingIds}
+              title="Sincronizar ID_CONTACTO desde Google Sheets (hoja 4)"
+            >
+              {syncingIds ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
+          )}
+          {isAdmin && (
             selectionMode ? (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={exitSelection} title="Cancelar selección">
                 <X className="h-4 w-4" />
