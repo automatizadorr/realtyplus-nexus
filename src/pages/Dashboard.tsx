@@ -41,11 +41,22 @@ const STATE_COLORS = [
   "hsl(199, 89%, 48%)",
 ];
 
+interface CountryKPI {
+  pais: string;
+  total: number;
+  recientes_7d: number;
+  promedio_dias: number;
+  pct: number;
+}
+
 export default function Dashboard() {
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [messagesByDay, setMessagesByDay] = useState<MessagesByDay[]>([]);
   const [leadsByState, setLeadsByState] = useState<LeadsByState[]>([]);
+  const [countries, setCountries] = useState<CountryKPI[]>([]);
+  const [countriesTotal, setCountriesTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     async function fetchData() {
