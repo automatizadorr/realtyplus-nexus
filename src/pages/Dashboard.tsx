@@ -160,7 +160,13 @@ export default function Dashboard() {
     { title: "Leads Respondieron", value: kpis!.leadsResponded.toLocaleString(), icon: UserCheck, accent: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950" },
     { title: "Mensajes Totales", value: kpis!.totalMessages.toLocaleString(), icon: MessageSquareText, accent: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950" },
     { title: "Bot Activo", value: kpis!.botActive.toLocaleString(), icon: Bot, accent: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" },
+    { title: "Países (Sheets)", value: countries.length.toLocaleString(), icon: Globe2, accent: "text-cyan-600", bg: "bg-cyan-50 dark:bg-cyan-950" },
+    { title: "Contactos (Sheets)", value: countriesTotal.toLocaleString(), icon: Users, accent: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950" },
   ];
+
+  const topCountries = countries.slice(0, 10);
+  const countryChartConfig = { total: { label: "Contactos", color: "hsl(var(--primary))" } };
+
 
   const lineChartConfig = {
     inbound: { label: "Entrantes", color: "hsl(var(--primary))" },
