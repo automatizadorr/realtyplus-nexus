@@ -250,6 +250,69 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Country KPIs from Google Sheets */}
+      {countries.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Globe2 className="h-4 w-4 text-primary" />
+                Top 10 países por contactos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={countryChartConfig} className="h-[320px] w-full">
+                <BarChart data={topCountries} layout="vertical" margin={{ top: 5, right: 16, left: 8, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <YAxis type="category" dataKey="pais" width={110} tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-foreground">
+                Detalle por país ({countries.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-[320px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>País</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">% </TableHead>
+                      <TableHead className="text-right">Últ. 7d</TableHead>
+                      <TableHead className="text-right">Días prom.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {countries.map((c) => (
+                      <TableRow key={c.pais}>
+                        <TableCell className="font-medium">
+                          <span className="mr-2">{countryFlag(c.pais)}</span>
+                          {c.pais}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{c.total.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{c.pct}%</TableCell>
+                        <TableCell className="text-right tabular-nums">{c.recientes_7d.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{c.promedio_dias}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
+
   );
 }
