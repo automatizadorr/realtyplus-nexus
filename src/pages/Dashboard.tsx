@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Megaphone, MessageSquareText, Bot, Loader2, TrendingUp, UserCheck, Globe2 } from "lucide-react";
 import {
   ChartContainer,
@@ -12,7 +11,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Lege
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { countryFlag } from "@/lib/countryFlag";
 
+interface KPIs {
   totalLeads: number;
+
   activeCampaigns: number;
   responseRate: number;
   totalMessages: number;
