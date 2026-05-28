@@ -124,11 +124,26 @@ export default function Dashboard() {
           .sort((a, b) => b.value - a.value)
       );
 
+      // Country KPIs from Google Sheets
+      try {
+        const { data: countryData, error: countryErr } = await supabase.functions.invoke(
+          "sheets-country-kpis",
+          { body: {} },
+        );
+        if (!countryErr && countryData?.success) {
+          setCountries(countryData.countries || []);
+          setCountriesTotal(countryData.total_contactos || 0);
+        }
+      } catch (e) {
+        console.error("country kpis error", e);
+      }
+
       setLoading(false);
     }
 
     fetchData();
   }, []);
+
 
   if (loading) {
     return (
