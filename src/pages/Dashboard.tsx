@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Megaphone, MessageSquareText, Bot, Loader2, TrendingUp, UserCheck } from "lucide-react";
+import { Users, Megaphone, MessageSquareText, Bot, Loader2, TrendingUp, UserCheck, Globe2 } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Legend, BarChart, Bar } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { countryFlag } from "@/lib/countryFlag";
 
 interface KPIs {
   totalLeads: number;
+
   activeCampaigns: number;
   responseRate: number;
   totalMessages: number;
@@ -38,11 +41,22 @@ const STATE_COLORS = [
   "hsl(199, 89%, 48%)",
 ];
 
+interface CountryKPI {
+  pais: string;
+  total: number;
+  recientes_7d: number;
+  promedio_dias: number;
+  pct: number;
+}
+
 export default function Dashboard() {
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [messagesByDay, setMessagesByDay] = useState<MessagesByDay[]>([]);
   const [leadsByState, setLeadsByState] = useState<LeadsByState[]>([]);
+  const [countries, setCountries] = useState<CountryKPI[]>([]);
+  const [countriesTotal, setCountriesTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     async function fetchData() {
@@ -110,11 +124,26 @@ export default function Dashboard() {
           .sort((a, b) => b.value - a.value)
       );
 
+      // Country KPIs from Google Sheets
+      try {
+        const { data: countryData, error: countryErr } = await supabase.functions.invoke(
+          "sheets-country-kpis",
+          { body: {} },
+        );
+        if (!countryErr && countryData?.success) {
+          setCountries(countryData.countries || []);
+          setCountriesTotal(countryData.total_contactos || 0);
+        }
+      } catch (e) {
+        console.error("country kpis error", e);
+      }
+
       setLoading(false);
     }
 
     fetchData();
   }, []);
+
 
   if (loading) {
     return (
@@ -131,7 +160,13 @@ export default function Dashboard() {
     { title: "Leads Respondieron", value: kpis!.leadsResponded.toLocaleString(), icon: UserCheck, accent: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950" },
     { title: "Mensajes Totales", value: kpis!.totalMessages.toLocaleString(), icon: MessageSquareText, accent: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950" },
     { title: "Bot Activo", value: kpis!.botActive.toLocaleString(), icon: Bot, accent: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" },
+    { title: "Países (Sheets)", value: countries.length.toLocaleString(), icon: Globe2, accent: "text-cyan-600", bg: "bg-cyan-50 dark:bg-cyan-950" },
+    { title: "Contactos (Sheets)", value: countriesTotal.toLocaleString(), icon: Users, accent: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950" },
   ];
+
+  const topCountries = countries.slice(0, 10);
+  const countryChartConfig = { total: { label: "Contactos", color: "hsl(var(--primary))" } };
+
 
   const lineChartConfig = {
     inbound: { label: "Entrantes", color: "hsl(var(--primary))" },
@@ -215,6 +250,69 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Country KPIs from Google Sheets */}
+      {countries.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Globe2 className="h-4 w-4 text-primary" />
+                Top 10 países por contactos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={countryChartConfig} className="h-[320px] w-full">
+                <BarChart data={topCountries} layout="vertical" margin={{ top: 5, right: 16, left: 8, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <YAxis type="category" dataKey="pais" width={110} tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-foreground">
+                Detalle por país ({countries.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-[320px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>País</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">% </TableHead>
+                      <TableHead className="text-right">Últ. 7d</TableHead>
+                      <TableHead className="text-right">Días prom.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {countries.map((c) => (
+                      <TableRow key={c.pais}>
+                        <TableCell className="font-medium">
+                          <span className="mr-2">{countryFlag(c.pais)}</span>
+                          {c.pais}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{c.total.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{c.pct}%</TableCell>
+                        <TableCell className="text-right tabular-nums">{c.recientes_7d.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{c.promedio_dias}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
+
   );
 }
