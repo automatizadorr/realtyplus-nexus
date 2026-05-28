@@ -1,24 +1,58 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Megaphone, MessageSquareText, Bot, Loader2, TrendingUp, UserCheck, Globe2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Users,
+  MessageSquareText,
+  Bot,
+  Loader2,
+  TrendingUp,
+  UserCheck,
+  Globe2,
+  RefreshCw,
+  Download,
+  Inbox as InboxIcon,
+  Megaphone,
+} from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Legend, BarChart, Bar } from "recharts";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  Cell,
+} from "recharts";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { countryFlag } from "@/lib/countryFlag";
+import { toast } from "sonner";
 
 interface KPIs {
-  totalLeads: number;
-
-  activeCampaigns: number;
-  responseRate: number;
   totalMessages: number;
   botActive: number;
   leadsResponded: number;
+  responseRate: number;
 }
 
 interface MessagesByDay {
@@ -27,123 +61,193 @@ interface MessagesByDay {
   outbound: number;
 }
 
-interface LeadsByState {
-  name: string;
-  value: number;
-}
-
-const STATE_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(142, 71%, 45%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(0, 72%, 51%)",
-  "hsl(262, 83%, 58%)",
-  "hsl(199, 89%, 48%)",
-];
-
 interface CountryKPI {
   pais: string;
   total: number;
   recientes_7d: number;
   promedio_dias: number;
   pct: number;
+  respondidos?: number;
+  tasa_respuesta?: number;
+}
+
+interface LeadRow {
+  id: string;
+  nombre: string;
+  telefono: string;
+  pais: string | null;
+  estado: string | null;
+  ha_respondido: boolean | null;
+  bot_activo: boolean | null;
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [messagesByDay, setMessagesByDay] = useState<MessagesByDay[]>([]);
-  const [leadsByState, setLeadsByState] = useState<LeadsByState[]>([]);
   const [countries, setCountries] = useState<CountryKPI[]>([]);
   const [countriesTotal, setCountriesTotal] = useState(0);
+  const [leads, setLeads] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<CountryKPI | null>(null);
 
+  async function fetchData() {
+    const [leadsRes, messagesRes, countryRes] = await Promise.all([
+      supabase
+        .from("leads_campana")
+        .select("id, nombre, telefono, pais, estado, ha_respondido, bot_activo")
+        .limit(5000),
+      supabase.from("mensajes_whatsapp").select("id, direccion, created_at"),
+      supabase.functions.invoke("sheets-country-kpis", { body: {} }),
+    ]);
+
+    const leadsData = (leadsRes.data ?? []) as LeadRow[];
+    const messages = messagesRes.data ?? [];
+    setLeads(leadsData);
+
+    const leadsResponded = leadsData.filter((l) => l.ha_respondido).length;
+    const botActive = leadsData.filter((l) => l.bot_activo).length;
+    const responseRate =
+      leadsData.length > 0 ? (leadsResponded / leadsData.length) * 100 : 0;
+
+    setKpis({
+      totalMessages: messages.length,
+      botActive,
+      leadsResponded,
+      responseRate,
+    });
+
+    // Messages by day (last 14 days)
+    const dayMap: Record<string, { inbound: number; outbound: number }> = {};
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      dayMap[d.toISOString().slice(0, 10)] = { inbound: 0, outbound: 0 };
+    }
+    messages.forEach((m: any) => {
+      if (!m.created_at) return;
+      const key = m.created_at.slice(0, 10);
+      if (dayMap[key]) {
+        if (m.direccion === "inbound") dayMap[key].inbound++;
+        else dayMap[key].outbound++;
+      }
+    });
+    setMessagesByDay(
+      Object.entries(dayMap).map(([date, c]) => ({ date: date.slice(5), ...c })),
+    );
+
+    // Country KPIs: merge sheets totals with DB response rate per country
+    const respByCountry = new Map<string, { total: number; resp: number }>();
+    leadsData.forEach((l) => {
+      const key = (l.pais || "Sin país").trim() || "Sin país";
+      const cur = respByCountry.get(key) || { total: 0, resp: 0 };
+      cur.total += 1;
+      if (l.ha_respondido) cur.resp += 1;
+      respByCountry.set(key, cur);
+    });
+
+    const sheetsCountries: CountryKPI[] = countryRes.data?.success
+      ? countryRes.data.countries || []
+      : [];
+    setCountriesTotal(countryRes.data?.total_contactos || 0);
+
+    // If sheets data exists, attach response rate; otherwise build from DB only
+    const merged: CountryKPI[] = sheetsCountries.length
+      ? sheetsCountries.map((c) => {
+          const r = respByCountry.get(c.pais);
+          return {
+            ...c,
+            respondidos: r?.resp ?? 0,
+            tasa_respuesta: r && r.total > 0 ? +((r.resp / r.total) * 100).toFixed(1) : 0,
+          };
+        })
+      : Array.from(respByCountry.entries())
+          .map(([pais, v]) => ({
+            pais,
+            total: v.total,
+            recientes_7d: 0,
+            promedio_dias: 0,
+            pct: 0,
+            respondidos: v.resp,
+            tasa_respuesta: v.total > 0 ? +((v.resp / v.total) * 100).toFixed(1) : 0,
+          }))
+          .sort((a, b) => b.total - a.total);
+
+    setCountries(merged);
+  }
 
   useEffect(() => {
-    async function fetchData() {
+    (async () => {
       setLoading(true);
-
-      const [leadsRes, campaignsRes, messagesRes] = await Promise.all([
-        supabase.from("leads_campana").select("id, ha_respondido, bot_activo, estado"),
-        supabase.from("lead_recovery_campaigns").select("id, status"),
-        supabase.from("mensajes_whatsapp").select("id, direccion, created_at"),
-      ]);
-
-      const leads = leadsRes.data ?? [];
-      const campaigns = campaignsRes.data ?? [];
-      const messages = messagesRes.data ?? [];
-
-      // KPIs
-      const totalLeads = leads.length;
-      const leadsResponded = leads.filter((l) => l.ha_respondido).length;
-      const responseRate = totalLeads > 0 ? (leadsResponded / totalLeads) * 100 : 0;
-      const activeCampaigns = campaigns.filter((c) => c.status === "executing").length;
-      const botActive = leads.filter((l) => l.bot_activo).length;
-
-      setKpis({
-        totalLeads,
-        activeCampaigns,
-        responseRate,
-        totalMessages: messages.length,
-        botActive,
-        leadsResponded,
-      });
-
-      // Messages by day (last 14 days)
-      const dayMap: Record<string, { inbound: number; outbound: number }> = {};
-      const now = new Date();
-      for (let i = 13; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
-        dayMap[key] = { inbound: 0, outbound: 0 };
-      }
-      messages.forEach((m) => {
-        if (!m.created_at) return;
-        const key = m.created_at.slice(0, 10);
-        if (dayMap[key]) {
-          if (m.direccion === "inbound") dayMap[key].inbound++;
-          else dayMap[key].outbound++;
-        }
-      });
-      setMessagesByDay(
-        Object.entries(dayMap).map(([date, counts]) => ({
-          date: date.slice(5), // MM-DD
-          ...counts,
-        }))
-      );
-
-      // Leads by state
-      const stateMap: Record<string, number> = {};
-      leads.forEach((l) => {
-        const estado = l.estado || "sin estado";
-        stateMap[estado] = (stateMap[estado] || 0) + 1;
-      });
-      setLeadsByState(
-        Object.entries(stateMap)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-      );
-
-      // Country KPIs from Google Sheets
       try {
-        const { data: countryData, error: countryErr } = await supabase.functions.invoke(
-          "sheets-country-kpis",
-          { body: {} },
-        );
-        if (!countryErr && countryData?.success) {
-          setCountries(countryData.countries || []);
-          setCountriesTotal(countryData.total_contactos || 0);
-        }
+        await fetchData();
       } catch (e) {
-        console.error("country kpis error", e);
+        console.error(e);
       }
-
       setLoading(false);
-    }
-
-    fetchData();
+    })();
   }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchData();
+      toast.success("Datos actualizados");
+    } catch (e: any) {
+      toast.error("Error al actualizar", { description: e?.message });
+    }
+    setRefreshing(false);
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-id-contacto");
+      if (error) throw error;
+      toast.success("Sincronización completa", {
+        description: `Actualizados: ${data?.actualizados ?? 0} · Sin match: ${data?.sin_match ?? 0}`,
+      });
+      await fetchData();
+    } catch (e: any) {
+      toast.error("Error al sincronizar", { description: e?.message });
+    }
+    setSyncing(false);
+  };
+
+  const handleExport = () => {
+    const headers = ["pais", "total_contactos", "respondidos", "tasa_respuesta_%", "recientes_7d", "promedio_dias"];
+    const rows = countries.map((c) =>
+      [c.pais, c.total, c.respondidos ?? 0, c.tasa_respuesta ?? 0, c.recientes_7d, c.promedio_dias].join(","),
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kpis-paises-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV descargado");
+  };
+
+  const topCountries = useMemo(() => countries.slice(0, 10), [countries]);
+  const topResponseCountries = useMemo(
+    () =>
+      [...countries]
+        .filter((c) => (c.respondidos ?? 0) > 0)
+        .sort((a, b) => (b.tasa_respuesta ?? 0) - (a.tasa_respuesta ?? 0))
+        .slice(0, 10),
+    [countries],
+  );
+
+  const countryLeads = useMemo(() => {
+    if (!selectedCountry) return [];
+    const target = selectedCountry.pais.toLowerCase();
+    return leads.filter((l) => (l.pais || "").toLowerCase() === target).slice(0, 200);
+  }, [selectedCountry, leads]);
 
   if (loading) {
     return (
@@ -154,35 +258,89 @@ export default function Dashboard() {
   }
 
   const kpiCards = [
-    { title: "Total Leads", value: kpis!.totalLeads.toLocaleString(), icon: Users, accent: "text-primary", bg: "bg-primary/10" },
-    { title: "Campañas Activas", value: kpis!.activeCampaigns.toString(), icon: Megaphone, accent: "text-accent", bg: "bg-accent/10" },
-    { title: "Tasa de Respuesta", value: `${kpis!.responseRate.toFixed(1)}%`, icon: TrendingUp, accent: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950" },
-    { title: "Leads Respondieron", value: kpis!.leadsResponded.toLocaleString(), icon: UserCheck, accent: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950" },
-    { title: "Mensajes Totales", value: kpis!.totalMessages.toLocaleString(), icon: MessageSquareText, accent: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950" },
-    { title: "Bot Activo", value: kpis!.botActive.toLocaleString(), icon: Bot, accent: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" },
-    { title: "Países (Sheets)", value: countries.length.toLocaleString(), icon: Globe2, accent: "text-cyan-600", bg: "bg-cyan-50 dark:bg-cyan-950" },
-    { title: "Contactos (Sheets)", value: countriesTotal.toLocaleString(), icon: Users, accent: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950" },
+    {
+      title: "Países (Sheets)",
+      value: countries.length.toLocaleString(),
+      icon: Globe2,
+      accent: "text-cyan-600",
+      bg: "bg-cyan-50 dark:bg-cyan-950",
+    },
+    {
+      title: "Contactos (Sheets)",
+      value: countriesTotal.toLocaleString(),
+      icon: Users,
+      accent: "text-rose-600",
+      bg: "bg-rose-50 dark:bg-rose-950",
+    },
+    {
+      title: "Mensajes Totales",
+      value: kpis!.totalMessages.toLocaleString(),
+      icon: MessageSquareText,
+      accent: "text-violet-600",
+      bg: "bg-violet-50 dark:bg-violet-950",
+    },
+    {
+      title: "Bot Activo",
+      value: kpis!.botActive.toLocaleString(),
+      icon: Bot,
+      accent: "text-amber-600",
+      bg: "bg-amber-50 dark:bg-amber-950",
+    },
+    {
+      title: "Leads Respondieron",
+      value: kpis!.leadsResponded.toLocaleString(),
+      icon: UserCheck,
+      accent: "text-blue-600",
+      bg: "bg-blue-50 dark:bg-blue-950",
+    },
+    {
+      title: "Tasa de Respuesta",
+      value: `${kpis!.responseRate.toFixed(1)}%`,
+      icon: TrendingUp,
+      accent: "text-emerald-600",
+      bg: "bg-emerald-50 dark:bg-emerald-950",
+    },
   ];
 
-  const topCountries = countries.slice(0, 10);
-  const countryChartConfig = { total: { label: "Contactos", color: "hsl(var(--primary))" } };
-
-
+  const countryChartConfig = {
+    total: { label: "Contactos", color: "hsl(var(--primary))" },
+  };
+  const respChartConfig = {
+    tasa_respuesta: { label: "Tasa de respuesta %", color: "hsl(142, 71%, 45%)" },
+  };
   const lineChartConfig = {
     inbound: { label: "Entrantes", color: "hsl(var(--primary))" },
     outbound: { label: "Salientes", color: "hsl(142, 71%, 45%)" },
   };
 
-  const pieChartConfig = leadsByState.reduce((acc, item, i) => {
-    acc[item.name] = { label: item.name, color: STATE_COLORS[i % STATE_COLORS.length] };
-    return acc;
-  }, {} as Record<string, { label: string; color: string }>);
-
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Resumen general del CRM</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Resumen general del CRM · Haz clic en un país para ver el detalle
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            Actualizar
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+            Sincronizar Sheets
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={!countries.length}>
+            <Download className="mr-2 h-4 w-4" /> Exportar CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/inbox")}>
+            <InboxIcon className="mr-2 h-4 w-4" /> Inbox
+          </Button>
+          <Button size="sm" onClick={() => navigate("/campaigns")} className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Megaphone className="mr-2 h-4 w-4" /> Campañas
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -201,74 +359,55 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Line Chart - Messages per day */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-foreground">Mensajes por día (últimos 14 días)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={lineChartConfig} className="h-[300px] w-full">
-              <LineChart data={messagesByDay} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="inbound" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Entrantes" />
-                <Line type="monotone" dataKey="outbound" stroke="hsl(142, 71%, 45%)" strokeWidth={2} dot={{ r: 3 }} name="Salientes" />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-semibold text-foreground">
+            Mensajes por día (últimos 14 días)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={lineChartConfig} className="h-[280px] w-full">
+            <LineChart data={messagesByDay} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Line type="monotone" dataKey="inbound" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Entrantes" />
+              <Line type="monotone" dataKey="outbound" stroke="hsl(142, 71%, 45%)" strokeWidth={2} dot={{ r: 3 }} name="Salientes" />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
 
-        {/* Pie Chart - Leads by state */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-foreground">Leads por estado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={pieChartConfig} className="h-[300px] w-full">
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie
-                  data={leadsByState}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  labelLine={{ strokeWidth: 1 }}
-                >
-                  {leadsByState.map((_, i) => (
-                    <Cell key={i} fill={STATE_COLORS[i % STATE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Legend />
-              </PieChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Country KPIs from Google Sheets */}
       {countries.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Globe2 className="h-4 w-4 text-primary" />
                 Top 10 países por contactos
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer config={countryChartConfig} className="h-[320px] w-full">
-                <BarChart data={topCountries} layout="vertical" margin={{ top: 5, right: 16, left: 8, bottom: 5 }}>
+                <BarChart
+                  data={topCountries}
+                  layout="vertical"
+                  margin={{ top: 5, right: 16, left: 8, bottom: 5 }}
+                  onClick={(state: any) => {
+                    const p = state?.activePayload?.[0]?.payload as CountryKPI | undefined;
+                    if (p) setSelectedCountry(p);
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis type="category" dataKey="pais" width={110} tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="pais" width={110} tick={{ fontSize: 11 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]} className="cursor-pointer">
+                    {topCountries.map((_, i) => (
+                      <Cell key={i} fill="hsl(var(--primary))" />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ChartContainer>
             </CardContent>
@@ -276,43 +415,161 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Detalle por país ({countries.length})
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                Tasa de respuesta por país (top 10)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="max-h-[320px] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>País</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">% </TableHead>
-                      <TableHead className="text-right">Últ. 7d</TableHead>
-                      <TableHead className="text-right">Días prom.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {countries.map((c) => (
-                      <TableRow key={c.pais}>
-                        <TableCell className="font-medium">
-                          <span className="mr-2">{countryFlag(c.pais)}</span>
-                          {c.pais}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{c.total.toLocaleString()}</TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">{c.pct}%</TableCell>
-                        <TableCell className="text-right tabular-nums">{c.recientes_7d.toLocaleString()}</TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">{c.promedio_dias}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              {topResponseCountries.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-12 text-center">
+                  Aún no hay leads con respuesta registrada.
+                </p>
+              ) : (
+                <ChartContainer config={respChartConfig} className="h-[320px] w-full">
+                  <BarChart
+                    data={topResponseCountries}
+                    layout="vertical"
+                    margin={{ top: 5, right: 16, left: 8, bottom: 5 }}
+                    onClick={(state: any) => {
+                      const p = state?.activePayload?.[0]?.payload as CountryKPI | undefined;
+                      if (p) setSelectedCountry(p);
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} unit="%" />
+                    <YAxis type="category" dataKey="pais" width={110} tick={{ fontSize: 11 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="tasa_respuesta" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} className="cursor-pointer" />
+                  </BarChart>
+                </ChartContainer>
+              )}
             </CardContent>
           </Card>
         </div>
       )}
-    </div>
 
+      {countries.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">
+              Detalle por país ({countries.length}) · clic en una fila para segmentar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-[420px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>País</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">%</TableHead>
+                    <TableHead className="text-right">Respondieron</TableHead>
+                    <TableHead className="text-right">Tasa resp.</TableHead>
+                    <TableHead className="text-right">Últ. 7d</TableHead>
+                    <TableHead className="text-right">Días prom.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {countries.map((c) => (
+                    <TableRow
+                      key={c.pais}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setSelectedCountry(c)}
+                    >
+                      <TableCell className="font-medium">
+                        <span className="mr-2">{countryFlag(c.pais)}</span>
+                        {c.pais}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{c.total.toLocaleString()}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{c.pct}%</TableCell>
+                      <TableCell className="text-right tabular-nums">{(c.respondidos ?? 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
+                        {(c.tasa_respuesta ?? 0).toFixed(1)}%
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{c.recientes_7d.toLocaleString()}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{c.promedio_dias}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={!!selectedCountry} onOpenChange={(o) => !o && setSelectedCountry(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span>{selectedCountry && countryFlag(selectedCountry.pais)}</span>
+              {selectedCountry?.pais} · detalle
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCountry && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Total Sheets</p>
+                  <p className="text-xl font-bold">{selectedCountry.total.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Respondieron</p>
+                  <p className="text-xl font-bold">{(selectedCountry.respondidos ?? 0).toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Tasa resp.</p>
+                  <p className="text-xl font-bold text-emerald-600">
+                    {(selectedCountry.tasa_respuesta ?? 0).toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Recientes ≤7d</p>
+                  <p className="text-xl font-bold">{selectedCountry.recientes_7d.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="max-h-[340px] overflow-y-auto rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Teléfono</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Respondió</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {countryLeads.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">
+                          No hay leads en la base de datos para este país.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      countryLeads.map((l) => (
+                        <TableRow
+                          key={l.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => {
+                            setSelectedCountry(null);
+                            navigate(`/inbox?phone=${encodeURIComponent(l.telefono)}`);
+                          }}
+                        >
+                          <TableCell className="font-medium">{l.nombre}</TableCell>
+                          <TableCell className="text-sm">{l.telefono}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{l.estado || "—"}</TableCell>
+                          <TableCell>{l.ha_respondido ? "✅" : "—"}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
