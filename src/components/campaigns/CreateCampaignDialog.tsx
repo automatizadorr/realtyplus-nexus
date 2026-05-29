@@ -149,7 +149,20 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
     }
     setLoading(true);
     try {
-      const { error } = await supabase
+      const selectedLeads = leads.filter(l => selectedIds.has(l.id));
+      const targetFilters = {
+        lead_ids: Array.from(selectedIds),
+        estado: filterEstado,
+        pais: filterPais,
+        contacto: contactFilter,
+        id_contacto: idFilter || null,
+        min_dias: minDays === "" ? null : Number(minDays),
+        max_dias: maxDays === "" ? null : Number(maxDays),
+        search: searchQuery || null,
+      };
+
+      // 1) Save campaign in Supabase
+      const { data: inserted, error } = await supabase
         .from("lead_recovery_campaigns")
         .insert({
           user_id: user.id,
@@ -160,12 +173,68 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
           message_template_whatsapp: templateWhatsapp || null,
           message_template_email: templateEmail || null,
           subject_email: subjectEmail || null,
-          target_filters: { lead_ids: Array.from(selectedIds) },
-        });
+          target_filters: targetFilters,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      toast({ title: "¡Campaña creada!", description: `${selectedIds.size} contactos seleccionados.` });
+      // 2) Fetch ALL leads from Google Sheets (no country filter)
+      let sheetLeads: any[] = [];
+      let sheetTotal = 0;
+      try {
+        const { data: sheetData, error: sheetErr } = await supabase.functions.invoke("sheets-leads", {
+          body: {},
+        });
+        if (sheetErr) throw sheetErr;
+        if (sheetData?.success) {
+          sheetLeads = sheetData.leads || [];
+          sheetTotal = sheetData.total || sheetLeads.length;
+        }
+      } catch (e) {
+        console.warn("No se pudo obtener leads del sheet:", e);
+      }
+
+      // 3) Send everything to n8n webhook
+      try {
+        const res = await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaign_id: inserted?.id,
+            campaign_name: campaignName.trim(),
+            channel,
+            status: "executing",
+            message_template_whatsapp: templateWhatsapp || null,
+            message_template_email: templateEmail || null,
+            subject_email: subjectEmail || null,
+            target_filters: targetFilters,
+            selected_leads: selectedLeads.map(l => ({
+              id: l.id,
+              id_contacto: l.id_contacto,
+              nombre: l.nombre,
+              telefono: l.telefono,
+              email: l.email,
+              pais: l.pais,
+              estado: l.estado,
+              bot_activo: l.bot_activo,
+              dias_reales: l.dias_reales,
+            })),
+            sheet: {
+              total: sheetTotal,
+              leads: sheetLeads,
+            },
+            triggered_at: new Date().toISOString(),
+          }),
+        });
+        if (!res.ok) throw new Error(`Webhook respondió ${res.status}`);
+      } catch (whErr: any) {
+        console.warn("Webhook n8n falló:", whErr);
+        toast({ title: "Campaña creada (sin webhook)", description: whErr.message, variant: "destructive" });
+      }
+
+      toast({ title: "¡Campaña lanzada!", description: `${selectedIds.size} contactos · ${sheetTotal} leads del sheet enviados.` });
       onOpenChange(false);
       onCreated();
     } catch (err: any) {
