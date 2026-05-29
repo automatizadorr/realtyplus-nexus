@@ -160,9 +160,6 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     if (!phoneBase || !cursor) return;
     loadingOlderRef.current = true;
     setLoadingOlder(true);
-    const viewport = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
-    const prevHeight = viewport?.scrollHeight ?? 0;
-    const prevTop = viewport?.scrollTop ?? 0;
 
     const { data } = await supabase
       .from("mensajes_whatsapp")
@@ -177,16 +174,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       oldestCreatedAtRef.current = older[0].created_at as any;
       setMessages((prev) => {
         const existing = new Set(prev.map((m) => m.id));
-        const merged = [...older.filter((m) => !existing.has(m.id)), ...prev];
-        return merged;
+        return [...older.filter((m) => !existing.has(m.id)), ...prev];
       });
-      // Preserve scroll position after DOM update
-      requestAnimationFrame(() => {
-        if (viewport) {
-          const newHeight = viewport.scrollHeight;
-          viewport.scrollTop = prevTop + (newHeight - prevHeight);
-        }
-      });
+      // Older messages are appended at the bottom of the reversed view,
+      // so scrollTop stays naturally stable — no adjustment needed.
     }
     if ((data || []).length < PAGE_SIZE) {
       hasMoreOlderRef.current = false;
@@ -195,6 +186,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     loadingOlderRef.current = false;
     setLoadingOlder(false);
   };
+
 
   // Attach scroll listener to the radix viewport
   useEffect(() => {
