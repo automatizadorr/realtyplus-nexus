@@ -94,20 +94,47 @@ export default function Dashboard() {
   const [selectedCountry, setSelectedCountry] = useState<CountryKPI | null>(null);
 
   async function fetchData() {
-    const [leadsRes, messagesRes, countryRes] = await Promise.all([
+    // Fetch messages in pages (Supabase default cap is 1000)
+    async function fetchAllMessages() {
+      const all: { direccion: string; created_at: string; telefono: string }[] = [];
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from("mensajes_whatsapp")
+          .select("direccion, created_at, telefono")
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error || !data || data.length === 0) break;
+        all.push(...(data as any));
+        if (data.length < pageSize) break;
+        if (from > 200000) break; // safety
+      }
+      return all;
+    }
+
+    const [leadsRes, messages, countryRes] = await Promise.all([
       supabase
         .from("leads_campana")
         .select("id, nombre, telefono, pais, estado, ha_respondido, bot_activo")
-        .limit(5000),
-      supabase.from("mensajes_whatsapp").select("id, direccion, created_at"),
+        .limit(10000),
+      fetchAllMessages(),
       supabase.functions.invoke("sheets-country-kpis", { body: {} }),
     ]);
 
     const leadsData = (leadsRes.data ?? []) as LeadRow[];
-    const messages = messagesRes.data ?? [];
     setLeads(leadsData);
 
-    const leadsResponded = leadsData.filter((l) => l.ha_respondido).length;
+    // Real respondents = distinct phones with at least one inbound message
+    const inboundPhones = new Set<string>();
+    messages.forEach((m) => {
+      if (m.direccion === "inbound" && m.telefono) {
+        inboundPhones.add(String(m.telefono).split("@")[0]);
+      }
+    });
+
+    const leadsResponded = leadsData.filter((l) =>
+      inboundPhones.has(String(l.telefono).split("@")[0]),
+    ).length;
     const botActive = leadsData.filter((l) => l.bot_activo).length;
     const responseRate =
       leadsData.length > 0 ? (leadsResponded / leadsData.length) * 100 : 0;
@@ -127,7 +154,7 @@ export default function Dashboard() {
       d.setDate(d.getDate() - i);
       dayMap[d.toISOString().slice(0, 10)] = { inbound: 0, outbound: 0 };
     }
-    messages.forEach((m: any) => {
+    messages.forEach((m) => {
       if (!m.created_at) return;
       const key = m.created_at.slice(0, 10);
       if (dayMap[key]) {
@@ -139,13 +166,13 @@ export default function Dashboard() {
       Object.entries(dayMap).map(([date, c]) => ({ date: date.slice(5), ...c })),
     );
 
-    // Country KPIs: merge sheets totals with DB response rate per country
+    // Country KPIs: total leads + REAL responses per country (from messages)
     const respByCountry = new Map<string, { total: number; resp: number }>();
     leadsData.forEach((l) => {
       const key = (l.pais || "Sin país").trim() || "Sin país";
       const cur = respByCountry.get(key) || { total: 0, resp: 0 };
       cur.total += 1;
-      if (l.ha_respondido) cur.resp += 1;
+      if (inboundPhones.has(String(l.telefono).split("@")[0])) cur.resp += 1;
       respByCountry.set(key, cur);
     });
 
@@ -154,7 +181,6 @@ export default function Dashboard() {
       : [];
     setCountriesTotal(countryRes.data?.total_contactos || 0);
 
-    // If sheets data exists, attach response rate; otherwise build from DB only
     const merged: CountryKPI[] = sheetsCountries.length
       ? sheetsCountries.map((c) => {
           const r = respByCountry.get(c.pais);
