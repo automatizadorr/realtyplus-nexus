@@ -48,6 +48,11 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEstado, setFilterEstado] = useState("all");
   const [filterPais, setFilterPais] = useState("all");
+  const [contactFilter, setContactFilter] = useState<"all" | "contacted" | "uncontacted">("all");
+  const [idFilter, setIdFilter] = useState("");
+  const [minDays, setMinDays] = useState("");
+  const [maxDays, setMaxDays] = useState("");
+  const [contactedSet, setContactedSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [loadingLeads, setLoadingLeads] = useState(false);
 
