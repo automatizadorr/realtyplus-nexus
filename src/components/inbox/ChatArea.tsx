@@ -109,7 +109,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
           if (normalize(msg.telefono) === phoneBase) {
             setMessages((prev) => {
               if (prev.find((m) => m.id === msg.id)) return prev;
-              if (msg.direccion === "inbound" && !isAtBottomRef.current) {
+              if (msg.direccion === "inbound" && !isAtTopRef.current) {
                 setUnreadCount((c) => c + 1);
                 lastInboundIdRef.current = msg.id;
               }
@@ -128,13 +128,14 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   // Reset unread/scroll state when switching contacts
   useEffect(() => {
     setUnreadCount(0);
-    setIsAtBottom(true);
-    isAtBottomRef.current = true;
+    setIsAtTop(true);
+    isAtTopRef.current = true;
     lastInboundIdRef.current = null;
     setHighlightId(null);
     loadingOlderRef.current = false;
     setLoadingOlder(false);
   }, [selectedContact?.telefono]);
+
 
   // Load id_contacto for the selected contact
   useEffect(() => {
