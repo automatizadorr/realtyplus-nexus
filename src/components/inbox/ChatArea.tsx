@@ -445,128 +445,137 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
               </div>
             ) : (
               <div className="space-y-4 max-w-3xl mx-auto pb-4">
-                {hasMoreOlder && (
-                  <div className="flex items-center justify-center py-2">
-                    {loadingOlder ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    ) : (
-                      <button
-                        onClick={loadOlder}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        Cargar mensajes anteriores
-                      </button>
-                    )}
-                  </div>
-                )}
-                {!hasMoreOlder && messages.length > 0 && (() => {
-                  const first = messages[0];
-                  const startedByBot = first.direccion === "outbound" && first.autor === "bot";
+                {(() => {
+                  const displayed = [...messages].slice().reverse();
                   return (
-                    <div className="flex flex-col items-center gap-1 py-2">
-                      {startedByBot ? (
-                        <div className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                          <Bot className="h-3 w-3" />
-                          Conversación iniciada por IA ·{" "}
-                          {new Date(first.created_at).toLocaleDateString("es-ES", {
+                    <>
+                      <AnimatePresence initial={false}>
+                        {displayed.map((msg, idx) => {
+                          const isOutbound = msg.direccion === "outbound";
+                          const isCurrentMatch = matchIds[searchIdx] === msg.id;
+                          const isHighlighted = highlightId === msg.id;
+                          const msgDate = new Date(msg.created_at);
+                          // In reversed order, newer message sits above (idx-1).
+                          // Show date separator at the top of a day's group.
+                          const prevDisplayed = idx > 0 ? displayed[idx - 1] : null;
+                          const showDateSep =
+                            !prevDisplayed ||
+                            new Date(prevDisplayed.created_at).toDateString() !== msgDate.toDateString();
+                          const today = new Date();
+                          const yesterday = new Date();
+                          yesterday.setDate(today.getDate() - 1);
+                          let dateLabel = msgDate.toLocaleDateString("es-ES", {
+                            weekday: "long",
                             day: "2-digit",
-                            month: "short",
+                            month: "long",
                             year: "numeric",
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-[10px] text-muted-foreground/60">
-                          Inicio de la conversación
+                          });
+                          if (msgDate.toDateString() === today.toDateString()) dateLabel = "Hoy";
+                          else if (msgDate.toDateString() === yesterday.toDateString()) dateLabel = "Ayer";
+                          return (
+                            <div key={msg.id}>
+                              {showDateSep && (
+                                <div className="flex items-center justify-center my-3">
+                                  <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground capitalize">
+                                    {dateLabel}
+                                  </span>
+                                </div>
+                              )}
+                              <motion.div
+                                id={`msg-${msg.id}`}
+                                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
+                                className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                              >
+                                <div
+                                  className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
+                                    isOutbound
+                                      ? "bg-primary text-primary-foreground rounded-br-sm"
+                                      : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
+                                  } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""} ${isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
+                                >
+                                  {isOutbound && msg.autor && (
+                                    <span
+                                      className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
+                                        msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
+                                      }`}
+                                    >
+                                      {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
+                                    </span>
+                                  )}
+                                  {msg.media_url && (
+                                    <div className="mb-1.5">
+                                      <MediaBubble url={msg.media_url} type={msg.media_type} />
+                                    </div>
+                                  )}
+                                  {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
+                                  <div
+                                    className={`text-[10px] mt-1.5 flex justify-end gap-1 ${
+                                      isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    <span>
+                                      {msgDate.toLocaleDateString("es-ES", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "2-digit",
+                                      })}
+                                    </span>
+                                    <span>·</span>
+                                    <span>
+                                      {msgDate.toLocaleTimeString("es-ES", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </div>
+                          );
+                        })}
+                      </AnimatePresence>
+                      {hasMoreOlder && (
+                        <div className="flex items-center justify-center py-2">
+                          {loadingOlder ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : (
+                            <button
+                              onClick={loadOlder}
+                              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Cargar mensajes anteriores
+                            </button>
+                          )}
                         </div>
                       )}
-                    </div>
-                  );
-                })()}
-                <AnimatePresence initial={false}>
-                  {messages.map((msg, idx) => {
-                    const isOutbound = msg.direccion === "outbound";
-                    const isCurrentMatch = matchIds[searchIdx] === msg.id;
-                    const isHighlighted = highlightId === msg.id;
-                    const msgDate = new Date(msg.created_at);
-                    const prevMsg = idx > 0 ? messages[idx - 1] : null;
-                    const showDateSep =
-                      !prevMsg ||
-                      new Date(prevMsg.created_at).toDateString() !== msgDate.toDateString();
-                    const today = new Date();
-                    const yesterday = new Date();
-                    yesterday.setDate(today.getDate() - 1);
-                    let dateLabel = msgDate.toLocaleDateString("es-ES", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    });
-                    if (msgDate.toDateString() === today.toDateString()) dateLabel = "Hoy";
-                    else if (msgDate.toDateString() === yesterday.toDateString()) dateLabel = "Ayer";
-                    return (
-                      <div key={msg.id}>
-                        {showDateSep && (
-                          <div className="flex items-center justify-center my-3">
-                            <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground capitalize">
-                              {dateLabel}
-                            </span>
-                          </div>
-                        )}
-                        <motion.div
-                          id={`msg-${msg.id}`}
-                          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
-                          className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
-                              isOutbound
-                                ? "bg-primary text-primary-foreground rounded-br-sm"
-                                : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
-                            } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""} ${isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
-                          >
-                            {isOutbound && msg.autor && (
-                              <span
-                                className={`text-[10px] font-bold tracking-wider uppercase block mb-1 ${
-                                  msg.autor === "bot" ? "text-emerald-300" : "text-blue-300"
-                                }`}
-                              >
-                                {msg.autor === "bot" ? "🤖 Bot" : "👤 Admin"}
-                              </span>
-                            )}
-                            {msg.media_url && (
-                              <div className="mb-1.5">
-                                <MediaBubble url={msg.media_url} type={msg.media_type} />
+                      {!hasMoreOlder && messages.length > 0 && (() => {
+                        const first = messages[0];
+                        const startedByBot = first.direccion === "outbound" && first.autor === "bot";
+                        return (
+                          <div className="flex flex-col items-center gap-1 py-2">
+                            {startedByBot ? (
+                              <div className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                <Bot className="h-3 w-3" />
+                                Conversación iniciada por IA ·{" "}
+                                {new Date(first.created_at).toLocaleDateString("es-ES", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-muted-foreground/60">
+                                Inicio de la conversación
                               </div>
                             )}
-                            {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
-                            <div
-                              className={`text-[10px] mt-1.5 flex justify-end gap-1 ${
-                                isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
-                              }`}
-                            >
-                              <span>
-                                {msgDate.toLocaleDateString("es-ES", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "2-digit",
-                                })}
-                              </span>
-                              <span>·</span>
-                              <span>
-                                {msgDate.toLocaleTimeString("es-ES", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
                           </div>
-                        </motion.div>
-                      </div>
-                    );
-                  })}
-                </AnimatePresence>
+                        );
+                      })()}
+                    </>
+                  );
+                })()}
                 {messages.length === 0 && !loading && (
                   <motion.p
                     initial={{ opacity: 0 }}
@@ -580,6 +589,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
               </div>
             )}
           </ScrollArea>
+
 
           {/* Floating new-messages pill */}
           <AnimatePresence>
