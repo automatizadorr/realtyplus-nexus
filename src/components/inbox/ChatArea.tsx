@@ -593,31 +593,32 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
           {/* Floating new-messages pill */}
           <AnimatePresence>
-            {!isAtBottom && (
+            {!isAtTop && (
               <motion.div
-                initial={{ opacity: 0, y: 12, scale: 0.9 }}
+                initial={{ opacity: 0, y: -12, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 12, scale: 0.9 }}
+                exit={{ opacity: 0, y: -12, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20"
+                className="absolute top-4 left-1/2 -translate-x-1/2 z-20"
               >
                 <Button
-                  onClick={scrollToBottom}
+                  onClick={scrollToTop}
                   size="sm"
                   className="rounded-full shadow-lg gap-2 h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
-                  <ArrowDown className="h-4 w-4" />
+                  <ArrowDown className="h-4 w-4 rotate-180" />
                   {unreadCount > 0 ? (
                     <span className="font-semibold">
                       {unreadCount} nuevo{unreadCount > 1 ? "s" : ""}
                     </span>
                   ) : (
-                    <span>Ir al final</span>
+                    <span>Ir al inicio</span>
                   )}
                 </Button>
               </motion.div>
             )}
           </AnimatePresence>
+
         </div>
 
         {/* Pending media preview */}
