@@ -21,7 +21,11 @@ interface Lead {
   pais: string | null;
   estado: string | null;
   bot_activo: boolean | null;
+  id_contacto: string | null;
+  dias_reales: number | null;
 }
+
+const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
 interface CreateCampaignDialogProps {
   open: boolean;
@@ -44,6 +48,11 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEstado, setFilterEstado] = useState("all");
   const [filterPais, setFilterPais] = useState("all");
+  const [contactFilter, setContactFilter] = useState<"all" | "contacted" | "uncontacted">("all");
+  const [idFilter, setIdFilter] = useState("");
+  const [minDays, setMinDays] = useState("");
+  const [maxDays, setMaxDays] = useState("");
+  const [contactedSet, setContactedSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [loadingLeads, setLoadingLeads] = useState(false);
 
@@ -60,16 +69,30 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       setSearchQuery("");
       setFilterEstado("all");
       setFilterPais("all");
+      setContactFilter("all");
+      setIdFilter("");
+      setMinDays("");
+      setMaxDays("");
     }
   }, [open]);
 
   const fetchLeads = async () => {
     setLoadingLeads(true);
-    const { data, error } = await supabase
-      .from("leads_campana")
-      .select("id, nombre, telefono, email, pais, estado, bot_activo")
-      .order("nombre");
-    if (!error && data) setLeads(data);
+    const [{ data, error }, outRes] = await Promise.all([
+      supabase
+        .from("leads_campana")
+        .select("id, nombre, telefono, email, pais, estado, bot_activo, id_contacto, dias_reales")
+        .order("nombre"),
+      supabase
+        .from("mensajes_whatsapp")
+        .select("telefono")
+        .eq("direccion", "outbound")
+        .limit(50000),
+    ]);
+    if (!error && data) setLeads(data as Lead[]);
+    if (outRes.data) {
+      setContactedSet(new Set(outRes.data.map((m: any) => normPhone(m.telefono)).filter(Boolean)));
+    }
     setLoadingLeads(false);
   };
 
@@ -77,6 +100,8 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
   const paises = useMemo(() => [...new Set(leads.map(l => l.pais).filter(Boolean))], [leads]);
 
   const filtered = useMemo(() => {
+    const min = minDays === "" ? null : Number(minDays);
+    const max = maxDays === "" ? null : Number(maxDays);
     return leads.filter(l => {
       const matchSearch = !searchQuery ||
         l.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -84,9 +109,18 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
         (l.email && l.email.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchEstado = filterEstado === "all" || l.estado === filterEstado;
       const matchPais = filterPais === "all" || l.pais === filterPais;
-      return matchSearch && matchEstado && matchPais;
+      const matchId = !idFilter || (l.id_contacto || "").toLowerCase().includes(idFilter.toLowerCase());
+      const isContacted = contactedSet.has(normPhone(l.telefono));
+      const matchContact =
+        contactFilter === "all" ||
+        (contactFilter === "contacted" && isContacted) ||
+        (contactFilter === "uncontacted" && !isContacted);
+      const dias = l.dias_reales ?? 0;
+      const matchMin = min === null || dias >= min;
+      const matchMax = max === null || dias <= max;
+      return matchSearch && matchEstado && matchPais && matchId && matchContact && matchMin && matchMax;
     });
-  }, [leads, searchQuery, filterEstado, filterPais]);
+  }, [leads, searchQuery, filterEstado, filterPais, idFilter, contactFilter, contactedSet, minDays, maxDays]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -218,6 +252,41 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
                   {paises.map(p => <SelectItem key={p} value={p!}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex gap-2">
+              <Select value={contactFilter} onValueChange={(v: any) => setContactFilter(v)}>
+                <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="uncontacted">Sin contactar</SelectItem>
+                  <SelectItem value="contacted">Contactados</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                className="flex-1 h-8 text-xs"
+                placeholder="ID contacto"
+                value={idFilter}
+                onChange={e => setIdFilter(e.target.value)}
+              />
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-muted-foreground shrink-0">Días:</span>
+              <Input
+                type="number"
+                className="flex-1 h-8 text-xs"
+                placeholder="Min"
+                value={minDays}
+                onChange={e => setMinDays(e.target.value)}
+              />
+              <Input
+                type="number"
+                className="flex-1 h-8 text-xs"
+                placeholder="Max"
+                value={maxDays}
+                onChange={e => setMaxDays(e.target.value)}
+              />
             </div>
 
             <div className="flex items-center gap-2 px-1">
