@@ -593,7 +593,7 @@ export default function Dashboard() {
       )}
 
       <Dialog open={!!selectedCountry} onOpenChange={(o) => !o && setSelectedCountry(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>{selectedCountry && countryFlag(selectedCountry.pais)}</span>
@@ -602,10 +602,26 @@ export default function Dashboard() {
           </DialogHeader>
           {selectedCountry && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Total Sheets</p>
                   <p className="text-xl font-bold">{selectedCountry.total.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">En BD</p>
+                  <p className="text-xl font-bold">{allCountryLeads.length.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/30">
+                  <p className="text-xs text-muted-foreground">Contactados</p>
+                  <p className="text-xl font-bold text-blue-600">
+                    {countryStats.contacted.length.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3 bg-orange-50 dark:bg-orange-950/30">
+                  <p className="text-xs text-muted-foreground">Sin contactar</p>
+                  <p className="text-xl font-bold text-orange-600">
+                    {countryStats.uncontacted.length.toLocaleString()}
+                  </p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Respondieron</p>
@@ -617,10 +633,39 @@ export default function Dashboard() {
                     {(selectedCountry.tasa_respuesta ?? 0).toFixed(1)}%
                   </p>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Recientes ≤7d</p>
-                  <p className="text-xl font-bold">{selectedCountry.recientes_7d.toLocaleString()}</p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex rounded-lg border p-1 bg-muted/30">
+                  {([
+                    { k: "all", label: `Todos (${allCountryLeads.length})` },
+                    { k: "contacted", label: `Contactados (${countryStats.contacted.length})` },
+                    { k: "uncontacted", label: `Sin contactar (${countryStats.uncontacted.length})` },
+                  ] as const).map((t) => (
+                    <button
+                      key={t.k}
+                      onClick={() => setContactFilter(t.k)}
+                      className={`px-3 py-1 text-xs rounded-md transition ${
+                        contactFilter === t.k
+                          ? "bg-background shadow-sm font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
+                <Button
+                  size="sm"
+                  onClick={handleCreateRecoveryCampaign}
+                  disabled={creatingCampaign || countryStats.uncontacted.length === 0}
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  {creatingCampaign
+                    ? "Creando..."
+                    : `Crear campaña (${countryStats.uncontacted.length} sin contactar)`}
+                </Button>
               </div>
 
               <div className="max-h-[340px] overflow-y-auto rounded-lg border">
@@ -630,32 +675,49 @@ export default function Dashboard() {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Teléfono</TableHead>
                       <TableHead>Estado</TableHead>
+                      <TableHead>Contactado</TableHead>
                       <TableHead>Respondió</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {countryLeads.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">
-                          No hay leads en la base de datos para este país.
+                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                          No hay leads para mostrar con este filtro.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      countryLeads.map((l) => (
-                        <TableRow
-                          key={l.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => {
-                            setSelectedCountry(null);
-                            navigate(`/inbox?phone=${encodeURIComponent(l.telefono)}`);
-                          }}
-                        >
-                          <TableCell className="font-medium">{l.nombre}</TableCell>
-                          <TableCell className="text-sm">{l.telefono}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{l.estado || "—"}</TableCell>
-                          <TableCell>{l.ha_respondido ? "✅" : "—"}</TableCell>
-                        </TableRow>
-                      ))
+                      countryLeads.map((l) => {
+                        const phone = String(l.telefono).split("@")[0];
+                        const wasContacted = contactedSet.has(phone);
+                        const didRespond = inboundSet.has(phone);
+                        return (
+                          <TableRow
+                            key={l.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => {
+                              setSelectedCountry(null);
+                              navigate(`/inbox?phone=${encodeURIComponent(l.telefono)}`);
+                            }}
+                          >
+                            <TableCell className="font-medium">{l.nombre}</TableCell>
+                            <TableCell className="text-sm">{l.telefono}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{l.estado || "—"}</TableCell>
+                            <TableCell>
+                              {wasContacted ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                  Sí
+                                </span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+                                  No
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>{didRespond ? "✅" : "—"}</TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
