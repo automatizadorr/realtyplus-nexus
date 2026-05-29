@@ -318,13 +318,12 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         payload.media_type = media.type;
       }
 
-      const response = await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/crmrp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const { data: hookData, error: hookErr } = await supabase.functions.invoke("send-n8n-webhook", {
+        body: { target: "crmrp", payload },
       });
-
-      if (!response.ok) throw new Error("El Webhook rechazó la conexión.");
+      if (hookErr || !(hookData as any)?.success) {
+        throw new Error((hookErr as any)?.message || "El Webhook rechazó la conexión.");
+      }
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
