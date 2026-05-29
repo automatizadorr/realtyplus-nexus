@@ -278,11 +278,70 @@ export default function Dashboard() {
     [countries],
   );
 
-  const countryLeads = useMemo(() => {
+  const allCountryLeads = useMemo(() => {
     if (!selectedCountry) return [];
     const target = selectedCountry.pais.toLowerCase();
-    return leads.filter((l) => (l.pais || "").toLowerCase() === target).slice(0, 200);
+    return leads.filter((l) => (l.pais || "").toLowerCase() === target);
   }, [selectedCountry, leads]);
+
+  const countryStats = useMemo(() => {
+    const contacted = allCountryLeads.filter((l) =>
+      contactedSet.has(String(l.telefono).split("@")[0]),
+    );
+    const uncontacted = allCountryLeads.filter(
+      (l) => !contactedSet.has(String(l.telefono).split("@")[0]),
+    );
+    return { contacted, uncontacted };
+  }, [allCountryLeads, contactedSet]);
+
+  const countryLeads = useMemo(() => {
+    const base =
+      contactFilter === "contacted"
+        ? countryStats.contacted
+        : contactFilter === "uncontacted"
+          ? countryStats.uncontacted
+          : allCountryLeads;
+    return base.slice(0, 300);
+  }, [contactFilter, countryStats, allCountryLeads]);
+
+  const handleCreateRecoveryCampaign = async () => {
+    if (!selectedCountry || countryStats.uncontacted.length === 0) return;
+    setCreatingCampaign(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) {
+        toast.error("Debes iniciar sesión");
+        setCreatingCampaign(false);
+        return;
+      }
+      const phones = countryStats.uncontacted.map((l) => l.telefono);
+      const { error } = await supabase.from("lead_recovery_campaigns").insert({
+        user_id: userId,
+        campaign_name: `Recuperación ${selectedCountry.pais} · ${new Date().toLocaleDateString()}`,
+        channel: "whatsapp",
+        status: "pendiente",
+        target_filters: {
+          pais: selectedCountry.pais,
+          solo_no_contactados: true,
+          telefonos: phones,
+        },
+        total_leads: phones.length,
+        message_template_whatsapp:
+          "Hola {{nombre}}, te contactamos desde Realtyplus. ¿Sigues interesado en propiedades en " +
+          selectedCountry.pais +
+          "?",
+      });
+      if (error) throw error;
+      toast.success("Campaña creada", {
+        description: `${phones.length} leads sin contactar listos para automatización`,
+      });
+      navigate("/campaigns");
+    } catch (e: any) {
+      toast.error("Error al crear campaña", { description: e?.message });
+    }
+    setCreatingCampaign(false);
+  };
 
   if (loading) {
     return (
