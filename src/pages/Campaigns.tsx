@@ -1,44 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, RefreshCw, Plus } from "lucide-react";
+import { Megaphone, RefreshCw, Plus, Users, Send, CheckCircle2, TrendingUp, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import CreateCampaignDialog from "@/components/campaigns/CreateCampaignDialog";
-
-interface Campaign {
-  id: string;
-  campaign_name: string;
-  status: string | null;
-  channel: string | null;
-  total_leads: number | null;
-  contacted_whatsapp: number | null;
-  contacted_email: number | null;
-  responded: number | null;
-  converted: number | null;
-  created_at: string | null;
-}
+import CampaignDetailsDialog, { CampaignRow } from "@/components/campaigns/CampaignDetailsDialog";
 
 export default function Campaigns() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selected, setSelected] = useState<CampaignRow | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const fetchCampaigns = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("lead_recovery_campaigns")
-      .select("id, campaign_name, status, channel, total_leads, contacted_whatsapp, contacted_email, responded, converted, created_at")
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error && data) setCampaigns(data);
+    if (!error && data) setCampaigns(data as CampaignRow[]);
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchCampaigns();
-  }, []);
+  useEffect(() => { fetchCampaigns(); }, []);
+
+  const kpis = useMemo(() => {
+    const total = campaigns.length;
+    const executing = campaigns.filter(c => c.status?.toLowerCase() === "executing").length;
+    const totalLeads = campaigns.reduce((s, c) => s + (c.total_leads ?? 0), 0);
+    const contacted = campaigns.reduce((s, c) => s + (c.contacted_whatsapp ?? 0) + (c.contacted_email ?? 0), 0);
+    const responded = campaigns.reduce((s, c) => s + (c.responded ?? 0), 0);
+    const converted = campaigns.reduce((s, c) => s + (c.converted ?? 0), 0);
+    const responseRate = totalLeads > 0 ? ((responded / totalLeads) * 100).toFixed(1) : "0";
+    const conversionRate = totalLeads > 0 ? ((converted / totalLeads) * 100).toFixed(1) : "0";
+    return { total, executing, totalLeads, contacted, responded, converted, responseRate, conversionRate };
+  }, [campaigns]);
+
+  const kpiCards = [
+    { label: "Campañas", value: kpis.total, sub: `${kpis.executing} activas`, icon: Megaphone, color: "text-primary" },
+    { label: "Leads totales", value: kpis.totalLeads, sub: "en campañas", icon: Users, color: "text-blue-600" },
+    { label: "Contactados", value: kpis.contacted, sub: "WhatsApp + Email", icon: Send, color: "text-indigo-600" },
+    { label: "Respondieron", value: kpis.responded, sub: `${kpis.responseRate}% tasa`, icon: CheckCircle2, color: "text-emerald-600" },
+    { label: "Convertidos", value: kpis.converted, sub: `${kpis.conversionRate}% tasa`, icon: TrendingUp, color: "text-accent" },
+    { label: "Ejecutando", value: kpis.executing, sub: "en curso", icon: Activity, color: "text-amber-600" },
+  ];
 
   const statusColor = (estado: string | null) => {
     switch (estado?.toLowerCase()) {
@@ -58,12 +67,17 @@ export default function Campaigns() {
     }
   };
 
+  const openDetails = (c: CampaignRow) => {
+    setSelected(c);
+    setDetailsOpen(true);
+  };
+
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Megaphone className="h-6 w-6 text-accent" />
-          <h2 className="text-2xl font-bold text-foreground">Campañas</h2>
+          <h2 className="text-2xl font-bold text-foreground">Dashboard de Campañas</h2>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchCampaigns} disabled={loading}>
@@ -75,9 +89,25 @@ export default function Campaigns() {
         </div>
       </div>
 
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {kpiCards.map(k => (
+          <Card key={k.label} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground">{k.label}</p>
+                <k.icon className={`h-4 w-4 ${k.color}`} />
+              </div>
+              <p className="text-2xl font-bold mt-1">{k.value}</p>
+              <p className="text-xs text-muted-foreground">{k.sub}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Historial de Campañas</CardTitle>
+          <CardTitle className="text-base">Historial de Campañas · clic para ver detalle y ejecutar</CardTitle>
         </CardHeader>
         <CardContent>
           {campaigns.length === 0 && !loading ? (
@@ -94,22 +124,26 @@ export default function Campaigns() {
                   <TableHead className="text-right">Respondidos</TableHead>
                   <TableHead className="text-right">Convertidos</TableHead>
                   <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {campaigns.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetails(c)}>
                     <TableCell className="font-medium">{c.campaign_name}</TableCell>
                     <TableCell className="text-sm">{channelLabel(c.channel)}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusColor(c.status)}>{c.status || "—"}</Badge>
-                    </TableCell>
+                    <TableCell><Badge variant={statusColor(c.status)}>{c.status || "—"}</Badge></TableCell>
                     <TableCell className="text-right">{c.total_leads ?? 0}</TableCell>
                     <TableCell className="text-right">{(c.contacted_whatsapp ?? 0) + (c.contacted_email ?? 0)}</TableCell>
                     <TableCell className="text-right">{c.responded ?? 0}</TableCell>
                     <TableCell className="text-right font-semibold">{c.converted ?? 0}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {c.created_at ? new Date(c.created_at).toLocaleDateString("es-ES") : "—"}
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button size="sm" variant="outline" onClick={() => openDetails(c)}>
+                        <Send className="mr-1 h-3 w-3" /> Ejecutar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -120,6 +154,12 @@ export default function Campaigns() {
       </Card>
 
       <CreateCampaignDialog open={dialogOpen} onOpenChange={setDialogOpen} onCreated={fetchCampaigns} />
+      <CampaignDetailsDialog
+        campaign={selected}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        onExecuted={fetchCampaigns}
+      />
     </div>
   );
 }
