@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Rocket, Send, Calendar, Users, MessageCircle, Mail, CheckCircle2, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const N8N_WEBHOOK = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas";
 
@@ -40,6 +41,27 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
   const handleExecute = async () => {
     setExecuting(true);
     try {
+      const tf = campaign.target_filters || {};
+      const pais = tf?.pais || null;
+      const telefonos = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
+      const soloNoContactados = !!tf?.solo_no_contactados;
+
+      // Fetch full sheet rows for this country / filter
+      let sheetLeads: any[] = [];
+      let sheetTotal = 0;
+      try {
+        const { data, error } = await supabase.functions.invoke("sheets-leads", {
+          body: { pais, solo_no_contactados: soloNoContactados, telefonos },
+        });
+        if (error) throw error;
+        if (data?.success) {
+          sheetLeads = data.leads || [];
+          sheetTotal = data.total || sheetLeads.length;
+        }
+      } catch (e) {
+        console.warn("No se pudo obtener leads del sheet:", e);
+      }
+
       const res = await fetch(N8N_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,11 +75,16 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
           message_template_email: campaign.message_template_email,
           subject_email: campaign.subject_email,
           target_filters: campaign.target_filters,
+          sheet: {
+            pais,
+            total: sheetTotal,
+            leads: sheetLeads, // [{id_contacto, nombres, apellidos, email, telefono, pais, dias_transcurridos}]
+          },
           triggered_at: new Date().toISOString(),
         }),
       });
       if (!res.ok) throw new Error(`Webhook respondió ${res.status}`);
-      toast({ title: "Campaña enviada", description: "Datos enviados al webhook de n8n." });
+      toast({ title: "Campaña enviada", description: `${sheetTotal} leads enviados al webhook.` });
       onExecuted?.();
       onOpenChange(false);
     } catch (err: any) {
