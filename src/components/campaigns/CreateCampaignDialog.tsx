@@ -21,7 +21,11 @@ interface Lead {
   pais: string | null;
   estado: string | null;
   bot_activo: boolean | null;
+  id_contacto: string | null;
+  dias_reales: number | null;
 }
+
+const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
 interface CreateCampaignDialogProps {
   open: boolean;
