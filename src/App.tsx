@@ -37,8 +37,8 @@ const App = () => (
                   <Layout>
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
-                      <Route path="/scanner" element={<Scanner />} />
-                      <Route path="/campaigns" element={<Campaigns />} />
+                      <Route path="/scanner" element={<AdminRoute><Scanner /></AdminRoute>} />
+                      <Route path="/campaigns" element={<AdminRoute><Campaigns /></AdminRoute>} />
                       <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />
                       <Route path="/tagged" element={<AdminRoute><TaggedMessages /></AdminRoute>} />
                       <Route path="*" element={<NotFound />} />
