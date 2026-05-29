@@ -92,6 +92,10 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<CountryKPI | null>(null);
+  const [contactedSet, setContactedSet] = useState<Set<string>>(new Set());
+  const [inboundSet, setInboundSet] = useState<Set<string>>(new Set());
+  const [contactFilter, setContactFilter] = useState<"all" | "contacted" | "uncontacted">("all");
+  const [creatingCampaign, setCreatingCampaign] = useState(false);
 
   async function fetchData() {
     // Fetch messages in pages (Supabase default cap is 1000)
