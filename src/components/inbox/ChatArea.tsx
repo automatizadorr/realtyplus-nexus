@@ -38,14 +38,15 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [searchIdx, setSearchIdx] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isAtTop, setIsAtTop] = useState(true);
   const [highlightId, setHighlightId] = useState<string | number | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const [idContacto, setIdContacto] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isAtBottomRef = useRef(true);
+  const scrollViewportRef = useRef<HTMLElement | null>(null);
+  const isAtTopRef = useRef(true);
   const lastInboundIdRef = useRef<string | number | null>(null);
   const oldestCreatedAtRef = useRef<string | null>(null);
   const loadingOlderRef = useRef(false);
@@ -53,6 +54,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const phoneBaseRef = useRef<string>("");
   const { toast } = useToast();
   const { isAdmin } = useIsAdmin();
+
 
   const PAGE_SIZE = 50;
 
