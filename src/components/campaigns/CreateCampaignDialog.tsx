@@ -254,6 +254,41 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
               </Select>
             </div>
 
+            <div className="flex gap-2">
+              <Select value={contactFilter} onValueChange={(v: any) => setContactFilter(v)}>
+                <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="uncontacted">Sin contactar</SelectItem>
+                  <SelectItem value="contacted">Contactados</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                className="flex-1 h-8 text-xs"
+                placeholder="ID contacto"
+                value={idFilter}
+                onChange={e => setIdFilter(e.target.value)}
+              />
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-muted-foreground shrink-0">Días:</span>
+              <Input
+                type="number"
+                className="flex-1 h-8 text-xs"
+                placeholder="Min"
+                value={minDays}
+                onChange={e => setMinDays(e.target.value)}
+              />
+              <Input
+                type="number"
+                className="flex-1 h-8 text-xs"
+                placeholder="Max"
+                value={maxDays}
+                onChange={e => setMaxDays(e.target.value)}
+              />
+            </div>
+
             <div className="flex items-center gap-2 px-1">
               <Checkbox
                 checked={filtered.length > 0 && selectedIds.size === filtered.length}
