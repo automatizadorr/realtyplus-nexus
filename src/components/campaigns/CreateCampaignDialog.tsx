@@ -69,6 +69,10 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       setSearchQuery("");
       setFilterEstado("all");
       setFilterPais("all");
+      setContactFilter("all");
+      setIdFilter("");
+      setMinDays("");
+      setMaxDays("");
     }
   }, [open]);
 
