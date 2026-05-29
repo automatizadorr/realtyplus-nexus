@@ -200,16 +200,17 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   useEffect(() => {
     const el = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
     if (!el) return;
+    scrollViewportRef.current = el;
     const onScroll = () => {
-      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-      const atBottom = distance < 80;
-      isAtBottomRef.current = atBottom;
-      setIsAtBottom(atBottom);
-      if (atBottom) {
+      const atTop = el.scrollTop < 80;
+      isAtTopRef.current = atTop;
+      setIsAtTop(atTop);
+      if (atTop) {
         setUnreadCount(0);
         lastInboundIdRef.current = null;
       }
-      if (el.scrollTop < 120 && hasMoreOlderRef.current && !loadingOlderRef.current) {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (distanceFromBottom < 120 && hasMoreOlderRef.current && !loadingOlderRef.current) {
         loadOlder();
       }
     };
@@ -218,15 +219,16 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     return () => el.removeEventListener("scroll", onScroll);
   }, [selectedContact?.telefono, loading]);
 
-  // Auto-scroll only when user is already at bottom (and not actively searching)
+  // Auto-scroll to top when a new message arrives and user is already at top
   useEffect(() => {
     if (searchOpen && searchQuery.trim()) return;
-    if (isAtBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollViewportRef.current;
+    if (el && isAtTopRef.current) {
+      el.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [messages, searchOpen, searchQuery]);
 
-  const scrollToBottom = () => {
+  const scrollToTop = () => {
     const targetId = lastInboundIdRef.current;
     const targetEl = targetId != null ? document.getElementById(`msg-${targetId}`) : null;
     if (targetEl) {
@@ -234,12 +236,12 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       setHighlightId(targetId);
       window.setTimeout(() => setHighlightId((cur) => (cur === targetId ? null : cur)), 1800);
     } else {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      scrollViewportRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     }
     setUnreadCount(0);
     lastInboundIdRef.current = null;
-    // Keep search query/results intact; just ensure focus stays on chat
   };
+
 
   // Search match indices
   const matchIds = useMemo(() => {
