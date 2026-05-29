@@ -74,11 +74,21 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
 
   const fetchLeads = async () => {
     setLoadingLeads(true);
-    const { data, error } = await supabase
-      .from("leads_campana")
-      .select("id, nombre, telefono, email, pais, estado, bot_activo")
-      .order("nombre");
-    if (!error && data) setLeads(data);
+    const [{ data, error }, outRes] = await Promise.all([
+      supabase
+        .from("leads_campana")
+        .select("id, nombre, telefono, email, pais, estado, bot_activo, id_contacto, dias_reales")
+        .order("nombre"),
+      supabase
+        .from("mensajes_whatsapp")
+        .select("telefono")
+        .eq("direccion", "outbound")
+        .limit(50000),
+    ]);
+    if (!error && data) setLeads(data as Lead[]);
+    if (outRes.data) {
+      setContactedSet(new Set(outRes.data.map((m: any) => normPhone(m.telefono)).filter(Boolean)));
+    }
     setLoadingLeads(false);
   };
 
@@ -86,6 +96,8 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
   const paises = useMemo(() => [...new Set(leads.map(l => l.pais).filter(Boolean))], [leads]);
 
   const filtered = useMemo(() => {
+    const min = minDays === "" ? null : Number(minDays);
+    const max = maxDays === "" ? null : Number(maxDays);
     return leads.filter(l => {
       const matchSearch = !searchQuery ||
         l.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -93,9 +105,18 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
         (l.email && l.email.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchEstado = filterEstado === "all" || l.estado === filterEstado;
       const matchPais = filterPais === "all" || l.pais === filterPais;
-      return matchSearch && matchEstado && matchPais;
+      const matchId = !idFilter || (l.id_contacto || "").toLowerCase().includes(idFilter.toLowerCase());
+      const isContacted = contactedSet.has(normPhone(l.telefono));
+      const matchContact =
+        contactFilter === "all" ||
+        (contactFilter === "contacted" && isContacted) ||
+        (contactFilter === "uncontacted" && !isContacted);
+      const dias = l.dias_reales ?? 0;
+      const matchMin = min === null || dias >= min;
+      const matchMax = max === null || dias <= max;
+      return matchSearch && matchEstado && matchPais && matchId && matchContact && matchMin && matchMax;
     });
-  }, [leads, searchQuery, filterEstado, filterPais]);
+  }, [leads, searchQuery, filterEstado, filterPais, idFilter, contactFilter, contactedSet, minDays, maxDays]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
