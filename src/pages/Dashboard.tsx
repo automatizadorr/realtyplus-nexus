@@ -129,12 +129,17 @@ export default function Dashboard() {
     setLeads(leadsData);
 
     // Real respondents = distinct phones with at least one inbound message
+    // Contacted = distinct phones with at least one outbound message
     const inboundPhones = new Set<string>();
+    const outboundPhones = new Set<string>();
     messages.forEach((m) => {
-      if (m.direccion === "inbound" && m.telefono) {
-        inboundPhones.add(String(m.telefono).split("@")[0]);
-      }
+      if (!m.telefono) return;
+      const phone = String(m.telefono).split("@")[0];
+      if (m.direccion === "inbound") inboundPhones.add(phone);
+      else if (m.direccion === "outbound") outboundPhones.add(phone);
     });
+    setInboundSet(inboundPhones);
+    setContactedSet(outboundPhones);
 
     const leadsResponded = leadsData.filter((l) =>
       inboundPhones.has(String(l.telefono).split("@")[0]),
