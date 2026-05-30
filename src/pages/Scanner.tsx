@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScanSearch, Rocket, Trash2, Upload } from "lucide-react";
+import { ScanSearch, Rocket, Trash2, Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -15,9 +15,12 @@ interface ParsedContact {
   nombre: string;
   telefono: string;
   email: string;
+  id_contacto?: string | null;
 }
 
 const WEBHOOK_URL = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
+
+const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
 export default function Scanner() {
   const [rawText, setRawText] = useState("");
@@ -25,6 +28,7 @@ export default function Scanner() {
   const [messageTemplate, setMessageTemplate] = useState("");
   const [contacts, setContacts] = useState<ParsedContact[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<"" | "syncing" | "importing">("");
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -41,6 +45,7 @@ export default function Scanner() {
         nombre,
         telefono: phoneMatch?.replace(/\s/g, "") || "",
         email: emailMatch || "",
+        id_contacto: null,
       };
     });
     setContacts(parsed.filter((c) => c.telefono));
@@ -86,31 +91,75 @@ export default function Scanner() {
       return;
     }
     setLoading(true);
+    setLoadingStage("syncing");
     try {
-      const { error: campError } = await supabase
-        .from("lead_recovery_campaigns")
-        .insert({
-          user_id: user.id,
-          campaign_name: campaignName,
-          status: "executing",
-          channel: "whatsapp",
-          message_template_whatsapp: messageTemplate || null,
-          total_leads: contacts.length,
+      // a/b. Fetch all leads from Google Sheets to build lookup maps
+      const emailMap = new Map<string, string>();
+      const phoneMap = new Map<string, string>();
+      try {
+        const { data: sheetsData, error: sheetsErr } = await supabase.functions.invoke("sheets-leads", {
+          body: {},
         });
+        if (sheetsErr) throw sheetsErr;
+        const leads: any[] = sheetsData?.leads || [];
+        for (const l of leads) {
+          const id = (l.id_contacto || "").toString().trim();
+          if (!id) continue;
+          const em = (l.email || "").toString().trim().toLowerCase();
+          const ph = normPhone(l.telefono || "");
+          if (em && !emailMap.has(em)) emailMap.set(em, id);
+          if (ph && !phoneMap.has(ph)) phoneMap.set(ph, id);
+        }
+      } catch (err: any) {
+        console.warn("sheets-leads enrichment failed:", err);
+        toast({
+          title: "Aviso",
+          description: "No se pudieron sincronizar IDs desde Google Sheets. Continuando sin enriquecimiento.",
+        });
+      }
 
-      if (campError) throw campError;
+      // c. Enrich contacts with id_contacto
+      const enriched = contacts.map((c) => {
+        const em = (c.email || "").trim().toLowerCase();
+        const ph = normPhone(c.telefono);
+        const id = (em && emailMap.get(em)) || (ph && phoneMap.get(ph)) || null;
+        return { ...c, id_contacto: id };
+      });
+      const matchedCount = enriched.filter((c) => c.id_contacto).length;
+      setContacts(enriched);
 
-      const leads = contacts.map((c) => ({
+      setLoadingStage("importing");
+
+      // d. Upsert into leads_escaner
+      const rows = enriched.map((c) => ({
+        id_contacto: c.id_contacto,
         nombre: c.nombre,
         telefono: c.telefono,
         email: c.email || null,
+        campaign_name: campaignName,
+        message_template: messageTemplate || null,
+        archivo_origen: fileName || null,
         estado: "nuevo",
+        user_id: user.id,
       }));
 
-      const { error: leadsError } = await supabase.from("leads_campana").insert(leads);
-      if (leadsError) throw leadsError;
+      const { error: escanerError } = await supabase
+        .from("leads_escaner")
+        .upsert(rows, { onConflict: "telefono,campaign_name", ignoreDuplicates: true });
+      if (escanerError) throw escanerError;
 
-      // Fire-and-forget webhook notification
+      // e. Create campaign record
+      const { error: campError } = await supabase.from("lead_recovery_campaigns").insert({
+        user_id: user.id,
+        campaign_name: campaignName,
+        status: "executing",
+        channel: "whatsapp",
+        message_template_whatsapp: messageTemplate || null,
+        total_leads: enriched.length,
+      });
+      if (campError) throw campError;
+
+      // f. Fire-and-forget webhook
       fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,14 +168,17 @@ export default function Scanner() {
           user_email: user.email,
           campaign_name: campaignName,
           message_template: messageTemplate,
-          total_contacts: contacts.length,
-          contacts,
-          file_name: fileName || null,
+          total_contacts: enriched.length,
+          contacts: enriched,
+          archivo_origen: fileName || null,
           timestamp: new Date().toISOString(),
         }),
-      }).catch((err) => console.error("Webhook primer_contacto failed:", err));
+      }).catch((err) => console.warn("Webhook primer_contacto failed:", err));
 
-      toast({ title: "¡Campaña lanzada!", description: `${contacts.length} contactos importados.` });
+      toast({
+        title: "¡Campaña lanzada!",
+        description: `${enriched.length} contactos importados (${matchedCount} con ID de hoja).`,
+      });
       setRawText("");
       setCampaignName("");
       setMessageTemplate("");
@@ -136,8 +188,15 @@ export default function Scanner() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
+      setLoadingStage("");
     }
   };
+
+  const launchLabel = loadingStage === "syncing"
+    ? "Sincronizando IDs..."
+    : loadingStage === "importing"
+    ? "Importando..."
+    : "Lanzar Campaña";
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -179,11 +238,12 @@ export default function Scanner() {
               {fileName && <p className="text-xs text-muted-foreground">Archivo: {fileName}</p>}
             </div>
             <div className="flex gap-3">
-              <Button onClick={parseContacts} variant="secondary" className="flex-1">
+              <Button onClick={parseContacts} variant="secondary" className="flex-1" disabled={loading}>
                 <ScanSearch className="mr-2 h-4 w-4" /> Procesar
               </Button>
               <Button onClick={launchCampaign} disabled={contacts.length === 0 || loading} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
-                <Rocket className="mr-2 h-4 w-4" /> Lanzar Campaña
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}
+                {launchLabel}
               </Button>
             </div>
           </CardContent>
@@ -204,6 +264,7 @@ export default function Scanner() {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Teléfono</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>ID Hoja</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -213,6 +274,7 @@ export default function Scanner() {
                         <TableCell className="font-medium">{c.nombre}</TableCell>
                         <TableCell>{c.telefono}</TableCell>
                         <TableCell>{c.email}</TableCell>
+                        <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
                         <TableCell>
                           <Button size="icon" variant="ghost" onClick={() => removeContact(i)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
