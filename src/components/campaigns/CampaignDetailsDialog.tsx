@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Rocket, Send, Calendar, Users, MessageCircle, Mail, CheckCircle2, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import CampaignExecuteWarning from "./CampaignExecuteWarning";
 
 
 
@@ -35,6 +36,7 @@ interface Props {
 export default function CampaignDetailsDialog({ campaign, open, onOpenChange, onExecuted }: Props) {
   const { toast } = useToast();
   const [executing, setExecuting] = useState(false);
+  const [warningOpen, setWarningOpen] = useState(false);
 
   if (!campaign) return null;
 
@@ -159,12 +161,25 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
-          <Button onClick={handleExecute} disabled={executing} className="bg-accent text-accent-foreground hover:bg-accent/90">
+          <Button
+            onClick={() => setWarningOpen(true)}
+            disabled={executing}
+            className="bg-accent text-accent-foreground hover:bg-accent/90"
+          >
             <Send className="mr-2 h-4 w-4" />
             {executing ? "Enviando..." : "Ejecutar Campaña"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <CampaignExecuteWarning
+        open={warningOpen}
+        onOpenChange={setWarningOpen}
+        campaignName={campaign.campaign_name}
+        totalLeads={campaign.total_leads ?? 0}
+        channel={campaign.channel}
+        onConfirm={handleExecute}
+      />
     </Dialog>
   );
 }
