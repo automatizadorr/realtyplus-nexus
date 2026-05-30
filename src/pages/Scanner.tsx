@@ -11,6 +11,7 @@ import { ScanSearch, Rocket, Trash2, Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import CampaignExecuteWarning from "@/components/campaigns/CampaignExecuteWarning";
 
 interface ParsedContact {
   nombre: string;
@@ -80,6 +81,7 @@ export default function Scanner() {
   const [contacts, setContacts] = useState<ParsedContact[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState<"" | "syncing" | "importing">("");
+  const [warningOpen, setWarningOpen] = useState(false);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -349,7 +351,17 @@ export default function Scanner() {
               <Button onClick={parseContacts} variant="secondary" className="flex-1" disabled={loading}>
                 <ScanSearch className="mr-2 h-4 w-4" /> Procesar
               </Button>
-              <Button onClick={launchCampaign} disabled={contacts.length === 0 || loading} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button
+                onClick={() => {
+                  if (!campaignName.trim() || contacts.length === 0) {
+                    toast({ title: "Error", description: "Nombre de campaña y contactos son requeridos.", variant: "destructive" });
+                    return;
+                  }
+                  setWarningOpen(true);
+                }}
+                disabled={contacts.length === 0 || loading}
+                className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
+              >
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}
                 {launchLabel}
               </Button>
@@ -410,6 +422,14 @@ export default function Scanner() {
           </CardContent>
         </Card>
       </div>
+      <CampaignExecuteWarning
+        open={warningOpen}
+        onOpenChange={setWarningOpen}
+        campaignName={campaignName || "Sin nombre"}
+        totalLeads={contacts.length}
+        channel="whatsapp"
+        onConfirm={launchCampaign}
+      />
     </div>
   );
 }
