@@ -65,14 +65,14 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Webhook-Secret": WEBHOOKS[target] ? WEBHOOK_SECRET : "",
+        ...(WEBHOOK_SECRET ? { "X-Webhook-Secret": WEBHOOK_SECRET } : {}),
       },
       body: JSON.stringify(payload),
     });
     const text = await res.text();
     if (!res.ok) {
-      return new Response(JSON.stringify({ success: false, status: res.status, body: text }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ success: true, warning: "n8n webhook non-2xx", status: res.status }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     return new Response(JSON.stringify({ success: true, response: text }), {
