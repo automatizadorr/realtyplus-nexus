@@ -196,39 +196,40 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
         console.warn("No se pudo obtener leads del sheet:", e);
       }
 
-      // 3) Send everything to n8n webhook
+      // 3) Send everything to n8n webhook (via authenticated edge function proxy)
       try {
-        const res = await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            campaign_id: inserted?.id,
-            campaign_name: campaignName.trim(),
-            channel,
-            status: "executing",
-            message_template_whatsapp: templateWhatsapp || null,
-            message_template_email: templateEmail || null,
-            subject_email: subjectEmail || null,
-            target_filters: targetFilters,
-            selected_leads: selectedLeads.map(l => ({
-              id: l.id,
-              id_contacto: l.id_contacto,
-              nombre: l.nombre,
-              telefono: l.telefono,
-              email: l.email,
-              pais: l.pais,
-              estado: l.estado,
-              bot_activo: l.bot_activo,
-              dias_reales: l.dias_reales,
-            })),
-            sheet: {
-              total: sheetTotal,
-              leads: sheetLeads,
+        const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
+          body: {
+            target: "campanas_segmentadas",
+            payload: {
+              campaign_id: inserted?.id,
+              campaign_name: campaignName.trim(),
+              channel,
+              status: "executing",
+              message_template_whatsapp: templateWhatsapp || null,
+              message_template_email: templateEmail || null,
+              subject_email: subjectEmail || null,
+              target_filters: targetFilters,
+              selected_leads: selectedLeads.map(l => ({
+                id: l.id,
+                id_contacto: l.id_contacto,
+                nombre: l.nombre,
+                telefono: l.telefono,
+                email: l.email,
+                pais: l.pais,
+                estado: l.estado,
+                bot_activo: l.bot_activo,
+                dias_reales: l.dias_reales,
+              })),
+              sheet: {
+                total: sheetTotal,
+                leads: sheetLeads,
+              },
+              triggered_at: new Date().toISOString(),
             },
-            triggered_at: new Date().toISOString(),
-          }),
+          },
         });
-        if (!res.ok) throw new Error(`Webhook respondió ${res.status}`);
+        if (whErr) throw whErr;
       } catch (whErr: any) {
         console.warn("Webhook n8n falló:", whErr);
         toast({ title: "Campaña creada (sin webhook)", description: whErr.message, variant: "destructive" });

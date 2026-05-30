@@ -17,8 +17,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { countryFlag } from "@/lib/countryFlag";
 import { useToast } from "@/hooks/use-toast";
 
-const WEBHOOK_URL =
-  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
 
 interface InboxRow {
   telefono: string;
@@ -192,19 +190,21 @@ function ConversationsTab() {
     loadMessages(selected.telefono);
 
     // fire-and-forget webhook
-    fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tipo: "mensaje_manual",
-        telefono: selected.telefono,
-        nombre: selected.nombre,
-        pais: selected.pais,
-        campaign_name: selected.campaign_name,
-        contenido: text,
-        user_id: user.id,
-        timestamp: new Date().toISOString(),
-      }),
+    // fire-and-forget webhook (via authenticated edge function proxy)
+    supabase.functions.invoke("send-n8n-webhook", {
+      body: {
+        target: "primer_contacto",
+        payload: {
+          tipo: "mensaje_manual",
+          telefono: selected.telefono,
+          nombre: selected.nombre,
+          pais: selected.pais,
+          campaign_name: selected.campaign_name,
+          contenido: text,
+          user_id: user.id,
+          timestamp: new Date().toISOString(),
+        },
+      },
     }).catch((e) => console.warn("webhook error:", e));
 
     setSending(false);
