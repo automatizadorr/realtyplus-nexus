@@ -2,18 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, RefreshCw, Plus, Users, Send, CheckCircle2, TrendingUp, Activity } from "lucide-react";
+import { Megaphone, RefreshCw, Plus, Users, Send, CheckCircle2, TrendingUp, Activity, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import CreateCampaignDialog from "@/components/campaigns/CreateCampaignDialog";
 import CampaignDetailsDialog, { CampaignRow } from "@/components/campaigns/CampaignDetailsDialog";
+import EditCampaignDialog from "@/components/campaigns/EditCampaignDialog";
 
 export default function Campaigns() {
+  const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<CampaignRow | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<CampaignRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCampaigns = async () => {
     setLoading(true);
@@ -141,9 +151,23 @@ export default function Campaigns() {
                       {c.created_at ? new Date(c.created_at).toLocaleDateString("es-ES") : "—"}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="outline" onClick={() => openDetails(c)}>
-                        <Send className="mr-1 h-3 w-3" /> Ejecutar
-                      </Button>
+                      <div className="flex gap-1 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => openDetails(c)}>
+                          <Send className="mr-1 h-3 w-3" /> Ejecutar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditTarget(c)} title="Editar">
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(c)}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -160,6 +184,48 @@ export default function Campaigns() {
         onOpenChange={setDetailsOpen}
         onExecuted={fetchCampaigns}
       />
+      <EditCampaignDialog
+        campaign={editTarget}
+        open={!!editTarget}
+        onOpenChange={(v) => !v && setEditTarget(null)}
+        onSaved={fetchCampaigns}
+      />
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar campaña?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará permanentemente "{deleteTarget?.campaign_name}". Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!deleteTarget) return;
+                setDeleting(true);
+                const { error } = await supabase
+                  .from("lead_recovery_campaigns")
+                  .delete()
+                  .eq("id", deleteTarget.id);
+                setDeleting(false);
+                if (error) {
+                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                  return;
+                }
+                toast({ title: "Campaña eliminada" });
+                setDeleteTarget(null);
+                fetchCampaigns();
+              }}
+            >
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
