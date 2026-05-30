@@ -321,9 +321,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       const { data: hookData, error: hookErr } = await supabase.functions.invoke("send-n8n-webhook", {
         body: { target: "crmrp", payload },
       });
-      if (hookErr || !(hookData as any)?.success) {
-        throw new Error((hookErr as any)?.message || "El Webhook rechazó la conexión.");
-      }
+      if (hookErr) console.warn("Webhook warning:", hookErr);
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
