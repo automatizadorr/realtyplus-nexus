@@ -319,6 +319,57 @@ export type Database = {
           },
         ]
       }
+      leads_escaner: {
+        Row: {
+          apellidos: string | null
+          archivo_origen: string | null
+          campaign_name: string
+          created_at: string
+          email: string | null
+          estado: string
+          id: string
+          id_contacto: string | null
+          message_template: string | null
+          nombre: string
+          pais: string | null
+          telefono: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          apellidos?: string | null
+          archivo_origen?: string | null
+          campaign_name: string
+          created_at?: string
+          email?: string | null
+          estado?: string
+          id?: string
+          id_contacto?: string | null
+          message_template?: string | null
+          nombre?: string
+          pais?: string | null
+          telefono: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          apellidos?: string | null
+          archivo_origen?: string | null
+          campaign_name?: string
+          created_at?: string
+          email?: string | null
+          estado?: string
+          id?: string
+          id_contacto?: string | null
+          message_template?: string | null
+          nombre?: string
+          pais?: string | null
+          telefono?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mensajes_whatsapp: {
         Row: {
           autor: string | null
