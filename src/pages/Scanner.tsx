@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { ScanSearch, Rocket, Trash2, Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +16,57 @@ interface ParsedContact {
   nombre: string;
   telefono: string;
   email: string;
+  pais: string;
+  fuente: string;
   id_contacto?: string | null;
+}
+
+const COUNTRY_PREFIXES: { prefix: string; pais: string }[] = [
+  { prefix: "591", pais: "Bolivia" },
+  { prefix: "56", pais: "Chile" },
+  { prefix: "52", pais: "México" },
+  { prefix: "54", pais: "Argentina" },
+  { prefix: "51", pais: "Perú" },
+  { prefix: "57", pais: "Colombia" },
+  { prefix: "34", pais: "España" },
+  { prefix: "40", pais: "Rumanía" },
+  { prefix: "385", pais: "Croacia" },
+  { prefix: "359", pais: "Bulgaria" },
+  { prefix: "20", pais: "Egipto" },
+  { prefix: "27", pais: "Sudáfrica" },
+  { prefix: "7", pais: "Rusia" },
+  { prefix: "1", pais: "EEUU" },
+];
+
+const COUNTRY_KEYWORDS = ["Bolivia", "Chile", "México", "Mexico", "Argentina", "Perú", "Peru", "Colombia", "España", "Espana", "Rumanía", "Rumania", "Croacia", "Bulgaria", "EEUU", "USA"];
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  Bolivia: "🇧🇴", Chile: "🇨🇱", México: "🇲🇽", Mexico: "🇲🇽", Argentina: "🇦🇷",
+  Perú: "🇵🇪", Peru: "🇵🇪", Colombia: "🇨🇴", España: "🇪🇸", Espana: "🇪🇸",
+  Rumanía: "🇷🇴", Rumania: "🇷🇴", Croacia: "🇭🇷", Bulgaria: "🇧🇬",
+  EEUU: "🇺🇸", USA: "🇺🇸", Egipto: "🇪🇬", Sudáfrica: "🇿🇦", Rusia: "🇷🇺",
+  Desconocido: "🌍",
+};
+
+const STATUS_WORDS = new Set(["nuevo", "contactado", "sin", "definir", "seguimiento", "finalizada", "meet", "llamar", "cerrado", "activo", "inactivo", "respondió", "respondio"]);
+
+function inferCountryByPhone(digits: string): string | null {
+  for (const { prefix, pais } of COUNTRY_PREFIXES) {
+    if (digits.startsWith(prefix)) return pais;
+  }
+  return null;
+}
+
+function inferCountryByText(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const k of COUNTRY_KEYWORDS) {
+    if (lower.includes(k.toLowerCase())) return k;
+  }
+  return null;
+}
+
+function capitalize(s: string): string {
+  return s.split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 
 const WEBHOOK_URL = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
