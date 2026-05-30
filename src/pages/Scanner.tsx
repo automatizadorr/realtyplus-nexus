@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { ScanSearch, Rocket, Trash2, Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +16,57 @@ interface ParsedContact {
   nombre: string;
   telefono: string;
   email: string;
+  pais: string;
+  fuente: string;
   id_contacto?: string | null;
+}
+
+const COUNTRY_PREFIXES: { prefix: string; pais: string }[] = [
+  { prefix: "591", pais: "Bolivia" },
+  { prefix: "56", pais: "Chile" },
+  { prefix: "52", pais: "México" },
+  { prefix: "54", pais: "Argentina" },
+  { prefix: "51", pais: "Perú" },
+  { prefix: "57", pais: "Colombia" },
+  { prefix: "34", pais: "España" },
+  { prefix: "40", pais: "Rumanía" },
+  { prefix: "385", pais: "Croacia" },
+  { prefix: "359", pais: "Bulgaria" },
+  { prefix: "20", pais: "Egipto" },
+  { prefix: "27", pais: "Sudáfrica" },
+  { prefix: "7", pais: "Rusia" },
+  { prefix: "1", pais: "EEUU" },
+];
+
+const COUNTRY_KEYWORDS = ["Bolivia", "Chile", "México", "Mexico", "Argentina", "Perú", "Peru", "Colombia", "España", "Espana", "Rumanía", "Rumania", "Croacia", "Bulgaria", "EEUU", "USA"];
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  Bolivia: "🇧🇴", Chile: "🇨🇱", México: "🇲🇽", Mexico: "🇲🇽", Argentina: "🇦🇷",
+  Perú: "🇵🇪", Peru: "🇵🇪", Colombia: "🇨🇴", España: "🇪🇸", Espana: "🇪🇸",
+  Rumanía: "🇷🇴", Rumania: "🇷🇴", Croacia: "🇭🇷", Bulgaria: "🇧🇬",
+  EEUU: "🇺🇸", USA: "🇺🇸", Egipto: "🇪🇬", Sudáfrica: "🇿🇦", Rusia: "🇷🇺",
+  Desconocido: "🌍",
+};
+
+const STATUS_WORDS = new Set(["nuevo", "contactado", "sin", "definir", "seguimiento", "finalizada", "meet", "llamar", "cerrado", "activo", "inactivo", "respondió", "respondio"]);
+
+function inferCountryByPhone(digits: string): string | null {
+  for (const { prefix, pais } of COUNTRY_PREFIXES) {
+    if (digits.startsWith(prefix)) return pais;
+  }
+  return null;
+}
+
+function inferCountryByText(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const k of COUNTRY_KEYWORDS) {
+    if (lower.includes(k.toLowerCase())) return k;
+  }
+  return null;
+}
+
+function capitalize(s: string): string {
+  return s.split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 
 const WEBHOOK_URL = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
@@ -35,20 +86,76 @@ export default function Scanner() {
   const { user } = useAuth();
 
   const parseContacts = () => {
-    const lines = rawText.split("\n").filter((l) => l.trim());
-    const parsed: ParsedContact[] = lines.map((line) => {
-      const parts = line.split(/[,;\t]+/).map((p) => p.trim());
-      const phoneMatch = parts.find((p) => /\+?\d{7,}/.test(p.replace(/\s/g, "")));
-      const emailMatch = parts.find((p) => /@/.test(p));
-      const nombre = parts.find((p) => p !== phoneMatch && p !== emailMatch) || "";
-      return {
-        nombre,
-        telefono: phoneMatch?.replace(/\s/g, "") || "",
-        email: emailMatch || "",
-        id_contacto: null,
-      };
+    const fuente = fileName
+      ? (/\.(xlsx|xls)$/i.test(fileName) ? "excel" : /\.csv$/i.test(fileName) ? "csv" : "texto")
+      : "texto";
+
+    const emailRe = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
+    const phoneRe = /(?:\+|00)?[\d\s().\-]{7,}/g;
+
+    const rawLines = rawText.split("\n");
+    const parsed: ParsedContact[] = [];
+
+    for (const rawLine of rawLines) {
+      const line = rawLine.trim();
+      if (line.length < 6) continue;
+      if (/^[-=._\s]+$/.test(line)) continue;
+
+      const emailMatch = line.match(emailRe);
+      const email = emailMatch ? emailMatch[0] : "";
+
+      let bestDigits = "";
+      let bestStartsPlus = false;
+      const matches = line.match(phoneRe) || [];
+      for (const m of matches) {
+        const trimmed = m.trim();
+        const startsPlus = trimmed.startsWith("+") || trimmed.startsWith("00");
+        const digits = trimmed.replace(/\D/g, "");
+        if (digits.length < 7) continue;
+        if (digits.length > bestDigits.length) {
+          bestDigits = digits;
+          bestStartsPlus = startsPlus;
+        }
+      }
+      if (!bestDigits) continue;
+
+      let telefono = bestStartsPlus ? "+" + bestDigits.replace(/^0+/, "") : "+" + bestDigits;
+      const digitsOnly = telefono.replace(/\D/g, "");
+      const pais =
+        inferCountryByPhone(digitsOnly) ||
+        inferCountryByText(line) ||
+        "Desconocido";
+
+      const cleaned = line.replace(emailRe, " ").replace(phoneRe, " ");
+      const tokens = cleaned
+        .split(/[,;\t|]+|\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .filter((t) => !/^\+?\d+$/.test(t))
+        .filter((t) => !STATUS_WORDS.has(t.toLowerCase()))
+        .filter((t) => !COUNTRY_KEYWORDS.some((k) => k.toLowerCase() === t.toLowerCase()));
+
+      let nombre = capitalize(tokens.join(" ")).slice(0, 60).trim();
+      if (!nombre) nombre = "Sin nombre";
+
+      parsed.push({ nombre, telefono, email, pais, fuente, id_contacto: null });
+    }
+
+    const seen = new Set<string>();
+    const unique: ParsedContact[] = [];
+    let duplicates = 0;
+    for (const c of parsed) {
+      const key = c.telefono.replace(/\D/g, "");
+      if (seen.has(key)) { duplicates++; continue; }
+      seen.add(key);
+      unique.push(c);
+    }
+
+    setContacts(unique);
+    toast({
+      title: "Contactos procesados",
+      description: `${unique.length} contactos detectados${duplicates ? ` · ${duplicates} duplicados eliminados` : ""}.`,
     });
-    setContacts(parsed.filter((c) => c.telefono));
   };
 
   const removeContact = (index: number) => {
@@ -257,34 +364,47 @@ export default function Scanner() {
             {contacts.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-8">Pega texto y presiona "Procesar" para detectar contactos.</p>
             ) : (
-              <div className="max-h-[400px] overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>ID Hoja</TableHead>
-                      <TableHead className="w-10"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contacts.map((c, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">{c.nombre}</TableCell>
-                        <TableCell>{c.telefono}</TableCell>
-                        <TableCell>{c.email}</TableCell>
-                        <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
-                        <TableCell>
-                          <Button size="icon" variant="ghost" onClick={() => removeContact(i)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
+              <>
+                <div className="max-h-[400px] overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Teléfono</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>ID Hoja</TableHead>
+                        <TableHead>País</TableHead>
+                        <TableHead className="w-10"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {contacts.map((c, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{c.nombre}</TableCell>
+                          <TableCell>{c.telefono}</TableCell>
+                          <TableCell>{c.email}</TableCell>
+                          <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
+                          <TableCell>
+                            <span className="mr-1">{COUNTRY_FLAGS[c.pais] || "🌍"}</span>
+                            <span className="text-xs">{c.pais}</span>
+                          </TableCell>
+                          <TableCell>
+                            <Button size="icon" variant="ghost" onClick={() => removeContact(i)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <Badge variant="secondary">Total: {contacts.length}</Badge>
+                  <Badge variant="secondary">Con email: {contacts.filter((c) => c.email).length}</Badge>
+                  <Badge variant="secondary">Sin email: {contacts.filter((c) => !c.email).length}</Badge>
+                  <Badge variant="secondary">Países únicos: {new Set(contacts.map((c) => c.pais)).size}</Badge>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
