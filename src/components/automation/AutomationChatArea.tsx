@@ -291,19 +291,20 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       }
       setNewMessage("");
 
-      fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: "respuesta_manual",
-          telefono: selectedContact.telefono,
-          nombre: selectedContact.nombre,
-          pais: selectedContact.pais,
-          campaign_name: selectedContact.campaign_name,
-          contenido,
-          user_id: user?.id,
-          timestamp: new Date().toISOString(),
-        }),
+      supabase.functions.invoke("send-n8n-webhook", {
+        body: {
+          target: "primer_contacto",
+          payload: {
+            tipo: "respuesta_manual",
+            telefono: selectedContact.telefono,
+            nombre: selectedContact.nombre,
+            pais: selectedContact.pais,
+            campaign_name: selectedContact.campaign_name,
+            contenido,
+            user_id: user?.id,
+            timestamp: new Date().toISOString(),
+          },
+        },
       }).catch((e) => console.warn("Webhook warning:", e));
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
