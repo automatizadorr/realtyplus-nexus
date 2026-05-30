@@ -33,7 +33,7 @@ interface Props {
   onBack?: () => void;
 }
 
-const WEBHOOK_URL = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
+
 const PAGE_SIZE = 50;
 
 function estadoColor(estado: string | null | undefined) {
