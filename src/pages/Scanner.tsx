@@ -364,34 +364,47 @@ export default function Scanner() {
             {contacts.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-8">Pega texto y presiona "Procesar" para detectar contactos.</p>
             ) : (
-              <div className="max-h-[400px] overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>ID Hoja</TableHead>
-                      <TableHead className="w-10"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contacts.map((c, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">{c.nombre}</TableCell>
-                        <TableCell>{c.telefono}</TableCell>
-                        <TableCell>{c.email}</TableCell>
-                        <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
-                        <TableCell>
-                          <Button size="icon" variant="ghost" onClick={() => removeContact(i)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
+              <>
+                <div className="max-h-[400px] overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Teléfono</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>ID Hoja</TableHead>
+                        <TableHead>País</TableHead>
+                        <TableHead className="w-10"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {contacts.map((c, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{c.nombre}</TableCell>
+                          <TableCell>{c.telefono}</TableCell>
+                          <TableCell>{c.email}</TableCell>
+                          <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
+                          <TableCell>
+                            <span className="mr-1">{COUNTRY_FLAGS[c.pais] || "🌍"}</span>
+                            <span className="text-xs">{c.pais}</span>
+                          </TableCell>
+                          <TableCell>
+                            <Button size="icon" variant="ghost" onClick={() => removeContact(i)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <Badge variant="secondary">Total: {contacts.length}</Badge>
+                  <Badge variant="secondary">Con email: {contacts.filter((c) => c.email).length}</Badge>
+                  <Badge variant="secondary">Sin email: {contacts.filter((c) => !c.email).length}</Badge>
+                  <Badge variant="secondary">Países únicos: {new Set(contacts.map((c) => c.pais)).size}</Badge>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
