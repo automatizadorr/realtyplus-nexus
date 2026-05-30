@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, LogOut } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut } from "lucide-react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -24,6 +24,7 @@ const items = [
   { title: "Automatización", url: "/automation-inbox", icon: Zap },
   { title: "Panel Automatización", url: "/automation", icon: Bot },
   { title: "Etiquetados", url: "/tagged", icon: Tag },
+  { title: "Configuración", url: "/settings", icon: Settings2 },
 ];
 
 function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
