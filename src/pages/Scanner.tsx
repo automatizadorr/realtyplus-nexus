@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScanSearch, Rocket, Trash2 } from "lucide-react";
+import { ScanSearch, Rocket, Trash2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -16,12 +17,16 @@ interface ParsedContact {
   email: string;
 }
 
+const WEBHOOK_URL = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
+
 export default function Scanner() {
   const [rawText, setRawText] = useState("");
   const [campaignName, setCampaignName] = useState("");
   const [messageTemplate, setMessageTemplate] = useState("");
   const [contacts, setContacts] = useState<ParsedContact[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fileName, setFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -45,6 +50,32 @@ export default function Scanner() {
     setContacts((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    try {
+      if (ext === "xlsx" || ext === "xls") {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        const lines = rows
+          .filter((r) => r.some((c) => String(c).trim()))
+          .map((r) => r.map((c) => String(c).trim()).join(", "));
+        setRawText(lines.join("\n"));
+      } else {
+        const text = await file.text();
+        setRawText(text);
+      }
+    } catch (err: any) {
+      toast({ title: "Error al leer archivo", description: err.message, variant: "destructive" });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const launchCampaign = async () => {
     if (!user) {
       toast({ title: "Error", description: "Debes iniciar sesión.", variant: "destructive" });
@@ -56,7 +87,6 @@ export default function Scanner() {
     }
     setLoading(true);
     try {
-      // 1. Create campaign with correct column names
       const { error: campError } = await supabase
         .from("lead_recovery_campaigns")
         .insert({
@@ -70,7 +100,6 @@ export default function Scanner() {
 
       if (campError) throw campError;
 
-      // 2. Insert leads into leads_campana
       const leads = contacts.map((c) => ({
         nombre: c.nombre,
         telefono: c.telefono,
@@ -81,11 +110,28 @@ export default function Scanner() {
       const { error: leadsError } = await supabase.from("leads_campana").insert(leads);
       if (leadsError) throw leadsError;
 
+      // Fire-and-forget webhook notification
+      fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          user_email: user.email,
+          campaign_name: campaignName,
+          message_template: messageTemplate,
+          total_contacts: contacts.length,
+          contacts,
+          file_name: fileName || null,
+          timestamp: new Date().toISOString(),
+        }),
+      }).catch((err) => console.error("Webhook primer_contacto failed:", err));
+
       toast({ title: "¡Campaña lanzada!", description: `${contacts.length} contactos importados.` });
       setRawText("");
       setCampaignName("");
       setMessageTemplate("");
       setContacts([]);
+      setFileName("");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -118,6 +164,19 @@ export default function Scanner() {
             <div className="space-y-2">
               <Label>Pegar Contactos (nombre, teléfono, email por línea)</Label>
               <Textarea value={rawText} onChange={(e) => setRawText(e.target.value)} placeholder="Juan Pérez, +5491112345678, juan@email.com&#10;María López, +5491198765432" rows={6} />
+            </div>
+            <div className="space-y-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.csv,.xlsx,.xls"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full">
+                <Upload className="mr-2 h-4 w-4" /> Subir archivo
+              </Button>
+              {fileName && <p className="text-xs text-muted-foreground">Archivo: {fileName}</p>}
             </div>
             <div className="flex gap-3">
               <Button onClick={parseContacts} variant="secondary" className="flex-1">
