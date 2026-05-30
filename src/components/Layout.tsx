@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -60,7 +61,11 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b bg-card px-4 gap-3">
             <SidebarTrigger />
-            <h1 className="text-sm font-semibold text-foreground">CRM Realtyplus</h1>
+            <img
+              src={realtyplusLogo}
+              alt="Realtyplus - Servicios Inmobiliarios"
+              className="h-10 w-auto object-contain"
+            />
           </header>
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
