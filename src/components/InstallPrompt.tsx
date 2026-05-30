@@ -163,7 +163,7 @@ export function InstallPrompt() {
       className={`fixed z-[60] p-3 pointer-events-none ${
         isHandheld
           ? "inset-x-0 bottom-0"
-          : "bottom-4 right-4 left-4 sm:left-auto sm:max-w-sm"
+          : "bottom-4 left-4 sm:max-w-sm"
       }`}
     >
       <div
