@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
 import Campaigns from "./pages/Campaigns";
 import Inbox from "./pages/Inbox";
+import Automation from "./pages/Automation";
 import TaggedMessages from "./pages/TaggedMessages";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
