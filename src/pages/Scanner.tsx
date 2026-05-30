@@ -86,20 +86,76 @@ export default function Scanner() {
   const { user } = useAuth();
 
   const parseContacts = () => {
-    const lines = rawText.split("\n").filter((l) => l.trim());
-    const parsed: ParsedContact[] = lines.map((line) => {
-      const parts = line.split(/[,;\t]+/).map((p) => p.trim());
-      const phoneMatch = parts.find((p) => /\+?\d{7,}/.test(p.replace(/\s/g, "")));
-      const emailMatch = parts.find((p) => /@/.test(p));
-      const nombre = parts.find((p) => p !== phoneMatch && p !== emailMatch) || "";
-      return {
-        nombre,
-        telefono: phoneMatch?.replace(/\s/g, "") || "",
-        email: emailMatch || "",
-        id_contacto: null,
-      };
+    const fuente = fileName
+      ? (/\.(xlsx|xls)$/i.test(fileName) ? "excel" : /\.csv$/i.test(fileName) ? "csv" : "texto")
+      : "texto";
+
+    const emailRe = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
+    const phoneRe = /(?:\+|00)?[\d\s().\-]{7,}/g;
+
+    const rawLines = rawText.split("\n");
+    const parsed: ParsedContact[] = [];
+
+    for (const rawLine of rawLines) {
+      const line = rawLine.trim();
+      if (line.length < 6) continue;
+      if (/^[-=._\s]+$/.test(line)) continue;
+
+      const emailMatch = line.match(emailRe);
+      const email = emailMatch ? emailMatch[0] : "";
+
+      let bestDigits = "";
+      let bestStartsPlus = false;
+      const matches = line.match(phoneRe) || [];
+      for (const m of matches) {
+        const trimmed = m.trim();
+        const startsPlus = trimmed.startsWith("+") || trimmed.startsWith("00");
+        const digits = trimmed.replace(/\D/g, "");
+        if (digits.length < 7) continue;
+        if (digits.length > bestDigits.length) {
+          bestDigits = digits;
+          bestStartsPlus = startsPlus;
+        }
+      }
+      if (!bestDigits) continue;
+
+      let telefono = bestStartsPlus ? "+" + bestDigits.replace(/^0+/, "") : "+" + bestDigits;
+      const digitsOnly = telefono.replace(/\D/g, "");
+      const pais =
+        inferCountryByPhone(digitsOnly) ||
+        inferCountryByText(line) ||
+        "Desconocido";
+
+      const cleaned = line.replace(emailRe, " ").replace(phoneRe, " ");
+      const tokens = cleaned
+        .split(/[,;\t|]+|\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .filter((t) => !/^\+?\d+$/.test(t))
+        .filter((t) => !STATUS_WORDS.has(t.toLowerCase()))
+        .filter((t) => !COUNTRY_KEYWORDS.some((k) => k.toLowerCase() === t.toLowerCase()));
+
+      let nombre = capitalize(tokens.join(" ")).slice(0, 60).trim();
+      if (!nombre) nombre = "Sin nombre";
+
+      parsed.push({ nombre, telefono, email, pais, fuente, id_contacto: null });
+    }
+
+    const seen = new Set<string>();
+    const unique: ParsedContact[] = [];
+    let duplicates = 0;
+    for (const c of parsed) {
+      const key = c.telefono.replace(/\D/g, "");
+      if (seen.has(key)) { duplicates++; continue; }
+      seen.add(key);
+      unique.push(c);
+    }
+
+    setContacts(unique);
+    toast({
+      title: "Contactos procesados",
+      description: `${unique.length} contactos detectados${duplicates ? ` · ${duplicates} duplicados eliminados` : ""}.`,
     });
-    setContacts(parsed.filter((c) => c.telefono));
   };
 
   const removeContact = (index: number) => {
