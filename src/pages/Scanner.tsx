@@ -266,20 +266,21 @@ export default function Scanner() {
       });
       if (campError) throw campError;
 
-      // f. Fire-and-forget webhook
-      fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,
-          user_email: user.email,
-          campaign_name: campaignName,
-          message_template: messageTemplate,
-          total_contacts: enriched.length,
-          contacts: enriched,
-          archivo_origen: fileName || null,
-          timestamp: new Date().toISOString(),
-        }),
+      // f. Fire-and-forget webhook (via authenticated edge function proxy)
+      supabase.functions.invoke("send-n8n-webhook", {
+        body: {
+          target: "primer_contacto",
+          payload: {
+            user_id: user.id,
+            user_email: user.email,
+            campaign_name: campaignName,
+            message_template: messageTemplate,
+            total_contacts: enriched.length,
+            contacts: enriched,
+            archivo_origen: fileName || null,
+            timestamp: new Date().toISOString(),
+          },
+        },
       }).catch((err) => console.warn("Webhook primer_contacto failed:", err));
 
       toast({
