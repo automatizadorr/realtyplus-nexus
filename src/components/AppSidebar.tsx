@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Escáner", url: "/scanner", icon: ScanSearch },
   { title: "Campañas", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes", url: "/inbox", icon: MessageSquare },
@@ -82,8 +82,8 @@ export function AppSidebar() {
             <SidebarMenu>
               {items.map((item, index) => {
                 const isActive =
-                  item.url === "/"
-                    ? location.pathname === "/"
+                  item.url === "/dashboard"
+                    ? location.pathname === "/dashboard"
                     : location.pathname.startsWith(item.url);
 
                 return (
@@ -97,7 +97,7 @@ export function AppSidebar() {
                       <SidebarMenuButton asChild>
                         <NavLink
                           to={item.url}
-                          end={item.url === "/"}
+                          end={item.url === "/dashboard"}
                           className="hover:bg-sidebar-accent/50"
                           activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                           onClick={handleNavClick}
