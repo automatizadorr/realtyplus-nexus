@@ -62,28 +62,29 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
         console.warn("No se pudo obtener leads del sheet:", e);
       }
 
-      const res = await fetch(N8N_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaign_id: campaign.id,
-          campaign_name: campaign.campaign_name,
-          channel: campaign.channel,
-          status: campaign.status,
-          total_leads: campaign.total_leads,
-          message_template_whatsapp: campaign.message_template_whatsapp,
-          message_template_email: campaign.message_template_email,
-          subject_email: campaign.subject_email,
-          target_filters: campaign.target_filters,
-          sheet: {
-            pais,
-            total: sheetTotal,
-            leads: sheetLeads, // [{id_contacto, nombres, apellidos, email, telefono, pais, dias_transcurridos}]
+      const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
+        body: {
+          target: "campanas_segmentadas",
+          payload: {
+            campaign_id: campaign.id,
+            campaign_name: campaign.campaign_name,
+            channel: campaign.channel,
+            status: campaign.status,
+            total_leads: campaign.total_leads,
+            message_template_whatsapp: campaign.message_template_whatsapp,
+            message_template_email: campaign.message_template_email,
+            subject_email: campaign.subject_email,
+            target_filters: campaign.target_filters,
+            sheet: {
+              pais,
+              total: sheetTotal,
+              leads: sheetLeads,
+            },
+            triggered_at: new Date().toISOString(),
           },
-          triggered_at: new Date().toISOString(),
-        }),
+        },
       });
-      if (!res.ok) throw new Error(`Webhook respondió ${res.status}`);
+      if (whErr) throw whErr;
       toast({ title: "Campaña enviada", description: `${sheetTotal} leads enviados al webhook.` });
       onExecuted?.();
       onOpenChange(false);
