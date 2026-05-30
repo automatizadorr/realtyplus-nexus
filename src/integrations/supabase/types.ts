@@ -370,6 +370,69 @@ export type Database = {
         }
         Relationships: []
       }
+      mensajes_automatizacion: {
+        Row: {
+          campaign_name: string | null
+          canal: string | null
+          contenido: string
+          created_at: string
+          dia_secuencia: number | null
+          direccion: string
+          email: string | null
+          estado_envio: string | null
+          id: string
+          id_contacto: string | null
+          leido: boolean | null
+          n8n_execution_id: string | null
+          nombre: string | null
+          pais: string | null
+          plantilla_usada: string | null
+          telefono: string
+          user_id: string | null
+          wamid: string | null
+        }
+        Insert: {
+          campaign_name?: string | null
+          canal?: string | null
+          contenido: string
+          created_at?: string
+          dia_secuencia?: number | null
+          direccion?: string
+          email?: string | null
+          estado_envio?: string | null
+          id?: string
+          id_contacto?: string | null
+          leido?: boolean | null
+          n8n_execution_id?: string | null
+          nombre?: string | null
+          pais?: string | null
+          plantilla_usada?: string | null
+          telefono: string
+          user_id?: string | null
+          wamid?: string | null
+        }
+        Update: {
+          campaign_name?: string | null
+          canal?: string | null
+          contenido?: string
+          created_at?: string
+          dia_secuencia?: number | null
+          direccion?: string
+          email?: string | null
+          estado_envio?: string | null
+          id?: string
+          id_contacto?: string | null
+          leido?: boolean | null
+          n8n_execution_id?: string | null
+          nombre?: string | null
+          pais?: string | null
+          plantilla_usada?: string | null
+          telefono?: string
+          user_id?: string | null
+          wamid?: string | null
+        }
+        Relationships: []
+      }
       mensajes_whatsapp: {
         Row: {
           autor: string | null
@@ -477,6 +540,22 @@ export type Database = {
       }
     }
     Views: {
+      vista_inbox_automatizacion: {
+        Row: {
+          campaign_name: string | null
+          last_message_at: string | null
+          last_message_dir: string | null
+          last_message_text: string | null
+          nombre: string | null
+          pais: string | null
+          telefono: string | null
+          total_mensajes: number | null
+          ultimo_dia: number | null
+          ultimo_estado: string | null
+          unread_count: number | null
+        }
+        Relationships: []
+      }
       vista_inbox_contactos: {
         Row: {
           archivado: boolean | null

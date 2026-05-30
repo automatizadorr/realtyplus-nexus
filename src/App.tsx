@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
 import Campaigns from "./pages/Campaigns";
 import Inbox from "./pages/Inbox";
+import Automation from "./pages/Automation";
 import TaggedMessages from "./pages/TaggedMessages";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -40,6 +41,7 @@ const App = () => (
                       <Route path="/scanner" element={<AdminRoute><Scanner /></AdminRoute>} />
                       <Route path="/campaigns" element={<AdminRoute><Campaigns /></AdminRoute>} />
                       <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />
+                      <Route path="/automation" element={<AdminRoute><Automation /></AdminRoute>} />
                       <Route path="/tagged" element={<AdminRoute><TaggedMessages /></AdminRoute>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
