@@ -21,7 +21,6 @@ Deno.serve(async (req) => {
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const WEBHOOK_SECRET = Deno.env.get("N8N_WEBHOOK_SECRET");
-    if (!WEBHOOK_SECRET) throw new Error("N8N_WEBHOOK_SECRET not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
