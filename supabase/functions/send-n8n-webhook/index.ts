@@ -62,23 +62,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    const res = await fetch(WEBHOOKS[target], {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(WEBHOOK_SECRET ? { "X-Webhook-Secret": WEBHOOK_SECRET } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      return new Response(JSON.stringify({ success: true, warning: "n8n webhook non-2xx", status: res.status }), {
+    try {
+      const res = await fetch(WEBHOOKS[target], {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(WEBHOOK_SECRET ? { "X-Webhook-Secret": WEBHOOK_SECRET } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        return new Response(JSON.stringify({ success: true, warning: "n8n webhook non-2xx", status: res.status }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, response: text }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (fetchErr) {
+      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+      console.warn("n8n webhook unreachable:", msg);
+      // Don't fail the request — webhook delivery is best-effort.
+      return new Response(JSON.stringify({ success: true, warning: "n8n unreachable", error: msg }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    return new Response(JSON.stringify({ success: true, response: text }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("send-n8n-webhook error:", msg);
