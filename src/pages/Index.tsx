@@ -420,6 +420,9 @@ export default function Index() {
         </div>
       </section>
 
+      {/* ── Agente de Voz IA ── */}
+      <VoiceAgentHero />
+
       {/* ── Sección de ventas Hormozi ── */}
       <section id="oferta" className="py-28 px-6 bg-[#040d1e] text-white overflow-hidden" aria-labelledby="oferta-heading">
         <div className="max-w-4xl mx-auto">
@@ -760,9 +763,6 @@ export default function Index() {
         </FadeSection>
       </section>
       </main>
-
-      {/* ── Agente de Voz IA ── */}
-      <VoiceAgentHero />
 
       {/* ── Footer ── */}
       <footer className="bg-[#040d1e] py-16 px-6" aria-labelledby="footer-heading">

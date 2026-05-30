@@ -2,6 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Loader2, PhoneOff } from "lucide-react";
 
+// Carga el script de ElevenLabs una sola vez globalmente
+function loadElevenLabsScript() {
+  if (document.querySelector('script[src*="elevenlabs"]')) return;
+  const s = document.createElement("script");
+  s.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
+  s.async = true;
+  s.type = "text/javascript";
+  document.head.appendChild(s);
+}
+
 type AgentState = "idle" | "connecting" | "listening" | "speaking";
 
 // ─── 3D Sphere Canvas ─────────────────────────────────────────────────────────
@@ -219,6 +229,9 @@ export function VoiceAgentHero() {
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { ampRef.current = amp; }, [amp]);
 
+  // Carga el script al montar
+  useEffect(() => { loadElevenLabsScript(); }, []);
+
   // ── Canvas loop ──
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -293,18 +306,25 @@ export function VoiceAgentHero() {
 
   useEffect(() => () => stopMic(), [stopMic]);
 
-  // ── Click the hidden ElevenLabs widget ──
-  const triggerWidget = useCallback(() => {
+  // ── Click the hidden ElevenLabs widget (con retry) ──
+  const triggerWidget = useCallback((attempt = 0) => {
     const el = document.querySelector("elevenlabs-convai") as HTMLElement & {
       shadowRoot?: ShadowRoot;
     };
-    if (!el) return;
+    if (!el) {
+      if (attempt < 10) setTimeout(() => triggerWidget(attempt + 1), 300);
+      return;
+    }
     const shadow = el.shadowRoot;
     const btn =
       shadow?.querySelector<HTMLElement>("button") ??
       shadow?.querySelector<HTMLElement>('[role="button"]') ??
       el.querySelector<HTMLElement>("button");
-    btn?.click();
+    if (btn) {
+      btn.click();
+    } else if (attempt < 10) {
+      setTimeout(() => triggerWidget(attempt + 1), 300);
+    }
   }, []);
 
   // ── Orb click handler ──
@@ -512,11 +532,11 @@ export function VoiceAgentHero() {
         </div>
       </div>
 
-      {/* Hidden ElevenLabs widget — handles the actual voice session */}
+      {/* ElevenLabs widget — oculto visualmente pero accesible al JS */}
       {/* @ts-ignore */}
       <elevenlabs-convai
         agent-id="agent_0201krfp32xcfc1a3s24s160sc9b"
-        style={{ position: "fixed", bottom: "-9999px", right: 0, opacity: 0, pointerEvents: "none" }}
+        style={{ position: "fixed", bottom: 0, right: 0, visibility: "hidden", zIndex: -1 }}
       />
     </section>
   );
