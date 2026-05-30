@@ -2,13 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, RefreshCw, Plus, Users, Send, CheckCircle2, TrendingUp, Activity } from "lucide-react";
+import { Megaphone, RefreshCw, Plus, Users, Send, CheckCircle2, TrendingUp, Activity, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import CreateCampaignDialog from "@/components/campaigns/CreateCampaignDialog";
 import CampaignDetailsDialog, { CampaignRow } from "@/components/campaigns/CampaignDetailsDialog";
+import EditCampaignDialog from "@/components/campaigns/EditCampaignDialog";
 
 export default function Campaigns() {
+  const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
