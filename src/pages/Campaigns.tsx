@@ -151,9 +151,23 @@ export default function Campaigns() {
                       {c.created_at ? new Date(c.created_at).toLocaleDateString("es-ES") : "—"}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="outline" onClick={() => openDetails(c)}>
-                        <Send className="mr-1 h-3 w-3" /> Ejecutar
-                      </Button>
+                      <div className="flex gap-1 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => openDetails(c)}>
+                          <Send className="mr-1 h-3 w-3" /> Ejecutar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditTarget(c)} title="Editar">
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(c)}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
