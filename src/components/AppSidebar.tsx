@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Tag, LogOut } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Tag, LogOut } from "lucide-react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
