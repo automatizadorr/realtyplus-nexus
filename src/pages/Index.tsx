@@ -17,6 +17,14 @@ import {
   X,
   CheckCircle2,
   Zap,
+  TrendingDown,
+  TrendingUp,
+  ShieldCheck,
+  Gift,
+  Clock,
+  Users,
+  DollarSign,
+  XCircle,
 } from "lucide-react";
 import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
@@ -333,6 +341,241 @@ export default function Index() {
           </div>
         </motion.div>
       </section>
+
+      {/* ══════════════════════════════════════════════════════════════
+          ── SECCIÓN VENTAS HORMOZI ──
+      ══════════════════════════════════════════════════════════════ */}
+      <section id="oferta" className="py-28 px-6 bg-[#040d1e] text-white overflow-hidden">
+        <div className="max-w-4xl mx-auto">
+
+          {/* ── Hook: el dolor ── */}
+          <FadeSection className="text-center mb-20">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-[#cf142b]/20 text-[#cf142b] text-xs font-bold uppercase tracking-widest mb-6">
+              Leer esto si eres agente inmobiliario
+            </span>
+            <h2 className="text-4xl md:text-6xl font-black leading-tight mb-6">
+              Cada día sin un sistema,{" "}
+              <span className="text-[#cf142b]">estás regalando dinero</span>{" "}
+              a tu competencia.
+            </h2>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">
+              No es tu culpa. El mercado inmobiliario es caótico. Pero hay una razón
+              por la que el 90% de los agentes gana lo mismo que hace 3 años.
+            </p>
+          </FadeSection>
+
+          {/* ── Pain stack ── */}
+          <FadeSection className="mb-20">
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                "Recibes una consulta por WhatsApp a las 11pm, te quedas dormido y al día siguiente ya no contesta.",
+                "Tienes 200 contactos en el celular que alguna vez preguntaron por una propiedad... y nunca les volviste a escribir.",
+                "Tu competencia cierra en la primera llamada porque responde en 5 minutos. Tú tardas 3 horas.",
+                "Mandas el mismo mensaje copiado y pegado a 50 personas. Uno por uno. Perdiendo 2 horas.",
+                "No sabes cuántos leads tienes, cuántos son calientes, ni cuántos ya compraron con otro.",
+                "Cada mes empiezas de cero buscando nuevos clientes cuando los que ya tienes podrían volver a comprar.",
+              ].map((pain, i) => (
+                <motion.div
+                  key={i}
+                  className="flex gap-4 p-5 rounded-xl bg-white/5 border border-white/10"
+                  whileHover={{ borderColor: "rgba(207,20,43,0.4)", backgroundColor: "rgba(207,20,43,0.05)" }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <XCircle className="w-5 h-5 text-[#cf142b] shrink-0 mt-0.5" />
+                  <p className="text-white/70 text-sm leading-relaxed">{pain}</p>
+                </motion.div>
+              ))}
+            </div>
+          </FadeSection>
+
+          {/* ── Agitación ── */}
+          <FadeSection className="text-center mb-20">
+            <div className="inline-block p-8 rounded-2xl bg-[#cf142b]/10 border border-[#cf142b]/30">
+              <TrendingDown className="w-12 h-12 text-[#cf142b] mx-auto mb-4" />
+              <p className="text-2xl font-bold text-white mb-2">
+                El agente promedio pierde <span className="text-[#cf142b]">el 73% de sus leads</span>
+              </p>
+              <p className="text-white/55">
+                por falta de seguimiento en las primeras 5 horas. No por falta de producto.
+              </p>
+            </div>
+          </FadeSection>
+
+          {/* ── Solución: el sistema ── */}
+          <FadeSection className="mb-20">
+            <div className="text-center mb-12">
+              <TrendingUp className="w-10 h-10 text-green-400 mx-auto mb-4" />
+              <h3 className="text-3xl md:text-4xl font-black text-white mb-4">
+                Imagina que mañana al despertar…
+              </h3>
+              <p className="text-white/60 text-lg max-w-2xl mx-auto">
+                Tu sistema ya respondió 40 consultas, reactivó 15 leads dormidos y te mandó
+                un reporte de quién está listo para comprar.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: Zap,
+                  title: "Sistema de Captación Automática",
+                  desc: "Cada lead que llega —WhatsApp, redes, web— entra solo a tu pipeline, recibe respuesta en segundos y queda clasificado por intención de compra.",
+                  tag: "Captación",
+                  color: "#cf142b",
+                },
+                {
+                  icon: Users,
+                  title: "Sistema de Reactivación de Leads",
+                  desc: "Tu base de contactos dormidos es una mina de oro. Nuestro sistema los contacta automáticamente con el mensaje correcto en el momento correcto.",
+                  tag: "Reactivación",
+                  color: "#3b82f6",
+                },
+                {
+                  icon: BarChart3,
+                  title: "CRM + Analytics Inmobiliario",
+                  desc: "Panel central donde ves todo: quién está caliente, quién necesita seguimiento, cuánto llevas en comisiones y qué campañas funcionan.",
+                  tag: "Control total",
+                  color: "#10b981",
+                },
+              ].map((item, i) => (
+                <FadeSection key={item.title} delay={i * 0.1}>
+                  <div className="h-full p-7 rounded-2xl bg-white/5 border border-white/10 hover:border-white/25 transition-colors">
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4"
+                      style={{ background: `${item.color}22`, color: item.color }}>
+                      {item.tag}
+                    </span>
+                    <item.icon className="w-8 h-8 mb-4" style={{ color: item.color }} />
+                    <h4 className="text-white font-bold text-lg mb-3">{item.title}</h4>
+                    <p className="text-white/55 text-sm leading-relaxed">{item.desc}</p>
+                  </div>
+                </FadeSection>
+              ))}
+            </div>
+          </FadeSection>
+
+          {/* ── Value Stack (Hormozi) ── */}
+          <FadeSection className="mb-20">
+            <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+              <div className="p-8 border-b border-white/10">
+                <h3 className="text-2xl md:text-3xl font-black text-white text-center">
+                  Todo lo que obtienes con RealtyPlus
+                </h3>
+              </div>
+              <div className="divide-y divide-white/5">
+                {[
+                  { item: "Sistema de Captación Automática 24/7",      value: "$497/mes" },
+                  { item: "Sistema de Reactivación de Leads Dormidos", value: "$397/mes" },
+                  { item: "CRM Inmobiliario Completo",                 value: "$297/mes" },
+                  { item: "Campañas WhatsApp Masivas ilimitadas",      value: "$197/mes" },
+                  { item: "Inbox Unificado (WhatsApp + redes + web)",  value: "$147/mes" },
+                  { item: "Analytics y reportes en tiempo real",       value: "$97/mes"  },
+                  { item: "Soporte prioritario 24/7",                  value: "$97/mes"  },
+                  { item: "Onboarding y setup completo",               value: "$500 único" },
+                ].map(({ item, value }) => (
+                  <div key={item} className="flex items-center justify-between px-8 py-4">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                      <span className="text-white/80 text-sm">{item}</span>
+                    </div>
+                    <span className="text-white/40 text-sm line-through shrink-0 ml-4">{value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="p-8 bg-white/5">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div>
+                    <p className="text-white/50 text-sm mb-1">Valor total del sistema</p>
+                    <p className="text-white/40 text-2xl font-bold line-through">$2,229/mes</p>
+                  </div>
+                  <div className="text-center md:text-right">
+                    <p className="text-white/50 text-sm mb-1">Tu inversión hoy</p>
+                    <div className="flex items-baseline gap-2 justify-center md:justify-end">
+                      <span className="text-5xl font-black text-[#cf142b]">Gratis</span>
+                      <span className="text-white/40 text-lg">para empezar</span>
+                    </div>
+                    <p className="text-white/40 text-xs mt-1">Sin tarjeta de crédito · Cancela cuando quieras</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeSection>
+
+          {/* ── Bonos ── */}
+          <FadeSection className="mb-20">
+            <h3 className="text-2xl font-black text-white text-center mb-8">
+              <Gift className="w-7 h-7 text-[#cf142b] inline mr-2 -mt-1" />
+              Bonos exclusivos para los primeros 50
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { title: "Script de Cierre Inmobiliario",      desc: "El guión exacto que usan nuestros mejores agentes para cerrar en la primera llamada.", valor: "$197" },
+                { title: "100 Mensajes de Reactivación",       desc: "Plantillas probadas para re-enganchar leads fríos. Solo copia, pega y personaliza.", valor: "$97"  },
+                { title: "Masterclass: Pipeline de 7 Figuras", desc: "Cómo construir un flujo de leads que genera comisiones mientras duermes.",           valor: "$297" },
+                { title: "Setup Personalizado 1:1",             desc: "Un especialista configura tu cuenta desde cero en menos de 48 horas.",                valor: "$500" },
+              ].map((bonus) => (
+                <div key={bonus.title} className="flex gap-4 p-6 rounded-2xl bg-gradient-to-br from-[#cf142b]/10 to-transparent border border-[#cf142b]/20">
+                  <Gift className="w-6 h-6 text-[#cf142b] shrink-0 mt-0.5" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-bold text-sm">{bonus.title}</span>
+                      <span className="text-[#cf142b] text-xs font-bold">({bonus.valor} valor)</span>
+                    </div>
+                    <p className="text-white/50 text-xs leading-relaxed">{bonus.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </FadeSection>
+
+          {/* ── Garantía ── */}
+          <FadeSection className="mb-20">
+            <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-3xl border-2 border-green-400/30 bg-green-400/5">
+              <ShieldCheck className="w-20 h-20 text-green-400 shrink-0" />
+              <div>
+                <h3 className="text-2xl font-black text-white mb-3">
+                  Garantía de resultados 30 días
+                </h3>
+                <p className="text-white/65 leading-relaxed">
+                  Si en 30 días de uso activo no ves un aumento en tus leads calificados,
+                  te devolvemos cada centavo sin preguntas. No necesitamos que "confíes en nosotros" —
+                  <strong className="text-white"> tú llevas todo el riesgo cero.</strong>
+                </p>
+              </div>
+            </div>
+          </FadeSection>
+
+          {/* ── Urgencia + CTA final ── */}
+          <FadeSection>
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#cf142b]/20 border border-[#cf142b]/40 text-[#cf142b] text-sm font-bold mb-8">
+                <Clock className="w-4 h-4" />
+                Solo quedan <strong>23 cupos</strong> con setup gratuito este mes
+              </div>
+              <h3 className="text-4xl md:text-5xl font-black text-white mb-4">
+                ¿Sigues esperando el momento perfecto?
+              </h3>
+              <p className="text-white/55 text-lg mb-10 max-w-xl mx-auto">
+                El momento perfecto fue hace 6 meses. El segundo mejor momento es hoy.
+                Cada día que esperas, tu competencia cierra los leads que deberían ser tuyos.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link
+                  to="/auth"
+                  className="group flex items-center gap-3 px-10 py-5 bg-[#cf142b] hover:bg-[#e01530] text-white font-black rounded-xl text-xl transition-all duration-200 hover:scale-105 shadow-2xl shadow-[#cf142b]/40"
+                >
+                  <DollarSign className="w-6 h-6" />
+                  Quiero mis leads automatizados
+                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+              <p className="mt-4 text-white/30 text-sm">
+                Sin tarjeta · Sin contrato · Cancela cuando quieras
+              </p>
+            </div>
+          </FadeSection>
+
+        </div>
+      </section>
+      {/* ══════════════════════════════════════════════════════════════ */}
 
       {/* ── Features ── */}
       <section id="features" className="py-28 px-6 bg-gray-50">
