@@ -16,6 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { countryFlag } from "@/lib/countryFlag";
 import { useToast } from "@/hooks/use-toast";
+import { ResumenTab } from "@/components/automation/ResumenTab";
+import { PlantillasTab } from "@/components/automation/PlantillasTab";
+import { ConfiguracionTab } from "@/components/automation/ConfiguracionTab";
 
 
 interface InboxRow {
@@ -421,43 +424,35 @@ function ConversationsTab() {
   );
 }
 
-function PlaceholderTab({ title }: { title: string }) {
-  return (
-    <div className="border rounded-lg p-8 text-center text-muted-foreground bg-card">
-      <p className="text-sm">{title}</p>
-    </div>
-  );
-}
-
 export default function Automation() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Leads calientes</h1>
+        <h1 className="text-2xl font-bold text-foreground">Panel de Leads Calientes</h1>
         <p className="text-sm text-muted-foreground">
-          Gestión de campañas automatizadas y conversaciones.
+          Gestión completa de automatización, plantillas y configuración.
         </p>
       </div>
 
-      <Tabs defaultValue="conversaciones" className="w-full">
-        <TabsList>
+      <Tabs defaultValue="resumen" className="w-full">
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="resumen">📊 Resumen</TabsTrigger>
+          <TabsTrigger value="conversaciones">💬 Conversaciones</TabsTrigger>
           <TabsTrigger value="plantillas">📝 Plantillas</TabsTrigger>
           <TabsTrigger value="configuracion">⚙️ Configuración</TabsTrigger>
-          <TabsTrigger value="conversaciones">💬 Conversaciones</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen" className="mt-4">
-          <PlaceholderTab title="Resumen de leads calientes (próximamente)" />
-        </TabsContent>
-        <TabsContent value="plantillas" className="mt-4">
-          <PlaceholderTab title="Plantillas de mensajes (próximamente)" />
-        </TabsContent>
-        <TabsContent value="configuracion" className="mt-4">
-          <PlaceholderTab title="Configuración (próximamente)" />
+          <ResumenTab />
         </TabsContent>
         <TabsContent value="conversaciones" className="mt-4">
           <ConversationsTab />
+        </TabsContent>
+        <TabsContent value="plantillas" className="mt-4">
+          <PlantillasTab />
+        </TabsContent>
+        <TabsContent value="configuracion" className="mt-4">
+          <ConfiguracionTab />
         </TabsContent>
       </Tabs>
     </div>
