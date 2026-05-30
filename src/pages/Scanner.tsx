@@ -69,7 +69,7 @@ function capitalize(s: string): string {
   return s.split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 
-const WEBHOOK_URL = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
+
 
 const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
