@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Tag, LogOut } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, LogOut } from "lucide-react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -21,6 +21,7 @@ const items = [
   { title: "Escáner", url: "/scanner", icon: ScanSearch },
   { title: "Campañas", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes", url: "/inbox", icon: MessageSquare },
+  { title: "Automatización", url: "/automation-inbox", icon: Zap },
   { title: "Automatización", url: "/automation", icon: Bot },
   { title: "Etiquetados", url: "/tagged", icon: Tag },
 ];
