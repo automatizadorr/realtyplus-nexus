@@ -291,11 +291,12 @@ export default function Index() {
       </nav>
 
       {/* ── Hero (contenido visible por defecto) ── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative z-0 min-h-screen flex items-center justify-center overflow-hidden">
         <RealEstatePlexus />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#040d1e]/50 via-[#040d1e]/30 to-[#040d1e]" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[#040d1e]/60 via-[#040d1e]/40 to-[#040d1e]" />
 
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-24">
+        <div className="absolute inset-0 z-[2] flex items-center justify-center">
+        <div className="w-full max-w-4xl mx-auto px-6 text-center pt-24">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#cf142b]/40 bg-[#cf142b]/10 text-[#cf142b] text-xs font-semibold mb-6 tracking-wide uppercase">
             <Zap className="w-3.5 h-3.5" />
@@ -359,10 +360,11 @@ export default function Index() {
             ))}
           </div>
         </div>
+        </div>
 
         {/* Scroll indicator */}
         <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[3]"
           animate={{ y: [0, 8, 0] }}
           transition={{ repeat: Infinity, duration: 1.6 }}
         >
