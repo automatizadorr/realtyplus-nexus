@@ -8,6 +8,7 @@ import {
 } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { VoiceAgentHero } from "@/components/VoiceAgentHero";
 import {
   MessageSquare,
   Megaphone,
@@ -249,17 +250,6 @@ export default function Index() {
     }
   }, [session, authLoading, navigate]);
 
-  // Cargar el widget de voz de ElevenLabs
-  useEffect(() => {
-    const existing = document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]');
-    if (!existing) {
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
-      script.async = true;
-      script.type = "text/javascript";
-      document.body.appendChild(script);
-    }
-  }, []);
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
@@ -771,8 +761,8 @@ export default function Index() {
       </section>
       </main>
 
-      {/* @ts-ignore — Web Component de ElevenLabs */}
-      <elevenlabs-convai agent-id="agent_0201krfp32xcfc1a3s24s160sc9b"></elevenlabs-convai>
+      {/* ── Agente de Voz IA ── */}
+      <VoiceAgentHero />
 
       {/* ── Footer ── */}
       <footer className="bg-[#040d1e] py-16 px-6" aria-labelledby="footer-heading">
