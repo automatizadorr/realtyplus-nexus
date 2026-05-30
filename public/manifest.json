@@ -1,13 +1,13 @@
 {
-  "name": "Realtyplus CRM",
-  "short_name": "Realtyplus",
-  "description": "CRM Realtyplus AI",
+  "name": "RealtyPlus CRM",
+  "short_name": "RealtyPlus",
+  "description": "CRM inmobiliario con captación automática de leads, campañas WhatsApp y analytics en tiempo real.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f2b5a",
-  "theme_color": "#0f2b5a",
+  "background_color": "#ffffff",
+  "theme_color": "#cf142b",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -20,6 +20,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Ir al panel principal",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Campañas",
+      "short_name": "Campañas",
+      "description": "Gestionar campañas",
+      "url": "/campaigns",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
