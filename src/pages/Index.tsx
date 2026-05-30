@@ -25,11 +25,9 @@ import realtyplusLogo from "@/assets/realtyplus-logo.png";
 function AnimatedCounter({
   target,
   suffix = "",
-  prefix = "",
 }: {
   target: number;
   suffix?: string;
-  prefix?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });
@@ -38,7 +36,7 @@ function AnimatedCounter({
   useEffect(() => {
     if (!inView) return;
     const ctrl = animate(0, target, {
-      duration: 2.2,
+      duration: 2,
       ease: "easeOut",
       onUpdate: (v) => setValue(Math.round(v)),
     });
@@ -47,7 +45,6 @@ function AnimatedCounter({
 
   return (
     <span ref={ref}>
-      {prefix}
       {value.toLocaleString()}
       {suffix}
     </span>
@@ -88,7 +85,7 @@ function TiltCard({
   );
 }
 
-// ─── Fade-in-up section wrapper ────────────────────────────────────────────────
+// ─── Scroll fade-in wrapper ────────────────────────────────────────────────────
 function FadeSection({
   children,
   className = "",
@@ -99,14 +96,14 @@ function FadeSection({
   delay?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 50 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, delay, ease: "easeOut" }}
+      initial={{ opacity: 0, y: 40 }}
+      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      transition={{ duration: 0.6, delay, ease: "easeOut" }}
       className={className}
     >
       {children}
@@ -116,21 +113,23 @@ function FadeSection({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function Index() {
-  const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [cursor, setCursor] = useState({ x: -200, y: -200 });
+  const [cursor, setCursor] = useState({ x: -400, y: -400 });
 
+  // CSS-based loading screen: hide for 1.5s then show
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1500);
+    const t = setTimeout(() => setLoaded(true), 1500);
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
-    const onMove = (e: MouseEvent) => setCursor({ x: e.clientX, y: e.clientY });
-    window.addEventListener("scroll", onScroll);
-    window.addEventListener("mousemove", onMove);
+    const onMove = (e: MouseEvent) =>
+      setCursor({ x: e.clientX, y: e.clientY });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("mousemove", onMove, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("mousemove", onMove);
@@ -148,7 +147,7 @@ export default function Index() {
       icon: Megaphone,
       title: "Campañas Masivas",
       desc: "Envía campañas personalizadas a miles de contactos con segmentación inteligente y alta tasa de entrega.",
-      color: "#0f2b5a",
+      color: "#3b6fe8",
     },
     {
       icon: BarChart3,
@@ -191,67 +190,53 @@ export default function Index() {
 
   return (
     <div className="relative bg-[#040d1e] text-white overflow-x-hidden">
-      {/* Cursor glow */}
+      {/* ── Cursor glow ── */}
       <div
-        className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300"
+        className="pointer-events-none fixed inset-0 z-30"
         style={{
-          background: `radial-gradient(600px circle at ${cursor.x}px ${cursor.y}px, rgba(207,20,43,0.06), transparent 80%)`,
+          background: `radial-gradient(500px circle at ${cursor.x}px ${cursor.y}px, rgba(207,20,43,0.07), transparent 70%)`,
         }}
       />
 
-      {/* ── Loading screen ── */}
-      <motion.div
-        className="fixed inset-0 z-50 bg-[#040d1e] flex flex-col items-center justify-center"
-        style={{ pointerEvents: loading ? "all" : "none" }}
-        initial={{ opacity: 1 }}
-        animate={{ opacity: loading ? 1 : 0 }}
-        transition={{ duration: 0.6 }}
+      {/* ── Loading screen (CSS transition — no framer-motion) ── */}
+      <div
+        className="fixed inset-0 z-50 bg-[#040d1e] flex flex-col items-center justify-center transition-opacity duration-700"
+        style={{
+          opacity: loaded ? 0 : 1,
+          pointerEvents: loaded ? "none" : "all",
+        }}
       >
-        <motion.img
-          src={realtyplusLogo}
-          alt="RealtyPlus"
-          className="w-44 mb-8"
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-        />
-        <div className="w-44 h-1 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-[#cf142b] rounded-full"
-            initial={{ width: "0%" }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 1.3, ease: "easeInOut" }}
+        <img src={realtyplusLogo} alt="RealtyPlus" className="w-40 mb-8" />
+        <div className="w-40 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[#cf142b] rounded-full transition-all duration-[1300ms] ease-in-out"
+            style={{ width: loaded ? "100%" : "0%" }}
           />
         </div>
-      </motion.div>
+        <p className="mt-4 text-white/40 text-sm tracking-wide">Cargando…</p>
+      </div>
 
-      {/* ── Nav ── */}
-      <motion.nav
+      {/* ── Nav (visible por defecto, sin initial opacity:0) ── */}
+      <nav
         className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
           scrolled
             ? "bg-[#040d1e]/90 backdrop-blur-md border-b border-white/5 shadow-lg"
             : ""
         }`}
-        initial={{ y: -80 }}
-        animate={{ y: 0 }}
-        transition={{ delay: 1.6, duration: 0.5, ease: "easeOut" }}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <img src={realtyplusLogo} alt="RealtyPlus" className="h-9 w-auto" />
 
           <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-            <a href="#features" className="hover:text-white transition-colors">
-              Características
-            </a>
-            <a href="#stats" className="hover:text-white transition-colors">
-              Resultados
-            </a>
-            <a
-              href="#testimonials"
-              className="hover:text-white transition-colors"
-            >
-              Testimonios
-            </a>
+            {["#features", "#stats", "#testimonials"].map((href, i) => (
+              <a
+                key={href}
+                href={href}
+                className="hover:text-white transition-colors"
+              >
+                {["Características", "Resultados", "Testimonios"][i]}
+              </a>
+            ))}
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -272,6 +257,7 @@ export default function Index() {
           <button
             className="md:hidden text-white/80 hover:text-white"
             onClick={() => setMobileMenu(!mobileMenu)}
+            aria-label="Menú"
           >
             {mobileMenu ? (
               <X className="w-6 h-6" />
@@ -282,32 +268,17 @@ export default function Index() {
         </div>
 
         {mobileMenu && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            className="md:hidden bg-[#040d1e]/95 backdrop-blur-md border-b border-white/5 px-6 py-4 flex flex-col gap-4"
-          >
-            <a
-              href="#features"
-              className="text-white/70 hover:text-white text-sm"
-              onClick={() => setMobileMenu(false)}
-            >
-              Características
-            </a>
-            <a
-              href="#stats"
-              className="text-white/70 hover:text-white text-sm"
-              onClick={() => setMobileMenu(false)}
-            >
-              Resultados
-            </a>
-            <a
-              href="#testimonials"
-              className="text-white/70 hover:text-white text-sm"
-              onClick={() => setMobileMenu(false)}
-            >
-              Testimonios
-            </a>
+          <div className="md:hidden bg-[#040d1e]/95 backdrop-blur-md border-b border-white/5 px-6 py-4 flex flex-col gap-4">
+            {["#features", "#stats", "#testimonials"].map((href, i) => (
+              <a
+                key={href}
+                href={href}
+                className="text-white/70 hover:text-white text-sm"
+                onClick={() => setMobileMenu(false)}
+              >
+                {["Características", "Resultados", "Testimonios"][i]}
+              </a>
+            ))}
             <Link
               to="/auth"
               className="px-5 py-2 text-sm font-semibold bg-[#cf142b] text-white rounded-lg text-center"
@@ -315,62 +286,53 @@ export default function Index() {
             >
               Comenzar gratis
             </Link>
-          </motion.div>
+          </div>
         )}
-      </motion.nav>
+      </nav>
 
-      {/* ── Hero ── */}
+      {/* ── Hero (contenido visible por defecto) ── */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <RealEstatePlexus />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#040d1e]/60 via-[#040d1e]/40 to-[#040d1e]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#040d1e]/50 via-[#040d1e]/30 to-[#040d1e]" />
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-24">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.8, duration: 0.8 }}
-          >
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#cf142b]/40 bg-[#cf142b]/10 text-[#cf142b] text-xs font-semibold mb-6 tracking-wide uppercase">
-              <Zap className="w-3.5 h-3.5" /> CRM Inmobiliario #1 en
-              Latinoamérica
-            </span>
-          </motion.div>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#cf142b]/40 bg-[#cf142b]/10 text-[#cf142b] text-xs font-semibold mb-6 tracking-wide uppercase">
+            <Zap className="w-3.5 h-3.5" />
+            CRM Inmobiliario #1 en Latinoamérica
+          </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2, duration: 0.8 }}
-            className="text-5xl md:text-7xl font-black leading-tight mb-6"
-          >
-            <span className="bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent">
+          {/* H1 */}
+          <h1 className="text-5xl md:text-7xl font-black leading-tight mb-6">
+            <span className="text-white">
               Automatiza tu
               <br />
               inmobiliaria.{" "}
             </span>
-            <span className="bg-gradient-to-r from-[#cf142b] to-[#ff4d6d] bg-clip-text text-transparent">
+            <span
+              style={{
+                background: "linear-gradient(90deg, #cf142b, #ff4d6d)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
               Convierte más leads.
             </span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.2, duration: 0.7 }}
-            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed"
-          >
+          {/* Subtitle */}
+          <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
             Inbox centralizado, campañas WhatsApp y analytics en una sola
             plataforma.
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.4, duration: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/auth"
-              className="group flex items-center gap-2 px-8 py-4 bg-[#cf142b] hover:bg-[#e01530] text-white font-bold rounded-xl text-lg transition-all duration-200 shadow-lg shadow-[#cf142b]/30 hover:shadow-[#cf142b]/50 hover:scale-105"
+              className="group flex items-center gap-2 px-8 py-4 bg-[#cf142b] hover:bg-[#e01530] text-white font-bold rounded-xl text-lg transition-all duration-200 shadow-lg hover:scale-105"
+              style={{ boxShadow: "0 8px 32px rgba(207,20,43,0.35)" }}
             >
               Comenzar gratis
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -381,40 +343,32 @@ export default function Index() {
             >
               Ver cómo funciona
             </a>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2.8, duration: 0.8 }}
-            className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-white/40"
-          >
+          {/* Trust badges */}
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-white/40">
             {[
               "Sin tarjeta de crédito",
               "Setup en 5 minutos",
               "Soporte 24/7",
             ].map((item) => (
               <span key={item} className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#cf142b]" /> {item}
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#cf142b]" />
+                {item}
               </span>
             ))}
-          </motion.div>
+          </div>
         </div>
 
         {/* Scroll indicator */}
         <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/30"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 3, duration: 0.5 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 8, 0] }}
+          transition={{ repeat: Infinity, duration: 1.6 }}
         >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ repeat: Infinity, duration: 1.6 }}
-            className="w-5 h-9 rounded-full border border-white/20 flex items-start justify-center pt-2"
-          >
+          <div className="w-5 h-9 rounded-full border border-white/20 flex items-start justify-center pt-2">
             <div className="w-1 h-2 bg-white/40 rounded-full" />
-          </motion.div>
+          </div>
         </motion.div>
       </section>
 
@@ -431,7 +385,7 @@ export default function Index() {
               cerrar más negocios
             </h2>
             <p className="text-white/50 text-lg max-w-xl mx-auto">
-              Herramientas diseñadas específicamente para el mercado inmobiliario
+              Herramientas diseñadas para el mercado inmobiliario
               latinoamericano.
             </p>
           </FadeSection>
@@ -441,17 +395,14 @@ export default function Index() {
             style={{ perspective: "1000px" }}
           >
             {features.map((f, i) => (
-              <FadeSection key={f.title} delay={i * 0.15}>
+              <FadeSection key={f.title} delay={i * 0.12}>
                 <TiltCard className="h-full">
                   <div className="h-full p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:border-[#cf142b]/40 transition-colors duration-300 group">
                     <div
                       className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
                       style={{ background: `${f.color}22` }}
                     >
-                      <f.icon
-                        className="w-7 h-7"
-                        style={{ color: f.color }}
-                      />
+                      <f.icon className="w-7 h-7" style={{ color: f.color }} />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3">
                       {f.title}
@@ -472,15 +423,18 @@ export default function Index() {
       <section id="stats" className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <FadeSection>
-            <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-[#0f2b5a]/60 to-[#040d1e] p-12 md:p-20 backdrop-blur-sm">
+            <div
+              className="rounded-3xl border border-white/10 p-12 md:p-20 backdrop-blur-sm"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(15,43,90,0.6) 0%, rgba(4,13,30,1) 100%)",
+              }}
+            >
               <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
                 {stats.map((s, i) => (
                   <FadeSection key={s.label} delay={i * 0.1}>
                     <div className="text-5xl md:text-6xl font-black text-white mb-3">
-                      <AnimatedCounter
-                        target={s.value}
-                        suffix={s.suffix}
-                      />
+                      <AnimatedCounter target={s.value} suffix={s.suffix} />
                     </div>
                     <div className="text-white/50 text-sm font-medium">
                       {s.label}
@@ -507,7 +461,7 @@ export default function Index() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (
-              <FadeSection key={t.name} delay={i * 0.15}>
+              <FadeSection key={t.name} delay={i * 0.12}>
                 <div className="h-full p-7 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:border-white/20 transition-colors duration-300 flex flex-col">
                   <div className="flex gap-1 mb-5">
                     {Array.from({ length: 5 }).map((_, j) => (
@@ -546,14 +500,24 @@ export default function Index() {
               className="absolute inset-0 -z-10 rounded-3xl"
               animate={{
                 boxShadow: [
-                  "0 0 80px 20px rgba(207,20,43,0.12)",
-                  "0 0 140px 50px rgba(207,20,43,0.22)",
-                  "0 0 80px 20px rgba(207,20,43,0.12)",
+                  "0 0 60px 10px rgba(207,20,43,0.10)",
+                  "0 0 120px 40px rgba(207,20,43,0.22)",
+                  "0 0 60px 10px rgba(207,20,43,0.10)",
                 ],
               }}
-              transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+              transition={{
+                repeat: Infinity,
+                duration: 3.5,
+                ease: "easeInOut",
+              }}
             />
-            <div className="p-12 md:p-20 rounded-3xl border border-[#cf142b]/30 bg-gradient-to-br from-[#cf142b]/10 to-transparent backdrop-blur-sm">
+            <div
+              className="p-12 md:p-20 rounded-3xl border border-[#cf142b]/30 backdrop-blur-sm"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(207,20,43,0.10) 0%, transparent 100%)",
+              }}
+            >
               <h2 className="text-4xl md:text-5xl font-black text-white mb-5">
                 Empieza hoy,
                 <br />
@@ -565,7 +529,8 @@ export default function Index() {
               </p>
               <Link
                 to="/auth"
-                className="inline-flex items-center gap-3 px-10 py-4 bg-[#cf142b] hover:bg-[#e01530] text-white font-bold rounded-xl text-lg transition-all duration-200 shadow-2xl shadow-[#cf142b]/40 hover:scale-105"
+                className="inline-flex items-center gap-3 px-10 py-4 bg-[#cf142b] hover:bg-[#e01530] text-white font-bold rounded-xl text-lg transition-all duration-200 hover:scale-105"
+                style={{ boxShadow: "0 8px 40px rgba(207,20,43,0.45)" }}
               >
                 Comenzar gratis ahora
                 <ArrowRight className="w-5 h-5" />
@@ -590,68 +555,56 @@ export default function Index() {
               </p>
             </div>
 
-            <div>
-              <h4 className="text-white font-semibold mb-4 text-sm">
-                Producto
-              </h4>
-              <ul className="space-y-2.5 text-white/45 text-sm">
-                {[
+            {[
+              {
+                title: "Producto",
+                links: [
                   "Inbox Unificado",
                   "Campañas WhatsApp",
                   "Analytics",
                   "Automatizaciones",
                   "Integraciones",
-                ].map((l) => (
-                  <li key={l}>
-                    <a href="#" className="hover:text-white transition-colors">
-                      {l}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4 text-sm">
-                Empresa
-              </h4>
-              <ul className="space-y-2.5 text-white/45 text-sm">
-                {[
+                ],
+              },
+              {
+                title: "Empresa",
+                links: [
                   "Acerca de",
                   "Blog",
                   "Clientes",
                   "Prensa",
                   "Trabaja con nosotros",
-                ].map((l) => (
-                  <li key={l}>
-                    <a href="#" className="hover:text-white transition-colors">
-                      {l}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4 text-sm">
-                Contacto
-              </h4>
-              <ul className="space-y-2.5 text-white/45 text-sm">
-                {[
+                ],
+              },
+              {
+                title: "Contacto",
+                links: [
                   "Soporte 24/7",
                   "Documentación",
                   "Estado del sistema",
                   "Política de privacidad",
                   "Términos de uso",
-                ].map((l) => (
-                  <li key={l}>
-                    <a href="#" className="hover:text-white transition-colors">
-                      {l}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                ],
+              },
+            ].map((col) => (
+              <div key={col.title}>
+                <h4 className="text-white font-semibold mb-4 text-sm">
+                  {col.title}
+                </h4>
+                <ul className="space-y-2.5 text-sm">
+                  {col.links.map((l) => (
+                    <li key={l}>
+                      <a
+                        href="#"
+                        className="text-white/45 hover:text-white transition-colors"
+                      >
+                        {l}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
 
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-white/30 text-xs">
@@ -659,9 +612,7 @@ export default function Index() {
               © {new Date().getFullYear()} RealtyPlus. Todos los derechos
               reservados.
             </span>
-            <span>
-              Hecho con ❤️ para el mercado inmobiliario latinoamericano
-            </span>
+            <span>Hecho con ❤️ para el mercado inmobiliario latinoamericano</span>
           </div>
         </div>
       </footer>
