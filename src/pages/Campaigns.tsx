@@ -21,6 +21,9 @@ export default function Campaigns() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<CampaignRow | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<CampaignRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCampaigns = async () => {
     setLoading(true);
