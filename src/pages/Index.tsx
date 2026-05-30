@@ -6,7 +6,8 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   MessageSquare,
   Megaphone,
@@ -238,6 +239,15 @@ export default function Index() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { session, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirigir al dashboard si ya está autenticado
+  useEffect(() => {
+    if (!authLoading && session) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [session, authLoading, navigate]);
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
