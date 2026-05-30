@@ -21,8 +21,8 @@ const items = [
   { title: "Escáner", url: "/scanner", icon: ScanSearch },
   { title: "Campañas", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes", url: "/inbox", icon: MessageSquare },
-  { title: "Automatización", url: "/automation-inbox", icon: Zap },
-  { title: "Panel Automatización", url: "/automation", icon: Bot },
+  { title: "Leads calientes", url: "/automation-inbox", icon: Zap },
+  { title: "Panel Leads calientes", url: "/automation", icon: Bot },
   { title: "Etiquetados", url: "/tagged", icon: Tag },
   { title: "Configuración", url: "/settings", icon: Settings2 },
 ];

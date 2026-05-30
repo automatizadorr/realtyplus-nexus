@@ -433,7 +433,7 @@ export default function Automation() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Automatización</h1>
+        <h1 className="text-2xl font-bold text-foreground">Leads calientes</h1>
         <p className="text-sm text-muted-foreground">
           Gestión de campañas automatizadas y conversaciones.
         </p>
@@ -448,7 +448,7 @@ export default function Automation() {
         </TabsList>
 
         <TabsContent value="resumen" className="mt-4">
-          <PlaceholderTab title="Resumen de automatización (próximamente)" />
+          <PlaceholderTab title="Resumen de leads calientes (próximamente)" />
         </TabsContent>
         <TabsContent value="plantillas" className="mt-4">
           <PlaceholderTab title="Plantillas de mensajes (próximamente)" />
