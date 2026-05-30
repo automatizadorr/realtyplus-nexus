@@ -15,6 +15,7 @@ import Inbox from "./pages/Inbox";
 import Automation from "./pages/Automation";
 import AutomationInbox from "./pages/AutomationInbox";
 import TaggedMessages from "./pages/TaggedMessages";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -45,6 +46,7 @@ const App = () => (
                       <Route path="/automation" element={<AdminRoute><Automation /></AdminRoute>} />
                       <Route path="/automation-inbox" element={<AdminRoute><AutomationInbox /></AdminRoute>} />
                       <Route path="/tagged" element={<AdminRoute><TaggedMessages /></AdminRoute>} />
+                      <Route path="/settings" element={<Settings />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
