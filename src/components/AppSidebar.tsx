@@ -22,7 +22,7 @@ const items = [
   { title: "Campañas", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes", url: "/inbox", icon: MessageSquare },
   { title: "Automatización", url: "/automation-inbox", icon: Zap },
-  { title: "Automatización", url: "/automation", icon: Bot },
+  { title: "Panel Automatización", url: "/automation", icon: Bot },
   { title: "Etiquetados", url: "/tagged", icon: Tag },
 ];
 
