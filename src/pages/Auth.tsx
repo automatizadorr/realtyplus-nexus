@@ -109,7 +109,7 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate("/");
+        navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -120,7 +120,7 @@ export default function Auth() {
               rp_role: role,
               network: "Realtyplus International",
             },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
         if (error) throw error;
