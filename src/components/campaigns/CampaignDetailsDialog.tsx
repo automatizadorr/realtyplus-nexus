@@ -6,7 +6,7 @@ import { Rocket, Send, Calendar, Users, MessageCircle, Mail, CheckCircle2, Trend
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-const N8N_WEBHOOK = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas";
+
 
 export interface CampaignRow {
   id: string;
