@@ -17,8 +17,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { countryFlag } from "@/lib/countryFlag";
 import { useToast } from "@/hooks/use-toast";
 
-const WEBHOOK_URL =
-  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto";
 
 interface InboxRow {
   telefono: string;
