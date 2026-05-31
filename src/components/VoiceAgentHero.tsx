@@ -535,7 +535,7 @@ export function VoiceAgentHero() {
       {/* ElevenLabs widget — oculto visualmente pero accesible al JS */}
       {/* @ts-ignore */}
       <elevenlabs-convai
-        agent-id="agent_0201krfp32xcfc1a3s24s160sc9b"
+        agent-id="agent_2401ksxkp4fgfw0vwt0yt1tnz7r2"
         style={{ position: "fixed", bottom: 0, right: 0, visibility: "hidden", zIndex: -1 }}
       />
     </section>
