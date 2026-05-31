@@ -241,37 +241,6 @@ export function VoiceAgentHero() {
     setAmp(0);
   }, []);
 
-  // ── Escucha eventos del widget (nombres reales de ElevenLabs) ──
-  useEffect(() => {
-    const attach = () => {
-      const el = document.querySelector("elevenlabs-convai");
-      if (!el) return false;
-
-      const onCall = () => setState(s => s === "idle" ? "listening" : "idle");
-      const onMode = (e: Event) => {
-        const mode = (e as CustomEvent)?.detail?.mode;
-        if (mode === "speaking")  setState("speaking");
-        if (mode === "listening") setState("listening");
-      };
-      const onEnd = () => { setState("idle"); stopMic(); };
-
-      // ElevenLabs dispatches these event names
-      el.addEventListener("call",        onCall);
-      el.addEventListener("modeChange",  onMode);
-      el.addEventListener("end",         onEnd);
-      el.addEventListener("error",       onEnd);
-
-      return true;
-    };
-
-    // Retry hasta que el widget esté en DOM
-    if (!attach()) {
-      const t = setTimeout(attach, 1500);
-      return () => clearTimeout(t);
-    }
-  }, [stopMic]);
-
-
   // Mic para visualización de onda
   const startMic = async () => {
     try {
@@ -292,41 +261,44 @@ export function VoiceAgentHero() {
       };
       tick();
       return true;
-    } catch { return false; }
+    } catch (e) {
+      console.error("[mic] permission denied", e);
+      return false;
+    }
   };
 
-
+  useEffect(() => { stopMicRef.current = stopMic; }, [stopMic]);
   useEffect(() => () => stopMic(), [stopMic]);
 
-  // Dispara el botón del widget (busca en shadow DOM con retry)
-  const triggerWidget = useCallback(() => {
-    const attempt = (n: number) => {
-      const el = document.querySelector("elevenlabs-convai") as HTMLElement & { shadowRoot?: ShadowRoot };
-      if (!el) { if (n < 15) setTimeout(() => attempt(n + 1), 400); return; }
-      const btn =
-        el.shadowRoot?.querySelector<HTMLElement>("button") ??
-        el.shadowRoot?.querySelector<HTMLElement>('[role="button"]') ??
-        el.querySelector<HTMLElement>("button");
-      if (btn) btn.click();
-      else if (n < 15) setTimeout(() => attempt(n + 1), 400);
-    };
-    attempt(0);
-  }, []);
-
-  // Click en el orbe
+  // Click en el orbe — un solo clic inicia el agente
   const handleClick = async () => {
     if (state !== "idle") return;
     setState("connecting");
-    await startMic();
-    setState("listening");
-    triggerWidget();
+    const micOk = await startMic();
+    if (!micOk) {
+      setState("idle");
+      alert("Necesitamos permiso de micrófono para hablar con el agente.");
+      return;
+    }
+    try {
+      await conversation.startSession({
+        agentId: AGENT_ID,
+        connectionType: "webrtc",
+      } as any);
+      // onConnect pasará a "listening"
+    } catch (e) {
+      console.error("[ElevenLabs] startSession failed", e);
+      stopMic();
+      setState("idle");
+    }
   };
 
-  const handleEnd = () => {
+  const handleEnd = async () => {
+    try { await conversation.endSession(); } catch {}
     stopMic();
     setState("idle");
-    triggerWidget(); // toggle off
   };
+
 
   const labels: Record<AgentState, string> = {
     idle:       "Toca el orbe para hablar con el agente IA",
