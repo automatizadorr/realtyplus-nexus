@@ -292,13 +292,6 @@ export function VoiceAgentHero() {
     } catch { return false; }
   };
 
-  const stopMic = useCallback(() => {
-    cancelAnimationFrame(rafAudioRef.current);
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    audioCtxRef.current?.close().catch(() => {});
-    streamRef.current = null; audioCtxRef.current = null;
-    setAmp(0);
-  }, []);
 
   useEffect(() => () => stopMic(), [stopMic]);
 
