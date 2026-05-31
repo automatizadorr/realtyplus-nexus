@@ -234,6 +234,109 @@ function FadeSection({ children, className = "", delay = 0 }: {
   );
 }
 
+// ─── WhatsApp 3D Button ────────────────────────────────────────────────────────
+const WA_PATH = "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z";
+
+function WhatsAppButton() {
+  const [hovered, setHovered] = useState(false);
+
+  const rings = [
+    { color: "#25d366", delay: 0,   duration: 2.4 },
+    { color: "#cf142b", delay: 0.8, duration: 2.4 },
+    { color: "#0f2b5a", delay: 1.6, duration: 2.4 },
+  ];
+
+  return (
+    <motion.div
+      className="fixed bottom-28 right-6 z-40"
+      style={{ perspective: "600px" }}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ delay: 2.5, duration: 0.6, type: "spring", stiffness: 180 }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+    >
+      {/* Anillos sonar 3D */}
+      {rings.map((ring, i) => (
+        <motion.div
+          key={i}
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{ border: `2px solid ${ring.color}` }}
+          animate={{ scale: [1, 2.2], opacity: [0.7, 0] }}
+          transition={{ repeat: Infinity, duration: ring.duration, delay: ring.delay, ease: "easeOut" }}
+        />
+      ))}
+
+      {/* Tooltip con número */}
+      <motion.div
+        className="absolute right-full mr-4 top-1/2 -translate-y-1/2 pointer-events-none"
+        initial={{ opacity: 0, x: 12, scale: 0.9 }}
+        animate={hovered ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: 12, scale: 0.9 }}
+        transition={{ duration: 0.22 }}
+      >
+        <div className="bg-white rounded-2xl shadow-xl px-4 py-2.5 whitespace-nowrap border border-gray-100">
+          <p className="text-[10px] text-[#040d1e]/40 font-semibold uppercase tracking-wider mb-0.5">
+            WhatsApp
+          </p>
+          <p className="text-sm font-black text-[#040d1e]">+56 971 806 730</p>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2">
+            <div className="w-3 h-3 bg-white border-r border-t border-gray-100 rotate-45" />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Botón principal 3D */}
+      <motion.a
+        href="https://wa.me/56971806730"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="WhatsApp +56 971 806 730"
+        className="relative flex w-16 h-16 rounded-full items-center justify-center"
+        style={{
+          background: "linear-gradient(135deg, #25d366 0%, #0f2b5a 60%, #cf142b 100%)",
+          boxShadow: hovered
+            ? "0 20px 48px rgba(207,20,43,0.45), 0 8px 20px rgba(15,43,90,0.3), 0 0 0 3px rgba(37,211,102,0.4)"
+            : "0 8px 28px rgba(15,43,90,0.35), 0 4px 12px rgba(207,20,43,0.2)",
+          transformStyle: "preserve-3d",
+        }}
+        animate={{
+          y: [0, -7, 0],
+          rotateY: [0, 18, 0, -18, 0],
+          rotateX: [0, 6, 0, -6, 0],
+        }}
+        transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
+        whileHover={{
+          scale: 1.18,
+          rotateY: 25,
+          rotateX: 10,
+          y: -10,
+          transition: { duration: 0.25 },
+        }}
+        whileTap={{ scale: 0.92, rotateY: 0 }}
+      >
+        {/* Ícono WhatsApp */}
+        <svg viewBox="0 0 24 24" className="w-8 h-8 fill-white relative z-10" aria-hidden="true">
+          <path d={WA_PATH} />
+        </svg>
+
+        {/* Highlight especular 3D */}
+        <div
+          className="absolute top-1.5 left-2.5 w-4 h-4 rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(255,255,255,0.55) 0%, transparent 70%)" }}
+        />
+
+        {/* Borde inferior (profundidad 3D) */}
+        <div
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            background: "linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.25) 100%)",
+          }}
+        />
+      </motion.a>
+    </motion.div>
+  );
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────────
 export default function Index() {
   const [loaded, setLoaded] = useState(false);
@@ -298,19 +401,8 @@ export default function Index() {
         <p className="mt-4 text-gray-400 text-sm">Cargando…</p>
       </div>
 
-      {/* ── WhatsApp flotante ── */}
-      <a
-        href="https://wa.me/message/REALTYPLUS"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Contactar por WhatsApp"
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-transform hover:scale-110"
-        style={{ background: "#25d366" }}
-      >
-        <svg viewBox="0 0 24 24" className="w-7 h-7 fill-white" aria-hidden="true">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-        </svg>
-      </a>
+      {/* ── WhatsApp 3D flotante ── */}
+      <WhatsAppButton />
 
       {/* ── Nav ── */}
       <nav
