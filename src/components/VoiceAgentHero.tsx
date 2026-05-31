@@ -199,34 +199,66 @@ export function VoiceAgentHero() {
     return () => { window.removeEventListener("resize", resize); cancelAnimationFrame(rafDrawRef.current); };
   }, []);
 
-  // Escucha eventos del widget para sincronizar estado del orbe
+  // ── Detecta modo speaking/listening por silencio del micrófono ──
+  // Cuando el usuario calla por >800ms → agente habla (azul)
+  // Cuando el usuario vuelve a hablar → escucha (rojo)
+  const silenceTimerRef = useRef<number | null>(null);
   useEffect(() => {
-    const el = document.querySelector("elevenlabs-convai");
-    if (!el) return;
+    if (state !== "listening" && state !== "speaking") return;
+    const MIC_THRESHOLD = 0.04;
+    const SILENCE_MS = 800;
 
-    const onConnect    = () => setState("listening");
-    const onDisconnect = () => { setState("idle"); stopMic(); };
-    const onMode = (e: Event) => {
-      const mode = (e as CustomEvent)?.detail?.mode;
-      if (mode === "speaking")  setState("speaking");
-      if (mode === "listening") setState("listening");
-    };
-
-    el.addEventListener("elevenlabs-convai:connect",    onConnect);
-    el.addEventListener("elevenlabs-convai:disconnect", onDisconnect);
-    el.addEventListener("elevenlabs-convai:mode",       onMode);
-    // También intentamos nombres alternativos de eventos
-    el.addEventListener("connect",    onConnect);
-    el.addEventListener("disconnect", onDisconnect);
+    const interval = setInterval(() => {
+      if (ampRef.current > MIC_THRESHOLD) {
+        // Usuario habla — estado "listening"
+        if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+        if (stateRef.current === "speaking") setState("listening");
+      } else {
+        // Silencio — después de SILENCE_MS → agente habla
+        if (!silenceTimerRef.current) {
+          silenceTimerRef.current = window.setTimeout(() => {
+            silenceTimerRef.current = null;
+            if (stateRef.current === "listening") setState("speaking");
+          }, SILENCE_MS);
+        }
+      }
+    }, 80);
 
     return () => {
-      el.removeEventListener("elevenlabs-convai:connect",    onConnect);
-      el.removeEventListener("elevenlabs-convai:disconnect", onDisconnect);
-      el.removeEventListener("elevenlabs-convai:mode",       onMode);
-      el.removeEventListener("connect",    onConnect);
-      el.removeEventListener("disconnect", onDisconnect);
+      clearInterval(interval);
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
     };
-  });
+  }, [state]);
+
+  // ── Escucha eventos del widget (nombres reales de ElevenLabs) ──
+  useEffect(() => {
+    const attach = () => {
+      const el = document.querySelector("elevenlabs-convai");
+      if (!el) return false;
+
+      const onCall = () => setState(s => s === "idle" ? "listening" : "idle");
+      const onMode = (e: Event) => {
+        const mode = (e as CustomEvent)?.detail?.mode;
+        if (mode === "speaking")  setState("speaking");
+        if (mode === "listening") setState("listening");
+      };
+      const onEnd = () => { setState("idle"); stopMic(); };
+
+      // ElevenLabs dispatches these event names
+      el.addEventListener("call",        onCall);
+      el.addEventListener("modeChange",  onMode);
+      el.addEventListener("end",         onEnd);
+      el.addEventListener("error",       onEnd);
+
+      return true;
+    };
+
+    // Retry hasta que el widget esté en DOM
+    if (!attach()) {
+      const t = setTimeout(attach, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [stopMic]);
 
   // Mic para visualización de onda
   const startMic = async () => {
