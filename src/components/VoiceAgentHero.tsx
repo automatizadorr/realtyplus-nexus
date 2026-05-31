@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Loader2, PhoneOff } from "lucide-react";
+import { useConversation } from "@elevenlabs/react";
 
 const AGENT_ID = "agent_2401ksxkp4fgfw0vwt0yt1tnz7r2";
 
 type AgentState = "idle" | "connecting" | "listening" | "speaking";
 
-// ─── Carga script ElevenLabs ──────────────────────────────────────────────────
-function loadElevenLabsScript() {
-  if (document.querySelector('script[src*="elevenlabs"]')) return;
-  const s = document.createElement("script");
-  s.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
-  s.async = true;
-  s.type = "text/javascript";
-  document.head.appendChild(s);
-}
 
 // ─── 3D Sphere Canvas ─────────────────────────────────────────────────────────
 function drawSphere(
