@@ -163,8 +163,19 @@ export function VoiceAgentHero() {
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { ampRef.current = amp; }, [amp]);
 
-  // Carga script al montar
-  useEffect(() => { loadElevenLabsScript(); }, []);
+  // ── SDK oficial de ElevenLabs (WebRTC, sin widget embed) ──
+  const conversation = useConversation({
+    onConnect: () => setState("listening"),
+    onDisconnect: () => { setState("idle"); stopMicRef.current?.(); },
+    onError: (err) => { console.error("[ElevenLabs]", err); setState("idle"); stopMicRef.current?.(); },
+    onModeChange: ({ mode }: { mode: string }) => {
+      if (mode === "speaking") setState("speaking");
+      else if (mode === "listening") setState("listening");
+    },
+  } as any);
+
+  const stopMicRef = useRef<(() => void) | null>(null);
+
 
   // Canvas loop
   useEffect(() => {
