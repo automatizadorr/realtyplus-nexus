@@ -428,7 +428,7 @@ export default function Automation() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Panel de Leads Calientes</h1>
+        <h1 className="text-2xl font-bold text-foreground">Panel de Oportunidades calientes</h1>
         <p className="text-sm text-muted-foreground">
           Gestión completa de automatización, plantillas y configuración.
         </p>
