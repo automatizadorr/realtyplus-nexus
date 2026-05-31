@@ -51,7 +51,7 @@ export default function Campaigns() {
   }, [campaigns]);
 
   const kpiCards = [
-    { label: "Campañas AI-Pro", value: kpis.total, sub: `${kpis.executing} activas`, icon: Megaphone, color: "text-primary" },
+    { label: "Campañas AI-Pro 99", value: kpis.total, sub: `${kpis.executing} activas`, icon: Megaphone, color: "text-primary" },
     { label: "Leads totales", value: kpis.totalLeads, sub: "en campañas", icon: Users, color: "text-blue-600" },
     { label: "Contactados", value: kpis.contacted, sub: "WhatsApp + Email", icon: Send, color: "text-indigo-600" },
     { label: "Respondieron", value: kpis.responded, sub: `${kpis.responseRate}% tasa`, icon: CheckCircle2, color: "text-emerald-600" },
@@ -87,7 +87,7 @@ export default function Campaigns() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Megaphone className="h-6 w-6 text-accent" />
-          <h2 className="text-2xl font-bold text-foreground">Dashboard de Campañas AI-Pro</h2>
+          <h2 className="text-2xl font-bold text-foreground">Dashboard de Campañas AI-Pro 99</h2>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchCampaigns} disabled={loading}>
@@ -117,7 +117,7 @@ export default function Campaigns() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Historial de Campañas AI-Pro · clic para ver detalle y ejecutar</CardTitle>
+          <CardTitle className="text-base">Historial de Campañas AI-Pro 99 · clic para ver detalle y ejecutar</CardTitle>
         </CardHeader>
         <CardContent>
           {campaigns.length === 0 && !loading ? (
