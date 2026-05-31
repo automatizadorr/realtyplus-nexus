@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Loader2, PhoneOff } from "lucide-react";
-import { useConversation } from "@elevenlabs/react";
+import { useConversation, ConversationProvider } from "@elevenlabs/react";
 
 const AGENT_ID = "agent_2401ksxkp4fgfw0vwt0yt1tnz7r2";
 
@@ -148,6 +148,14 @@ function WaveBars({ amp, state }: { amp: number; state: AgentState }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function VoiceAgentHero() {
+  return (
+    <ConversationProvider>
+      <VoiceAgentHeroInner />
+    </ConversationProvider>
+  );
+}
+
+function VoiceAgentHeroInner() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<AgentState>("idle");
   const [amp, setAmp] = useState(0);
