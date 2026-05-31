@@ -148,6 +148,14 @@ function WaveBars({ amp, state }: { amp: number; state: AgentState }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function VoiceAgentHero() {
+  return (
+    <ConversationProvider>
+      <VoiceAgentHeroInner />
+    </ConversationProvider>
+  );
+}
+
+function VoiceAgentHeroInner() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<AgentState>("idle");
   const [amp, setAmp] = useState(0);
