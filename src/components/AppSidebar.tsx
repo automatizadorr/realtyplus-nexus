@@ -19,7 +19,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Escáner", url: "/scanner", icon: ScanSearch },
-  { title: "Campañas", url: "/campaigns", icon: Megaphone },
+  { title: "Campañas AI-Pro", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes Para Reactivacion de Leads", url: "/inbox", icon: MessageSquare },
   { title: "​Oportunidades calientes", url: "/automation-inbox", icon: Zap },
   { title: "Panel ​Oportunidades calientes", url: "/automation", icon: Bot },
