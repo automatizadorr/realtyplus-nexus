@@ -23,7 +23,7 @@ const items = [
   { title: "Mensajes", url: "/inbox", icon: MessageSquare },
   { title: "Leads calientes", url: "/automation-inbox", icon: Zap },
   { title: "Panel Leads calientes", url: "/automation", icon: Bot },
-  { title: "Etiquetados", url: "/tagged", icon: Tag },
+  { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
   { title: "Configuración", url: "/settings", icon: Settings2 },
 ];
 
