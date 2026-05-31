@@ -312,7 +312,7 @@ export default function Scanner() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <ScanSearch className="h-6 w-6 text-accent" />
-        <h2 className="text-2xl font-bold text-foreground">Escáner de Contactos</h2>
+        <h2 className="text-2xl font-bold text-foreground">Escáner  Nuevas Oportunidades </h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
