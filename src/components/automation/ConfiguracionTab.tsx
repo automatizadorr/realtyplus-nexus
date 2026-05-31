@@ -361,7 +361,7 @@ export function ConfiguracionTab() {
               Etiquetas de leads
             </CardTitle>
             <CardDescription className="text-xs">
-              Crea etiquetas para clasificar tus leads calientes
+              Crea etiquetas para clasificar tus oportunidades calientes
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

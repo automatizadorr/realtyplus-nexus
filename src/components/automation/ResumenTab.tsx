@@ -154,7 +154,7 @@ export function ResumenTab() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-foreground">Resumen de automatización</h3>
-          <p className="text-xs text-muted-foreground">Estadísticas en tiempo real de tus leads calientes</p>
+          <p className="text-xs text-muted-foreground">Estadísticas en tiempo real de tus oportunidades calientes</p>
         </div>
         <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Actualizar
