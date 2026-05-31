@@ -443,11 +443,11 @@ export function VoiceAgentHero() {
         </div>
       </div>
 
-      {/* Widget visible en esquina inferior izquierda — DEBE ser visible para que el audio funcione */}
+      {/* Widget oculto visualmente pero funcional — se activa por .click() programático desde el orbe */}
       {/* @ts-ignore */}
       <elevenlabs-convai
         agent-id={AGENT_ID}
-        style={{ position: "fixed", bottom: "20px", left: "20px", zIndex: 45 }}
+        style={{ position: "fixed", bottom: "20px", left: "20px", zIndex: -1, opacity: 0, pointerEvents: "none" }}
       />
     </section>
   );
