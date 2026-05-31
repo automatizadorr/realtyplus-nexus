@@ -230,6 +230,14 @@ export function VoiceAgentHero() {
     };
   }, [state]);
 
+  const stopMic = useCallback(() => {
+    cancelAnimationFrame(rafAudioRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    audioCtxRef.current?.close().catch(() => {});
+    streamRef.current = null; audioCtxRef.current = null;
+    setAmp(0);
+  }, []);
+
   // ── Escucha eventos del widget (nombres reales de ElevenLabs) ──
   useEffect(() => {
     const attach = () => {
@@ -259,6 +267,7 @@ export function VoiceAgentHero() {
       return () => clearTimeout(t);
     }
   }, [stopMic]);
+
 
   // Mic para visualización de onda
   const startMic = async () => {
