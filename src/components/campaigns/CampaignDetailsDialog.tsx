@@ -46,39 +46,61 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
       const tf = campaign.target_filters || {};
       const pais: string | null = tf?.pais || null;
       const telefonos: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
-      const soloNoContactados = !!tf?.solo_no_contactados;
+      const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
-      // Traer datos completos de la hoja (sin filtrar por teléfono — solo por país)
+      // 1. Datos del Scanner guardados en leads_escaner (nombre completo, email)
+      let escanerLeads: any[] = [];
+      try {
+        const { data } = await supabase
+          .from("leads_escaner")
+          .select("nombre, telefono, email, id_contacto")
+          .eq("campaign_name", campaign.campaign_name);
+        if (data) escanerLeads = data;
+      } catch (e) {
+        console.warn("leads_escaner no disponible:", e);
+      }
+      const escanerByPhone = new Map<string, any>();
+      for (const l of escanerLeads) {
+        const ph = normPhone(l.telefono || "");
+        if (ph && !escanerByPhone.has(ph)) escanerByPhone.set(ph, l);
+      }
+
+      // 2. Datos de Google Sheets (nombres/apellidos separados, id_contacto, dias_transcurridos)
       let sheetLeads: any[] = [];
       try {
         const { data, error } = await supabase.functions.invoke("sheets-leads", {
-          body: { pais, solo_no_contactados: soloNoContactados, telefonos },
+          body: { pais },
         });
         if (error) throw error;
         if (data?.success) sheetLeads = data.leads || [];
       } catch (e) {
-        console.warn("No se pudo obtener leads del sheet:", e);
+        console.warn("sheets-leads no disponible:", e);
       }
-
-      // Mapa sheets por teléfono normalizado
-      const normPhone = (p: string) => (p || "").replace(/\D/g, "");
       const sheetByPhone = new Map<string, any>();
       for (const l of sheetLeads) {
         const ph = normPhone(l.telefono || "");
         if (ph && !sheetByPhone.has(ph)) sheetByPhone.set(ph, l);
       }
 
-      // Construir leads completos: TODOS los teléfonos del target, enriquecidos con sheets
+      // 3. Construir leads completos para TODOS los teléfonos del target
+      //    Prioridad: sheets > escaner > vacío
       const allLeads = telefonos.map((tel) => {
         const ph = normPhone(tel);
         const sl = sheetByPhone.get(ph) || null;
+        const el = escanerByPhone.get(ph) || null;
+
+        // Separar nombre del escaner en nombres/apellidos si sheets no lo tiene
+        const partes = (el?.nombre || "").trim().split(/\s+/);
+        const nombresEscaner  = partes[0] || "";
+        const apellidosEscaner = partes.slice(1).join(" ");
+
         return {
-          id_contacto: sl?.id_contacto || null,
-          nombres:     sl?.nombres    || "",
-          apellidos:   sl?.apellidos  || "",
-          email:       sl?.email      || "",
+          id_contacto: sl?.id_contacto || el?.id_contacto || null,
+          nombres:     sl?.nombres    || nombresEscaner  || "",
+          apellidos:   sl?.apellidos  || apellidosEscaner || "",
+          email:       sl?.email      || el?.email        || "",
           telefono:    tel,
-          pais:        sl?.pais       || pais || "",
+          pais:        sl?.pais       || pais             || "",
           dias_transcurridos: sl?.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1,
         };
       });
