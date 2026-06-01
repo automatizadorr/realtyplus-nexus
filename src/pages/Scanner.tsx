@@ -202,9 +202,11 @@ export default function Scanner() {
     setLoading(true);
     setLoadingStage("syncing");
     try {
-      // a/b. Fetch all leads from Google Sheets to build lookup maps
+      // a/b. Fetch all leads from Google Sheets — guardar datos completos por teléfono/email
       const emailMap = new Map<string, string>();
       const phoneMap = new Map<string, string>();
+      const slByPhone = new Map<string, any>();
+      const slByEmail = new Map<string, any>();
       try {
         const { data: sheetsData, error: sheetsErr } = await supabase.functions.invoke("sheets-leads", {
           body: {},
@@ -216,8 +218,8 @@ export default function Scanner() {
           if (!id) continue;
           const em = (l.email || "").toString().trim().toLowerCase();
           const ph = normPhone(l.telefono || "");
-          if (em && !emailMap.has(em)) emailMap.set(em, id);
-          if (ph && !phoneMap.has(ph)) phoneMap.set(ph, id);
+          if (em && !emailMap.has(em)) { emailMap.set(em, id); slByEmail.set(em, l); }
+          if (ph && !phoneMap.has(ph)) { phoneMap.set(ph, id); slByPhone.set(ph, l); }
         }
       } catch (err: any) {
         console.warn("sheets-leads enrichment failed:", err);
@@ -227,12 +229,13 @@ export default function Scanner() {
         });
       }
 
-      // c. Enrich contacts with id_contacto
+      // c. Enrich contacts — id_contacto + lead completo desde sheets
       const enriched = contacts.map((c) => {
         const em = (c.email || "").trim().toLowerCase();
         const ph = normPhone(c.telefono);
         const id = (em && emailMap.get(em)) || (ph && phoneMap.get(ph)) || null;
-        return { ...c, id_contacto: id };
+        const sl = (ph && slByPhone.get(ph)) || (em && slByEmail.get(em)) || null;
+        return { ...c, id_contacto: id, _sl: sl as any };
       });
       const matchedCount = enriched.filter((c) => c.id_contacto).length;
       setContacts(enriched);
@@ -274,17 +277,21 @@ export default function Scanner() {
       const paisPrincipal = paises[0] || "Desconocido";
 
       const webhookLeads = enriched.map((c) => {
-        const partes = (c.nombre || "Sin nombre").trim().split(/\s+/);
-        const nombres = partes[0] || "Sin nombre";
-        const apellidos = partes.slice(1).join(" ");
+        const sl = (c as any)._sl;
+        // Prioridad: datos de Google Sheets (completos) > datos parseados por Scanner
+        const nombres  = sl?.nombres   || (c.nombre || "Sin nombre").trim().split(/\s+/)[0] || "Sin nombre";
+        const apellidos = sl?.apellidos || (c.nombre || "").trim().split(/\s+/).slice(1).join(" ");
+        const email    = sl?.email     || c.email || "";
+        const pais     = sl?.pais      || c.pais  || "";
+        const diasTranscurridos = sl?.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1;
         return {
           id_contacto: c.id_contacto || null,
           nombres,
           apellidos,
-          email: c.email || "",
+          email,
           telefono: c.telefono || "",
-          pais: c.pais || "",
-          dias_transcurridos: 1,
+          pais,
+          dias_transcurridos: diasTranscurridos,
         };
       });
 
