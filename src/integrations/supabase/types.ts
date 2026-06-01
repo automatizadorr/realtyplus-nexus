@@ -561,11 +561,16 @@ export type Database = {
           archivado: boolean | null
           bot_activo: boolean | null
           estado: string | null
+          first_message_at: string | null
+          first_message_dir: string | null
           id: string | null
+          inbound_count: number | null
+          is_ai_initiated: boolean | null
           last_message_at: string | null
           last_message_dir: string | null
           last_message_text: string | null
           nombre: string | null
+          outbound_count: number | null
           pais: string | null
           tag_ids: string[] | null
           telefono: string | null
