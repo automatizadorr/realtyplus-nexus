@@ -22,7 +22,7 @@ const items = [
   { title: "Campaña de Oportunidades", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
   { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
-  { title: "Panel ​Oportunidades calientes", url: "/automation", icon: Bot },
+  { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot },
   { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
   { title: "Configuración", url: "/settings", icon: Settings2 },
 ];
