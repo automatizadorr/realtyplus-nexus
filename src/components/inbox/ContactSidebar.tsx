@@ -329,6 +329,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     isSelected ? "bg-muted border-l-2 border-l-primary" : ""
                   } ${checked ? "bg-primary/5" : ""}`}
                 >
+                  {contact.is_ai_initiated && !selectionMode && !isSelected && <AiAgentStripe />}
                   {selectionMode && (
                     <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
                       <Checkbox
@@ -347,6 +348,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       >
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         <span className="min-w-0 flex-1 truncate">{contact.nombre || "Sin nombre"}</span>
+                        {contact.is_ai_initiated && <AiAgentBadge compact />}
                         {contact.pais && (
                           <Badge variant="outline" className="h-4 max-w-16 shrink-0 px-1 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-0.5 overflow-hidden">
                             <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
