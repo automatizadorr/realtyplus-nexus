@@ -268,22 +268,52 @@ export default function Scanner() {
       });
       if (campError) throw campError;
 
-      // f. Fire-and-forget webhook (via authenticated edge function proxy)
+      // f. Fire-and-forget webhook — payload estructurado para el nodo "Preparar Leads" de n8n
+      const campaignId = crypto.randomUUID();
+      const paises = [...new Set(enriched.map((c) => c.pais))];
+      const paisPrincipal = paises[0] || "Desconocido";
+
+      const webhookLeads = enriched.map((c) => {
+        const partes = (c.nombre || "Sin nombre").trim().split(/\s+/);
+        const nombres = partes[0] || "Sin nombre";
+        const apellidos = partes.slice(1).join(" ");
+        return {
+          id_contacto: c.id_contacto || null,
+          nombres,
+          apellidos,
+          email: c.email || "",
+          telefono: c.telefono || "",
+          pais: c.pais || "",
+          dias_transcurridos: 1,
+        };
+      });
+
       supabase.functions.invoke("send-n8n-webhook", {
         body: {
-          target: "primer_contacto",
+          target: "campanas_segmentadas",
           payload: {
-            user_id: user.id,
-            user_email: user.email,
+            campaign_id: campaignId,
             campaign_name: campaignName,
-            message_template: messageTemplate,
-            total_contacts: enriched.length,
-            contacts: enriched,
-            archivo_origen: fileName || null,
-            timestamp: new Date().toISOString(),
+            channel: "whatsapp",
+            status: "pendiente",
+            total_leads: enriched.length,
+            message_template_whatsapp: messageTemplate || "",
+            message_template_email: null,
+            subject_email: null,
+            target_filters: {
+              pais: paisPrincipal,
+              telefonos: enriched.map((c) => c.telefono),
+              solo_no_contactados: true,
+            },
+            sheet: {
+              pais: paisPrincipal,
+              total: enriched.length,
+              leads: webhookLeads,
+            },
+            triggered_at: new Date().toISOString(),
           },
         },
-      }).catch((err) => console.warn("Webhook primer_contacto failed:", err));
+      }).catch((err) => console.warn("Webhook campanas_segmentadas failed:", err));
 
       toast({
         title: "¡Campaña lanzada!",
