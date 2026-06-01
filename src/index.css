@@ -63,3 +63,73 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* ============ Realtyplus AI Agent badge (tri-color animated) ============ */
+@layer components {
+  .ai-agent-badge {
+    background: linear-gradient(
+      110deg,
+      #003366 0%,
+      #003366 35%,
+      #ffffff 50%,
+      #cc0000 65%,
+      #cc0000 100%
+    );
+    background-size: 220% 100%;
+    animation: ai-agent-shimmer 3.2s linear infinite;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+      0 0 8px rgba(0, 51, 102, 0.35),
+      0 0 12px rgba(204, 0, 0, 0.25);
+  }
+  .ai-agent-badge__glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at 30% 50%,
+      rgba(255, 255, 255, 0.45),
+      transparent 60%
+    );
+    animation: ai-agent-pulse 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .ai-agent-badge__dot {
+    position: relative;
+    z-index: 10;
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: #ffffff;
+    box-shadow: 0 0 6px #ffffff, 0 0 10px rgba(255, 255, 255, 0.7);
+    animation: ai-agent-blink 1.2s ease-in-out infinite;
+  }
+  .ai-agent-stripe {
+    background: linear-gradient(
+      180deg,
+      #003366 0%,
+      #ffffff 50%,
+      #cc0000 100%
+    );
+    background-size: 100% 220%;
+    animation: ai-agent-stripe-slide 2.8s linear infinite;
+    box-shadow: 0 0 6px rgba(0, 51, 102, 0.45);
+  }
+}
+
+@keyframes ai-agent-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
+}
+@keyframes ai-agent-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes ai-agent-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes ai-agent-stripe-slide {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 220%; }
+}
