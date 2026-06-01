@@ -18,7 +18,7 @@ import {
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Escánea Tus Oportunidades ", url: "/scanner", icon: ScanSearch },
+  { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch },
   { title: "Campaña de Oportunidades", url: "/campaigns", icon: Megaphone },
   { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
   { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
