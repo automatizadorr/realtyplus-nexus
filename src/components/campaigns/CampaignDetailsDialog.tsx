@@ -44,50 +44,69 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
     setExecuting(true);
     try {
       const tf = campaign.target_filters || {};
-      const pais = tf?.pais || null;
-      const telefonos = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
+      const pais: string | null = tf?.pais || null;
+      const telefonos: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
       const soloNoContactados = !!tf?.solo_no_contactados;
 
-      // Fetch full sheet rows for this country / filter
+      // Traer datos completos de la hoja (sin filtrar por teléfono — solo por país)
       let sheetLeads: any[] = [];
-      let sheetTotal = 0;
       try {
         const { data, error } = await supabase.functions.invoke("sheets-leads", {
           body: { pais, solo_no_contactados: soloNoContactados, telefonos },
         });
         if (error) throw error;
-        if (data?.success) {
-          sheetLeads = data.leads || [];
-          sheetTotal = data.total || sheetLeads.length;
-        }
+        if (data?.success) sheetLeads = data.leads || [];
       } catch (e) {
         console.warn("No se pudo obtener leads del sheet:", e);
       }
+
+      // Mapa sheets por teléfono normalizado
+      const normPhone = (p: string) => (p || "").replace(/\D/g, "");
+      const sheetByPhone = new Map<string, any>();
+      for (const l of sheetLeads) {
+        const ph = normPhone(l.telefono || "");
+        if (ph && !sheetByPhone.has(ph)) sheetByPhone.set(ph, l);
+      }
+
+      // Construir leads completos: TODOS los teléfonos del target, enriquecidos con sheets
+      const allLeads = telefonos.map((tel) => {
+        const ph = normPhone(tel);
+        const sl = sheetByPhone.get(ph) || null;
+        return {
+          id_contacto: sl?.id_contacto || null,
+          nombres:     sl?.nombres    || "",
+          apellidos:   sl?.apellidos  || "",
+          email:       sl?.email      || "",
+          telefono:    tel,
+          pais:        sl?.pais       || pais || "",
+          dias_transcurridos: sl?.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1,
+        };
+      });
 
       const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
         body: {
           target: "campanas_segmentadas",
           payload: {
-            campaign_id: campaign.id,
-            campaign_name: campaign.campaign_name,
-            channel: campaign.channel,
-            status: campaign.status,
-            total_leads: campaign.total_leads,
+            campaign_id:               campaign.id,
+            campaign_name:             campaign.campaign_name,
+            channel:                   campaign.channel,
+            status:                    campaign.status,
+            total_leads:               allLeads.length,
             message_template_whatsapp: campaign.message_template_whatsapp,
-            message_template_email: campaign.message_template_email,
-            subject_email: campaign.subject_email,
-            target_filters: campaign.target_filters,
+            message_template_email:    campaign.message_template_email,
+            subject_email:             campaign.subject_email,
+            target_filters:            campaign.target_filters,
             sheet: {
               pais,
-              total: sheetTotal,
-              leads: sheetLeads,
+              total: allLeads.length,
+              leads: allLeads,
             },
             triggered_at: new Date().toISOString(),
           },
         },
       });
       if (whErr) throw whErr;
-      toast({ title: "Campaña enviada", description: `${sheetTotal} leads enviados al webhook.` });
+      toast({ title: "Campaña enviada", description: `${allLeads.length} leads enviados al webhook.` });
       onExecuted?.();
       onOpenChange(false);
     } catch (err: any) {
