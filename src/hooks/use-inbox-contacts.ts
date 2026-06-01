@@ -32,7 +32,7 @@ interface Params {
 }
 
 const SELECT_COLS =
-  "id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids, last_message_at, unread_count, last_message_text, last_message_dir";
+  "id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids, last_message_at, unread_count, last_message_text, last_message_dir, first_message_dir, first_message_at, inbound_count, outbound_count, is_ai_initiated";
 
 export function useInboxContacts({ search, filter, tagId, country = "all", pageSize = 50 }: Params) {
   const [rows, setRows] = useState<InboxContactRow[]>([]);
