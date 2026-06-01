@@ -211,7 +211,7 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5 text-primary" />
-          <h2 className="font-bold text-foreground">Automatización</h2>
+          <h2 className="font-bold text-foreground">Mensajes - Oportunidades</h2>
           <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
           {isAdmin && (
             <Button
