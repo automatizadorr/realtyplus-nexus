@@ -26,6 +26,7 @@ import { TagChips } from "./TagsManager";
 import { useInboxContacts, type InboxFilter } from "@/hooks/use-inbox-contacts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { countryFlag } from "@/lib/countryFlag";
+import { AiAgentBadge, AiAgentStripe } from "./AiAgentBadge";
 
 interface ContactSidebarProps {
   selectedContact: LeadCampana | null;
