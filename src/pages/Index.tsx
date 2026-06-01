@@ -368,7 +368,7 @@ export default function Index() {
 
   const features = [
     { icon: MessageSquare, title: "Inbox Unificado",           desc: "Centraliza WhatsApp, email y redes sociales en un solo panel. Nunca pierdas un lead.",                       color: "#cf142b", bg: "#fff0f1" },
-    { icon: Megaphone,     title: "Campañas Masivas",          desc: "Envía campañas personalizadas a miles de contactos con segmentación inteligente y alta entrega.",            color: "#0f2b5a", bg: "#f0f4ff" },
+    { icon: Megaphone,     title: "CAMPAÑAS IA",          desc: "Envía campañas personalizadas a miles de contactos con segmentación inteligente y alta entrega.",            color: "#0f2b5a", bg: "#f0f4ff" },
     { icon: BarChart3,     title: "Analytics en Tiempo Real",  desc: "Visualiza conversiones, tasas de apertura y ROI de cada campaña con dashboards interactivos.",               color: "#cf142b", bg: "#fff0f1" },
   ];
 
