@@ -19,9 +19,9 @@ import {
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Escánea Tus Oportunidades ", url: "/scanner", icon: ScanSearch },
-  { title: "Campañas AI-Pro 99", url: "/campaigns", icon: Megaphone },
-  { title: "Mensajes Para Reactivacion de Leads", url: "/inbox", icon: MessageSquare },
-  { title: "​Oportunidades calientes", url: "/automation-inbox", icon: Zap },
+  { title: "Campaña de Oportunidades", url: "/campaigns", icon: Megaphone },
+  { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
+  { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
   { title: "Panel ​Oportunidades calientes", url: "/automation", icon: Bot },
   { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
   { title: "Configuración", url: "/settings", icon: Settings2 },

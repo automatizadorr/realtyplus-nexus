@@ -210,7 +210,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" />
-          <h2 className="font-bold text-foreground">Mensajes Para Reactivacion de Leads</h2>
+          <h2 className="font-bold text-foreground">Mensajes - Reactivacion Leads</h2>
           <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
           {isAdmin && (
             <Button
