@@ -260,7 +260,8 @@ export default function Scanner() {
         .upsert(rows, { onConflict: "telefono,campaign_name", ignoreDuplicates: true });
       if (escanerError) throw escanerError;
 
-      // e. Create campaign record
+      // e. Create campaign record — guardar target_filters para re-ejecución desde Campañas
+      const paises = [...new Set(enriched.map((c) => c.pais))];
       const { error: campError } = await supabase.from("lead_recovery_campaigns").insert({
         user_id: user.id,
         campaign_name: campaignName,
@@ -268,12 +269,16 @@ export default function Scanner() {
         channel: "whatsapp",
         message_template_whatsapp: messageTemplate || null,
         total_leads: enriched.length,
+        target_filters: {
+          pais: paises[0] || null,
+          telefonos: enriched.map((c) => c.telefono),
+          solo_no_contactados: false,
+        },
       });
       if (campError) throw campError;
 
       // f. Fire-and-forget webhook — payload estructurado para el nodo "Preparar Leads" de n8n
       const campaignId = crypto.randomUUID();
-      const paises = [...new Set(enriched.map((c) => c.pais))];
       const paisPrincipal = paises[0] || "Desconocido";
 
       const webhookLeads = enriched.map((c) => {

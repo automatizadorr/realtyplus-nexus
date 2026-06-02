@@ -45,10 +45,9 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
     try {
       const tf = campaign.target_filters || {};
       const pais: string | null = tf?.pais || null;
-      const telefonos: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
       const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
 
-      // 1. Datos del Scanner guardados en leads_escaner (nombre completo, email)
+      // 1. FUENTE PRINCIPAL: leads_escaner — tiene TODOS los contactos del Scanner
       let escanerLeads: any[] = [];
       try {
         const { data } = await supabase
@@ -65,7 +64,13 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
         if (ph && !escanerByPhone.has(ph)) escanerByPhone.set(ph, l);
       }
 
-      // 2. Datos de Google Sheets (nombres/apellidos separados, id_contacto, dias_transcurridos)
+      // Lista maestra de teléfonos: escaner primero, luego target_filters como fallback
+      const telefonosFallback: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
+      const masterTelefonos = escanerLeads.length > 0
+        ? escanerLeads.map((l) => l.telefono)
+        : telefonosFallback;
+
+      // 2. Google Sheets — enriquecer con nombres/apellidos separados, id_contacto, días
       let sheetLeads: any[] = [];
       try {
         const { data, error } = await supabase.functions.invoke("sheets-leads", {
@@ -82,25 +87,24 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
         if (ph && !sheetByPhone.has(ph)) sheetByPhone.set(ph, l);
       }
 
-      // 3. Construir leads completos para TODOS los teléfonos del target
-      //    Prioridad: sheets > escaner > vacío
-      const allLeads = telefonos.map((tel) => {
+      // 3. Construir leads completos para TODOS los teléfonos — sin filtrar ninguno
+      //    Si un número falla en WhatsApp, n8n envía email en su lugar
+      const allLeads = masterTelefonos.map((tel) => {
         const ph = normPhone(tel);
         const sl = sheetByPhone.get(ph) || null;
         const el = escanerByPhone.get(ph) || null;
 
-        // Separar nombre del escaner en nombres/apellidos si sheets no lo tiene
         const partes = (el?.nombre || "").trim().split(/\s+/);
-        const nombresEscaner  = partes[0] || "";
+        const nombresEscaner   = partes[0] || "";
         const apellidosEscaner = partes.slice(1).join(" ");
 
         return {
           id_contacto: sl?.id_contacto || el?.id_contacto || null,
-          nombres:     sl?.nombres    || nombresEscaner  || "",
-          apellidos:   sl?.apellidos  || apellidosEscaner || "",
-          email:       sl?.email      || el?.email        || "",
+          nombres:     sl?.nombres     || nombresEscaner   || "",
+          apellidos:   sl?.apellidos   || apellidosEscaner || "",
+          email:       sl?.email       || el?.email        || "",
           telefono:    tel,
-          pais:        sl?.pais       || pais             || "",
+          pais:        sl?.pais        || pais             || "",
           dias_transcurridos: sl?.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1,
         };
       });
