@@ -17,26 +17,28 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const groups: { label?: string; items: { title: string; url: string; icon: React.ElementType }[] }[] = [
+type NavBadgeT = { text: string; variant: "new" | "ai" | "hot" | "pro" | "live" | "beta" };
+
+const groups: { label?: string; items: { title: string; url: string; icon: React.ElementType; badge?: NavBadgeT }[] }[] = [
   {
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, badge: { text: "Live", variant: "live" } },
     ],
   },
   {
     label: "Oportunidades",
     items: [
-      { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch },
-      { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone },
-      { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
-      { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot },
+      { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch, badge: { text: "New", variant: "new" } },
+      { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap, badge: { text: "AI", variant: "ai" } },
+      { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot, badge: { text: "Pro", variant: "pro" } },
     ],
   },
   {
     label: "Reactivación",
     items: [
-      { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
-      { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
+      { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
+      { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
+      { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag, badge: { text: "Beta", variant: "beta" } },
     ],
   },
   {
@@ -46,6 +48,36 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     ],
   },
 ];
+
+const badgeStyles: Record<NavBadgeT["variant"], string> = {
+  new: "bg-gradient-to-r from-emerald-400 to-teal-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.5)]",
+  ai: "bg-gradient-to-r from-[#cc0000] to-[#ff3344] text-white shadow-[0_0_8px_rgba(204,0,0,0.55)]",
+  hot: "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-[0_0_8px_rgba(249,115,22,0.55)]",
+  pro: "bg-gradient-to-r from-amber-400 to-yellow-500 text-[#1a1a1a] shadow-[0_0_8px_rgba(245,158,11,0.5)]",
+  live: "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-[0_0_8px_rgba(34,197,94,0.55)]",
+  beta: "bg-gradient-to-r from-sky-400 to-indigo-500 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)]",
+};
+
+function NavBadge({ badge }: { badge: NavBadgeT }) {
+  const pulseDot = badge.variant === "live" || badge.variant === "hot";
+  return (
+    <motion.span
+      initial={{ opacity: 0, scale: 0.6 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 400, damping: 18 }}
+      className={`ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider leading-none ${badgeStyles[badge.variant]}`}
+    >
+      {pulseDot && (
+        <motion.span
+          animate={{ opacity: [1, 0.3, 1], scale: [1, 1.3, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity }}
+          className="w-1 h-1 rounded-full bg-white"
+        />
+      )}
+      {badge.text}
+    </motion.span>
+  );
+}
 
 function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
   return (
