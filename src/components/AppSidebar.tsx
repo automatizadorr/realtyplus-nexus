@@ -9,6 +9,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -16,15 +17,34 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const items = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch },
-  { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone },
-  { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
-  { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
-  { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot },
-  { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
-  { title: "Configuración", url: "/settings", icon: Settings2 },
+const groups: { label?: string; items: { title: string; url: string; icon: React.ElementType }[] }[] = [
+  {
+    items: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Oportunidades",
+    items: [
+      { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch },
+      { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone },
+      { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
+      { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot },
+    ],
+  },
+  {
+    label: "Reactivación",
+    items: [
+      { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
+      { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { title: "Configuración", url: "/settings", icon: Settings2 },
+    ],
+  },
 ];
 
 function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
