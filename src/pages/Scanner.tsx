@@ -215,11 +215,17 @@ export default function Scanner() {
         const leads: any[] = sheetsData?.leads || [];
         for (const l of leads) {
           const id = (l.id_contacto || "").toString().trim();
-          if (!id) continue;
           const em = (l.email || "").toString().trim().toLowerCase();
           const ph = normPhone(l.telefono || "");
-          if (em && !emailMap.has(em)) { emailMap.set(em, id); slByEmail.set(em, l); }
-          if (ph && !phoneMap.has(ph)) { phoneMap.set(ph, id); slByPhone.set(ph, l); }
+          // Índice por teléfono exacto y por sufijo de 8 dígitos
+          if (em) { if (!emailMap.has(em)) emailMap.set(em, id); if (!slByEmail.has(em)) slByEmail.set(em, l); }
+          if (ph) {
+            if (!phoneMap.has(ph)) { phoneMap.set(ph, id); slByPhone.set(ph, l); }
+            if (ph.length >= 8) {
+              const suf = ph.slice(-8);
+              if (!phoneMap.has(suf)) { phoneMap.set(suf, id); slByPhone.set(suf, l); }
+            }
+          }
         }
       } catch (err: any) {
         console.warn("sheets-leads enrichment failed:", err);
@@ -229,12 +235,13 @@ export default function Scanner() {
         });
       }
 
-      // c. Enrich contacts — id_contacto + lead completo desde sheets
+      // c. Enrich contacts — match exacto + sufijo de 8 dígitos
       const enriched = contacts.map((c) => {
         const em = (c.email || "").trim().toLowerCase();
         const ph = normPhone(c.telefono);
-        const id = (em && emailMap.get(em)) || (ph && phoneMap.get(ph)) || null;
-        const sl = (ph && slByPhone.get(ph)) || (em && slByEmail.get(em)) || null;
+        const suf = ph.length >= 8 ? ph.slice(-8) : "";
+        const id = (em && emailMap.get(em)) || (ph && phoneMap.get(ph)) || (suf && phoneMap.get(suf)) || null;
+        const sl = (ph && slByPhone.get(ph)) || (suf && slByPhone.get(suf)) || (em && slByEmail.get(em)) || null;
         return { ...c, id_contacto: id, _sl: sl as any };
       });
       const matchedCount = enriched.filter((c) => c.id_contacto).length;

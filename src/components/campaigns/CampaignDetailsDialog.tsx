@@ -45,9 +45,11 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
     try {
       const tf = campaign.target_filters || {};
       const pais: string | null = tf?.pais || null;
+
+      // Normaliza teléfono: toma el primer número antes de "/" y quita no-dígitos
       const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
 
-      // 1. FUENTE PRINCIPAL: leads_escaner — tiene TODOS los contactos del Scanner
+      // ── 1. leads_escaner: todos los contactos guardados por el Scanner ──────────
       let escanerLeads: any[] = [];
       try {
         const { data } = await supabase
@@ -55,44 +57,54 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
           .select("nombre, telefono, email, id_contacto")
           .eq("campaign_name", campaign.campaign_name);
         if (data) escanerLeads = data;
-      } catch (e) {
-        console.warn("leads_escaner no disponible:", e);
-      }
+      } catch (e) { console.warn("leads_escaner:", e); }
+
       const escanerByPhone = new Map<string, any>();
       for (const l of escanerLeads) {
         const ph = normPhone(l.telefono || "");
         if (ph && !escanerByPhone.has(ph)) escanerByPhone.set(ph, l);
       }
 
-      // Lista maestra de teléfonos: escaner primero, luego target_filters como fallback
+      // Lista maestra: escaner primero (tiene +), luego target_filters como fallback
       const telefonosFallback: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
       const masterTelefonos = escanerLeads.length > 0
         ? escanerLeads.map((l) => l.telefono)
         : telefonosFallback;
 
-      // 2. Google Sheets — enriquecer con nombres/apellidos separados, id_contacto, días
+      // ── 2. sheets-leads: traer TODOS los leads sin filtros para match por teléfono ─
       let sheetLeads: any[] = [];
       try {
         const { data, error } = await supabase.functions.invoke("sheets-leads", {
-          body: { pais },
+          body: {},          // sin filtros → trae toda Sheet4
         });
         if (error) throw error;
         if (data?.success) sheetLeads = data.leads || [];
-      } catch (e) {
-        console.warn("sheets-leads no disponible:", e);
-      }
-      const sheetByPhone = new Map<string, any>();
+      } catch (e) { console.warn("sheets-leads:", e); }
+
+      // Índice por teléfono exacto Y por sufijo de 8 dígitos (cubre variaciones de prefijo de país)
+      const sheetByExact  = new Map<string, any>();
+      const sheetBySuffix = new Map<string, any>();
       for (const l of sheetLeads) {
         const ph = normPhone(l.telefono || "");
-        if (ph && !sheetByPhone.has(ph)) sheetByPhone.set(ph, l);
+        if (!ph) continue;
+        if (!sheetByExact.has(ph))           sheetByExact.set(ph, l);
+        if (ph.length >= 8) {
+          const suf = ph.slice(-8);
+          if (!sheetBySuffix.has(suf))       sheetBySuffix.set(suf, l);
+        }
       }
 
-      // 3. Construir leads completos para TODOS los teléfonos — sin filtrar ninguno
-      //    Si un número falla en WhatsApp, n8n envía email en su lugar
-      const allLeads = masterTelefonos.map((tel) => {
+      const findInSheet = (tel: string) => {
         const ph = normPhone(tel);
-        const sl = sheetByPhone.get(ph) || null;
-        const el = escanerByPhone.get(ph) || null;
+        return sheetByExact.get(ph)
+          ?? (ph.length >= 8 ? sheetBySuffix.get(ph.slice(-8)) : undefined)
+          ?? null;
+      };
+
+      // ── 3. Construir leads completos — uno por cada teléfono, sin descartar ninguno ─
+      const allLeads = masterTelefonos.map((tel) => {
+        const sl = findInSheet(tel);
+        const el = escanerByPhone.get(normPhone(tel)) || null;
 
         const partes = (el?.nombre || "").trim().split(/\s+/);
         const nombresEscaner   = partes[0] || "";
