@@ -9,6 +9,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -16,15 +17,34 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const items = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch },
-  { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone },
-  { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
-  { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
-  { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot },
-  { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
-  { title: "Configuración", url: "/settings", icon: Settings2 },
+const groups: { label?: string; items: { title: string; url: string; icon: React.ElementType }[] }[] = [
+  {
+    items: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Oportunidades",
+    items: [
+      { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch },
+      { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone },
+      { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap },
+      { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot },
+    ],
+  },
+  {
+    label: "Reactivación",
+    items: [
+      { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare },
+      { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { title: "Configuración", url: "/settings", icon: Settings2 },
+    ],
+  },
 ];
 
 function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
@@ -77,43 +97,47 @@ export function AppSidebar() {
           </motion.div>
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item, index) => {
-                const isActive =
-                  item.url === "/dashboard"
-                    ? location.pathname === "/dashboard"
-                    : location.pathname.startsWith(item.url);
+        {groups.map((group, gIdx) => (
+          <SidebarGroup key={group.label || `g-${gIdx}`}>
+            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item, index) => {
+                  const isActive =
+                    item.url === "/dashboard"
+                      ? location.pathname === "/dashboard"
+                      : location.pathname.startsWith(item.url);
 
-                return (
-                  <motion.div
-                    key={item.title}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05, duration: 0.3 }}
-                  >
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          end={item.url === "/dashboard"}
-                          className="hover:bg-sidebar-accent/50"
-                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          onClick={handleNavClick}
-                        >
-                          <AnimatedIcon icon={item.icon} isActive={isActive} />
-                          <span className="ml-2">{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </motion.div>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  return (
+                    <motion.div
+                      key={item.title}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05, duration: 0.3 }}
+                    >
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            end={item.url === "/dashboard"}
+                            className="hover:bg-sidebar-accent/50"
+                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            onClick={handleNavClick}
+                          >
+                            <AnimatedIcon icon={item.icon} isActive={isActive} />
+                            <span className="ml-2">{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </motion.div>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
+
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3">
