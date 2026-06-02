@@ -180,50 +180,61 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
 
       if (error) throw error;
 
-      // 2) Fetch ALL leads from Google Sheets (no country filter)
+      // 2) Enriquecer los leads seleccionados con datos de Sheet4
+      const normPhoneFn = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
       let sheetLeads: any[] = [];
-      let sheetTotal = 0;
       try {
-        const { data: sheetData, error: sheetErr } = await supabase.functions.invoke("sheets-leads", {
-          body: {},
-        });
+        const { data: sheetData, error: sheetErr } = await supabase.functions.invoke("sheets-leads", { body: {} });
         if (sheetErr) throw sheetErr;
-        if (sheetData?.success) {
-          sheetLeads = sheetData.leads || [];
-          sheetTotal = sheetData.total || sheetLeads.length;
-        }
-      } catch (e) {
-        console.warn("No se pudo obtener leads del sheet:", e);
-      }
+        if (sheetData?.success) sheetLeads = sheetData.leads || [];
+      } catch (e) { console.warn("sheets-leads:", e); }
 
-      // 3) Send everything to n8n webhook (via authenticated edge function proxy)
+      const sheetByExact  = new Map<string, any>();
+      const sheetBySuffix = new Map<string, any>();
+      for (const l of sheetLeads) {
+        const ph = normPhoneFn(l.telefono || "");
+        if (!ph) continue;
+        if (!sheetByExact.has(ph))  sheetByExact.set(ph, l);
+        if (ph.length >= 8) { const s = ph.slice(-8); if (!sheetBySuffix.has(s)) sheetBySuffix.set(s, l); }
+      }
+      const findSheet = (tel: string) => {
+        const ph = normPhoneFn(tel);
+        return sheetByExact.get(ph) ?? (ph.length >= 8 ? sheetBySuffix.get(ph.slice(-8)) : null) ?? null;
+      };
+
+      // sheet.leads = solo los leads seleccionados, enriquecidos con Sheet4
+      const webhookLeads = selectedLeads.map((l) => {
+        const sl = findSheet(l.telefono || "");
+        const partes = (l.nombre || "").trim().split(/\s+/);
+        return {
+          id_contacto: sl?.id_contacto || l.id_contacto || null,
+          nombres:     sl?.nombres     || partes[0]      || "",
+          apellidos:   sl?.apellidos   || partes.slice(1).join(" "),
+          email:       sl?.email       || l.email         || "",
+          telefono:    l.telefono      || "",
+          pais:        sl?.pais        || l.pais          || "",
+          dias_transcurridos: sl?.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1,
+        };
+      });
+
+      // 3) Enviar al webhook solo los leads seleccionados
       try {
         const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
           body: {
             target: "campanas_segmentadas",
             payload: {
-              campaign_id: inserted?.id,
-              campaign_name: campaignName.trim(),
+              campaign_id:               inserted?.id,
+              campaign_name:             campaignName.trim(),
               channel,
-              status: "executing",
+              status:                    "executing",
+              total_leads:               webhookLeads.length,
               message_template_whatsapp: templateWhatsapp || null,
-              message_template_email: templateEmail || null,
-              subject_email: subjectEmail || null,
-              target_filters: targetFilters,
-              selected_leads: selectedLeads.map(l => ({
-                id: l.id,
-                id_contacto: l.id_contacto,
-                nombre: l.nombre,
-                telefono: l.telefono,
-                email: l.email,
-                pais: l.pais,
-                estado: l.estado,
-                bot_activo: l.bot_activo,
-                dias_reales: l.dias_reales,
-              })),
+              message_template_email:    templateEmail    || null,
+              subject_email:             subjectEmail     || null,
+              target_filters:            targetFilters,
               sheet: {
-                total: sheetTotal,
-                leads: sheetLeads,
+                total: webhookLeads.length,
+                leads: webhookLeads,
               },
               triggered_at: new Date().toISOString(),
             },
@@ -235,7 +246,7 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
         toast({ title: "Campaña creada (sin webhook)", description: whErr.message, variant: "destructive" });
       }
 
-      toast({ title: "¡Campaña lanzada!", description: `${selectedIds.size} contactos · ${sheetTotal} leads del sheet enviados.` });
+      toast({ title: "¡Campaña lanzada!", description: `${webhookLeads.length} leads enviados al webhook.` });
       onOpenChange(false);
       onCreated();
     } catch (err: any) {

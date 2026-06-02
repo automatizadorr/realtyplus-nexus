@@ -44,93 +44,75 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
     setExecuting(true);
     try {
       const tf = campaign.target_filters || {};
-      const pais: string | null = tf?.pais || null;
       const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
 
-      // ── 1. FUENTE PRIMARIA: Sheet4 filtrada por país ─────────────────────────────
-      // Si hay país → trae solo esos leads. Si no → trae todos.
+      // ── 1. Leads seleccionados: lead_ids (campaña de CRM) o leads_escaner (Scanner)
+      let sourceLeads: any[] = [];
+
+      const leadIds: string[] = Array.isArray(tf?.lead_ids) ? tf.lead_ids : [];
+      if (leadIds.length > 0) {
+        // Campaña creada desde CreateCampaignDialog → usa leads_campana
+        try {
+          const { data } = await supabase
+            .from("leads_campana")
+            .select("id, nombre, telefono, email, pais, id_contacto")
+            .in("id", leadIds);
+          if (data) sourceLeads = data;
+        } catch (e) { console.warn("leads_campana:", e); }
+      }
+
+      if (sourceLeads.length === 0) {
+        // Campaña creada desde Scanner → usa leads_escaner
+        try {
+          const { data } = await supabase
+            .from("leads_escaner")
+            .select("nombre, telefono, email, pais, id_contacto")
+            .eq("campaign_name", campaign.campaign_name);
+          if (data) sourceLeads = data;
+        } catch (e) { console.warn("leads_escaner:", e); }
+      }
+
+      if (sourceLeads.length === 0) {
+        // Fallback final: telefonos del target_filters
+        const tels: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
+        sourceLeads = tels.map((tel) => ({ nombre: "", telefono: tel, email: "", pais: tf?.pais || "", id_contacto: null }));
+      }
+
+      // ── 2. Sheet4 completa → enriquecer con nombres/apellidos separados y días ───
       let sheetLeads: any[] = [];
       try {
-        const { data, error } = await supabase.functions.invoke("sheets-leads", {
-          body: pais ? { pais } : {},
-        });
+        const { data, error } = await supabase.functions.invoke("sheets-leads", { body: {} });
         if (error) throw error;
         if (data?.success) sheetLeads = data.leads || [];
       } catch (e) { console.warn("sheets-leads:", e); }
 
-      // ── 2. COMPLEMENTO: leads_escaner (nombre completo, email del Scanner) ───────
-      let escanerLeads: any[] = [];
-      try {
-        const { data } = await supabase
-          .from("leads_escaner")
-          .select("nombre, telefono, email, id_contacto")
-          .eq("campaign_name", campaign.campaign_name);
-        if (data) escanerLeads = data;
-      } catch (e) { console.warn("leads_escaner:", e); }
-
-      const escanerByPhone  = new Map<string, any>();
-      const escanerBySuffix = new Map<string, any>();
-      for (const l of escanerLeads) {
+      const sheetByExact  = new Map<string, any>();
+      const sheetBySuffix = new Map<string, any>();
+      for (const l of sheetLeads) {
         const ph = normPhone(l.telefono || "");
         if (!ph) continue;
-        if (!escanerByPhone.has(ph)) escanerByPhone.set(ph, l);
-        if (ph.length >= 8) {
-          const suf = ph.slice(-8);
-          if (!escanerBySuffix.has(suf)) escanerBySuffix.set(suf, l);
-        }
+        if (!sheetByExact.has(ph))  sheetByExact.set(ph, l);
+        if (ph.length >= 8) { const s = ph.slice(-8); if (!sheetBySuffix.has(s)) sheetBySuffix.set(s, l); }
       }
-
-      const findEscaner = (tel: string) => {
+      const findSheet = (tel: string) => {
         const ph = normPhone(tel);
-        return escanerByPhone.get(ph)
-          ?? (ph.length >= 8 ? escanerBySuffix.get(ph.slice(-8)) : undefined)
-          ?? null;
+        return sheetByExact.get(ph) ?? (ph.length >= 8 ? sheetBySuffix.get(ph.slice(-8)) : null) ?? null;
       };
 
-      // ── 3. FALLBACK: target_filters.telefonos (para leads sin registro en Sheet4) ─
-      const telefonosFallback: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
-
-      // Teléfonos ya cubiertos por Sheet4
-      const sheetPhones = new Set(sheetLeads.map((l) => normPhone(l.telefono || "")));
-
-      // Leads extra: los que están en el fallback pero NO en Sheet4
-      const extraLeads = telefonosFallback
-        .filter((tel) => {
-          const ph = normPhone(tel);
-          return ph && !sheetPhones.has(ph) &&
-            !(ph.length >= 8 && [...sheetPhones].some(sp => sp.slice(-8) === ph.slice(-8)));
-        })
-        .map((tel) => {
-          const el = findEscaner(tel);
-          const partes = (el?.nombre || "").trim().split(/\s+/);
-          return {
-            id_contacto: el?.id_contacto || null,
-            nombres:     partes[0]          || "",
-            apellidos:   partes.slice(1).join(" "),
-            email:       el?.email          || "",
-            telefono:    tel,
-            pais:        pais               || "",
-            dias_transcurridos: 1,
-          };
-        });
-
-      // ── 4. Construir lista final: Sheet4 (enriquecida) + extras del fallback ─────
-      const allLeads = [
-        ...sheetLeads.map((sl) => {
-          const el = findEscaner(sl.telefono || "");
-          const partes = (el?.nombre || "").trim().split(/\s+/);
-          return {
-            id_contacto: sl.id_contacto || el?.id_contacto || null,
-            nombres:     sl.nombres     || partes[0]         || "",
-            apellidos:   sl.apellidos   || partes.slice(1).join(" "),
-            email:       sl.email       || el?.email          || "",
-            telefono:    sl.telefono    || "",
-            pais:        sl.pais        || pais               || "",
-            dias_transcurridos: sl.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1,
-          };
-        }),
-        ...extraLeads,
-      ];
+      // ── 3. Construir leads completos — solo los seleccionados, enriquecidos ───────
+      const allLeads = sourceLeads.map((l) => {
+        const sl = findSheet(l.telefono || "");
+        const partes = (l.nombre || "").trim().split(/\s+/);
+        return {
+          id_contacto: sl?.id_contacto || l.id_contacto || null,
+          nombres:     sl?.nombres     || partes[0]      || "",
+          apellidos:   sl?.apellidos   || partes.slice(1).join(" "),
+          email:       sl?.email       || l.email         || "",
+          telefono:    l.telefono      || "",
+          pais:        sl?.pais        || l.pais          || "",
+          dias_transcurridos: sl?.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1,
+        };
+      });
 
       const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
         body: {
