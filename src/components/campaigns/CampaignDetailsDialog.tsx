@@ -46,7 +46,7 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
       const tf = campaign.target_filters || {};
       const pais: string | null = tf?.pais || null;
       const telefonos: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
-      const normPhone = (p: string) => (p || "").replace(/\D/g, "");
+      const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
 
       // 1. Datos del Scanner guardados en leads_escaner (nombre completo, email)
       let escanerLeads: any[] = [];

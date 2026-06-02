@@ -72,7 +72,7 @@ function capitalize(s: string): string {
 
 
 
-const normPhone = (p: string) => (p || "").replace(/\D/g, "");
+const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
 
 export default function Scanner() {
   const [rawText, setRawText] = useState("");
