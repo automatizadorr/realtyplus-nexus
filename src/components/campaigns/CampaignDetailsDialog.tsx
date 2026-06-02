@@ -128,7 +128,7 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
             subject_email:             campaign.subject_email,
             target_filters:            campaign.target_filters,
             sheet: {
-              pais,
+              pais: tf?.pais || "",
               total: allLeads.length,
               leads: allLeads,
             },
