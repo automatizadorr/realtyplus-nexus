@@ -157,8 +157,8 @@ export function AppSidebar() {
                             onClick={handleNavClick}
                           >
                             <AnimatedIcon icon={item.icon} isActive={isActive} />
-                            <span className="ml-2">{item.title}</span>
-                          </NavLink>
+                            <span className="ml-2 truncate">{item.title}</span>
+                            {item.badge && <NavBadge badge={item.badge} />}
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </motion.div>
