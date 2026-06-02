@@ -159,6 +159,7 @@ export function AppSidebar() {
                             <AnimatedIcon icon={item.icon} isActive={isActive} />
                             <span className="ml-2 truncate">{item.title}</span>
                             {item.badge && <NavBadge badge={item.badge} />}
+                          </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </motion.div>
