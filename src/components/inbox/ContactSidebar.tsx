@@ -28,6 +28,32 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { countryFlag } from "@/lib/countryFlag";
 import { AiAgentBadge, AiAgentStripe } from "./AiAgentBadge";
 
+function formatInboxTime(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (sameDay) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    d.getFullYear() === yesterday.getFullYear() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getDate() === yesterday.getDate();
+  if (isYesterday) return "Ayer";
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 7) {
+    return d.toLocaleDateString([], { weekday: "short" });
+  }
+  return d.toLocaleDateString([], { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
+
 interface ContactSidebarProps {
   selectedContact: LeadCampana | null;
   onSelectContact: (contact: LeadCampana) => void;
@@ -339,7 +365,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       />
                     </div>
                   )}
-                  <div className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_2rem] overflow-hidden py-1.5 pr-1 ${selectionMode ? "pl-10" : "pl-2"}`}>
+                  <div className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_3rem] overflow-hidden py-1.5 pr-1 ${selectionMode ? "pl-10" : "pl-2"}`}>
                     <div className="min-w-0 overflow-hidden">
                     <div className="flex min-w-0 items-center gap-1">
                       <button
@@ -375,19 +401,24 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                     <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                   </div>
                   {!selectionMode && (
-                    <div className="relative z-10 flex w-8 shrink-0 flex-col items-center justify-start gap-1 pt-0.5">
-                      <ContactContextMenu
-                        isAdmin={isAdmin}
-                        contact={{
-                          id: contact.id,
-                          nombre: contact.nombre || "",
-                          telefono: contact.telefono,
-                          archivado: contact.archivado,
-                          tag_ids: contact.tag_ids,
-                        } as LeadCampana}
-                        onChanged={() => refreshPhone(contact.telefono)}
-                        onDeleted={() => removePhone(contact.telefono)}
-                      />
+                    <div className="relative z-10 flex w-12 shrink-0 flex-col items-end justify-start gap-1 pt-0.5 pr-1">
+                      <div className="flex items-center gap-1">
+                        <span className={`text-[10px] leading-none whitespace-nowrap ${unread > 0 ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                          {formatInboxTime(contact.last_message_at)}
+                        </span>
+                        <ContactContextMenu
+                          isAdmin={isAdmin}
+                          contact={{
+                            id: contact.id,
+                            nombre: contact.nombre || "",
+                            telefono: contact.telefono,
+                            archivado: contact.archivado,
+                            tag_ids: contact.tag_ids,
+                          } as LeadCampana}
+                          onChanged={() => refreshPhone(contact.telefono)}
+                          onDeleted={() => removePhone(contact.telefono)}
+                        />
+                      </div>
                       <div className="flex flex-col items-center gap-0.5">
                         {unread > 0 && (
                           <Badge className="h-4 min-w-4 px-1 text-[10px] flex items-center justify-center">
