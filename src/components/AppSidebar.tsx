@@ -97,43 +97,47 @@ export function AppSidebar() {
           </motion.div>
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item, index) => {
-                const isActive =
-                  item.url === "/dashboard"
-                    ? location.pathname === "/dashboard"
-                    : location.pathname.startsWith(item.url);
+        {groups.map((group, gIdx) => (
+          <SidebarGroup key={group.label || `g-${gIdx}`}>
+            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item, index) => {
+                  const isActive =
+                    item.url === "/dashboard"
+                      ? location.pathname === "/dashboard"
+                      : location.pathname.startsWith(item.url);
 
-                return (
-                  <motion.div
-                    key={item.title}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05, duration: 0.3 }}
-                  >
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          end={item.url === "/dashboard"}
-                          className="hover:bg-sidebar-accent/50"
-                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          onClick={handleNavClick}
-                        >
-                          <AnimatedIcon icon={item.icon} isActive={isActive} />
-                          <span className="ml-2">{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </motion.div>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  return (
+                    <motion.div
+                      key={item.title}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05, duration: 0.3 }}
+                    >
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            end={item.url === "/dashboard"}
+                            className="hover:bg-sidebar-accent/50"
+                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            onClick={handleNavClick}
+                          >
+                            <AnimatedIcon icon={item.icon} isActive={isActive} />
+                            <span className="ml-2">{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </motion.div>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
+
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3">
