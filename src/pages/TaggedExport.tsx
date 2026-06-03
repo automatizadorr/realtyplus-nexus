@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, FileSpreadsheet, ExternalLink } from "lucide-react";
+import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, FileSpreadsheet, ExternalLink, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -75,6 +75,7 @@ export default function TaggedExport() {
   const [generatingXlsx, setGeneratingXlsx] = useState(false);
   const [generatingDocx, setGeneratingDocx] = useState(false);
   const [generatingHtml, setGeneratingHtml] = useState(false);
+  const [sendingN8n, setSendingN8n] = useState(false);
   const [statsLeads, setStatsLeads] = useState<number | null>(null);
   const [statsMsgs, setStatsMsgs] = useState<number | null>(null);
 
@@ -334,6 +335,112 @@ details[open] .arrow{transform:rotate(90deg)}
     }
   };
 
+  // ── ENVÍO A N8N: payload estructurado al webhook /expansion ─────────────
+  const N8N_WEBHOOK = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/expansion";
+
+  const handleSendN8n = async () => {
+    setSendingN8n(true);
+    try {
+      const { tagMap, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+
+      // Mensajes por teléfono, orden cronológico
+      const msgsByPhone = new Map<string, any[]>();
+      for (const l of leads) msgsByPhone.set(l.telefono, []);
+      const allMsgs = [
+        ...msgsWA.map((m: any)  => ({ ...m, _canal: "WhatsApp" })),
+        ...msgsAuto.map((m: any) => ({ ...m, _canal: m.canal ?? "Auto" })),
+      ].sort((a, b) => (a.created_at ?? "") > (b.created_at ?? "") ? 1 : -1);
+      for (const m of allMsgs) {
+        const arr = msgsByPhone.get(m.telefono);
+        if (arr) arr.push(m);
+      }
+
+      // Agrupar leads por etiqueta
+      const byTag = new Map<string, any[]>();
+      for (const l of leads) {
+        for (const tid of (l.tag_ids ?? [])) {
+          if (!byTag.has(tid)) byTag.set(tid, []);
+          byTag.get(tid)!.push(l);
+        }
+      }
+
+      const etiquetas = [...byTag.entries()].map(([tid, tLeads]) => {
+        const tag       = tagMap.get(tid) ?? { nombre: tid, color: "#7c3aed" };
+        const tResp     = tLeads.filter((l: any) => l.ha_respondido).length;
+        const tasaResp  = Math.round(tResp / tLeads.length * 100);
+
+        const leadsPayload = tLeads.map((l: any) => {
+          const msgs = msgsByPhone.get(l.telefono) ?? [];
+          return {
+            id_contacto:          l.id_contacto ?? null,
+            nombre:               l.nombre ?? "",
+            telefono:             l.telefono ?? "",
+            email:                l.email ?? null,
+            pais:                 l.pais ?? null,
+            estado:               l.estado ?? null,
+            bot_activo:           l.bot_activo ?? null,
+            ha_respondido:        l.ha_respondido ?? null,
+            archivado:            l.archivado ?? null,
+            puntuacion:           l.puntuacion ?? null,
+            dias_reales:          l.dias_reales ?? null,
+            origen:               l.origen ?? null,
+            ultimo_contacto_at:   l.ultimo_contacto_at ?? null,
+            fecha_respuesta:      l.fecha_respuesta ?? null,
+            fecha_proximo_contacto: l.fecha_proximo_contacto ?? null,
+            etiquetas:            (l.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id),
+            mensajes_enviados:    msgs.filter((m: any) => m.direccion === "outbound").length,
+            mensajes_recibidos:   msgs.filter((m: any) => m.direccion === "inbound").length,
+            total_mensajes:       msgs.length,
+            conversacion:         msgs.map((m: any) => ({
+              fecha:      m.created_at ?? null,
+              direccion:  m.direccion ?? null,
+              canal:      m._canal ?? null,
+              contenido:  m.contenido ?? null,
+              autor:      m.autor ?? (m.direccion === "outbound" ? "Bot" : "Cliente"),
+              estado_envio: m.estado_envio ?? null,
+            })),
+          };
+        });
+
+        return {
+          id:             tid,
+          nombre:         tag.nombre,
+          color:          tag.color,
+          total_leads:    tLeads.length,
+          respondieron:   tResp,
+          tasa_respuesta: tasaResp,
+          leads:          leadsPayload,
+        };
+      });
+
+      const payload = {
+        timestamp:      new Date().toISOString(),
+        filtro:         tagFilter === "all" ? "todas" : (tagMap.get(tagFilter)?.nombre ?? tagFilter),
+        total_leads:    leads.length,
+        total_mensajes: allMsgs.length,
+        total_etiquetas: byTag.size,
+        etiquetas,
+      };
+
+      const res = await fetch(N8N_WEBHOOK, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`Webhook respondió ${res.status}: ${res.statusText}`);
+
+      toast({
+        title: "Enviado a n8n ✓",
+        description: `${leads.length} leads · ${allMsgs.length} mensajes · ${byTag.size} etiquetas enviados a /expansion`,
+      });
+    } catch (err: any) {
+      toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
+    } finally {
+      setSendingN8n(false);
+    }
+  };
+
   // ── EXCEL: solo hoja de leads con métricas ────────────────────────────────
   const handleExcel = async () => {
     setGeneratingXlsx(true);
@@ -508,7 +615,7 @@ details[open] .arrow{transform:rotate(90deg)}
     } finally { setGeneratingDocx(false); }
   };
 
-  const isLoading = generatingXlsx || generatingDocx || generatingHtml;
+  const isLoading = generatingXlsx || generatingDocx || generatingHtml || sendingN8n;
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -650,6 +757,29 @@ details[open] .arrow{transform:rotate(90deg)}
               {generatingHtml
                 ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generando...</>
                 : <><ExternalLink className="h-4 w-4 mr-2" />Ver en Navegador</>}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-violet-500/30">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3 mb-3">
+              <Send className="h-5 w-5 text-violet-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium text-sm">Enviar a n8n — <span className="text-violet-400">/expansion</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Envía todos los datos mapeados y depurados al webhook de expansión: leads por etiqueta, conversaciones completas, métricas y fechas.
+                </p>
+              </div>
+            </div>
+            <Button
+              className="w-full bg-violet-700 hover:bg-violet-800 text-white"
+              onClick={handleSendN8n}
+              disabled={isLoading || statsLeads === 0}
+            >
+              {sendingN8n
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Enviando...</>
+                : <><Send className="h-4 w-4 mr-2" />Enviar a n8n</>}
             </Button>
           </CardContent>
         </Card>
