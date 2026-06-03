@@ -4,6 +4,7 @@ import {
   Document, Paragraph, TextRun, HeadingLevel,
   AlignmentType, BorderStyle, Packer,
 } from "docx";
+import guideHtml from "@/assets/n8n-guide.html?raw";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, FileSpreadsheet } from "lucide-react";
+import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, FileSpreadsheet, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -102,6 +103,14 @@ export default function TaggedExport() {
     };
     fetchStats();
   }, [tagFilter]);
+
+  // ── GUÍA n8n: abre el HTML en nueva pestaña ──────────────────────────────
+  const handleOpenGuide = () => {
+    const blob = new Blob([guideHtml], { type: "text/html;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  };
 
   // ── EXCEL: solo hoja de leads con métricas ────────────────────────────────
   const handleExcel = async () => {
@@ -396,6 +405,27 @@ export default function TaggedExport() {
               {generatingDocx
                 ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generando...</>
                 : <><FileText className="h-4 w-4 mr-2" />Descargar Word</>}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-violet-500/30">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3 mb-3">
+              <ExternalLink className="h-5 w-5 text-orange-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium text-sm">Guía Automatización n8n</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Abre en el navegador el brief completo para construir el workflow de reporte automático en n8n — credenciales, queries, código JS y checklist.
+                </p>
+              </div>
+            </div>
+            <Button
+              className="w-full bg-orange-700 hover:bg-orange-800 text-white"
+              onClick={handleOpenGuide}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Ver Guía n8n
             </Button>
           </CardContent>
         </Card>

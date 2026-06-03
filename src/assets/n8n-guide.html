@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>n8n — Reporte Automático de Leads Etiquetados | RealtyPlus Nexus</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --violet: #7c3aed;
+    --violet-light: #a78bfa;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --orange: #f97316;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+
+  .header { background: linear-gradient(135deg, #1a0e3a 0%, #0f1117 60%); border-bottom: 1px solid var(--violet); padding: 32px 40px; }
+  .header h1 { font-size: 26px; font-weight: 700; color: var(--violet-light); }
+  .header p { color: var(--muted); margin-top: 6px; font-size: 13px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-top: 10px; }
+  .badge-violet { background: #2d1b69; color: var(--violet-light); border: 1px solid var(--violet); }
+  .badge-green  { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+  .badge-blue   { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 40px; }
+
+  h2 { font-size: 17px; font-weight: 700; color: var(--violet-light); border-left: 3px solid var(--violet); padding-left: 12px; margin: 32px 0 16px; }
+  h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 10px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .card-value { font-size: 15px; font-weight: 600; color: var(--text); word-break: break-all; }
+
+  /* FLOW */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 0; margin: 20px 0; }
+  .node { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; min-width: 130px; text-align: center; position: relative; }
+  .node .node-num { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--violet); color: #fff; font-size: 10px; font-weight: 700; border-radius: 20px; padding: 1px 8px; }
+  .node .node-icon { font-size: 22px; margin-bottom: 4px; }
+  .node .node-name { font-size: 11px; font-weight: 700; color: var(--text); }
+  .node .node-type { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .node-arrow { color: var(--violet); font-size: 20px; padding: 0 6px; align-self: center; }
+  .node-trigger { border-color: var(--green); }
+  .node-trigger .node-num { background: var(--green); }
+  .node-out { border-color: var(--blue); }
+  .node-out .node-num { background: var(--blue); }
+
+  /* CODE */
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; font-size: 12px; line-height: 1.7; position: relative; margin: 12px 0; }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; transition: all .2s; }
+  .copy-btn:hover { background: var(--violet); color: #fff; border-color: var(--violet); }
+
+  /* COLORS */
+  .c-violet { color: var(--violet-light); }
+  .c-green  { color: #86efac; }
+  .c-blue   { color: #93c5fd; }
+  .c-orange { color: #fdba74; }
+  .c-yellow { color: #fde047; }
+  .c-red    { color: #fca5a5; }
+  .c-muted  { color: var(--muted); }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  th { background: var(--surface2); color: var(--violet-light); text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+
+  /* NODE DETAIL */
+  .node-detail { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin: 12px 0; overflow: hidden; }
+  .node-detail-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .node-detail-header .num { background: var(--violet); color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .node-detail-header .title { font-weight: 700; font-size: 14px; }
+  .node-detail-header .subtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .node-detail-body { padding: 16px 18px; }
+
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .pill-violet { background: #2d1b69; color: var(--violet-light); }
+  .pill-green  { background: #14532d; color: #86efac; }
+  .pill-blue   { background: #1e3a8a; color: #93c5fd; }
+  .pill-orange { background: #431407; color: #fdba74; }
+
+  .kv { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 12px; }
+  .kv-key { color: var(--muted); min-width: 150px; flex-shrink: 0; }
+  .kv-val { color: var(--text); word-break: break-all; }
+
+  .tip { background: #1e1b4b; border-left: 3px solid var(--violet); border-radius: 0 8px 8px 0; padding: 10px 16px; margin: 12px 0; font-size: 12px; color: var(--violet-light); }
+  .warn { background: #431407; border-left: 3px solid var(--orange); border-radius: 0 8px 8px 0; padding: 10px 16px; margin: 12px 0; font-size: 12px; color: #fdba74; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚡ n8n — Reporte Automático de Leads Etiquetados</h1>
+  <p>RealtyPlus Nexus · Guía completa de implementación · AI-MaX Intelligence</p>
+  <span class="badge badge-violet">Supabase REST API</span>
+  <span class="badge badge-green">n8n Self-hosted</span>
+  <span class="badge badge-blue">Cron + Email/Slack</span>
+</div>
+
+<div class="container">
+
+  <!-- CREDENCIALES -->
+  <h2>🔑 Credenciales del Proyecto</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Supabase URL</div>
+      <div class="card-value c-blue">https://owykkhwqpnumvgdeugmj.supabase.co</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Supabase Anon Key (apikey)</div>
+      <div class="card-value" style="font-size:11px;">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eWtraHdxcG51bXZnZGV1Z21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQzOTAsImV4cCI6MjA4OTM2MDM5MH0.2u07gv6LvMlDEry0UmY_XAsNw6ONwvmE2pvTFU73nA4</div>
+    </div>
+    <div class="card">
+      <div class="card-title">n8n Host</div>
+      <div class="card-value c-blue">https://lex-house-ai-n8n.7u9ufb.easypanel.host</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Webhook campañas (referencia)</div>
+      <div class="card-value" style="font-size:11px;">/webhook/primer_contacto &nbsp;|&nbsp; secret: realty2026secret</div>
+    </div>
+  </div>
+
+  <div class="warn">⚠️ La Anon Key es pública (expuesta en el frontend). Para consultas sensibles desde n8n usa la <strong>Service Role Key</strong> desde las variables de entorno de EasyPanel — nunca la expongas en el workflow directamente.</div>
+
+  <!-- OBJETIVO -->
+  <h2>🎯 Objetivo de la Automatización</h2>
+  <div class="card">
+    <p style="margin-bottom:10px;">El workflow se ejecuta <strong>automáticamente según el horario configurado</strong> (diario, semanal, etc.) y realiza lo siguiente:</p>
+    <ol style="padding-left:20px; line-height:2;">
+      <li>Obtiene todos los <strong>leads etiquetados</strong> de Supabase (<code>leads_campana</code> donde <code>tag_ids != null</code>)</li>
+      <li>Obtiene los <strong>nombres de cada etiqueta</strong> (<code>lead_tags</code>)</li>
+      <li>Obtiene los <strong>mensajes recientes</strong> de cada lead (<code>mensajes_whatsapp</code> + <code>mensajes_automatizacion</code>)</li>
+      <li>Procesa y agrupa los datos: leads por etiqueta, métricas de conversación, leads sin respuesta</li>
+      <li>Genera un <strong>reporte HTML por email</strong> (o Slack/Telegram) con resumen ejecutivo + tabla detallada</li>
+    </ol>
+  </div>
+
+  <!-- FLUJO VISUAL -->
+  <h2>🔀 Flujo del Workflow</h2>
+  <div class="flow">
+    <div class="node node-trigger">
+      <span class="node-num">1</span>
+      <div class="node-icon">⏰</div>
+      <div class="node-name">Schedule</div>
+      <div class="node-type">Cron Trigger</div>
+    </div>
+    <span class="node-arrow">→</span>
+    <div class="node">
+      <span class="node-num">2</span>
+      <div class="node-icon">🏷️</div>
+      <div class="node-name">Get Tags</div>
+      <div class="node-type">HTTP Request</div>
+    </div>
+    <span class="node-arrow">→</span>
+    <div class="node">
+      <span class="node-num">3</span>
+      <div class="node-icon">👥</div>
+      <div class="node-name">Get Leads</div>
+      <div class="node-type">HTTP Request</div>
+    </div>
+    <span class="node-arrow">→</span>
+    <div class="node">
+      <span class="node-num">4</span>
+      <div class="node-icon">💬</div>
+      <div class="node-name">Get Messages</div>
+      <div class="node-type">HTTP Request</div>
+    </div>
+    <span class="node-arrow">→</span>
+    <div class="node">
+      <span class="node-num">5</span>
+      <div class="node-icon">⚙️</div>
+      <div class="node-name">Build Report</div>
+      <div class="node-type">Code (JS)</div>
+    </div>
+    <span class="node-arrow">→</span>
+    <div class="node node-out">
+      <span class="node-num">6</span>
+      <div class="node-icon">📧</div>
+      <div class="node-name">Send Report</div>
+      <div class="node-type">Email / Slack</div>
+    </div>
+  </div>
+
+  <!-- NODO 1 -->
+  <h2>📋 Configuración de cada Nodo</h2>
+
+  <div class="node-detail">
+    <div class="node-detail-header">
+      <div class="num">1</div>
+      <div>
+        <div class="title">Schedule Trigger <span class="pill pill-green">Cron</span></div>
+        <div class="subtitle">Dispara el workflow automáticamente según el horario configurado</div>
+      </div>
+    </div>
+    <div class="node-detail-body">
+      <div class="kv"><span class="kv-key">Tipo de nodo:</span><span class="kv-val">n8n-nodes-base.scheduleTrigger</span></div>
+      <div class="kv"><span class="kv-key">Modo:</span><span class="kv-val">Specific Time</span></div>
+      <div class="kv"><span class="kv-key">Hora de ejecución:</span><span class="kv-val">08:00 (hora de Madrid / Chile — ajustar timezone)</span></div>
+      <div class="kv"><span class="kv-key">Frecuencia recomendada:</span><span class="kv-val">Diario (lunes a viernes) o Semanal (lunes 8:00)</span></div>
+      <h3>Expresiones Cron alternativas</h3>
+      <table>
+        <tr><th>Frecuencia</th><th>Cron</th></tr>
+        <tr><td>Todos los días 8:00 AM</td><td><code>0 8 * * *</code></td></tr>
+        <tr><td>Lunes a Viernes 8:00 AM</td><td><code>0 8 * * 1-5</code></td></tr>
+        <tr><td>Lunes 8:00 AM (semanal)</td><td><code>0 8 * * 1</code></td></tr>
+        <tr><td>Día 1 de cada mes</td><td><code>0 8 1 * *</code></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- NODO 2 -->
+  <div class="node-detail">
+    <div class="node-detail-header">
+      <div class="num">2</div>
+      <div>
+        <div class="title">Get Tags <span class="pill pill-blue">HTTP Request</span></div>
+        <div class="subtitle">Obtiene todos los nombres y colores de etiquetas de Supabase</div>
+      </div>
+    </div>
+    <div class="node-detail-body">
+      <div class="kv"><span class="kv-key">Método:</span><span class="kv-val c-green">GET</span></div>
+      <div class="kv"><span class="kv-key">URL:</span><span class="kv-val c-blue">https://owykkhwqpnumvgdeugmj.supabase.co/rest/v1/lead_tags?select=id,nombre,color&order=nombre.asc</span></div>
+      <h3>Headers (agregar en "Header Parameters")</h3>
+      <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code><span class="c-yellow">apikey</span>: <span class="c-green">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eWtraHdxcG51bXZnZGV1Z21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQzOTAsImV4cCI6MjA4OTM2MDM5MH0.2u07gv6LvMlDEry0UmY_XAsNw6ONwvmE2pvTFU73nA4</span>
+<span class="c-yellow">Authorization</span>: <span class="c-green">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eWtraHdxcG51bXZnZGV1Z21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQzOTAsImV4cCI6MjA4OTM2MDM5MH0.2u07gv6LvMlDEry0UmY_XAsNw6ONwvmE2pvTFU73nA4</span>
+<span class="c-yellow">Content-Type</span>: <span class="c-green">application/json</span></code></pre>
+      <h3>Respuesta esperada</h3>
+      <pre><code>[
+  { <span class="c-yellow">"id"</span>: <span class="c-green">"uuid-1"</span>, <span class="c-yellow">"nombre"</span>: <span class="c-green">"Interesado"</span>, <span class="c-yellow">"color"</span>: <span class="c-green">"#7c3aed"</span> },
+  { <span class="c-yellow">"id"</span>: <span class="c-green">"uuid-2"</span>, <span class="c-yellow">"nombre"</span>: <span class="c-green">"Seguimiento"</span>, <span class="c-yellow">"color"</span>: <span class="c-green">"#22c55e"</span> },
+  ...
+]</code></pre>
+      <div class="tip">💡 Guardar la respuesta en variable: <strong>{{ $json }}</strong> — se usará en el nodo de código para mapear ids → nombres.</div>
+    </div>
+  </div>
+
+  <!-- NODO 3 -->
+  <div class="node-detail">
+    <div class="node-detail-header">
+      <div class="num">3</div>
+      <div>
+        <div class="title">Get Tagged Leads <span class="pill pill-blue">HTTP Request</span></div>
+        <div class="subtitle">Obtiene todos los leads de leads_campana que tienen etiquetas</div>
+      </div>
+    </div>
+    <div class="node-detail-body">
+      <div class="kv"><span class="kv-key">Método:</span><span class="kv-val c-green">GET</span></div>
+      <div class="kv"><span class="kv-key">URL completa:</span></div>
+      <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code>https://owykkhwqpnumvgdeugmj.supabase.co/rest/v1/leads_campana?tag_ids=not.is.null&tag_ids=neq.%7B%7D&select=id,id_contacto,nombre,telefono,email,pais,estado,tag_ids,bot_activo,ha_respondido,puntuacion,dias_reales,ultimo_contacto_at,fecha_respuesta,created_at&order=ultimo_contacto_at.desc.nullslast&limit=1000</code></pre>
+      <h3>Headers (mismos que nodo 2)</h3>
+      <div class="kv"><span class="kv-key">apikey + Authorization + Content-Type</span><span class="kv-val c-muted">(igual que nodo 2)</span></div>
+      <h3>Filtros disponibles (agregar a la URL si necesitas)</h3>
+      <table>
+        <tr><th>Filtro</th><th>Parámetro de URL</th></tr>
+        <tr><td>Solo activos (no archivados)</td><td><code>&amp;archivado=neq.true</code></td></tr>
+        <tr><td>Solo que han respondido</td><td><code>&amp;ha_respondido=eq.true</code></td></tr>
+        <tr><td>Por país</td><td><code>&amp;pais=eq.Bolivia</code></td></tr>
+        <tr><td>Por estado</td><td><code>&amp;estado=eq.activo</code></td></tr>
+        <tr><td>Últimos 7 días</td><td><code>&amp;ultimo_contacto_at=gte.{{ DateTime.now().minus({days:7}).toISO() }}</code></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- NODO 4 -->
+  <div class="node-detail">
+    <div class="node-detail-header">
+      <div class="num">4</div>
+      <div>
+        <div class="title">Get Messages <span class="pill pill-blue">HTTP Request</span></div>
+        <div class="subtitle">Obtiene mensajes de los leads etiquetados (últimos 30 días)</div>
+      </div>
+    </div>
+    <div class="node-detail-body">
+      <div class="tip">💡 En n8n, primero extrae los teléfonos del nodo anterior con un nodo <strong>Code</strong> o <strong>Set</strong>, luego pasa como parámetro <code>in.(tel1,tel2,...)</code></div>
+      <div class="kv"><span class="kv-key">Método:</span><span class="kv-val c-green">GET</span></div>
+      <div class="kv"><span class="kv-key">URL base:</span></div>
+      <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code>https://owykkhwqpnumvgdeugmj.supabase.co/rest/v1/mensajes_whatsapp?select=telefono,direccion,created_at&created_at=gte.{{ DateTime.now().minus({days:30}).toISO() }}&telefono=in.({{ $('Get Tagged Leads').all().map(i => i.json.telefono).join(',') }})&order=created_at.asc</code></pre>
+      <h3>Segunda consulta — mensajes de automatización</h3>
+      <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code>https://owykkhwqpnumvgdeugmj.supabase.co/rest/v1/mensajes_automatizacion?select=telefono,direccion,canal,created_at,estado_envio&created_at=gte.{{ DateTime.now().minus({days:30}).toISO() }}&telefono=in.({{ $('Get Tagged Leads').all().map(i => i.json.telefono).join(',') }})&order=created_at.asc</code></pre>
+      <div class="warn">⚠️ Si tienes más de 500 leads, la URL puede ser demasiado larga. En ese caso usa un nodo <strong>Code</strong> para dividir en batches de 100 teléfonos y hacer múltiples requests.</div>
+    </div>
+  </div>
+
+  <!-- NODO 5 -->
+  <div class="node-detail">
+    <div class="node-detail-header">
+      <div class="num">5</div>
+      <div>
+        <div class="title">Build Report <span class="pill pill-violet">Code (JavaScript)</span></div>
+        <div class="subtitle">Procesa todos los datos y genera el HTML del reporte</div>
+      </div>
+    </div>
+    <div class="node-detail-body">
+      <div class="tip">💡 Conectar las salidas de los 3 nodos anteriores. En n8n puedes usar <strong>Merge</strong> (modo "Keep All Data") para combinar los arrays antes de este nodo.</div>
+      <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code><span class="c-muted">// ── Nodo Code — Build Report ─────────────────────────────────────────</span>
+<span class="c-muted">// Conectar: Get Tags (nodo 2), Get Tagged Leads (nodo 3), Get Messages (nodo 4)</span>
+
+<span class="c-violet">const</span> tags    = <span class="c-yellow">$('Get Tags')</span>.all().map(i => i.json);
+<span class="c-violet">const</span> leads   = <span class="c-yellow">$('Get Tagged Leads')</span>.all().map(i => i.json);
+<span class="c-violet">const</span> msgsWA  = <span class="c-yellow">$('Get Messages WA')</span>.all().map(i => i.json);
+<span class="c-violet">const</span> msgsAuto = <span class="c-yellow">$('Get Messages Auto')</span>.all().map(i => i.json);
+
+<span class="c-muted">// Mapas de utilidad</span>
+<span class="c-violet">const</span> tagMap = <span class="c-violet">new</span> Map(tags.map(t => [t.id, t]));
+<span class="c-violet">const</span> today = <span class="c-violet">new</span> Date();
+<span class="c-violet">const</span> dateStr = today.toLocaleDateString(<span class="c-green">'es-ES'</span>, {day:<span class="c-green">'2-digit'</span>,month:<span class="c-green">'long'</span>,year:<span class="c-green">'numeric'</span>});
+
+<span class="c-muted">// Métricas de mensajes por teléfono</span>
+<span class="c-violet">const</span> msgStats = <span class="c-violet">new</span> Map();
+<span class="c-violet">const</span> allMsgs = [...msgsWA, ...msgsAuto];
+<span class="c-violet">for</span> (<span class="c-violet">const</span> m <span class="c-violet">of</span> allMsgs) {
+  <span class="c-violet">if</span> (!msgStats.has(m.telefono)) msgStats.set(m.telefono, {env:0, rec:0, last:null});
+  <span class="c-violet">const</span> s = msgStats.get(m.telefono);
+  m.direccion === <span class="c-green">'outbound'</span> ? s.env++ : s.rec++;
+  <span class="c-violet">if</span> (!s.last || m.created_at > s.last) s.last = m.created_at;
+}
+
+<span class="c-muted">// Agrupar leads por etiqueta</span>
+<span class="c-violet">const</span> byTag = <span class="c-violet">new</span> Map();
+<span class="c-violet">for</span> (<span class="c-violet">const</span> l <span class="c-violet">of</span> leads) {
+  <span class="c-violet">for</span> (<span class="c-violet">const</span> tid <span class="c-violet">of</span> (l.tag_ids || [])) {
+    <span class="c-violet">if</span> (!byTag.has(tid)) byTag.set(tid, []);
+    byTag.get(tid).push(l);
+  }
+}
+
+<span class="c-muted">// Métricas globales</span>
+<span class="c-violet">const</span> totalLeads    = leads.length;
+<span class="c-violet">const</span> respondieron  = leads.filter(l => l.ha_respondido).length;
+<span class="c-violet">const</span> botActivo     = leads.filter(l => l.bot_activo).length;
+<span class="c-violet">const</span> sinRespuesta  = leads.filter(l => !l.ha_respondido && !l.archivado).length;
+<span class="c-violet">const</span> tasa          = totalLeads > 0 ? Math.round(respondieron / totalLeads * 100) : 0;
+
+<span class="c-muted">// Formato fecha</span>
+<span class="c-violet">const</span> fmt = d => d ? <span class="c-violet">new</span> Date(d).toLocaleDateString(<span class="c-green">'es-ES'</span>,{day:<span class="c-green">'2-digit'</span>,month:<span class="c-green">'2-digit'</span>,year:<span class="c-green">'2-digit'</span>}) : <span class="c-green">'-'</span>;
+
+<span class="c-muted">// ── Construir HTML del reporte ────────────────────────────────────────</span>
+<span class="c-violet">let</span> tagSections = <span class="c-green">''</span>;
+<span class="c-violet">for</span> (<span class="c-violet">const</span> [tid, tLeads] <span class="c-violet">of</span> byTag) {
+  <span class="c-violet">const</span> tag = tagMap.get(tid) || {nombre: tid, color: <span class="c-green">'#7c3aed'</span>};
+  <span class="c-violet">const</span> respTag = tLeads.filter(l => l.ha_respondido).length;
+
+  <span class="c-violet">let</span> rows = tLeads.map(l => {
+    <span class="c-violet">const</span> s = msgStats.get(l.telefono) || {env:0, rec:0, last:null};
+    <span class="c-violet">return</span> <span class="c-green">`&lt;tr&gt;
+      &lt;td&gt;${l.nombre || '-'}&lt;/td&gt;
+      &lt;td&gt;${l.telefono}&lt;/td&gt;
+      &lt;td&gt;${l.pais || '-'}&lt;/td&gt;
+      &lt;td&gt;${l.estado || '-'}&lt;/td&gt;
+      &lt;td style="color:#22c55e"&gt;${s.env}&lt;/td&gt;
+      &lt;td style="color:#3b82f6"&gt;${s.rec}&lt;/td&gt;
+      &lt;td&gt;${l.ha_respondido ? '✅' : '❌'}&lt;/td&gt;
+      &lt;td&gt;${fmt(s.last)}&lt;/td&gt;
+    &lt;/tr&gt;`</span>;
+  }).join(<span class="c-green">''</span>);
+
+  tagSections += <span class="c-green">`
+    &lt;h3 style="color:${tag.color};border-left:4px solid ${tag.color};padding-left:12px;margin:24px 0 12px"&gt;
+      🏷 ${tag.nombre} — ${tLeads.length} leads · ${respTag} respondieron
+    &lt;/h3&gt;
+    &lt;table&gt;
+      &lt;thead&gt;&lt;tr style="background:#1a1d27"&gt;
+        &lt;th&gt;Nombre&lt;/th&gt;&lt;th&gt;Teléfono&lt;/th&gt;&lt;th&gt;País&lt;/th&gt;&lt;th&gt;Estado&lt;/th&gt;
+        &lt;th&gt;Env&lt;/th&gt;&lt;th&gt;Rec&lt;/th&gt;&lt;th&gt;Respondió&lt;/th&gt;&lt;th&gt;Último msg&lt;/th&gt;
+      &lt;/tr&gt;&lt;/thead&gt;
+      &lt;tbody&gt;${rows}&lt;/tbody&gt;
+    &lt;/table&gt;`</span>;
+}
+
+<span class="c-violet">const</span> htmlReport = <span class="c-green">`&lt;!DOCTYPE html&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta charset="UTF-8"&gt;
+&lt;style&gt;
+  body{font-family:Arial,sans-serif;background:#f8fafc;color:#1e293b;padding:24px;max-width:900px;margin:0 auto}
+  h1{color:#7c3aed;border-bottom:2px solid #7c3aed;padding-bottom:8px}
+  h3{margin-top:24px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+  .kpi{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;text-align:center}
+  .kpi-num{font-size:28px;font-weight:700;color:#7c3aed}
+  .kpi-label{font-size:12px;color:#64748b;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}
+  th{background:#7c3aed;color:#fff;padding:8px 10px;text-align:left}
+  td{padding:7px 10px;border-bottom:1px solid #e2e8f0}
+  tr:nth-child(even)td{background:#f8fafc}
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+&lt;h1&gt;📊 Reporte de Leads Etiquetados — ${dateStr}&lt;/h1&gt;
+&lt;div class="kpis"&gt;
+  &lt;div class="kpi"&gt;&lt;div class="kpi-num"&gt;${totalLeads}&lt;/div&gt;&lt;div class="kpi-label"&gt;Total etiquetados&lt;/div&gt;&lt;/div&gt;
+  &lt;div class="kpi"&gt;&lt;div class="kpi-num" style="color:#22c55e"&gt;${respondieron}&lt;/div&gt;&lt;div class="kpi-label"&gt;Respondieron&lt;/div&gt;&lt;/div&gt;
+  &lt;div class="kpi"&gt;&lt;div class="kpi-num" style="color:#f97316"&gt;${sinRespuesta}&lt;/div&gt;&lt;div class="kpi-label"&gt;Sin respuesta&lt;/div&gt;&lt;/div&gt;
+  &lt;div class="kpi"&gt;&lt;div class="kpi-num"&gt;${tasa}%&lt;/div&gt;&lt;div class="kpi-label"&gt;Tasa respuesta&lt;/div&gt;&lt;/div&gt;
+&lt;/div&gt;
+${tagSections}
+&lt;p style="color:#94a3b8;font-size:11px;margin-top:32px"&gt;Generado automáticamente por RealtyPlus Nexus · AI-MaX Intelligence&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;`</span>;
+
+<span class="c-violet">return</span> [{ json: {
+  html: htmlReport,
+  subject: <span class="c-green">`📊 Reporte Etiquetados ${dateStr} — ${totalLeads} leads`</span>,
+  totalLeads, respondieron, sinRespuesta, tasa,
+  tagCount: byTag.size
+}}];
+</code></pre>
+    </div>
+  </div>
+
+  <!-- NODO 6 -->
+  <div class="node-detail">
+    <div class="node-detail-header">
+      <div class="num">6</div>
+      <div>
+        <div class="title">Send Report <span class="pill pill-orange">Email / Slack / WhatsApp</span></div>
+        <div class="subtitle">Envía el reporte generado al destino configurado</div>
+      </div>
+    </div>
+    <div class="node-detail-body">
+      <h3>Opción A — Gmail / SMTP</h3>
+      <table>
+        <tr><th>Campo</th><th>Valor</th></tr>
+        <tr><td>To Email</td><td><code>mariovaldes77777@gmail.com</code></td></tr>
+        <tr><td>Subject</td><td><code>{{ $json.subject }}</code></td></tr>
+        <tr><td>Email Format</td><td>HTML</td></tr>
+        <tr><td>HTML Body</td><td><code>{{ $json.html }}</code></td></tr>
+      </table>
+      <h3>Opción B — Slack</h3>
+      <pre><code><span class="c-yellow">Canal:</span> #realtyplus-reportes
+<span class="c-yellow">Mensaje:</span> 📊 *{{ $json.subject }}*
+Total leads: {{ $json.totalLeads }} | Respondieron: {{ $json.respondieron }} | Sin respuesta: {{ $json.sinRespuesta }} | Tasa: {{ $json.tasa }}%
+<span class="c-yellow">Attachment:</span> {{ $json.html }} (como snippet HTML)</code></pre>
+      <h3>Opción C — WhatsApp (via Webhook n8n propio)</h3>
+      <pre><code><span class="c-yellow">URL:</span> https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto
+<span class="c-yellow">Body:</span> { "tipo": "reporte_etiquetados", "resumen": "{{ $json.subject }}", "total": {{ $json.totalLeads }} }</code></pre>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- QUERIES SQL SUPABASE -->
+  <h2>🗄️ Queries SQL de Referencia (Supabase)</h2>
+  <p style="color:var(--muted); margin-bottom:16px;">Ejecutar en el SQL Editor de Supabase para verificar datos antes de construir el workflow.</p>
+
+  <h3>Ver todos los leads etiquetados con sus etiquetas</h3>
+  <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code><span class="c-violet">SELECT</span>
+  lc.nombre, lc.telefono, lc.email, lc.pais, lc.estado,
+  lc.ha_respondido, lc.bot_activo, lc.ultimo_contacto_at,
+  <span class="c-green">array_agg</span>(lt.nombre) <span class="c-violet">AS</span> etiquetas
+<span class="c-violet">FROM</span> leads_campana lc
+<span class="c-violet">JOIN</span> lead_tags lt <span class="c-violet">ON</span> lt.id = <span class="c-green">ANY</span>(lc.tag_ids)
+<span class="c-violet">WHERE</span> lc.tag_ids <span class="c-violet">IS NOT NULL</span>
+  <span class="c-violet">AND</span> lc.tag_ids != <span class="c-green">'{}'</span>
+  <span class="c-violet">AND</span> lc.archivado <span class="c-violet">IS NOT TRUE</span>
+<span class="c-violet">GROUP BY</span> lc.id
+<span class="c-violet">ORDER BY</span> lc.ultimo_contacto_at <span class="c-violet">DESC NULLS LAST</span>;</code></pre>
+
+  <h3>Resumen por etiqueta (para el widget de KPIs)</h3>
+  <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code><span class="c-violet">SELECT</span>
+  lt.nombre <span class="c-violet">AS</span> etiqueta,
+  lt.color,
+  <span class="c-green">COUNT</span>(DISTINCT lc.id) <span class="c-violet">AS</span> total_leads,
+  <span class="c-green">COUNT</span>(DISTINCT lc.id) <span class="c-violet">FILTER</span> (<span class="c-violet">WHERE</span> lc.ha_respondido) <span class="c-violet">AS</span> respondieron,
+  <span class="c-green">COUNT</span>(DISTINCT lc.id) <span class="c-violet">FILTER</span> (<span class="c-violet">WHERE</span> lc.bot_activo) <span class="c-violet">AS</span> bot_activo
+<span class="c-violet">FROM</span> lead_tags lt
+<span class="c-violet">LEFT JOIN</span> leads_campana lc <span class="c-violet">ON</span> lt.id = <span class="c-green">ANY</span>(lc.tag_ids)
+<span class="c-violet">GROUP BY</span> lt.id, lt.nombre, lt.color
+<span class="c-violet">ORDER BY</span> total_leads <span class="c-violet">DESC</span>;</code></pre>
+
+  <h3>Mensajes de los últimos 7 días de leads etiquetados</h3>
+  <pre><button class="copy-btn" onclick="copy(this)">Copiar</button><code><span class="c-violet">SELECT</span>
+  mw.telefono, lc.nombre, mw.direccion, mw.contenido, mw.created_at
+<span class="c-violet">FROM</span> mensajes_whatsapp mw
+<span class="c-violet">JOIN</span> leads_campana lc <span class="c-violet">ON</span> lc.telefono = mw.telefono
+<span class="c-violet">WHERE</span> lc.tag_ids <span class="c-violet">IS NOT NULL</span>
+  <span class="c-violet">AND</span> mw.created_at >= <span class="c-green">NOW() - INTERVAL '7 days'</span>
+<span class="c-violet">ORDER BY</span> mw.created_at <span class="c-violet">DESC</span>;</code></pre>
+
+  <hr>
+
+  <!-- ESQUEMAS -->
+  <h2>📐 Esquema de Tablas Relevantes</h2>
+  <div class="grid2">
+    <div>
+      <h3>leads_campana (columnas clave)</h3>
+      <table>
+        <tr><th>Columna</th><th>Tipo</th></tr>
+        <tr><td>id</td><td>uuid PK</td></tr>
+        <tr><td>id_contacto</td><td>text | null</td></tr>
+        <tr><td>nombre</td><td>text NOT NULL</td></tr>
+        <tr><td>telefono</td><td>text NOT NULL</td></tr>
+        <tr><td>email</td><td>text | null</td></tr>
+        <tr><td>pais</td><td>text | null</td></tr>
+        <tr><td>estado</td><td>text | null</td></tr>
+        <tr><td>tag_ids</td><td>uuid[] | null</td></tr>
+        <tr><td>bot_activo</td><td>boolean | null</td></tr>
+        <tr><td>ha_respondido</td><td>boolean | null</td></tr>
+        <tr><td>archivado</td><td>boolean | null</td></tr>
+        <tr><td>puntuacion</td><td>int | null</td></tr>
+        <tr><td>dias_reales</td><td>int | null</td></tr>
+        <tr><td>ultimo_contacto_at</td><td>timestamptz | null</td></tr>
+        <tr><td>fecha_respuesta</td><td>timestamptz | null</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>lead_tags</h3>
+      <table>
+        <tr><th>Columna</th><th>Tipo</th></tr>
+        <tr><td>id</td><td>uuid PK</td></tr>
+        <tr><td>nombre</td><td>text NOT NULL</td></tr>
+        <tr><td>color</td><td>text (hex)</td></tr>
+        <tr><td>created_at</td><td>timestamptz</td></tr>
+      </table>
+      <h3 style="margin-top:20px">mensajes_whatsapp</h3>
+      <table>
+        <tr><th>Columna</th><th>Tipo</th></tr>
+        <tr><td>id</td><td>uuid PK</td></tr>
+        <tr><td>telefono</td><td>text</td></tr>
+        <tr><td>contenido</td><td>text</td></tr>
+        <tr><td>direccion</td><td>'inbound' | 'outbound'</td></tr>
+        <tr><td>autor</td><td>text | null</td></tr>
+        <tr><td>leido</td><td>boolean | null</td></tr>
+        <tr><td>created_at</td><td>timestamptz</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- CHECKLIST -->
+  <h2>✅ Checklist de Implementación</h2>
+  <div class="card" style="line-height:2.2;">
+    <input type="checkbox"> Crear credencial HTTP en n8n con la Anon Key de Supabase<br>
+    <input type="checkbox"> Crear nodo Schedule Trigger con el horario deseado<br>
+    <input type="checkbox"> Agregar nodo HTTP Request para <code>lead_tags</code> (GET)<br>
+    <input type="checkbox"> Agregar nodo HTTP Request para <code>leads_campana</code> con filtro de etiquetas (GET)<br>
+    <input type="checkbox"> Agregar nodo HTTP Request para <code>mensajes_whatsapp</code> con teléfonos dinámicos (GET)<br>
+    <input type="checkbox"> (Opcional) Segundo HTTP Request para <code>mensajes_automatizacion</code><br>
+    <input type="checkbox"> Agregar nodo <strong>Merge</strong> para combinar los resultados de los HTTP Requests<br>
+    <input type="checkbox"> Agregar nodo <strong>Code</strong> con el código JavaScript del paso 5<br>
+    <input type="checkbox"> Configurar nodo de envío (Gmail / SMTP / Slack)<br>
+    <input type="checkbox"> Probar con ejecución manual antes de activar el cron<br>
+    <input type="checkbox"> Activar el workflow y verificar primera ejecución programada<br>
+  </div>
+
+  <div style="text-align:center;margin-top:40px;padding:20px;color:var(--muted);font-size:11px;">
+    Generado por <strong style="color:var(--violet-light)">AI-MaX Intelligence</strong> · Mario Valdés · La Serena, Chile<br>
+    RealtyPlus Nexus — Servicios Inmobiliarios Plus Sur SL, Madrid
+  </div>
+
+</div>
+
+<script>
+function copy(btn) {
+  const pre = btn.parentElement;
+  const text = pre.innerText.replace(/^Copiar\n/, '');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => btn.textContent = 'Copiar', 2000);
+  });
+}
+</script>
+</body>
+</html>
