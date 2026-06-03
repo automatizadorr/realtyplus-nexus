@@ -59,12 +59,13 @@ export function Layout({ children }: LayoutProps) {
         <HoverEdge closeTimerRef={closeTimerRef} />
         <SidebarHoverWrapper closeTimerRef={closeTimerRef} />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b bg-card px-4 gap-3">
-            <SidebarTrigger />
+          <header className="h-13 flex items-center border-b border-white/5 bg-[#080d1a]/80 backdrop-blur-sm px-4 gap-3">
+            <SidebarTrigger className="text-white/40 hover:text-white/70 transition-colors" />
+            <div className="w-px h-5 bg-white/10" />
             <img
               src={realtyplusLogo}
               alt="Realtyplus - Servicios Inmobiliarios"
-              className="h-10 w-auto object-contain"
+              className="h-7 w-auto object-contain opacity-90"
             />
           </header>
           <main className="flex-1 overflow-auto">{children}</main>
