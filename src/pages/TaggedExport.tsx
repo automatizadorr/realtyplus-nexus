@@ -104,23 +104,27 @@ export default function TaggedExport() {
     fetchStats();
   }, [tagFilter]);
 
-  // ── HTML VISUAL: carga datos reales y abre reporte WhatsApp-style ────────
+  // ── HTML VISUAL: agrupa por etiqueta, acordeón, conversaciones WhatsApp ──
   const handleOpenHtml = async () => {
     setGeneratingHtml(true);
     try {
       const { tagMap, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
-      // Agrupar mensajes por teléfono, orden cronológico
+      // Mensajes por teléfono, orden cronológico
       const msgsByPhone = new Map<string, any[]>();
       for (const l of leads) msgsByPhone.set(l.telefono, []);
       const allMsgs = [
-        ...msgsWA.map((m) => ({ ...m, _canal: "WhatsApp" })),
-        ...msgsAuto.map((m) => ({ ...m, _canal: m.canal ?? "Auto" })),
+        ...msgsWA.map((m: any)  => ({ ...m, _canal: "WhatsApp" })),
+        ...msgsAuto.map((m: any) => ({ ...m, _canal: m.canal ?? "Auto" })),
       ].sort((a, b) => (a.created_at ?? "") > (b.created_at ?? "") ? 1 : -1);
       for (const m of allMsgs) {
         const arr = msgsByPhone.get(m.telefono);
         if (arr) arr.push(m);
       }
+
+      const esc = (s: string) => (s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/\n/g, "<br>");
 
       const fmtTs = (iso: string | null) => {
         if (!iso) return "";
@@ -128,192 +132,196 @@ export default function TaggedExport() {
         return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "2-digit" })
           + " " + d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
       };
-
       const fmtDate = (iso: string | null) =>
         iso ? new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
+      const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+
+      // KPIs globales
       const totalLeads   = leads.length;
-      const respondieron = leads.filter(l => l.ha_respondido).length;
-      const sinResp      = leads.filter(l => !l.ha_respondido && !l.archivado).length;
+      const respondieron = leads.filter((l: any) => l.ha_respondido).length;
+      const sinResp      = leads.filter((l: any) => !l.ha_respondido && !l.archivado).length;
       const tasa         = totalLeads > 0 ? Math.round(respondieron / totalLeads * 100) : 0;
-      const today        = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
 
-      const escHtml = (s: string) => s
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/\n/g, "<br>");
-
-      // ── Construir sección de cada lead ───────────────────────────────────
-      const leadSections = leads.map((l) => {
-        const etiquetas = (l.tag_ids ?? []).map((id: string) => {
-          const t = tagMap.get(id);
-          return t ? `<span class="tag-chip" style="background:${t.color}22;color:${t.color};border:1px solid ${t.color}66">${t.nombre}</span>` : "";
-        }).join("");
-
-        const msgs = msgsByPhone.get(l.telefono) ?? [];
-        const enviados  = msgs.filter(m => m.direccion === "outbound").length;
-        const recibidos = msgs.filter(m => m.direccion === "inbound").length;
+      // ── Helper: tarjeta de un lead ────────────────────────────────────────
+      const buildLeadCard = (l: any) => {
+        const msgs      = msgsByPhone.get(l.telefono) ?? [];
+        const enviados  = msgs.filter((m: any) => m.direccion === "outbound").length;
+        const recibidos = msgs.filter((m: any) => m.direccion === "inbound").length;
         const ultimoMsg = msgs.at(-1);
 
-        const bubbles = msgs.map((m) => {
-          const esBot   = m.direccion === "outbound";
-          const ts      = fmtTs(m.created_at);
-          const canal   = m._canal !== "WhatsApp" ? `<span class="canal-badge">${escHtml(m._canal)}</span>` : "";
-          const contenido = escHtml((m.contenido ?? "").trim());
-          return `
-            <div class="bubble-row ${esBot ? "out" : "in"}">
-              <div class="bubble ${esBot ? "bubble-out" : "bubble-in"}">
-                ${canal}
-                <div class="bubble-text">${contenido || "<em style='opacity:.5'>Media / sin texto</em>"}</div>
-                <div class="bubble-ts">${ts}</div>
-              </div>
-            </div>`;
+        const otrasEtqs = (l.tag_ids ?? []).map((id: string) => {
+          const t = tagMap.get(id);
+          return t ? `<span class="tag-chip" style="background:${t.color}22;color:${t.color};border:1px solid ${t.color}55">${t.nombre}</span>` : "";
         }).join("");
 
-        return `
-          <div class="lead-block">
-            <div class="lead-header">
-              <div class="lead-avatar">${(l.nombre ?? "?")[0].toUpperCase()}</div>
-              <div class="lead-info">
-                <div class="lead-name">${escHtml(l.nombre ?? "Sin nombre")}</div>
-                <div class="lead-meta">
-                  📱 ${escHtml(l.telefono ?? "")}
-                  ${l.email ? ` &nbsp;·&nbsp; ✉ ${escHtml(l.email)}` : ""}
-                  ${l.pais  ? ` &nbsp;·&nbsp; 🌍 ${escHtml(l.pais)}`  : ""}
-                </div>
-                <div class="lead-meta2">
-                  <span class="estado-badge">${escHtml(l.estado ?? "sin estado")}</span>
-                  ${l.id_contacto ? `<span class="id-badge">ID ${escHtml(l.id_contacto)}</span>` : ""}
-                  ${l.bot_activo ? `<span class="bot-badge">🤖 Bot activo</span>` : ""}
-                  ${l.ha_respondido ? `<span class="resp-badge">✅ Respondió</span>` : ""}
-                </div>
-              </div>
-              <div class="lead-stats">
-                <div class="stat"><span class="stat-n" style="color:#22c55e">${enviados}</span><span class="stat-l">Enviados</span></div>
-                <div class="stat"><span class="stat-n" style="color:#3b82f6">${recibidos}</span><span class="stat-l">Recibidos</span></div>
-                <div class="stat"><span class="stat-n">${l.puntuacion ?? "—"}</span><span class="stat-l">Puntuación</span></div>
-                <div class="stat"><span class="stat-n">${l.dias_reales ?? "—"}</span><span class="stat-l">Días</span></div>
-              </div>
-            </div>
-            ${etiquetas ? `<div class="tags-row">${etiquetas}</div>` : ""}
-            <div class="lead-dates">
-              Último contacto: <strong>${fmtDate(l.ultimo_contacto_at)}</strong>
-              ${l.fecha_respuesta ? ` &nbsp;·&nbsp; Fecha respuesta: <strong>${fmtDate(l.fecha_respuesta)}</strong>` : ""}
-              ${l.fecha_proximo_contacto ? ` &nbsp;·&nbsp; Próximo: <strong>${fmtDate(l.fecha_proximo_contacto)}</strong>` : ""}
-              ${l.origen ? ` &nbsp;·&nbsp; Origen: <strong>${escHtml(l.origen)}</strong>` : ""}
-            </div>
+        const bubbles = msgs.map((m: any) => {
+          const esBot     = m.direccion === "outbound";
+          const canalBadge = m._canal !== "WhatsApp" ? `<span class="canal-badge">${esc(m._canal)}</span>` : "";
+          const txt       = esc((m.contenido ?? "").trim());
+          return `<div class="brow ${esBot ? "out" : "in"}">
+            <div class="bub ${esBot ? "bout" : "bin"}">
+              ${canalBadge}
+              <div class="btxt">${txt || "<em style='opacity:.4'>Media</em>"}</div>
+              <div class="bts">${fmtTs(m.created_at)}</div>
+            </div></div>`;
+        }).join("");
 
-            ${msgs.length > 0 ? `
-            <div class="chat-header">
-              <span>💬 Conversación — ${msgs.length} mensajes</span>
-              ${ultimoMsg ? `<span style="opacity:.7;font-size:11px">Último: ${fmtTs(ultimoMsg.created_at)}</span>` : ""}
+        return `<details class="lead-block">
+          <summary class="lead-summary">
+            <div class="lavatar">${(l.nombre ?? "?")[0].toUpperCase()}</div>
+            <div class="linfo">
+              <div class="lname">${esc(l.nombre ?? "Sin nombre")}</div>
+              <div class="lmeta">📱 ${esc(l.telefono ?? "")}${l.pais ? ` &nbsp;·&nbsp; 🌍 ${esc(l.pais)}` : ""}${l.email ? ` &nbsp;·&nbsp; ✉ ${esc(l.email)}` : ""}</div>
+              <div class="lbadges">
+                <span class="ebadge">${esc(l.estado ?? "sin estado")}</span>
+                ${l.id_contacto ? `<span class="idbadge">ID ${esc(l.id_contacto)}</span>` : ""}
+                ${l.bot_activo  ? `<span class="botbadge">🤖 Bot</span>` : ""}
+                ${l.ha_respondido ? `<span class="respbadge">✅ Respondió</span>` : ""}
+              </div>
             </div>
-            <div class="chat-area">${bubbles}</div>
-            ` : `<div class="no-msgs">Sin mensajes registrados</div>`}
-          </div>`;
+            <div class="lstats">
+              <div class="stat"><b style="color:#22c55e">${enviados}</b><small>Env</small></div>
+              <div class="stat"><b style="color:#3b82f6">${recibidos}</b><small>Rec</small></div>
+              <div class="stat"><b>${msgs.length}</b><small>Total</small></div>
+              <div class="stat"><b>${l.puntuacion ?? "—"}</b><small>Punt</small></div>
+            </div>
+            <span class="arrow">›</span>
+          </summary>
+          <div class="lead-body">
+            ${otrasEtqs ? `<div class="etqs-row">${otrasEtqs}</div>` : ""}
+            <div class="dates-row">
+              Último contacto: <b>${fmtDate(l.ultimo_contacto_at)}</b>
+              ${l.fecha_respuesta ? ` &nbsp;·&nbsp; Respuesta: <b>${fmtDate(l.fecha_respuesta)}</b>` : ""}
+              ${l.fecha_proximo_contacto ? ` &nbsp;·&nbsp; Próximo: <b>${fmtDate(l.fecha_proximo_contacto)}</b>` : ""}
+              ${l.origen ? ` &nbsp;·&nbsp; Origen: <b>${esc(l.origen)}</b>` : ""}
+              ${l.dias_reales != null ? ` &nbsp;·&nbsp; Días: <b>${l.dias_reales}</b>` : ""}
+            </div>
+            ${msgs.length > 0
+              ? `<div class="chat-hdr"><span>💬 ${msgs.length} mensajes</span>${ultimoMsg ? `<span>Último: ${fmtTs(ultimoMsg.created_at)}</span>` : ""}</div>
+                 <div class="chat-area">${bubbles}</div>`
+              : `<div class="no-msgs">Sin mensajes registrados</div>`}
+          </div>
+        </details>`;
+      };
+
+      // ── Agrupar leads por etiqueta ────────────────────────────────────────
+      const byTag = new Map<string, any[]>();
+      for (const l of leads) {
+        for (const tid of (l.tag_ids ?? [])) {
+          if (!byTag.has(tid)) byTag.set(tid, []);
+          byTag.get(tid)!.push(l);
+        }
+      }
+
+      const tagSections = [...byTag.entries()].map(([tid, tLeads]) => {
+        const tag   = tagMap.get(tid) ?? { nombre: tid, color: "#7c3aed" };
+        const tResp = tLeads.filter((l: any) => l.ha_respondido).length;
+        const tTasa = Math.round(tResp / tLeads.length * 100);
+        const tMsgs = tLeads.reduce((acc: number, l: any) => acc + (msgsByPhone.get(l.telefono)?.length ?? 0), 0);
+        const cards = tLeads.map(buildLeadCard).join("");
+
+        return `<details class="tag-section" open>
+          <summary class="tag-summary" style="border-left:4px solid ${tag.color}">
+            <span class="tag-dot" style="background:${tag.color}"></span>
+            <span class="tag-title">${esc(tag.nombre)}</span>
+            <span class="tag-pill" style="background:${tag.color}22;color:${tag.color}">${tLeads.length} leads</span>
+            <span class="tag-pill2">${tResp} respondieron &nbsp;·&nbsp; ${tTasa}%</span>
+            <span class="tag-pill2">${tMsgs} mensajes</span>
+            <span class="tag-arrow">▾</span>
+          </summary>
+          <div class="tag-body">${cards}</div>
+        </details>`;
       }).join("");
 
       // ── HTML final ────────────────────────────────────────────────────────
       const html = `<!DOCTYPE html>
 <html lang="es"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Leads Etiquetados — ${today}</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Etiquetados — ${today}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;font-size:13px;line-height:1.5}
-a{color:#a78bfa}
-
-/* HEADER */
-.page-header{background:linear-gradient(135deg,#1a0e3a,#0f1117);border-bottom:1px solid #7c3aed;padding:24px 32px}
-.page-header h1{font-size:22px;font-weight:700;color:#a78bfa}
-.page-header p{color:#94a3b8;margin-top:4px;font-size:12px}
-
-/* KPIs */
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:20px 32px}
-.kpi{background:#1a1d27;border:1px solid #2e3250;border-radius:10px;padding:16px;text-align:center}
-.kpi-n{font-size:26px;font-weight:700;color:#a78bfa}
-.kpi-l{font-size:11px;color:#94a3b8;margin-top:3px}
-
-/* LEADS */
-.leads-container{padding:0 32px 40px}
-.lead-block{background:#1a1d27;border:1px solid #2e3250;border-radius:12px;margin-bottom:24px;overflow:hidden}
-
-/* LEAD HEADER */
-.lead-header{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;background:#1e2235;border-bottom:1px solid #2e3250}
-.lead-avatar{width:44px;height:44px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0}
-.lead-info{flex:1;min-width:0}
-.lead-name{font-size:15px;font-weight:700;color:#e2e8f0}
-.lead-meta{font-size:12px;color:#94a3b8;margin-top:3px}
-.lead-meta2{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
-.estado-badge{background:#2e3250;color:#94a3b8;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
-.id-badge{background:#1e1b4b;color:#a78bfa;padding:2px 8px;border-radius:4px;font-size:11px}
-.bot-badge{background:#14532d;color:#86efac;padding:2px 8px;border-radius:4px;font-size:11px}
-.resp-badge{background:#1e3a1e;color:#86efac;padding:2px 8px;border-radius:4px;font-size:11px}
-.lead-stats{display:flex;gap:14px;flex-shrink:0}
-.stat{text-align:center}
-.stat-n{display:block;font-size:18px;font-weight:700}
-.stat-l{display:block;font-size:10px;color:#94a3b8;margin-top:1px}
-
-/* TAGS */
-.tags-row{padding:10px 18px;display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid #2e3250}
-.tag-chip{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
-
-/* DATES */
-.lead-dates{padding:8px 18px;font-size:11px;color:#64748b;border-bottom:1px solid #2e3250}
-.lead-dates strong{color:#94a3b8}
-
+/* PAGE HEADER */
+.ph{background:linear-gradient(135deg,#1a0e3a,#0f1117);border-bottom:1px solid #7c3aed;padding:20px 28px}
+.ph h1{font-size:20px;font-weight:700;color:#a78bfa}.ph p{color:#94a3b8;font-size:11px;margin-top:3px}
+/* KPIS */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 28px}
+.kpi{background:#1a1d27;border:1px solid #2e3250;border-radius:8px;padding:14px;text-align:center}
+.kpi b{display:block;font-size:24px;color:#a78bfa}.kpi small{font-size:10px;color:#94a3b8}
+/* TAG SECTION */
+.main{padding:0 28px 40px}
+.tag-section{background:#1a1d27;border:1px solid #2e3250;border-radius:12px;margin-bottom:16px;overflow:hidden}
+.tag-summary{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;user-select:none;list-style:none;background:#1e2235}
+.tag-summary::-webkit-details-marker{display:none}
+.tag-summary:hover{background:#252a40}
+.tag-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.tag-title{font-size:15px;font-weight:700;flex:1}
+.tag-pill{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.tag-pill2{font-size:11px;color:#94a3b8}
+.tag-arrow{font-size:18px;color:#7c3aed;transition:transform .2s;margin-left:auto}
+details[open] .tag-arrow{transform:rotate(90deg)}
+details[open] .arrow{transform:rotate(90deg)}
+.tag-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+/* LEAD CARD */
+.lead-block{background:#13162a;border:1px solid #2e3250;border-radius:10px;overflow:hidden}
+.lead-summary{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;user-select:none;list-style:none}
+.lead-summary::-webkit-details-marker{display:none}
+.lead-summary:hover{background:#1a1f35}
+.lavatar{width:38px;height:38px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.linfo{flex:1;min-width:0}
+.lname{font-size:13px;font-weight:700}.lmeta{font-size:11px;color:#94a3b8;margin-top:2px}
+.lbadges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.ebadge{background:#2e3250;color:#94a3b8;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.idbadge{background:#1e1b4b;color:#a78bfa;padding:1px 7px;border-radius:4px;font-size:10px}
+.botbadge{background:#14532d;color:#86efac;padding:1px 7px;border-radius:4px;font-size:10px}
+.respbadge{background:#14532d;color:#86efac;padding:1px 7px;border-radius:4px;font-size:10px}
+.lstats{display:flex;gap:12px;flex-shrink:0;text-align:center}
+.stat b{display:block;font-size:16px;font-weight:700}.stat small{font-size:10px;color:#64748b}
+.arrow{font-size:16px;color:#4b5563;transition:transform .2s}
+/* LEAD BODY */
+.lead-body{border-top:1px solid #2e3250}
+.etqs-row{display:flex;flex-wrap:wrap;gap:5px;padding:8px 14px;border-bottom:1px solid #2e3250}
+.tag-chip{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600}
+.dates-row{padding:7px 14px;font-size:11px;color:#4b5563;border-bottom:1px solid #2e3250}
+.dates-row b{color:#94a3b8}
+.no-msgs{padding:12px 14px;color:#374151;font-style:italic;font-size:12px}
 /* CHAT */
-.chat-header{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#128C7E;color:#fff;font-size:12px;font-weight:600}
-.chat-area{background:#0b1a12 url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");padding:14px 18px;min-height:80px;max-height:500px;overflow-y:auto}
-.bubble-row{display:flex;margin-bottom:8px}
-.bubble-row.out{justify-content:flex-end}
-.bubble-row.in{justify-content:flex-start}
-.bubble{max-width:70%;padding:8px 12px;border-radius:12px;position:relative;word-break:break-word}
-.bubble-out{background:#005C4B;color:#e9feee;border-bottom-right-radius:3px}
-.bubble-in{background:#1f2c34;color:#e2e8f0;border-bottom-left-radius:3px}
-.bubble-text{font-size:13px;line-height:1.5}
-.bubble-ts{font-size:10px;opacity:.6;text-align:right;margin-top:4px}
-.canal-badge{display:inline-block;background:rgba(255,255,255,.1);border-radius:3px;padding:0 5px;font-size:10px;margin-bottom:4px}
-.no-msgs{padding:14px 18px;color:#4b5563;font-style:italic;font-size:12px}
-
-/* RESPONSIVE */
+.chat-hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#128C7E;color:#fff;font-size:11px;font-weight:600}
+.chat-area{background:#0b1a12;padding:12px 14px;max-height:420px;overflow-y:auto}
+.brow{display:flex;margin-bottom:7px}
+.brow.out{justify-content:flex-end}.brow.in{justify-content:flex-start}
+.bub{max-width:72%;padding:7px 11px;border-radius:11px;word-break:break-word}
+.bout{background:#005C4B;color:#e9feee;border-bottom-right-radius:2px}
+.bin{background:#1f2c34;color:#e2e8f0;border-bottom-left-radius:2px}
+.btxt{font-size:12px;line-height:1.5}
+.bts{font-size:10px;opacity:.55;text-align:right;margin-top:3px}
+.canal-badge{display:inline-block;background:rgba(255,255,255,.12);border-radius:3px;padding:0 4px;font-size:9px;margin-bottom:3px}
 @media(max-width:600px){
-  .kpis{grid-template-columns:repeat(2,1fr)}
-  .leads-container,.kpis{padding-left:16px;padding-right:16px}
-  .lead-header{flex-wrap:wrap}
-  .lead-stats{width:100%;justify-content:space-around;margin-top:10px}
-  .bubble{max-width:90%}
+  .kpis{grid-template-columns:repeat(2,1fr)}.main,.kpis{padding-left:14px;padding-right:14px}
+  .lead-summary{flex-wrap:wrap}.lstats{width:100%;justify-content:space-around;margin-top:8px}
+  .bub{max-width:88%}
 }
-</style>
-</head>
-<body>
-
-<div class="page-header">
+</style></head><body>
+<div class="ph">
   <h1>📋 Leads Etiquetados</h1>
-  <p>Generado el ${today} &nbsp;·&nbsp; ${totalLeads} leads &nbsp;·&nbsp; ${allMsgs.length} mensajes</p>
+  <p>Generado el ${today} &nbsp;·&nbsp; ${totalLeads} leads &nbsp;·&nbsp; ${allMsgs.length} mensajes &nbsp;·&nbsp; ${byTag.size} etiquetas</p>
 </div>
-
 <div class="kpis">
-  <div class="kpi"><div class="kpi-n">${totalLeads}</div><div class="kpi-l">Total etiquetados</div></div>
-  <div class="kpi"><div class="kpi-n" style="color:#22c55e">${respondieron}</div><div class="kpi-l">Respondieron</div></div>
-  <div class="kpi"><div class="kpi-n" style="color:#f97316">${sinResp}</div><div class="kpi-l">Sin respuesta</div></div>
-  <div class="kpi"><div class="kpi-n">${tasa}%</div><div class="kpi-l">Tasa respuesta</div></div>
+  <div class="kpi"><b>${totalLeads}</b><small>Total leads</small></div>
+  <div class="kpi"><b style="color:#22c55e">${respondieron}</b><small>Respondieron</small></div>
+  <div class="kpi"><b style="color:#f97316">${sinResp}</b><small>Sin respuesta</small></div>
+  <div class="kpi"><b>${tasa}%</b><small>Tasa respuesta</small></div>
 </div>
-
-<div class="leads-container">
-  ${leadSections}
-</div>
-
-<div style="text-align:center;padding:20px;color:#374151;font-size:11px">
-  RealtyPlus Nexus · AI-MaX Intelligence · ${today}
-</div>
+<div class="main">${tagSections}</div>
+<div style="text-align:center;padding:16px;color:#374151;font-size:10px">RealtyPlus Nexus · AI-MaX Intelligence · ${today}</div>
 </body></html>`;
 
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url  = URL.createObjectURL(blob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 30000);
-      toast({ title: "Reporte abierto", description: `${totalLeads} leads · ${allMsgs.length} mensajes.` });
+      toast({ title: "Reporte abierto", description: `${byTag.size} etiquetas · ${totalLeads} leads · ${allMsgs.length} mensajes.` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
