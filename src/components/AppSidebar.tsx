@@ -38,7 +38,7 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     items: [
       { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
       { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
-      { title: "Etiquetados leads 99 ", url: "/tagged", icon: Tag, badge: { text: "Beta", variant: "beta" } },
+      { title: "​Segmentados - expansión ", url: "/tagged", icon: Tag, badge: { text: "Beta", variant: "beta" } },
     ],
   },
   {
