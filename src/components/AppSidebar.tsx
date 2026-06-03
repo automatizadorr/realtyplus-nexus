@@ -53,29 +53,72 @@ const groups: {
   },
 ];
 
-const badgeStyles: Record<BadgeVariant, string> = {
-  new:  "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
-  ai:   "bg-red-500/20 text-red-300 border border-red-500/30",
-  hot:  "bg-orange-500/20 text-orange-300 border border-orange-500/30",
-  pro:  "bg-amber-500/20 text-amber-300 border border-amber-500/30",
-  live: "bg-green-500/20 text-green-300 border border-green-500/30",
-  beta: "bg-violet-500/20 text-violet-300 border border-violet-500/30",
-};
-
 function NavBadge({ badge }: { badge: NavBadgeT }) {
-  const isLive = badge.variant === "live" || badge.variant === "hot";
-  return (
-    <span className={`ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-widest ${badgeStyles[badge.variant]}`}>
-      {isLive && (
+  // ── Dot de estado: live / hot ──────────────────────────────────────────
+  // Solo un punto animado. Sin caja, sin texto. Señal de actividad.
+  if (badge.variant === "live") {
+    return (
+      <span className="ml-auto relative flex h-2 w-2 shrink-0">
         <motion.span
-          animate={{ opacity: [1, 0.2, 1] }}
-          transition={{ duration: 1.8, repeat: Infinity }}
-          className="w-1 h-1 rounded-full bg-current"
+          animate={{ scale: [1, 2.2, 1], opacity: [0.7, 0, 0.7] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+          className="absolute inline-flex h-full w-full rounded-full bg-emerald-400"
         />
-      )}
-      {badge.text}
-    </span>
-  );
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+      </span>
+    );
+  }
+
+  if (badge.variant === "hot") {
+    return (
+      <span className="ml-auto relative flex h-2 w-2 shrink-0">
+        <motion.span
+          animate={{ scale: [1, 2, 1], opacity: [0.6, 0, 0.6] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+          className="absolute inline-flex h-full w-full rounded-full bg-orange-400"
+        />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-400" />
+      </span>
+    );
+  }
+
+  // ── Ghost pill: new / beta ─────────────────────────────────────────────
+  // Outline ultrafino, sin relleno. No compite con el contenido.
+  if (badge.variant === "new") {
+    return (
+      <span className="ml-auto inline-flex items-center px-1.5 py-px rounded-sm border border-emerald-500/40 text-[8px] font-semibold tracking-[0.12em] uppercase text-emerald-400/70">
+        New
+      </span>
+    );
+  }
+
+  if (badge.variant === "beta") {
+    return (
+      <span className="ml-auto inline-flex items-center px-1.5 py-px rounded-sm border border-white/15 text-[8px] font-semibold tracking-[0.12em] uppercase text-white/30">
+        Beta
+      </span>
+    );
+  }
+
+  // ── Gradient pill: ai / pro ────────────────────────────────────────────
+  // Gradiente sutil con glow mínimo. Denota features premium.
+  if (badge.variant === "ai") {
+    return (
+      <span className="ml-auto inline-flex items-center gap-1 px-2 py-px rounded-sm bg-gradient-to-r from-violet-600/30 to-blue-600/30 border border-violet-500/20 text-[8px] font-bold tracking-[0.1em] uppercase text-violet-300/80 shadow-[0_0_6px_rgba(124,58,237,0.15)]">
+        AI
+      </span>
+    );
+  }
+
+  if (badge.variant === "pro") {
+    return (
+      <span className="ml-auto inline-flex items-center px-2 py-px rounded-sm bg-gradient-to-r from-amber-500/20 to-yellow-500/15 border border-amber-500/20 text-[8px] font-bold tracking-[0.1em] uppercase text-amber-300/80 shadow-[0_0_6px_rgba(245,158,11,0.12)]">
+        Pro
+      </span>
+    );
+  }
+
+  return null;
 }
 
 export function AppSidebar() {
