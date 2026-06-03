@@ -13,10 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Tag, Search, Loader2, MessageSquare } from "lucide-react";
+import { Tag, Search, Loader2, MessageSquare, Download } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ChatArea } from "@/components/inbox/ChatArea";
 import { countryFlag } from "@/lib/countryFlag";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface TaggedRow {
   id: string;
@@ -33,6 +35,7 @@ interface TaggedRow {
 const PAGE_SIZE = 50;
 
 export default function TaggedMessages() {
+  const navigate = useNavigate();
   const [allTags, setAllTags] = useState<LeadTag[]>([]);
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
@@ -135,12 +138,19 @@ export default function TaggedMessages() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-center gap-2">
         <Tag className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold text-foreground">
-          Etiquetados leads 99 
-        </h1>
-        <span className="ml-auto text-xs text-muted-foreground">
+        <h1 className="text-xl font-bold text-foreground">Etiquetados</h1>
+        <span className="text-xs text-muted-foreground">
           {total != null ? `${rows.length}/${total}` : `${rows.length}`}
         </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto flex items-center gap-1.5"
+          onClick={() => navigate("/tagged/export")}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Exportar Excel
+        </Button>
       </div>
 
       <Card className="p-3 flex flex-col sm:flex-row gap-2">
