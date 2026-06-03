@@ -40,7 +40,9 @@ function downloadBlob(blob: Blob, filename: string) {
 // ── Fetch datos comunes (leads + tags + mensajes) ─────────────────────────────
 async function fetchData(tagFilter: string) {
   const { data: tags } = await supabase.from("lead_tags").select("id, nombre, color");
-  const tagMap = new Map<string, string>((tags ?? []).map((t) => [t.id, t.nombre]));
+  const tagMap = new Map<string, { nombre: string; color: string }>(
+    (tags ?? []).map((t) => [t.id, { nombre: t.nombre, color: t.color }])
+  );
 
   let leadsQuery = supabase
     .from("leads_campana").select("*")
@@ -350,7 +352,7 @@ details[open] .arrow{transform:rotate(90deg)}
       }
 
       const rows = leads.map((l) => {
-        const etiquetas = (l.tag_ids ?? []).map((id: string) => tagMap.get(id) ?? id).join(", ");
+        const etiquetas = (l.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id).join(", ");
         const s = msgStats.get(l.telefono) ?? { enviados: 0, recibidos: 0, ultimoMsg: "", ultimaFecha: "" };
         return {
           "ID Contacto":       l.id_contacto ?? "",
@@ -382,7 +384,7 @@ details[open] .arrow{transform:rotate(90deg)}
       XLSX.utils.book_append_sheet(wb, ws, "Leads Etiquetados");
 
       const today = new Date().toISOString().slice(0, 10);
-      const label = tagFilter === "all" ? "todos" : (tagMap.get(tagFilter) ?? tagFilter);
+      const label = tagFilter === "all" ? "todos" : (tagMap.get(tagFilter)?.nombre ?? tagFilter);
       XLSX.writeFile(wb, `leads-etiquetados-${label}-${today}.xlsx`);
       toast({ title: "Excel descargado", description: `${leads.length} leads exportados.` });
     } catch (err: any) {
@@ -431,7 +433,7 @@ details[open] .arrow{transform:rotate(90deg)}
       }));
 
       for (const lead of leads) {
-        const etiquetas = (lead.tag_ids ?? []).map((id: string) => tagMap.get(id) ?? id).join("  ·  ");
+        const etiquetas = (lead.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id).join("  ·  ");
         const msgs = msgsByPhone.get(lead.telefono) ?? [];
 
         // Cabecera del lead
@@ -495,7 +497,7 @@ details[open] .arrow{transform:rotate(90deg)}
 
       const doc = new Document({ sections: [{ children }] });
       const blob = await Packer.toBlob(doc);
-      const label = tagFilter === "all" ? "todos" : (tagMap.get(tagFilter) ?? tagFilter);
+      const label = tagFilter === "all" ? "todos" : (tagMap.get(tagFilter)?.nombre ?? tagFilter);
       const dateStr = new Date().toISOString().slice(0, 10);
       downloadBlob(blob, `conversaciones-${label}-${dateStr}.docx`);
 
