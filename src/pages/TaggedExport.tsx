@@ -14,8 +14,28 @@ import {
 import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, FileSpreadsheet, ExternalLink, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { orderTags } from "@/lib/permanentTags";
 
-interface LeadTag { id: string; nombre: string; color: string; }
+interface LeadTag { id: string; nombre: string; color: string; es_permanente?: boolean | null; }
+
+type TagFull = { id: string; nombre: string; color: string; es_permanente?: boolean | null };
+
+// Lista de etiquetas en ORDEN FIJO para cualquier método de extracción:
+//  - filtro "all": todas las permanentes (orden canónico, incluso con 0 leads)
+//    + las no permanentes que tengan leads (alfabético).
+//  - filtro por una etiqueta: solo esa.
+// Garantiza que Excel, Word, HTML y webhook compartan la misma estructura.
+function orderedOutputTags(tagsFull: TagFull[], byTag: Map<string, any[]>, tagFilter: string): TagFull[] {
+  if (tagFilter !== "all") {
+    const t = tagsFull.find((x) => x.id === tagFilter);
+    return t ? [t] : [];
+  }
+  const permanentes = orderTags(tagsFull.filter((t) => t.es_permanente));
+  const extras = tagsFull
+    .filter((t) => !t.es_permanente && byTag.has(t.id))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  return [...permanentes, ...extras];
+}
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -39,9 +59,10 @@ function downloadBlob(blob: Blob, filename: string) {
 
 // ── Fetch datos comunes (leads + tags + mensajes) ─────────────────────────────
 async function fetchData(tagFilter: string) {
-  const { data: tags } = await supabase.from("lead_tags").select("id, nombre, color");
+  const { data: tags } = await supabase.from("lead_tags").select("id, nombre, color, es_permanente");
+  const tagsFull = (tags ?? []) as TagFull[];
   const tagMap = new Map<string, { nombre: string; color: string }>(
-    (tags ?? []).map((t) => [t.id, { nombre: t.nombre, color: t.color }])
+    tagsFull.map((t) => [t.id, { nombre: t.nombre, color: t.color }])
   );
 
   let leadsQuery = supabase
@@ -62,7 +83,7 @@ async function fetchData(tagFilter: string) {
     .from("mensajes_automatizacion").select("*")
     .in("telefono", phones).order("created_at", { ascending: true });
 
-  return { tagMap, leads, phones, msgsWA: msgsWA ?? [], msgsAuto: msgsAuto ?? [] };
+  return { tagMap, tagsFull, leads, phones, msgsWA: msgsWA ?? [], msgsAuto: msgsAuto ?? [] };
 }
 
 export default function TaggedExport() {
@@ -80,8 +101,8 @@ export default function TaggedExport() {
   const [statsMsgs, setStatsMsgs] = useState<number | null>(null);
 
   useEffect(() => {
-    supabase.from("lead_tags").select("id, nombre, color").order("nombre")
-      .then(({ data }) => { if (data) setAllTags(data); });
+    supabase.from("lead_tags").select("id, nombre, color, es_permanente").order("nombre")
+      .then(({ data }) => { if (data) setAllTags(orderTags(data as LeadTag[])); });
   }, []);
 
   useEffect(() => {
@@ -111,7 +132,7 @@ export default function TaggedExport() {
   const handleOpenHtml = async () => {
     setGeneratingHtml(true);
     try {
-      const { tagMap, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
       // Mensajes por teléfono, orden cronológico
       const msgsByPhone = new Map<string, any[]>();
@@ -220,14 +241,18 @@ export default function TaggedExport() {
         }
       }
 
-      const tagSections = [...byTag.entries()].map(([tid, tLeads]) => {
-        const tag   = tagMap.get(tid) ?? { nombre: tid, color: "#7c3aed" };
-        const tResp = tLeads.filter((l: any) => l.ha_respondido).length;
-        const tTasa = Math.round(tResp / tLeads.length * 100);
-        const tMsgs = tLeads.reduce((acc: number, l: any) => acc + (msgsByPhone.get(l.telefono)?.length ?? 0), 0);
-        const cards = tLeads.map((l: any) => buildLeadCard(l, tag)).join("");
+      // Orden fijo: permanentes primero (aunque tengan 0 leads), luego extras con leads
+      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter);
+      const tagSections = orderedTags.map((tag) => {
+        const tLeads = byTag.get(tag.id) ?? [];
+        const tResp  = tLeads.filter((l: any) => l.ha_respondido).length;
+        const tTasa  = tLeads.length ? Math.round(tResp / tLeads.length * 100) : 0;
+        const tMsgs  = tLeads.reduce((acc: number, l: any) => acc + (msgsByPhone.get(l.telefono)?.length ?? 0), 0);
+        const cards  = tLeads.length
+          ? tLeads.map((l: any) => buildLeadCard(l, tag)).join("")
+          : `<div class="no-msgs">Sin leads en esta etiqueta</div>`;
 
-        return `<details class="tag-section" open>
+        return `<details class="tag-section" ${tLeads.length ? "open" : ""}>
           <summary class="tag-summary" style="border-left:4px solid ${tag.color}">
             <span class="tag-dot" style="background:${tag.color}"></span>
             <span class="tag-title">${esc(tag.nombre)}</span>
@@ -340,7 +365,7 @@ details[open] .arrow{transform:rotate(90deg)}
   const handleSendN8n = async () => {
     setSendingN8n(true);
     try {
-      const { tagMap, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
       // Mensajes por teléfono, orden cronológico
       const msgsByPhone = new Map<string, any[]>();
@@ -363,10 +388,11 @@ details[open] .arrow{transform:rotate(90deg)}
         }
       }
 
-      const etiquetas = [...byTag.entries()].map(([tid, tLeads]) => {
-        const tag       = tagMap.get(tid) ?? { nombre: tid, color: "#7c3aed" };
+      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter);
+      const etiquetas = orderedTags.map((tag) => {
+        const tLeads    = byTag.get(tag.id) ?? [];
         const tResp     = tLeads.filter((l: any) => l.ha_respondido).length;
-        const tasaResp  = Math.round(tResp / tLeads.length * 100);
+        const tasaResp  = tLeads.length ? Math.round(tResp / tLeads.length * 100) : 0;
 
         const leadsPayload = tLeads.map((l: any) => {
           const msgs = msgsByPhone.get(l.telefono) ?? [];
@@ -402,9 +428,10 @@ details[open] .arrow{transform:rotate(90deg)}
         });
 
         return {
-          id:             tid,
+          id:             tag.id,
           nombre:         tag.nombre,
           color:          tag.color,
+          es_permanente:  !!tag.es_permanente,
           total_leads:    tLeads.length,
           respondieron:   tResp,
           tasa_respuesta: tasaResp,
@@ -417,7 +444,8 @@ details[open] .arrow{transform:rotate(90deg)}
         filtro:         tagFilter === "all" ? "todas" : (tagMap.get(tagFilter)?.nombre ?? tagFilter),
         total_leads:    leads.length,
         total_mensajes: allMsgs.length,
-        total_etiquetas: byTag.size,
+        total_etiquetas: etiquetas.length,
+        total_etiquetas_con_leads: byTag.size,
         etiquetas,
       };
 
@@ -441,7 +469,7 @@ details[open] .arrow{transform:rotate(90deg)}
   const handleExcel = async () => {
     setGeneratingXlsx(true);
     try {
-      const { tagMap, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
       const msgStats = new Map<string, { enviados: number; recibidos: number; ultimoMsg: string; ultimaFecha: string }>();
       for (const l of leads) msgStats.set(l.telefono, { enviados: 0, recibidos: 0, ultimoMsg: "", ultimaFecha: "" });
@@ -481,7 +509,37 @@ details[open] .arrow{transform:rotate(90deg)}
         };
       });
 
+      // Hoja resumen: todas las etiquetas en orden fijo (permanentes incluidas con 0)
+      const byTag = new Map<string, any[]>();
+      for (const l of leads) {
+        for (const tid of (l.tag_ids ?? [])) {
+          if (!byTag.has(tid)) byTag.set(tid, []);
+          byTag.get(tid)!.push(l);
+        }
+      }
+      const resumen = orderedOutputTags(tagsFull, byTag, tagFilter).map((tag) => {
+        const tLeads = byTag.get(tag.id) ?? [];
+        const tResp  = tLeads.filter((l: any) => l.ha_respondido).length;
+        const tMsgs  = tLeads.reduce((acc: number, l: any) => {
+          const s = msgStats.get(l.telefono);
+          return acc + (s ? s.enviados + s.recibidos : 0);
+        }, 0);
+        return {
+          "Etiqueta":     tag.nombre,
+          "Permanente":   tag.es_permanente ? "Sí" : "No",
+          "Leads":        tLeads.length,
+          "Respondieron": tResp,
+          "Tasa %":       tLeads.length ? Math.round(tResp / tLeads.length * 100) : 0,
+          "Mensajes":     tMsgs,
+        };
+      });
+
       const wb = XLSX.utils.book_new();
+
+      const wsResumen = XLSX.utils.json_to_sheet(resumen);
+      wsResumen["!cols"] = [28, 11, 8, 13, 8, 10].map((wch) => ({ wch }));
+      XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen Etiquetas");
+
       const ws = XLSX.utils.json_to_sheet(rows);
       ws["!cols"] = [14,28,16,32,12,14,30,11,11,14,11,11,16,20,20,20,14,14,40,20].map((wch) => ({ wch }));
       XLSX.utils.book_append_sheet(wb, ws, "Leads Etiquetados");
@@ -499,7 +557,7 @@ details[open] .arrow{transform:rotate(90deg)}
   const handleDocx = async () => {
     setGeneratingDocx(true);
     try {
-      const { tagMap, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
       // Agrupar todos los mensajes por teléfono, ordenados cronológicamente
       const msgsByPhone = new Map<string, any[]>();
@@ -535,15 +593,24 @@ details[open] .arrow{transform:rotate(90deg)}
         spacing: { after: 600 },
       }));
 
-      for (const lead of leads) {
+      // Agrupar por etiqueta (un lead puede aparecer bajo varias)
+      const byTag = new Map<string, any[]>();
+      for (const l of leads) {
+        for (const tid of (l.tag_ids ?? [])) {
+          if (!byTag.has(tid)) byTag.set(tid, []);
+          byTag.get(tid)!.push(l);
+        }
+      }
+
+      // Renderiza la ficha + conversación de un lead
+      const renderLead = (lead: any) => {
         const etiquetas = (lead.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id).join("  ·  ");
         const msgs = msgsByPhone.get(lead.telefono) ?? [];
 
-        // Cabecera del lead
         children.push(new Paragraph({
-          children: [new TextRun({ text: lead.nombre ?? "Sin nombre", bold: true, size: 28, color: "7C3AED" })],
-          heading: HeadingLevel.HEADING_1,
-          spacing: { before: 400, after: 60 },
+          children: [new TextRun({ text: lead.nombre ?? "Sin nombre", bold: true, size: 26, color: "7C3AED" })],
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 320, after: 60 },
         }));
 
         children.push(new Paragraph({
@@ -596,6 +663,26 @@ details[open] .arrow{transform:rotate(90deg)}
         }
 
         children.push(divider);
+      };
+
+      // Recorrer las etiquetas en orden fijo; cada una es una sección con título
+      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter);
+      for (const tag of orderedTags) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: tag.nombre.toUpperCase(), bold: true, size: 30, color: tag.color.replace("#", "") })],
+          heading: HeadingLevel.HEADING_1,
+          spacing: { before: 500, after: 120 },
+        }));
+
+        const tLeads = byTag.get(tag.id) ?? [];
+        if (!tLeads.length) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: "Sin leads en esta etiqueta.", italics: true, color: "AAAAAA", size: 20 })],
+            spacing: { after: 200 },
+          }));
+          continue;
+        }
+        for (const lead of tLeads) renderLead(lead);
       }
 
       const doc = new Document({ sections: [{ children }] });

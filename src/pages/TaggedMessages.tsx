@@ -15,6 +15,7 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tag, Search, Loader2, MessageSquare, Download } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { orderTags } from "@/lib/permanentTags";
 import { ChatArea } from "@/components/inbox/ChatArea";
 import { countryFlag } from "@/lib/countryFlag";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export default function TaggedMessages() {
       .from("lead_tags")
       .select("*")
       .order("nombre");
-    setAllTags((data || []) as LeadTag[]);
+    setAllTags(orderTags((data || []) as LeadTag[]));
   };
 
   useEffect(() => {
