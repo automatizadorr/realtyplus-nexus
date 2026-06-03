@@ -90,7 +90,7 @@ export default function TaggedExport() {
       try {
         let q = supabase.from("leads_campana")
           .select("id, telefono", { count: "exact" })
-          .not("tag_ids", "is", null).neq("tag_ids", "{}");
+          .not("tag_ids", "is", null).neq("tag_ids", "{}" as any);
         if (tagFilter !== "all") q = q.contains("tag_ids", [tagFilter]);
         const { data: leads, count } = await q;
         setStatsLeads(count ?? 0);
