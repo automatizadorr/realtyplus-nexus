@@ -144,7 +144,7 @@ export default function TaggedExport() {
       const tasa         = totalLeads > 0 ? Math.round(respondieron / totalLeads * 100) : 0;
 
       // ── Helper: tarjeta de un lead ────────────────────────────────────────
-      const buildLeadCard = (l: any) => {
+      const buildLeadCard = (l: any, currentTag?: { nombre: string; color: string }) => {
         const msgs      = msgsByPhone.get(l.telefono) ?? [];
         const enviados  = msgs.filter((m: any) => m.direccion === "outbound").length;
         const recibidos = msgs.filter((m: any) => m.direccion === "inbound").length;
@@ -171,7 +171,10 @@ export default function TaggedExport() {
           <summary class="lead-summary">
             <div class="lavatar">${(l.nombre ?? "?")[0].toUpperCase()}</div>
             <div class="linfo">
-              <div class="lname">${esc(l.nombre ?? "Sin nombre")}</div>
+              <div class="lname">
+                ${esc(l.nombre ?? "Sin nombre")}
+                ${currentTag ? `<span class="tag-chip" style="background:${currentTag.color}22;color:${currentTag.color};border:1px solid ${currentTag.color}55;font-size:10px;margin-left:6px;vertical-align:middle">${esc(currentTag.nombre)}</span>` : ""}
+              </div>
               <div class="lmeta">📱 ${esc(l.telefono ?? "")}${l.pais ? ` &nbsp;·&nbsp; 🌍 ${esc(l.pais)}` : ""}${l.email ? ` &nbsp;·&nbsp; ✉ ${esc(l.email)}` : ""}</div>
               <div class="lbadges">
                 <span class="ebadge">${esc(l.estado ?? "sin estado")}</span>
@@ -219,7 +222,7 @@ export default function TaggedExport() {
         const tResp = tLeads.filter((l: any) => l.ha_respondido).length;
         const tTasa = Math.round(tResp / tLeads.length * 100);
         const tMsgs = tLeads.reduce((acc: number, l: any) => acc + (msgsByPhone.get(l.telefono)?.length ?? 0), 0);
-        const cards = tLeads.map(buildLeadCard).join("");
+        const cards = tLeads.map((l: any) => buildLeadCard(l, tag)).join("");
 
         return `<details class="tag-section" open>
           <summary class="tag-summary" style="border-left:4px solid ${tag.color}">
