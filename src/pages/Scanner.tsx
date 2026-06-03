@@ -203,10 +203,12 @@ export default function Scanner() {
     setLoadingStage("syncing");
     try {
       // a/b. Fetch all leads from Google Sheets — guardar datos completos por teléfono/email
-      const emailMap = new Map<string, string>();
-      const phoneMap = new Map<string, string>();
-      const slByPhone = new Map<string, any>();
-      const slByEmail = new Map<string, any>();
+      const emailMap        = new Map<string, string>();
+      const phoneMapExact   = new Map<string, string>();
+      const phoneMapSuffix  = new Map<string, string>();
+      const slByPhone       = new Map<string, any>();
+      const slByPhoneSuffix = new Map<string, any>();
+      const slByEmail       = new Map<string, any>();
       try {
         const { data: sheetsData, error: sheetsErr } = await supabase.functions.invoke("sheets-leads", {
           body: {},
@@ -217,13 +219,18 @@ export default function Scanner() {
           const id = (l.id_contacto || "").toString().trim();
           const em = (l.email || "").toString().trim().toLowerCase();
           const ph = normPhone(l.telefono || "");
-          // Índice por teléfono exacto y por sufijo de 8 dígitos
-          if (em) { if (!emailMap.has(em)) emailMap.set(em, id); if (!slByEmail.has(em)) slByEmail.set(em, l); }
+          // Maps separados para exacto y sufijo — evita colisiones entre prefijos internacionales
+          if (em) {
+            if (id && !emailMap.has(em)) emailMap.set(em, id);
+            if (!slByEmail.has(em)) slByEmail.set(em, l);
+          }
           if (ph) {
-            if (!phoneMap.has(ph)) { phoneMap.set(ph, id); slByPhone.set(ph, l); }
+            if (id && !phoneMapExact.has(ph)) phoneMapExact.set(ph, id);
+            if (!slByPhone.has(ph)) slByPhone.set(ph, l);
             if (ph.length >= 8) {
               const suf = ph.slice(-8);
-              if (!phoneMap.has(suf)) { phoneMap.set(suf, id); slByPhone.set(suf, l); }
+              if (id && !phoneMapSuffix.has(suf)) phoneMapSuffix.set(suf, id);
+              if (!slByPhoneSuffix.has(suf)) slByPhoneSuffix.set(suf, l);
             }
           }
         }
@@ -235,13 +242,13 @@ export default function Scanner() {
         });
       }
 
-      // c. Enrich contacts — match exacto + sufijo de 8 dígitos
+      // c. Enrich contacts — match exacto primero, luego sufijo de 8 dígitos
       const enriched = contacts.map((c) => {
         const em = (c.email || "").trim().toLowerCase();
         const ph = normPhone(c.telefono);
         const suf = ph.length >= 8 ? ph.slice(-8) : "";
-        const id = (em && emailMap.get(em)) || (ph && phoneMap.get(ph)) || (suf && phoneMap.get(suf)) || null;
-        const sl = (ph && slByPhone.get(ph)) || (suf && slByPhone.get(suf)) || (em && slByEmail.get(em)) || null;
+        const id = (em && emailMap.get(em)) || (ph && phoneMapExact.get(ph)) || (suf && phoneMapSuffix.get(suf)) || null;
+        const sl = (ph && slByPhone.get(ph)) || (suf && slByPhoneSuffix.get(suf)) || (em && slByEmail.get(em)) || null;
         return { ...c, id_contacto: id, _sl: sl as any };
       });
       const matchedCount = enriched.filter((c) => c.id_contacto).length;
@@ -269,23 +276,27 @@ export default function Scanner() {
 
       // e. Create campaign record — guardar target_filters para re-ejecución desde Campañas
       const paises = [...new Set(enriched.map((c) => c.pais))];
-      const { error: campError } = await supabase.from("lead_recovery_campaigns").insert({
-        user_id: user.id,
-        campaign_name: campaignName,
-        status: "executing",
-        channel: "whatsapp",
-        message_template_whatsapp: messageTemplate || null,
-        total_leads: enriched.length,
-        target_filters: {
-          pais: paises[0] || null,
-          telefonos: enriched.map((c) => c.telefono),
-          solo_no_contactados: false,
-        },
-      });
+      const { data: campData, error: campError } = await supabase
+        .from("lead_recovery_campaigns")
+        .insert({
+          user_id: user.id,
+          campaign_name: campaignName,
+          status: "executing",
+          channel: "whatsapp",
+          message_template_whatsapp: messageTemplate || null,
+          total_leads: enriched.length,
+          target_filters: {
+            pais: paises[0] || null,
+            telefonos: enriched.map((c) => c.telefono),
+            solo_no_contactados: false,
+          },
+        })
+        .select("id")
+        .single();
       if (campError) throw campError;
 
       // f. Fire-and-forget webhook — payload estructurado para el nodo "Preparar Leads" de n8n
-      const campaignId = crypto.randomUUID();
+      const campaignId = campData.id;
       const paisPrincipal = paises[0] || "Desconocido";
 
       const webhookLeads = enriched.map((c) => {
@@ -322,7 +333,7 @@ export default function Scanner() {
             target_filters: {
               pais: paisPrincipal,
               telefonos: enriched.map((c) => c.telefono),
-              solo_no_contactados: true,
+              solo_no_contactados: false,
             },
             sheet: {
               pais: paisPrincipal,

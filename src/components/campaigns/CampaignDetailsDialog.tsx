@@ -52,30 +52,31 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
       const leadIds: string[] = Array.isArray(tf?.lead_ids) ? tf.lead_ids : [];
       if (leadIds.length > 0) {
         // Campaña creada desde CreateCampaignDialog → usa leads_campana
-        try {
-          const { data } = await supabase
-            .from("leads_campana")
-            .select("id, nombre, telefono, email, pais, id_contacto")
-            .in("id", leadIds);
-          if (data) sourceLeads = data;
-        } catch (e) { console.warn("leads_campana:", e); }
+        const { data, error: leadsErr } = await supabase
+          .from("leads_campana")
+          .select("id, nombre, telefono, email, pais, id_contacto")
+          .in("id", leadIds);
+        if (leadsErr) throw leadsErr;
+        if (data) sourceLeads = data;
       }
 
       if (sourceLeads.length === 0) {
         // Campaña creada desde Scanner → usa leads_escaner
-        try {
-          const { data } = await supabase
-            .from("leads_escaner")
-            .select("nombre, telefono, email, pais, id_contacto")
-            .eq("campaign_name", campaign.campaign_name);
-          if (data) sourceLeads = data;
-        } catch (e) { console.warn("leads_escaner:", e); }
+        const { data, error: escanerErr } = await supabase
+          .from("leads_escaner")
+          .select("nombre, telefono, email, pais, id_contacto")
+          .eq("campaign_name", campaign.campaign_name);
+        if (escanerErr) throw escanerErr;
+        if (data) sourceLeads = data;
       }
 
       if (sourceLeads.length === 0) {
-        // Fallback final: telefonos del target_filters
+        // Fallback final: telefonos del target_filters (datos sin enriquecimiento)
         const tels: string[] = Array.isArray(tf?.telefonos) ? tf.telefonos : [];
         sourceLeads = tels.map((tel) => ({ nombre: "", telefono: tel, email: "", pais: tf?.pais || "", id_contacto: null }));
+        if (tels.length > 0) {
+          toast({ title: "Aviso", description: "No se encontraron leads enriquecidos. Se enviarán solo los teléfonos del filtro original.", variant: "destructive" });
+        }
       }
 
       // ── 2. Sheet4 completa → enriquecer con nombres/apellidos separados y días ───
@@ -113,6 +114,8 @@ export default function CampaignDetailsDialog({ campaign, open, onOpenChange, on
           dias_transcurridos: sl?.dias_transcurridos != null ? Number(sl.dias_transcurridos) : 1,
         };
       });
+
+      const pais = allLeads[0]?.pais || (tf?.pais as string) || "";
 
       const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
         body: {

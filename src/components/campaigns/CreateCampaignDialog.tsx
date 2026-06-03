@@ -25,7 +25,7 @@ interface Lead {
   dias_reales: number | null;
 }
 
-const normPhone = (p: string) => (p || "").replace(/\D/g, "");
+const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
 
 interface CreateCampaignDialogProps {
   open: boolean;
@@ -181,7 +181,6 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       if (error) throw error;
 
       // 2) Enriquecer los leads seleccionados con datos de Sheet4
-      const normPhoneFn = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
       let sheetLeads: any[] = [];
       try {
         const { data: sheetData, error: sheetErr } = await supabase.functions.invoke("sheets-leads", { body: {} });
@@ -192,13 +191,13 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       const sheetByExact  = new Map<string, any>();
       const sheetBySuffix = new Map<string, any>();
       for (const l of sheetLeads) {
-        const ph = normPhoneFn(l.telefono || "");
+        const ph = normPhone(l.telefono || "");
         if (!ph) continue;
         if (!sheetByExact.has(ph))  sheetByExact.set(ph, l);
         if (ph.length >= 8) { const s = ph.slice(-8); if (!sheetBySuffix.has(s)) sheetBySuffix.set(s, l); }
       }
       const findSheet = (tel: string) => {
-        const ph = normPhoneFn(tel);
+        const ph = normPhone(tel);
         return sheetByExact.get(ph) ?? (ph.length >= 8 ? sheetBySuffix.get(ph.slice(-8)) : null) ?? null;
       };
 
@@ -218,6 +217,7 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       });
 
       // 3) Enviar al webhook solo los leads seleccionados
+      const paisWebhook = webhookLeads[0]?.pais || (targetFilters as any)?.pais || "";
       try {
         const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
           body: {
@@ -233,6 +233,7 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
               subject_email:             subjectEmail     || null,
               target_filters:            targetFilters,
               sheet: {
+                pais:  paisWebhook,
                 total: webhookLeads.length,
                 leads: webhookLeads,
               },
@@ -241,12 +242,12 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
           },
         });
         if (whErr) throw whErr;
+        toast({ title: "¡Campaña lanzada!", description: `${webhookLeads.length} leads enviados al webhook.` });
       } catch (whErr: any) {
         console.warn("Webhook n8n falló:", whErr);
         toast({ title: "Campaña creada (sin webhook)", description: whErr.message, variant: "destructive" });
       }
 
-      toast({ title: "¡Campaña lanzada!", description: `${webhookLeads.length} leads enviados al webhook.` });
       onOpenChange(false);
       onCreated();
     } catch (err: any) {
