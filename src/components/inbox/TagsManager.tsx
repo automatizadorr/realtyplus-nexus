@@ -47,6 +47,11 @@ export function TagsButton({ isAdmin, contact, allTags, onChange, onTagsRefresh 
   };
 
   const removeTag = async (id: string) => {
+    // Las etiquetas permanentes no se pueden borrar (también bloqueado en la BD)
+    if (allTags.find((t) => t.id === id)?.es_permanente) {
+      toast({ title: "Etiqueta permanente", description: "Esta etiqueta no se puede borrar.", variant: "destructive" });
+      return;
+    }
     // Remove the tag id from any lead that still references it
     const { data: leadsWithTag } = await (supabase as any)
       .from("leads_campana")
@@ -120,14 +125,20 @@ export function TagsButton({ isAdmin, contact, allTags, onChange, onTagsRefresh 
                     <span className="text-xs flex-1">{t.nombre}</span>
                     {active && <Check className="h-3.5 w-3.5 text-primary" />}
                   </button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                    onClick={() => removeTag(t.id)}
-                  >
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
+                  {t.es_permanente ? (
+                    <span className="h-6 w-6 flex items-center justify-center" title="Etiqueta permanente">
+                      <Lock className="h-3 w-3 text-muted-foreground" />
+                    </span>
+                  ) : (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                      onClick={() => removeTag(t.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               );
             })

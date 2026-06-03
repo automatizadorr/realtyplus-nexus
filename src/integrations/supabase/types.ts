@@ -216,18 +216,21 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          es_permanente: boolean
           id: string
           nombre: string
         }
         Insert: {
           color?: string
           created_at?: string
+          es_permanente?: boolean
           id?: string
           nombre: string
         }
         Update: {
           color?: string
           created_at?: string
+          es_permanente?: boolean
           id?: string
           nombre?: string
         }

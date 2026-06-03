@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Webhook, Bell, Volume2, Clock, Tag, Plus, Trash2, Loader2,
-  RefreshCw, CheckCircle2, AlertCircle, Save, Eye, EyeOff,
+  RefreshCw, CheckCircle2, AlertCircle, Save, Eye, EyeOff, Lock,
 } from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
@@ -26,7 +26,7 @@ function usePersist<T>(key: string, initial: T): [T, (v: T) => void] {
   return [val, set];
 }
 
-interface TagRow { id: string; nombre: string; color: string }
+interface TagRow { id: string; nombre: string; color: string; es_permanente?: boolean | null }
 
 export function ConfiguracionTab() {
   const { toast } = useToast();
@@ -64,7 +64,7 @@ export function ConfiguracionTab() {
     setLoadingTags(true);
     const { data } = await (supabase as any)
       .from("lead_tags")
-      .select("id, nombre, color")
+      .select("id, nombre, color, es_permanente")
       .order("nombre");
     setTags((data || []) as TagRow[]);
     setLoadingTags(false);
@@ -126,6 +126,11 @@ export function ConfiguracionTab() {
   };
 
   const deleteTag = async (id: string) => {
+    // Las etiquetas permanentes no se pueden borrar (también bloqueado en la BD)
+    if (tags.find((t) => t.id === id)?.es_permanente) {
+      toast({ title: "Etiqueta permanente", description: "Esta etiqueta no se puede borrar.", variant: "destructive" });
+      return;
+    }
     const { error } = await (supabase as any).from("lead_tags").delete().eq("id", id);
     if (error) {
       toast({ title: "Error al eliminar", description: error.message, variant: "destructive" });
@@ -383,12 +388,18 @@ export function ConfiguracionTab() {
                     >
                       <div className="w-2 h-2 rounded-full" style={{ background: tag.color }} />
                       {tag.nombre}
-                      <button
-                        onClick={() => deleteTag(tag.id)}
-                        className="ml-0.5 hover:opacity-70 transition-opacity"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      {tag.es_permanente ? (
+                        <span className="ml-0.5" title="Etiqueta permanente">
+                          <Lock className="h-3 w-3 opacity-60" />
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => deleteTag(tag.id)}
+                          className="ml-0.5 hover:opacity-70 transition-opacity"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                   ))
                 )}

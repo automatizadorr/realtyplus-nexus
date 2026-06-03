@@ -31,6 +31,7 @@ export interface LeadTag {
   id: string;
   nombre: string;
   color: string;
+  es_permanente?: boolean | null;
 }
 
 export interface QuickReply {
