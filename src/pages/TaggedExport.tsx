@@ -336,7 +336,6 @@ details[open] .arrow{transform:rotate(90deg)}
   };
 
   // ── ENVÍO A N8N: payload estructurado al webhook /expansion ─────────────
-  const N8N_WEBHOOK = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/expansion";
 
   const handleSendN8n = async () => {
     setSendingN8n(true);
@@ -422,13 +421,10 @@ details[open] .arrow{transform:rotate(90deg)}
         etiquetas,
       };
 
-      const res = await fetch(N8N_WEBHOOK, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
+      const { error: whErr } = await supabase.functions.invoke("send-n8n-webhook", {
+        body: { target: "expansion", payload },
       });
-
-      if (!res.ok) throw new Error(`Webhook respondió ${res.status}: ${res.statusText}`);
+      if (whErr) throw whErr;
 
       toast({
         title: "Enviado a n8n ✓",

@@ -12,6 +12,7 @@ const WEBHOOKS: Record<string, string> = {
   crmrp: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/crmrp",
   campanas_segmentadas: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas",
   primer_contacto: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto",
+  expansion: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/expansion",
 };
 
 Deno.serve(async (req) => {
