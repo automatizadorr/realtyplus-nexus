@@ -1,0 +1,1 @@
+ALTER VIEW public.vista_inbox_contactos SET (security_invoker = true);
