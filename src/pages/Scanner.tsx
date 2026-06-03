@@ -74,6 +74,25 @@ function capitalize(s: string): string {
 
 const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
 
+// Convierte notación científica española "2,01094E+11" → "201094000000"
+function parseScientificPhone(raw: string): string {
+  const trimmed = (raw || "").trim();
+  if (/\d[,\.]\d+[Ee][+\-]?\d+/.test(trimmed)) {
+    const num = parseFloat(trimmed.replace(",", "."));
+    if (!isNaN(num) && num > 1e6) return Math.round(num).toString();
+  }
+  return trimmed.replace(/\D/g, "");
+}
+
+// Detecta si el texto pegado es el formato estructurado con columnas tabuladas
+// Columnas: id_contacto | nombres | apellidos | email | telefono | pais | dias
+function isStructuredFormat(text: string): boolean {
+  const firstLine = text.trim().split("\n").find((l) => l.trim().length > 10);
+  if (!firstLine) return false;
+  const cols = firstLine.trim().split(/\t+/);
+  return cols.length >= 5 && /^\d{4,7}$/.test(cols[0].trim());
+}
+
 export default function Scanner() {
   const [rawText, setRawText] = useState("");
   const [campaignName, setCampaignName] = useState("");
@@ -98,49 +117,71 @@ export default function Scanner() {
     const rawLines = rawText.split("\n");
     const parsed: ParsedContact[] = [];
 
-    for (const rawLine of rawLines) {
-      const line = rawLine.trim();
-      if (line.length < 6) continue;
-      if (/^[-=._\s]+$/.test(line)) continue;
+    if (isStructuredFormat(rawText)) {
+      // ── Formato estructurado: id | nombres | apellidos | email | telefono | pais | dias ──
+      for (const rawLine of rawLines) {
+        const cols = rawLine.trim().split(/\t+/);
+        if (cols.length < 5) continue;
+        const idContacto = cols[0].trim();
+        if (!/^\d{4,7}$/.test(idContacto)) continue;
 
-      const emailMatch = line.match(emailRe);
-      const email = emailMatch ? emailMatch[0] : "";
+        const nombres   = (cols[1] || "").trim();
+        const apellidos = (cols[2] || "").trim();
+        const nombre    = capitalize([nombres, apellidos].filter(Boolean).join(" ")) || "Sin nombre";
+        const email     = (cols[3] || "").trim();
+        const telefonoDigits = parseScientificPhone(cols[4] || "");
+        if (telefonoDigits.length < 7) continue;
+        const telefono  = "+" + telefonoDigits;
+        const pais      = (cols[5] || "").trim() || inferCountryByPhone(telefonoDigits) || "Desconocido";
 
-      let bestDigits = "";
-      let bestStartsPlus = false;
-      const matches = line.match(phoneRe) || [];
-      for (const m of matches) {
-        const trimmed = m.trim();
-        const startsPlus = trimmed.startsWith("+") || trimmed.startsWith("00");
-        const digits = trimmed.replace(/\D/g, "");
-        if (digits.length < 7) continue;
-        if (digits.length > bestDigits.length) {
-          bestDigits = digits;
-          bestStartsPlus = startsPlus;
-        }
+        parsed.push({ nombre, telefono, email, pais, fuente, id_contacto: idContacto });
       }
-      if (!bestDigits) continue;
+    } else {
+      // ── Formato libre: regex sobre texto no estructurado ──
+      for (const rawLine of rawLines) {
+        const line = rawLine.trim();
+        if (line.length < 6) continue;
+        if (/^[-=._\s]+$/.test(line)) continue;
 
-      let telefono = bestStartsPlus ? "+" + bestDigits.replace(/^0+/, "") : "+" + bestDigits;
-      const digitsOnly = telefono.replace(/\D/g, "");
-      const pais =
-        inferCountryByPhone(digitsOnly) ||
-        inferCountryByText(line) ||
-        "Desconocido";
+        const emailMatch = line.match(emailRe);
+        const email = emailMatch ? emailMatch[0] : "";
 
-      const cleaned = line.replace(emailRe, " ").replace(phoneRe, " ");
-      const tokens = cleaned
-        .split(/[,;\t|]+|\s+/)
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .filter((t) => !/^\+?\d+$/.test(t))
-        .filter((t) => !STATUS_WORDS.has(t.toLowerCase()))
-        .filter((t) => !COUNTRY_KEYWORDS.some((k) => k.toLowerCase() === t.toLowerCase()));
+        let bestDigits = "";
+        let bestStartsPlus = false;
+        const matches = line.match(phoneRe) || [];
+        for (const m of matches) {
+          const trimmed = m.trim();
+          const startsPlus = trimmed.startsWith("+") || trimmed.startsWith("00");
+          const digits = trimmed.replace(/\D/g, "");
+          if (digits.length < 7) continue;
+          if (digits.length > bestDigits.length) {
+            bestDigits = digits;
+            bestStartsPlus = startsPlus;
+          }
+        }
+        if (!bestDigits) continue;
 
-      let nombre = capitalize(tokens.join(" ")).slice(0, 60).trim();
-      if (!nombre) nombre = "Sin nombre";
+        let telefono = bestStartsPlus ? "+" + bestDigits.replace(/^0+/, "") : "+" + bestDigits;
+        const digitsOnly = telefono.replace(/\D/g, "");
+        const pais =
+          inferCountryByPhone(digitsOnly) ||
+          inferCountryByText(line) ||
+          "Desconocido";
 
-      parsed.push({ nombre, telefono, email, pais, fuente, id_contacto: null });
+        const cleaned = line.replace(emailRe, " ").replace(phoneRe, " ");
+        const tokens = cleaned
+          .split(/[,;\t|]+|\s+/)
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .filter((t) => !/^\+?\d+$/.test(t))
+          .filter((t) => !STATUS_WORDS.has(t.toLowerCase()))
+          .filter((t) => !COUNTRY_KEYWORDS.some((k) => k.toLowerCase() === t.toLowerCase()));
+
+        let nombre = capitalize(tokens.join(" ")).slice(0, 60).trim();
+        if (!nombre) nombre = "Sin nombre";
+
+        parsed.push({ nombre, telefono, email, pais, fuente, id_contacto: null });
+      }
     }
 
     const seen = new Set<string>();
@@ -177,7 +218,7 @@ export default function Scanner() {
         const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
         const lines = rows
           .filter((r) => r.some((c) => String(c).trim()))
-          .map((r) => r.map((c) => String(c).trim()).join(", "));
+          .map((r) => r.map((c) => String(c).trim()).join("\t"));
         setRawText(lines.join("\n"));
       } else {
         const text = await file.text();
@@ -247,7 +288,7 @@ export default function Scanner() {
         const em = (c.email || "").trim().toLowerCase();
         const ph = normPhone(c.telefono);
         const suf = ph.length >= 8 ? ph.slice(-8) : "";
-        const id = (em && emailMap.get(em)) || (ph && phoneMapExact.get(ph)) || (suf && phoneMapSuffix.get(suf)) || null;
+        const id = (em && emailMap.get(em)) || (ph && phoneMapExact.get(ph)) || (suf && phoneMapSuffix.get(suf)) || c.id_contacto || null;
         const sl = (ph && slByPhone.get(ph)) || (suf && slByPhoneSuffix.get(suf)) || (em && slByEmail.get(em)) || null;
         return { ...c, id_contacto: id, _sl: sl as any };
       });
