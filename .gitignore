@@ -26,5 +26,6 @@ dist-ssr
 # Ruflo orchestration (local only — NO subir a GitHub/Lovable)
 .claude/
 .claude-flow/
+.swarm/
 .mcp.json
 CLAUDE.md
