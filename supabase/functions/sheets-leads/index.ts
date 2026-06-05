@@ -1,4 +1,5 @@
-// Returns ALL leads from Google Sheets (Sheet4), optionally filtered by country.
+// Devuelve los leads desde la tabla espejo public.leads_sheet (poblada por
+// resync-leads-sheet). Mismo contrato de salida que la versión Google Sheets.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -6,10 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
-
-const SHEET_ID = "17CnhYEbTUrSGUhu9-e2cZo_vkPu4nLkta7ksXwrFnCs";
-const RANGE = "Sheet4!A2:G20000";
-const GATEWAY = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -44,11 +41,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const GOOGLE_SHEETS_API_KEY = Deno.env.get("GOOGLE_SHEETS_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
-    if (!GOOGLE_SHEETS_API_KEY) throw new Error("GOOGLE_SHEETS_API_KEY missing");
-
     let body: any = {};
     if (req.method === "POST") {
       try { body = await req.json(); } catch { /* ignore */ }
@@ -57,32 +49,28 @@ Deno.serve(async (req) => {
     const onlyUncontacted: boolean = !!body?.solo_no_contactados;
     const phonesList: string[] = Array.isArray(body?.telefonos) ? body.telefonos.map(String) : [];
 
-    const res = await fetch(`${GATEWAY}/spreadsheets/${SHEET_ID}/values/${RANGE}`, {
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_SHEETS_API_KEY,
-      },
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(`Sheets gateway error [${res.status}]: ${JSON.stringify(json)}`);
+    // Leer de la tabla espejo (service role: ignora RLS)
+    let query = svc
+      .from("leads_sheet")
+      .select("id_contacto, nombres, apellidos, email, telefono, pais, dias_transcurridos");
+    if (filterCountry) query = query.ilike("pais", filterCountry); // ilike sin % = igualdad case-insensitive
+    const { data, error } = await query;
+    if (error) throw new Error(`leads_sheet read error: ${error.message}`);
 
-    const rows: string[][] = json.values || [];
     const normPhone = (p: string) => (p || "").replace(/\D/g, "");
     const phoneSet = new Set(phonesList.map(normPhone).filter(Boolean));
 
-    let leads = rows.map((r) => ({
-      id_contacto: (r[0] || "").trim(),
-      nombres: (r[1] || "").trim(),
-      apellidos: (r[2] || "").trim(),
-      email: (r[3] || "").trim(),
-      telefono: (r[4] || "").trim(),
-      pais: (r[5] || "Sin país").trim() || "Sin país",
-      dias_transcurridos: Number(r[6]) || 0,
+    let leads = (data || []).map((l: any) => ({
+      // Los ids sintéticos 'tel:<telefono>' se devuelven vacíos (mismo comportamiento que el Sheet sin id)
+      id_contacto: typeof l.id_contacto === "string" && l.id_contacto.startsWith("tel:") ? "" : (l.id_contacto || ""),
+      nombres: l.nombres || "",
+      apellidos: l.apellidos || "",
+      email: l.email || "",
+      telefono: l.telefono || "",
+      pais: (l.pais || "Sin país") || "Sin país",
+      dias_transcurridos: Number(l.dias_transcurridos) || 0,
     }));
 
-    if (filterCountry) {
-      leads = leads.filter((l) => l.pais.toLowerCase() === filterCountry.toLowerCase());
-    }
     if (onlyUncontacted && phoneSet.size > 0) {
       leads = leads.filter((l) => phoneSet.has(normPhone(l.telefono)));
     }

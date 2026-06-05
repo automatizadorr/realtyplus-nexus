@@ -9,3 +9,6 @@ verify_jwt = false
 [functions.sheets-leads]
 verify_jwt = false
 
+[functions.resync-leads-sheet]
+verify_jwt = false
+

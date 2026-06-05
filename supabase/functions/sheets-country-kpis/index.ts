@@ -1,4 +1,5 @@
-// Aggregates KPIs by country from Google Sheets (Sheet4 of realtyplus leads).
+// KPIs por país desde la tabla espejo public.leads_sheet (vía RPC kpis_por_pais).
+// Mismo contrato de salida que la versión Google Sheets.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -6,10 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
-
-const SHEET_ID = "17CnhYEbTUrSGUhu9-e2cZo_vkPu4nLkta7ksXwrFnCs";
-const RANGE = "Sheet4!A2:G20000";
-const GATEWAY = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -44,42 +41,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const GOOGLE_SHEETS_API_KEY = Deno.env.get("GOOGLE_SHEETS_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-    if (!GOOGLE_SHEETS_API_KEY) throw new Error("GOOGLE_SHEETS_API_KEY is not configured");
+    // Agregación por país (service role: ignora RLS)
+    const { data, error } = await svc.rpc("kpis_por_pais");
+    if (error) throw new Error(`kpis_por_pais error: ${error.message}`);
 
-    const res = await fetch(`${GATEWAY}/spreadsheets/${SHEET_ID}/values/${RANGE}`, {
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_SHEETS_API_KEY,
-      },
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(`Sheets gateway error [${res.status}]: ${JSON.stringify(json)}`);
-
-    const rows: string[][] = json.values || [];
-    const byCountry = new Map<string, { total: number; sumDias: number; recientes: number }>();
-    let total = 0;
-    for (const r of rows) {
-      const pais = (r[5] || "Sin país").trim() || "Sin país";
-      const dias = Number(r[6]) || 0;
-      const cur = byCountry.get(pais) || { total: 0, sumDias: 0, recientes: 0 };
-      cur.total += 1;
-      cur.sumDias += dias;
-      if (dias <= 7) cur.recientes += 1;
-      byCountry.set(pais, cur);
-      total += 1;
-    }
-    const countries = Array.from(byCountry.entries())
-      .map(([pais, v]) => ({
-        pais,
-        total: v.total,
-        recientes_7d: v.recientes,
-        promedio_dias: v.total > 0 ? +(v.sumDias / v.total).toFixed(1) : 0,
-        pct: total > 0 ? +((v.total / total) * 100).toFixed(1) : 0,
-      }))
-      .sort((a, b) => b.total - a.total);
+    const countries = (data || []).map((c: any) => ({
+      pais: c.pais,
+      total: Number(c.total) || 0,
+      recientes_7d: Number(c.recientes_7d) || 0,
+      promedio_dias: Number(c.promedio_dias) || 0,
+      pct: Number(c.pct) || 0,
+    }));
+    const total = countries.reduce((acc, c) => acc + c.total, 0);
 
     return new Response(
       JSON.stringify({ success: true, total_contactos: total, total_paises: countries.length, countries }),
