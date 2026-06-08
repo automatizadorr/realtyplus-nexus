@@ -46,6 +46,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
+  const initialLoadRef = useRef(true);
   const lastInboundIdRef = useRef<string | number | null>(null);
   const oldestCreatedAtRef = useRef<string | null>(null);
   const loadingOlderRef = useRef(false);
@@ -128,6 +129,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     setUnreadCount(0);
     setIsAtBottom(true);
     isAtBottomRef.current = true;
+    initialLoadRef.current = true;
     lastInboundIdRef.current = null;
     setHighlightId(null);
     loadingOlderRef.current = false;
@@ -215,9 +217,20 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     return () => el.removeEventListener("scroll", onScroll);
   }, [selectedContact?.telefono, loading]);
 
-  // Auto-scroll only when user is already at bottom (and not actively searching)
+  // Auto-scroll: jump to the end on first load of a conversation, then
+  // only follow new messages when the user is already at the bottom.
   useEffect(() => {
     if (searchOpen && searchQuery.trim()) return;
+    if (messages.length === 0) return;
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+        isAtBottomRef.current = true;
+        setIsAtBottom(true);
+      });
+      return;
+    }
     if (isAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }

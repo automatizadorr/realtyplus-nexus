@@ -60,6 +60,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
+  const initialLoadRef = useRef(true);
   const lastInboundIdRef = useRef<string | null>(null);
   const oldestCreatedAtRef = useRef<string | null>(null);
   const loadingOlderRef = useRef(false);
@@ -136,6 +137,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     setUnreadCount(0);
     setIsAtBottom(true);
     isAtBottomRef.current = true;
+    initialLoadRef.current = true;
     lastInboundIdRef.current = null;
     setHighlightId(null);
   }, [selectedContact?.telefono]);
@@ -217,6 +219,16 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
 
   useEffect(() => {
     if (searchOpen && searchQuery.trim()) return;
+    if (messages.length === 0) return;
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+        isAtBottomRef.current = true;
+        setIsAtBottom(true);
+      });
+      return;
+    }
     if (isAtBottomRef.current) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, searchOpen, searchQuery]);
 
