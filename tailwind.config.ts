@@ -13,6 +13,24 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+      },
+      boxShadow: {
+        soft: "0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)",
+        card: "0 1px 3px 0 rgb(16 24 40 / 0.05), 0 6px 16px -4px rgb(16 24 40 / 0.08)",
+        elevated: "0 12px 32px -8px rgb(16 24 40 / 0.16)",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

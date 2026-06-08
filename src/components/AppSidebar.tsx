@@ -113,7 +113,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="offcanvas">
-      <SidebarContent>
+      <SidebarContent className="bg-gradient-to-b from-white/[0.03] to-black/10">
         <div className="p-4">
           <motion.div
             whileHover={{ scale: 1.05, rotate: -1 }}
@@ -152,8 +152,8 @@ export function AppSidebar() {
                           <NavLink
                             to={item.url}
                             end={item.url === "/dashboard"}
-                            className="hover:bg-sidebar-accent/50"
-                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            className="relative rounded-md transition-colors hover:bg-sidebar-accent/40"
+                            activeClassName="bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r-full before:bg-sidebar-primary"
                             onClick={handleNavClick}
                           >
                             <AnimatedIcon icon={item.icon} isActive={isActive} />
