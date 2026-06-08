@@ -330,7 +330,7 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
                 <div
                   key={c.telefono}
                   className={`group relative flex items-stretch border-b transition-colors hover:bg-muted/50 ${
-                    isSelected ? "bg-muted border-l-2 border-l-primary" : ""
+                    isSelected ? "bg-primary/10 border-l-2 border-l-primary" : ""
                   } ${checked ? "bg-primary/5" : ""}`}
                 >
                   {selectionMode && (
@@ -343,7 +343,7 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
                     className={`flex-1 min-w-0 text-left py-2 pr-2 ${selectionMode ? "pl-10" : "pl-2"}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--primary)/0.85)] flex items-center justify-center text-primary-foreground text-sm font-bold shadow-inner shrink-0">
                         {(c.nombre?.[0] || "?").toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
