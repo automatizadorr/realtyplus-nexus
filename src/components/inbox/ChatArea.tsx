@@ -438,7 +438,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
         {/* Messages */}
         <div className="flex-1 relative min-h-0">
-          <ScrollArea className="h-full p-4 bg-slate-50/50 dark:bg-zinc-950/50">
+          <ScrollArea className="h-full p-4 chat-pattern">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -520,10 +520,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                           className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                         >
                           <div
-                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
+                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-card transition-shadow hover:shadow-elevated ${
                               isOutbound
-                                ? "bg-primary text-primary-foreground rounded-br-sm"
-                                : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
+                                ? "bg-gradient-to-br from-primary to-[hsl(var(--primary)/0.88)] text-primary-foreground rounded-br-sm"
+                                : "bg-card border border-border text-foreground rounded-bl-sm"
                             } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""} ${isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
                           >
                             {isOutbound && msg.autor && (

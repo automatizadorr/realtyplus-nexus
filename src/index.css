@@ -105,6 +105,17 @@ All colors MUST be HSL.
   [role="button"] {
     @apply transition-[background-color,border-color,color,box-shadow,transform] duration-200;
   }
+
+  /* Fondo de conversación: patrón de puntos sutil y adaptado al tema */
+  .chat-pattern {
+    background-color: hsl(var(--muted) / 0.45);
+    background-image: radial-gradient(
+      hsl(var(--foreground) / 0.045) 1px,
+      transparent 1px
+    );
+    background-size: 18px 18px;
+    background-position: 0 0;
+  }
 }
 
 /* ============ Realtyplus AI Agent badge (tri-color animated) ============ */
