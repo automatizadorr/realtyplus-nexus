@@ -374,7 +374,6 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       >
                         {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
                         <span className="min-w-0 flex-1 truncate">{contact.nombre || "Sin nombre"}</span>
-                        {contact.is_ai_initiated && <AiAgentBadge compact />}
                         {contact.pais && (
                           <Badge variant="outline" className="h-4 max-w-16 shrink-0 px-1 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-0.5 overflow-hidden">
                             <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
@@ -398,7 +397,10 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         contact.telefono
                       )}
                     </button>
-                    <TagChips tagIds={contact.tag_ids} allTags={allTags} />
+                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                      {contact.is_ai_initiated && <AiAgentBadge compact />}
+                      <TagChips tagIds={contact.tag_ids} allTags={allTags} />
+                    </div>
                   </div>
                   {!selectionMode && (
                     <div className="relative z-10 flex w-12 shrink-0 flex-col items-end justify-start gap-1 pt-0.5 pr-1">

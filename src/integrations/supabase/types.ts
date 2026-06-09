@@ -373,6 +373,39 @@ export type Database = {
         }
         Relationships: []
       }
+      leads_sheet: {
+        Row: {
+          apellidos: string | null
+          dias_transcurridos: number
+          email: string | null
+          id_contacto: string
+          nombres: string | null
+          pais: string
+          synced_at: string
+          telefono: string | null
+        }
+        Insert: {
+          apellidos?: string | null
+          dias_transcurridos?: number
+          email?: string | null
+          id_contacto: string
+          nombres?: string | null
+          pais?: string
+          synced_at?: string
+          telefono?: string | null
+        }
+        Update: {
+          apellidos?: string | null
+          dias_transcurridos?: number
+          email?: string | null
+          id_contacto?: string
+          nombres?: string | null
+          pais?: string
+          synced_at?: string
+          telefono?: string | null
+        }
+        Relationships: []
+      }
       mensajes_automatizacion: {
         Row: {
           campaign_name: string | null
@@ -590,6 +623,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      kpis_por_pais: {
+        Args: never
+        Returns: {
+          pais: string
+          pct: number
+          promedio_dias: number
+          recientes_7d: number
+          total: number
+        }[]
+      }
       match_documents: {
         Args: { filter?: Json; match_count?: number; query_embedding: string }
         Returns: {
@@ -599,6 +642,7 @@ export type Database = {
           similarity: number
         }[]
       }
+      sync_id_contacto_from_sheet: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"
