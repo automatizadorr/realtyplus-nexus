@@ -372,14 +372,16 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
                         className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-left text-sm font-semibold text-foreground"
                       >
-                        {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground" />}
-                        <span className="min-w-0 flex-1 truncate">{contact.nombre || "Sin nombre"}</span>
-                        {contact.pais && (
-                          <Badge variant="outline" className="h-4 max-w-16 shrink-0 px-1 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-0.5 overflow-hidden">
-                            <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
-                            <span className="truncate">{contact.pais}</span>
-                          </Badge>
-                        )}
+                        {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground shrink-0" />}
+                        <div className="flex min-w-0 items-center gap-1 flex-1">
+                          <span className="min-w-0 truncate">{contact.nombre || "Sin nombre"}</span>
+                          {contact.pais && (
+                            <Badge variant="outline" className="h-4 max-w-16 shrink-0 px-1 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-0.5 overflow-hidden">
+                              <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
+                              <span className="truncate">{contact.pais}</span>
+                            </Badge>
+                          )}
+                        </div>
                       </button>
                     </div>
                     <button
