@@ -82,7 +82,7 @@ export function TagsButton({ isAdmin, contact, allTags, onChange, onTagsRefresh 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+        <Button variant="ghost" size="icon" className="h-8 w-8">
           <Tag className="h-3.5 w-3.5" />
         </Button>
       </PopoverTrigger>
