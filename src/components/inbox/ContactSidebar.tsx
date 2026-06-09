@@ -397,7 +397,10 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         contact.telefono
                       )}
                     </button>
-                    <TagChips tagIds={contact.tag_ids} allTags={allTags} />
+                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                      {contact.is_ai_initiated && <AiAgentBadge compact />}
+                      <TagChips tagIds={contact.tag_ids} allTags={allTags} />
+                    </div>
                   </div>
                   {!selectionMode && (
                     <div className="relative z-10 flex w-12 shrink-0 flex-col items-end justify-start gap-1 pt-0.5 pr-1">
