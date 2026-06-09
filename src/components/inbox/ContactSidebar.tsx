@@ -352,7 +352,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                 <div
                   key={contact.id}
                   className={`group relative flex items-stretch border-b transition-colors hover:bg-muted/50 ${
-                    isSelected ? "bg-primary/10 border-l-2 border-l-primary" : ""
+                    isSelected ? "bg-muted border-l-2 border-l-primary" : ""
                   } ${checked ? "bg-primary/5" : ""}`}
                 >
                   {contact.is_ai_initiated && !selectionMode && !isSelected && <AiAgentStripe />}
@@ -365,17 +365,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       />
                     </div>
                   )}
-                  {!selectionMode && (
-                    <button
-                      onClick={() => handleSelect(contact)}
-                      className="relative z-10 ml-2 mr-1 flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-full bg-gradient-to-br from-primary to-[hsl(var(--primary)/0.85)] text-sm font-bold text-primary-foreground shadow-inner"
-                      aria-hidden
-                      tabIndex={-1}
-                    >
-                      {(contact.nombre?.trim()?.[0] || "?").toUpperCase()}
-                    </button>
-                  )}
-                  <div className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_3rem] overflow-hidden py-1.5 pr-1 ${selectionMode ? "pl-10" : "pl-1"}`}>
+                  <div className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_3rem] overflow-hidden py-1.5 pr-1 ${selectionMode ? "pl-10" : "pl-2"}`}>
                     <div className="min-w-0 overflow-hidden">
                     <div className="flex min-w-0 items-center gap-1">
                       <button

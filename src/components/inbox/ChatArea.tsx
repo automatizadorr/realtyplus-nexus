@@ -46,7 +46,6 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
-  const initialLoadRef = useRef(true);
   const lastInboundIdRef = useRef<string | number | null>(null);
   const oldestCreatedAtRef = useRef<string | null>(null);
   const loadingOlderRef = useRef(false);
@@ -129,7 +128,6 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     setUnreadCount(0);
     setIsAtBottom(true);
     isAtBottomRef.current = true;
-    initialLoadRef.current = true;
     lastInboundIdRef.current = null;
     setHighlightId(null);
     loadingOlderRef.current = false;
@@ -217,20 +215,9 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     return () => el.removeEventListener("scroll", onScroll);
   }, [selectedContact?.telefono, loading]);
 
-  // Auto-scroll: jump to the end on first load of a conversation, then
-  // only follow new messages when the user is already at the bottom.
+  // Auto-scroll only when user is already at bottom (and not actively searching)
   useEffect(() => {
     if (searchOpen && searchQuery.trim()) return;
-    if (messages.length === 0) return;
-    if (initialLoadRef.current) {
-      initialLoadRef.current = false;
-      requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-        isAtBottomRef.current = true;
-        setIsAtBottom(true);
-      });
-      return;
-    }
     if (isAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
@@ -451,7 +438,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
         {/* Messages */}
         <div className="flex-1 relative min-h-0">
-          <ScrollArea className="h-full p-4 chat-pattern">
+          <ScrollArea className="h-full p-4 bg-slate-50/50 dark:bg-zinc-950/50">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -533,10 +520,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                           className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                         >
                           <div
-                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-card transition-shadow hover:shadow-elevated ${
+                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                               isOutbound
-                                ? "bg-gradient-to-br from-primary to-[hsl(var(--primary)/0.88)] text-primary-foreground rounded-br-sm"
-                                : "bg-card border border-border text-foreground rounded-bl-sm"
+                                ? "bg-primary text-primary-foreground rounded-br-sm"
+                                : "bg-white dark:bg-zinc-900 border border-border text-foreground rounded-bl-sm"
                             } ${isCurrentMatch ? "ring-2 ring-yellow-400" : ""} ${isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""}`}
                           >
                             {isOutbound && msg.autor && (
