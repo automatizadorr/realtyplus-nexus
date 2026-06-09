@@ -382,16 +382,17 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                 </span>
               )}
             </div>
-            <TagChips tagIds={selectedContact.tag_ids} allTags={allTags} />
+            <div className="flex items-center gap-2 mt-0.5">
+              <TagChips tagIds={selectedContact.tag_ids} allTags={allTags} />
+              <TagsButton
+                isAdmin={isAdmin}
+                contact={selectedContact}
+                allTags={allTags}
+                onChange={(ids) => onContactUpdate?.({ ...selectedContact, tag_ids: ids })}
+                onTagsRefresh={onTagsRefresh}
+              />
+            </div>
           </div>
-
-          <TagsButton
-            isAdmin={isAdmin}
-            contact={selectedContact}
-            allTags={allTags}
-            onChange={(ids) => onContactUpdate?.({ ...selectedContact, tag_ids: ids })}
-            onTagsRefresh={onTagsRefresh}
-          />
 
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSearchOpen((v) => !v)}>
             <Search className="h-3.5 w-3.5" />
