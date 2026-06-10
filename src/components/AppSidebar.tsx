@@ -23,6 +23,7 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   {
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, badge: { text: "Live", variant: "live" } },
+      { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
     ],
   },
   {
@@ -36,7 +37,6 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   {
     label: "Reactivación",
     items: [
-      { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
       { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
       { title: "​Segmentados - expansión ", url: "/tagged", icon: Tag, badge: { text: "Beta", variant: "beta" } },
     ],
