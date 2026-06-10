@@ -12,3 +12,7 @@ verify_jwt = false
 [functions.resync-leads-sheet]
 verify_jwt = false
 
+[functions.voice-leads]
+verify_jwt = false
+
+
