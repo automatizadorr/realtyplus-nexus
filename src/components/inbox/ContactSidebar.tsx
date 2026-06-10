@@ -66,6 +66,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [countries, setCountries] = useState<string[]>([]);
   const { isAdmin } = useIsAdmin();
   const scrollRef = useRef<HTMLDivElement>(null);
