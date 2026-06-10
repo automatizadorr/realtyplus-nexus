@@ -109,7 +109,7 @@ export function useInboxContacts({ search, filter, tagId, country = "all", dateR
       setHasMore(newRows.length === pageSize);
       setLoading(false);
     },
-    [search, filter, tagId, country, pageSize],
+    [search, filter, tagId, country, dateRange, pageSize],
   );
 
   useEffect(() => {
