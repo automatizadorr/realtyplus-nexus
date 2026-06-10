@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut, Mic } from "lucide-react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -39,6 +39,12 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
       { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
       { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
       { title: "​Segmentados - expansión ", url: "/tagged", icon: Tag, badge: { text: "Beta", variant: "beta" } },
+    ],
+  },
+  {
+    label: "Agente de Voz",
+    items: [
+      { title: "CRM Licia-AI", url: "/voice-crm", icon: Mic, badge: { text: "New", variant: "new" } },
     ],
   },
   {
