@@ -99,6 +99,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
     filter,
     tagId: tagFilter,
     country: countryFilter,
+    dateRange: dateFilter,
   });
 
   // Load distinct countries once
