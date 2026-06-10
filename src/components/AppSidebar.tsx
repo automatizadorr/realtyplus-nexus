@@ -42,9 +42,9 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     ],
   },
   {
-    label: "Agente de Sofia - AI",
+    label: "CRM AgentefiaI",
     items: [
-      { title: "CRM Agente de Sofia - AI", url: "/voice-crm", icon: Mic, badge: { text: "New", variant: "new" } },
+      { title: "CRM AgentefiaI", url: "/voice-crm", icon: Mic, badge: { text: "New", variant: "new" } },
     ],
   },
   {
