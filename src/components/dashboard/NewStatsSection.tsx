@@ -16,8 +16,34 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ScanSearch, Tags, Mic, BotMessageSquare, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  ScanSearch,
+  Tags,
+  Mic,
+  BotMessageSquare,
+  Loader2,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { useVoiceLeads } from "@/hooks/use-voice-leads";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 type ScannerLead = {
   id: string;
@@ -45,14 +71,120 @@ type AIContact = {
 
 type DialogKind = null | "scanner" | "tags" | "voice" | "ai";
 
+type SortDir = "asc" | "desc";
+type Sort<T extends string> = { key: T; dir: SortDir } | null;
+
+function useSort<T extends string>(initial: Sort<T> = null) {
+  const [sort, setSort] = useState<Sort<T>>(initial);
+  const toggle = (key: T) =>
+    setSort((s) =>
+      !s || s.key !== key ? { key, dir: "asc" } : s.dir === "asc" ? { key, dir: "desc" } : null,
+    );
+  return { sort, toggle };
+}
+
+function SortHead<T extends string>({
+  k,
+  label,
+  sort,
+  onToggle,
+  className,
+}: {
+  k: T;
+  label: string;
+  sort: Sort<T>;
+  onToggle: (k: T) => void;
+  className?: string;
+}) {
+  const active = sort?.key === k;
+  const Icon = !active ? ArrowUpDown : sort?.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onToggle(k)}
+        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+      >
+        {label}
+        <Icon className="h-3 w-3" />
+      </button>
+    </TableHead>
+  );
+}
+
+function sortBy<T, K extends string>(rows: T[], sort: Sort<K>, getter: (r: T, k: K) => unknown) {
+  if (!sort) return rows;
+  const { key, dir } = sort;
+  const mult = dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const va = getter(a, key);
+    const vb = getter(b, key);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * mult;
+    return String(va).localeCompare(String(vb), "es", { numeric: true }) * mult;
+  });
+}
+
+const CHART_COLORS = [
+  "hsl(var(--primary))",
+  "#cc0000",
+  "#003366",
+  "#16a34a",
+  "#d97706",
+  "#7c3aed",
+  "#0891b2",
+  "#db2777",
+];
+
+function trendByDay(items: { created_at?: string; last_at?: string }[], days = 14) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = new Map<string, number>();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    buckets.set(d.toISOString().slice(0, 10), 0);
+  }
+  items.forEach((it) => {
+    const ts = it.created_at || it.last_at;
+    if (!ts) return;
+    const key = ts.slice(0, 10);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
+  });
+  return Array.from(buckets.entries()).map(([date, count]) => ({
+    date: date.slice(5),
+    count,
+  }));
+}
+
 export default function NewStatsSection() {
   const [scanner, setScanner] = useState<ScannerLead[]>([]);
   const [tags, setTags] = useState<TagRow[]>([]);
   const [taggedLeads, setTaggedLeads] = useState<LeadTagged[]>([]);
   const [aiContacts, setAiContacts] = useState<AIContact[]>([]);
+  const [aiMessages, setAiMessages] = useState<{ created_at: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState<DialogKind>(null);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+
+  // search state per dialog
+  const [scannerSearch, setScannerSearch] = useState("");
+  const [tagsSearch, setTagsSearch] = useState("");
+  const [voiceSearch, setVoiceSearch] = useState("");
+  const [aiSearch, setAiSearch] = useState("");
+
+  // sort state per dialog
+  const scannerSort = useSort<"nombre" | "telefono" | "pais" | "campaign_name" | "estado" | "created_at">({
+    key: "created_at",
+    dir: "desc",
+  });
+  const voiceSort = useSort<"nombre" | "telefono" | "tipo_interes" | "ubicacion" | "presupuesto" | "status">();
+  const aiSort = useSort<"nombre" | "telefono" | "pais" | "campaign_name" | "count" | "last_at">({
+    key: "last_at",
+    dir: "desc",
+  });
 
   const { leads: voiceLeads, loading: voiceLoading } = useVoiceLeads();
 
@@ -79,7 +211,9 @@ export default function NewStatsSection() {
         setTaggedLeads((lRes.data ?? []) as LeadTagged[]);
 
         const map = new Map<string, AIContact>();
+        const allMsgs: { created_at: string }[] = [];
         (mRes.data ?? []).forEach((m: any) => {
+          if (m.created_at) allMsgs.push({ created_at: m.created_at });
           if (!m.telefono) return;
           const cur = map.get(m.telefono);
           if (cur) {
@@ -96,6 +230,7 @@ export default function NewStatsSection() {
             });
           }
         });
+        setAiMessages(allMsgs);
         setAiContacts(Array.from(map.values()).sort((a, b) => (a.last_at < b.last_at ? 1 : -1)));
       } finally {
         setLoading(false);
@@ -104,16 +239,96 @@ export default function NewStatsSection() {
   }, []);
 
   const tagStats = useMemo(() => {
-    return tags.map((t) => {
-      const leads = taggedLeads.filter((l) => l.tag_ids?.includes(t.id));
-      return { ...t, count: leads.length, leads };
-    }).sort((a, b) => b.count - a.count);
+    return tags
+      .map((t) => {
+        const leads = taggedLeads.filter((l) => l.tag_ids?.includes(t.id));
+        return { ...t, count: leads.length, leads };
+      })
+      .sort((a, b) => b.count - a.count);
   }, [tags, taggedLeads]);
 
   const totalTagged = useMemo(
     () => taggedLeads.filter((l) => (l.tag_ids?.length ?? 0) > 0).length,
     [taggedLeads],
   );
+
+  // ── Derived data for charts ───────────────────────────────────────────
+  const scannerByCampaign = useMemo(() => {
+    const m = new Map<string, number>();
+    scanner.forEach((s) => m.set(s.campaign_name || "Sin campaña", (m.get(s.campaign_name || "Sin campaña") || 0) + 1));
+    return Array.from(m.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [scanner]);
+
+  const scannerTrend = useMemo(() => trendByDay(scanner), [scanner]);
+  const aiTrend = useMemo(() => trendByDay(aiMessages), [aiMessages]);
+
+  const voiceByStatus = useMemo(() => {
+    const m = new Map<string, number>();
+    voiceLeads.forEach((v) => {
+      const s = (v.status || "nuevo").toLowerCase();
+      m.set(s, (m.get(s) || 0) + 1);
+    });
+    return Array.from(m.entries()).map(([name, value]) => ({ name, value }));
+  }, [voiceLeads]);
+
+  const aiByCampaign = useMemo(() => {
+    const m = new Map<string, number>();
+    aiContacts.forEach((a) =>
+      m.set(a.campaign_name || "Sin campaña", (m.get(a.campaign_name || "Sin campaña") || 0) + a.count),
+    );
+    return Array.from(m.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [aiContacts]);
+
+  // ── Filtering / sorting ───────────────────────────────────────────────
+  const scannerFiltered = useMemo(() => {
+    const q = scannerSearch.trim().toLowerCase();
+    const filtered = !q
+      ? scanner
+      : scanner.filter((s) =>
+          [s.nombre, s.apellidos, s.telefono, s.email, s.pais, s.campaign_name, s.estado]
+            .filter(Boolean)
+            .some((v) => String(v).toLowerCase().includes(q)),
+        );
+    return sortBy(filtered, scannerSort.sort, (r, k) =>
+      k === "nombre" ? `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() : (r as any)[k],
+    );
+  }, [scanner, scannerSearch, scannerSort.sort]);
+
+  const voiceFiltered = useMemo(() => {
+    const q = voiceSearch.trim().toLowerCase();
+    const filtered = !q
+      ? voiceLeads
+      : voiceLeads.filter((v) =>
+          [v.nombre, v.telefono, v.tipo_interes, v.ubicacion, v.presupuesto, v.status]
+            .filter(Boolean)
+            .some((x) => String(x).toLowerCase().includes(q)),
+        );
+    return sortBy(filtered, voiceSort.sort, (r, k) => (r as any)[k]);
+  }, [voiceLeads, voiceSearch, voiceSort.sort]);
+
+  const aiFiltered = useMemo(() => {
+    const q = aiSearch.trim().toLowerCase();
+    const filtered = !q
+      ? aiContacts
+      : aiContacts.filter((a) =>
+          [a.nombre, a.telefono, a.pais, a.campaign_name]
+            .filter(Boolean)
+            .some((x) => String(x).toLowerCase().includes(q)),
+        );
+    return sortBy(filtered, aiSort.sort, (r, k) => (r as any)[k]);
+  }, [aiContacts, aiSearch, aiSort.sort]);
+
+  const tagStatsFiltered = useMemo(() => {
+    const q = tagsSearch.trim().toLowerCase();
+    if (!q) return tagStats;
+    return tagStats.filter((t) => t.nombre.toLowerCase().includes(q));
+  }, [tagStats, tagsSearch]);
 
   const cards = [
     {
@@ -141,7 +356,9 @@ export default function NewStatsSection() {
       icon: Mic,
       accent: "text-pink-600",
       bg: "bg-pink-50 dark:bg-pink-950",
-      subtitle: voiceLoading ? "Cargando..." : `${voiceLeads.filter((v) => v.status === "cierre").length} cierres`,
+      subtitle: voiceLoading
+        ? "Cargando..."
+        : `${voiceLeads.filter((v) => v.status === "cierre").length} cierres`,
     },
     {
       key: "ai" as const,
@@ -199,30 +416,80 @@ export default function NewStatsSection() {
 
       {/* Scanner dialog */}
       <Dialog open={openDialog === "scanner"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ScanSearch className="h-5 w-5 text-fuchsia-600" />
               Leads desde el Escáner ({scanner.length})
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto rounded-lg border">
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Top campañas</CardTitle>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={scannerByCampaign} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="name" hide />
+                    <YAxis allowDecimals={false} className="text-xs" />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Tendencia últimos 14 días</CardTitle>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={scannerTrend} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="date" className="text-xs" />
+                    <YAxis allowDecimals={false} className="text-xs" />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="count" stroke="#cc0000" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre, teléfono, email, país, campaña..."
+              value={scannerSearch}
+              onChange={(e) => setScannerSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Mostrando {Math.min(scannerFiltered.length, 500)} de {scannerFiltered.length}
+          </p>
+          <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Teléfono</TableHead>
+                  <SortHead k="nombre" label="Nombre" sort={scannerSort.sort} onToggle={scannerSort.toggle} />
+                  <SortHead k="telefono" label="Teléfono" sort={scannerSort.sort} onToggle={scannerSort.toggle} />
                   <TableHead>Email</TableHead>
-                  <TableHead>País</TableHead>
-                  <TableHead>Campaña</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha</TableHead>
+                  <SortHead k="pais" label="País" sort={scannerSort.sort} onToggle={scannerSort.toggle} />
+                  <SortHead k="campaign_name" label="Campaña" sort={scannerSort.sort} onToggle={scannerSort.toggle} />
+                  <SortHead k="estado" label="Estado" sort={scannerSort.sort} onToggle={scannerSort.toggle} />
+                  <SortHead k="created_at" label="Fecha" sort={scannerSort.sort} onToggle={scannerSort.toggle} />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scanner.slice(0, 500).map((s) => (
+                {scannerFiltered.slice(0, 500).map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">{[s.nombre, s.apellidos].filter(Boolean).join(" ")}</TableCell>
+                    <TableCell className="font-medium">
+                      {[s.nombre, s.apellidos].filter(Boolean).join(" ")}
+                    </TableCell>
                     <TableCell className="text-sm">{s.telefono}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{s.email || "—"}</TableCell>
                     <TableCell className="text-sm">{s.pais || "—"}</TableCell>
@@ -235,6 +502,13 @@ export default function NewStatsSection() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {scannerFiltered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                      Sin resultados.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -242,37 +516,80 @@ export default function NewStatsSection() {
       </Dialog>
 
       {/* Tags dialog */}
-      <Dialog open={openDialog === "tags"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); setSelectedTagId(null); } }}>
-        <DialogContent className="max-w-5xl">
+      <Dialog
+        open={openDialog === "tags"}
+        onOpenChange={(o) => {
+          if (!o) {
+            setOpenDialog(null);
+            setSelectedTagId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Tags className="h-5 w-5 text-indigo-600" />
               Estadísticas de etiquetas
             </DialogTitle>
           </DialogHeader>
+
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Conteo por etiqueta</CardTitle>
+            </CardHeader>
+            <CardContent className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={tagStats.slice(0, 12)} margin={{ left: 0, right: 8, top: 8, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="nombre" angle={-25} textAnchor="end" interval={0} className="text-xs" />
+                  <YAxis allowDecimals={false} className="text-xs" />
+                  <Tooltip />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {tagStats.slice(0, 12).map((t, i) => (
+                      <Cell key={t.id} fill={t.color || CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              <p className="text-xs text-muted-foreground mb-2">{tags.length} etiquetas · {totalTagged} leads etiquetados</p>
-              {tagStats.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTagId(t.id)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition hover:bg-muted/50 ${
-                    selectedTagId === t.id ? "bg-muted border-primary" : ""
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: t.color }} />
-                    <span className="font-medium">{t.nombre}</span>
-                  </span>
-                  <Badge variant="secondary">{t.count}</Badge>
-                </button>
-              ))}
-              {tagStats.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No hay etiquetas creadas.</p>
-              )}
+            <div>
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar etiqueta..."
+                  value={tagsSearch}
+                  onChange={(e) => setTagsSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                <p className="text-xs text-muted-foreground mb-2">
+                  {tags.length} etiquetas · {totalTagged} leads etiquetados
+                </p>
+                {tagStatsFiltered.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedTagId(t.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition hover:bg-muted/50 ${
+                      selectedTagId === t.id ? "bg-muted border-primary" : ""
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: t.color }} />
+                      <span className="font-medium">{t.nombre}</span>
+                    </span>
+                    <Badge variant="secondary">{t.count}</Badge>
+                  </button>
+                ))}
+                {tagStatsFiltered.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">Sin coincidencias.</p>
+                )}
+              </div>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto rounded-lg border">
+            <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
               {!selectedTag ? (
                 <p className="text-sm text-muted-foreground text-center py-8 px-4">
                   Selecciona una etiqueta para ver sus leads.
@@ -309,14 +626,15 @@ export default function NewStatsSection() {
 
       {/* Voice dialog */}
       <Dialog open={openDialog === "voice"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mic className="h-5 w-5 text-pink-600" />
               CRM Realty Web-AI ({voiceLeads.length})
             </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {["nuevo", "contactado", "reanion", "cierre"].map((st) => {
               const count = voiceLeads.filter((v) => (v.status || "nuevo").toLowerCase() === st).length;
               return (
@@ -327,20 +645,56 @@ export default function NewStatsSection() {
               );
             })}
           </div>
+
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Distribución por estado</CardTitle>
+            </CardHeader>
+            <CardContent className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={voiceByStatus}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={80}
+                    label={(e) => `${e.name}: ${e.value}`}
+                  >
+                    {voiceByStatus.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre, teléfono, interés, ubicación..."
+              value={voiceSearch}
+              onChange={(e) => setVoiceSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
           <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Interés</TableHead>
-                  <TableHead>Ubicación</TableHead>
-                  <TableHead>Presupuesto</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <SortHead k="nombre" label="Nombre" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
+                  <SortHead k="telefono" label="Teléfono" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
+                  <SortHead k="tipo_interes" label="Interés" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
+                  <SortHead k="ubicacion" label="Ubicación" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
+                  <SortHead k="presupuesto" label="Presupuesto" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
+                  <SortHead k="status" label="Estado" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {voiceLeads.map((v) => (
+                {voiceFiltered.map((v) => (
                   <TableRow key={v.row}>
                     <TableCell className="font-medium">{v.nombre}</TableCell>
                     <TableCell className="text-sm">{v.telefono}</TableCell>
@@ -352,10 +706,10 @@ export default function NewStatsSection() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {voiceLeads.length === 0 && (
+                {voiceFiltered.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
-                      Sin leads del agente de voz.
+                      Sin resultados.
                     </TableCell>
                   </TableRow>
                 )}
@@ -367,27 +721,73 @@ export default function NewStatsSection() {
 
       {/* AI contacted dialog */}
       <Dialog open={openDialog === "ai"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BotMessageSquare className="h-5 w-5 text-teal-600" />
               Contactados por la IA ({aiContacts.length})
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto rounded-lg border">
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Mensajes por campaña</CardTitle>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={aiByCampaign} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="name" hide />
+                    <YAxis allowDecimals={false} className="text-xs" />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#0891b2" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Tendencia últimos 14 días</CardTitle>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={aiTrend} margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="date" className="text-xs" />
+                    <YAxis allowDecimals={false} className="text-xs" />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre, teléfono, país, campaña..."
+              value={aiSearch}
+              onChange={(e) => setAiSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>País</TableHead>
-                  <TableHead>Campaña</TableHead>
-                  <TableHead className="text-right">Mensajes</TableHead>
-                  <TableHead>Último envío</TableHead>
+                  <SortHead k="nombre" label="Nombre" sort={aiSort.sort} onToggle={aiSort.toggle} />
+                  <SortHead k="telefono" label="Teléfono" sort={aiSort.sort} onToggle={aiSort.toggle} />
+                  <SortHead k="pais" label="País" sort={aiSort.sort} onToggle={aiSort.toggle} />
+                  <SortHead k="campaign_name" label="Campaña" sort={aiSort.sort} onToggle={aiSort.toggle} />
+                  <SortHead k="count" label="Mensajes" sort={aiSort.sort} onToggle={aiSort.toggle} className="text-right" />
+                  <SortHead k="last_at" label="Último envío" sort={aiSort.sort} onToggle={aiSort.toggle} />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {aiContacts.slice(0, 500).map((a) => (
+                {aiFiltered.slice(0, 500).map((a) => (
                   <TableRow key={a.telefono}>
                     <TableCell className="font-medium">{a.nombre || "—"}</TableCell>
                     <TableCell className="text-sm">{a.telefono}</TableCell>
@@ -399,6 +799,13 @@ export default function NewStatsSection() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {aiFiltered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
+                      Sin resultados.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
