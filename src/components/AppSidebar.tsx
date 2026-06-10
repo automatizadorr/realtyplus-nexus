@@ -42,9 +42,9 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     ],
   },
   {
-    label: "CRM AgentefiaI",
+    label: "CRM Realty Web-AI",
     items: [
-      { title: "CRM AgentefiaI", url: "/voice-crm", icon: Mic, badge: { text: "New", variant: "new" } },
+      { title: "CRM Realty Web-AI", url: "/voice-crm", icon: Mic, badge: { text: "New", variant: "new" } },
     ],
   },
   {
