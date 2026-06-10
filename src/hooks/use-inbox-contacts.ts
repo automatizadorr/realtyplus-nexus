@@ -36,7 +36,7 @@ interface Params {
 const SELECT_COLS =
   "id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids, last_message_at, unread_count, last_message_text, last_message_dir, first_message_dir, first_message_at, inbound_count, outbound_count, is_ai_initiated";
 
-export function useInboxContacts({ search, filter, tagId, country = "all", pageSize = 50 }: Params) {
+export function useInboxContacts({ search, filter, tagId, country = "all", dateRange = "all", pageSize = 50 }: Params) {
   const [rows, setRows] = useState<InboxContactRow[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
@@ -49,7 +49,7 @@ export function useInboxContacts({ search, filter, tagId, country = "all", pageS
     setPage(0);
     setRows([]);
     setHasMore(true);
-  }, [search, filter, tagId, country]);
+  }, [search, filter, tagId, country, dateRange]);
 
   const fetchPage = useCallback(
     async (pageToFetch: number, replace: boolean) => {
@@ -69,9 +69,23 @@ export function useInboxContacts({ search, filter, tagId, country = "all", pageS
       if (filter === "unread") q = q.gt("unread_count", 0);
       else if (filter === "bot_on") q = q.eq("bot_activo", true);
       else if (filter === "bot_off") q = q.eq("bot_activo", false);
+      else if (filter === "ai_initiated") q = q.eq("is_ai_initiated", true);
 
       if (tagId !== "all") q = q.contains("tag_ids", [tagId]);
       if (country && country !== "all") q = q.eq("pais", country);
+
+      if (dateRange && dateRange !== "all") {
+        const now = new Date();
+        let since: Date | null = null;
+        if (dateRange === "today") {
+          since = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        } else if (dateRange === "7d") {
+          since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (dateRange === "30d") {
+          since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
+        if (since) q = q.gte("last_message_at", since.toISOString());
+      }
 
       if (search.trim()) {
         const s = search.trim().replace(/[,()]/g, " ");
