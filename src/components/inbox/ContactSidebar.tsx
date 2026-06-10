@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { ContactContextMenu } from "./ContactContextMenu";
 import { TagChips } from "./TagsManager";
-import { useInboxContacts, type InboxFilter } from "@/hooks/use-inbox-contacts";
+import { useInboxContacts, type InboxFilter, type DateFilter } from "@/hooks/use-inbox-contacts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { countryFlag } from "@/lib/countryFlag";
 import { AiAgentBadge, AiAgentStripe } from "./AiAgentBadge";
@@ -66,6 +66,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [countries, setCountries] = useState<string[]>([]);
   const { isAdmin } = useIsAdmin();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -98,6 +99,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
     filter,
     tagId: tagFilter,
     country: countryFilter,
+    dateRange: dateFilter,
   });
 
   // Load distinct countries once
@@ -301,6 +303,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="unread">No leídos</SelectItem>
+              <SelectItem value="ai_initiated">Contactados por el agente</SelectItem>
               <SelectItem value="bot_on">Bot activo</SelectItem>
               <SelectItem value="bot_off">Bot inactivo</SelectItem>
               <SelectItem value="archived">Archivados</SelectItem>
@@ -320,19 +323,32 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
             </SelectContent>
           </Select>
         </div>
-        <Select value={countryFilter} onValueChange={setCountryFilter}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="País" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los países</SelectItem>
-            {countries.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-1.5">
+          <Select value={countryFilter} onValueChange={setCountryFilter}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <SelectValue placeholder="País" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los países</SelectItem>
+              {countries.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <SelectValue placeholder="Fecha" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Cualquier fecha</SelectItem>
+              <SelectItem value="today">Hoy</SelectItem>
+              <SelectItem value="7d">Últimos 7 días</SelectItem>
+              <SelectItem value="30d">Últimos 30 días</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
