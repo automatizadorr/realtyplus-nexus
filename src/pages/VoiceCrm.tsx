@@ -77,9 +77,9 @@ export default function VoiceCrm() {
             <Mic className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">CRM Agente de Voz</h1>
+            <h1 className="text-xl font-bold tracking-tight">CRM Agente de Sofia - AI</h1>
             <p className="text-xs text-muted-foreground">
-              Leads capturados por Licia-AI · {leads.length} contactos
+              Leads capturados por Sofia - AI · {leads.length} contactos
             </p>
           </div>
         </div>
