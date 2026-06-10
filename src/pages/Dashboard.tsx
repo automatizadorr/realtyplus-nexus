@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
+import NewStatsSection from "@/components/dashboard/NewStatsSection";
 
 interface KPIs {
   totalMessages: number;
@@ -452,6 +453,8 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      <NewStatsSection />
 
       <Card>
         <CardHeader>
