@@ -21,13 +21,15 @@ export interface InboxContactRow {
   is_ai_initiated: boolean | null;
 }
 
-export type InboxFilter = "all" | "unread" | "bot_on" | "bot_off" | "archived";
+export type InboxFilter = "all" | "unread" | "bot_on" | "bot_off" | "archived" | "ai_initiated";
+export type DateFilter = "all" | "today" | "7d" | "30d";
 
 interface Params {
   search: string;
   filter: InboxFilter;
   tagId: string; // "all" or uuid
   country?: string; // "all" or country name
+  dateRange?: DateFilter;
   pageSize?: number;
 }
 
