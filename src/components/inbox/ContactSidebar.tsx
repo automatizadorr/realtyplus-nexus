@@ -303,6 +303,7 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="unread">No leídos</SelectItem>
+              <SelectItem value="ai_initiated">Contactados por el agente</SelectItem>
               <SelectItem value="bot_on">Bot activo</SelectItem>
               <SelectItem value="bot_off">Bot inactivo</SelectItem>
               <SelectItem value="archived">Archivados</SelectItem>
