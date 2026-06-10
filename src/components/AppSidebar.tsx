@@ -23,13 +23,13 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   {
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, badge: { text: "Live", variant: "live" } },
-      { title: "CAMPAÑAS IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
+      { title: "Campañas - Leads IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
     ],
   },
   {
     label: "Oportunidades",
     items: [
-      { title: "Escáner - News Leads", url: "/scanner", icon: ScanSearch, badge: { text: "New", variant: "new" } },
+      { title: "Escáner- Leads News", url: "/scanner", icon: ScanSearch, badge: { text: "New", variant: "new" } },
       { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap, badge: { text: "AI", variant: "ai" } },
       { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot, badge: { text: "Pro", variant: "pro" } },
     ],
