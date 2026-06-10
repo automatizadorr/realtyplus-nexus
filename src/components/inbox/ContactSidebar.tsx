@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { ContactContextMenu } from "./ContactContextMenu";
 import { TagChips } from "./TagsManager";
-import { useInboxContacts, type InboxFilter } from "@/hooks/use-inbox-contacts";
+import { useInboxContacts, type InboxFilter, type DateFilter } from "@/hooks/use-inbox-contacts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { countryFlag } from "@/lib/countryFlag";
 import { AiAgentBadge, AiAgentStripe } from "./AiAgentBadge";
