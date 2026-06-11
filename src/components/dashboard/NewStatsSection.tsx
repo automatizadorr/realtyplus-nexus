@@ -593,6 +593,19 @@ export default function NewStatsSection() {
             </DialogTitle>
           </DialogHeader>
 
+          <FiltersBar
+            range={scannerRange}
+            onRange={setScannerRange}
+            selectValue={scannerCampaign}
+            onSelectValue={setScannerCampaign}
+            selectOptions={scannerCampaignOpts}
+            selectLabel="Campaña"
+            onClear={() => {
+              setScannerRange(emptyRange);
+              setScannerCampaign("__all__");
+            }}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <Card>
               <CardHeader className="pb-2">
