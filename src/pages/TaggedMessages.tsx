@@ -82,7 +82,6 @@ export default function TaggedMessages() {
           "id, nombre, telefono, pais, tag_ids, last_message_at, last_message_text, last_message_dir, unread_count",
           { count: "estimated" },
         )
-        .or("archivado.is.null,archivado.eq.false")
         .not("tag_ids", "is", null);
 
       if (tagFilter !== "all") {
