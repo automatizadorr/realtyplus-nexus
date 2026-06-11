@@ -825,9 +825,18 @@ export default function NewStatsSection() {
             </DialogTitle>
           </DialogHeader>
 
+          <FiltersBar
+            showDate={false}
+            selectValue={voiceStatus}
+            onSelectValue={setVoiceStatus}
+            selectOptions={voiceStatusOpts}
+            selectLabel="Estado"
+            onClear={() => setVoiceStatus("__all__")}
+          />
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {["nuevo", "contactado", "reanion", "cierre"].map((st) => {
-              const count = voiceLeads.filter((v) => (v.status || "nuevo").toLowerCase() === st).length;
+              const count = voiceBase.filter((v) => (v.status || "nuevo").toLowerCase() === st).length;
               return (
                 <div key={st} className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground capitalize">{st}</p>
