@@ -156,7 +156,95 @@ function trendByDay(items: { created_at?: string; last_at?: string }[], days = 1
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     buckets.set(d.toISOString().slice(0, 10), 0);
-  }
+}
+
+type DateRange = { from: string; to: string };
+const emptyRange: DateRange = { from: "", to: "" };
+
+function inRange(ts: string | null | undefined, r: DateRange) {
+  if (!ts) return false;
+  const day = ts.slice(0, 10);
+  if (r.from && day < r.from) return false;
+  if (r.to && day > r.to) return false;
+  return true;
+}
+
+function FiltersBar({
+  range,
+  onRange,
+  selectValue,
+  onSelectValue,
+  selectOptions,
+  selectLabel,
+  showDate = true,
+  onClear,
+}: {
+  range?: DateRange;
+  onRange?: (r: DateRange) => void;
+  selectValue?: string;
+  onSelectValue?: (v: string) => void;
+  selectOptions?: { value: string; label: string }[];
+  selectLabel?: string;
+  showDate?: boolean;
+  onClear: () => void;
+}) {
+  const hasActive =
+    (range && (range.from || range.to)) || (selectValue && selectValue !== "__all__");
+  return (
+    <div className="flex flex-wrap items-end gap-2 mb-3 p-3 rounded-lg border bg-muted/30">
+      <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground mr-1">
+        <Filter className="h-3.5 w-3.5" /> Filtros
+      </div>
+      {showDate && range && onRange && (
+        <>
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase text-muted-foreground mb-0.5">Desde</label>
+            <Input
+              type="date"
+              value={range.from}
+              onChange={(e) => onRange({ ...range, from: e.target.value })}
+              className="h-8 w-[140px] text-xs"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase text-muted-foreground mb-0.5">Hasta</label>
+            <Input
+              type="date"
+              value={range.to}
+              onChange={(e) => onRange({ ...range, to: e.target.value })}
+              className="h-8 w-[140px] text-xs"
+            />
+          </div>
+        </>
+      )}
+      {selectOptions && onSelectValue && (
+        <div className="flex flex-col">
+          <label className="text-[10px] uppercase text-muted-foreground mb-0.5">
+            {selectLabel || "Filtro"}
+          </label>
+          <Select value={selectValue || "__all__"} onValueChange={onSelectValue}>
+            <SelectTrigger className="h-8 w-[200px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {selectOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {hasActive && (
+        <Button variant="ghost" size="sm" onClick={onClear} className="h-8 text-xs">
+          <X className="h-3 w-3 mr-1" /> Limpiar
+        </Button>
+      )}
+    </div>
+  );
+}
   items.forEach((it) => {
     const ts = it.created_at || it.last_at;
     if (!ts) return;
