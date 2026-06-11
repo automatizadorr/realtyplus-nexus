@@ -273,6 +273,14 @@ export default function NewStatsSection() {
   const [voiceSearch, setVoiceSearch] = useState("");
   const [aiSearch, setAiSearch] = useState("");
 
+  // advanced filters per dialog
+  const [scannerRange, setScannerRange] = useState<DateRange>(emptyRange);
+  const [scannerCampaign, setScannerCampaign] = useState("__all__");
+  const [voiceStatus, setVoiceStatus] = useState("__all__");
+  const [aiRange, setAiRange] = useState<DateRange>(emptyRange);
+  const [aiCampaign, setAiCampaign] = useState("__all__");
+  const [tagsTagId, setTagsTagId] = useState("__all__");
+
   // sort state per dialog
   const scannerSort = useSort<"nombre" | "telefono" | "pais" | "campaign_name" | "estado" | "created_at">({
     key: "created_at",
