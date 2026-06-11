@@ -57,6 +57,69 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+// ── Helpers de mensajes (cruce robusto lead ↔ mensajes) ───────────────────────
+// Normaliza un teléfono para cruzarlo: quita el sufijo JID de WhatsApp
+// (ej. "59176606339@s.whatsapp.net") y deja solo los dígitos. Los mensajes
+// ENTRANTES del usuario suelen guardarse con ese sufijo; por eso antes "no se veían".
+const normPhone = (t?: string | null) => (t ?? "").split("@")[0].replace(/\D/g, "");
+
+// Timestamp numérico para ordenar por fecha REAL (no por texto). Los mensajes
+// sin fecha válida van al FINAL del hilo, no al principio.
+const msgTime = (m: any) => {
+  const t = m?.created_at ? new Date(m.created_at).getTime() : NaN;
+  return Number.isNaN(t) ? Infinity : t;
+};
+
+// Trae mensajes de una tabla para una lista de teléfonos, incluyendo las
+// variantes con sufijo JID de WhatsApp ("<numero>@..."). Pagina en lotes para
+// no romper la URL cuando hay muchos leads.
+async function fetchMsgs(table: "mensajes_whatsapp" | "mensajes_automatizacion", phones: string[]) {
+  const clean = [...new Set(phones.map((p) => normPhone(p)).filter(Boolean))];
+  if (clean.length === 0) return [];
+  const out: any[] = [];
+  const CHUNK = 40;
+  for (let i = 0; i < clean.length; i += CHUNK) {
+    const batch = clean.slice(i, i + CHUNK);
+    const orFilter = batch
+      .flatMap((p) => [`telefono.eq.${p}`, `telefono.like.${p}@%`])
+      .join(",");
+    const { data, error } = await (supabase as any).from(table).select("*").or(orFilter);
+    if (error) throw error;
+    if (data) out.push(...data);
+  }
+  return out;
+}
+
+// Agrupa los mensajes por teléfono normalizado: deduplica (un mismo envío puede
+// estar en mensajes_whatsapp Y en mensajes_automatizacion) y ordena cronológicamente
+// por fecha real. Devuelve un Map cuya clave es el teléfono normalizado.
+function buildMsgsByPhone(leads: any[], msgsWA: any[], msgsAuto: any[]) {
+  const all = [
+    ...msgsWA.map((m: any)  => ({ ...m, _canal: "WhatsApp" })),
+    ...msgsAuto.map((m: any) => ({ ...m, _canal: m.canal ?? "Auto" })),
+  ];
+
+  // Dedup #1: mismo teléfono + dirección + fecha + contenido = el mismo mensaje.
+  const seen = new Set<string>();
+  const deduped = all.filter((m: any) => {
+    const key = `${normPhone(m.telefono)}|${m.direccion}|${m.created_at ?? ""}|${(m.contenido ?? "").trim()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Orden #2/#3: cronológico por fecha real; los sin fecha quedan al final.
+  deduped.sort((a, b) => msgTime(a) - msgTime(b));
+
+  const byPhone = new Map<string, any[]>();
+  for (const l of leads) byPhone.set(normPhone(l.telefono), []);
+  for (const m of deduped) {
+    const arr = byPhone.get(normPhone(m.telefono));
+    if (arr) arr.push(m);
+  }
+  return byPhone;
+}
+
 // ── Fetch datos comunes (leads + tags + mensajes) ─────────────────────────────
 async function fetchData(tagFilter: string) {
   const { data: tags } = await supabase.from("lead_tags").select("id, nombre, color, es_permanente");
@@ -75,15 +138,14 @@ async function fetchData(tagFilter: string) {
 
   const phones = leads.map((l) => l.telefono);
 
-  const { data: msgsWA } = await supabase
-    .from("mensajes_whatsapp").select("*")
-    .in("telefono", phones).order("created_at", { ascending: true });
+  // Trae WhatsApp + automatización incluyendo las variantes con sufijo "@..."
+  // (donde viven muchos mensajes ENTRANTES del usuario que antes se perdían).
+  const [msgsWA, msgsAuto] = await Promise.all([
+    fetchMsgs("mensajes_whatsapp", phones),
+    fetchMsgs("mensajes_automatizacion", phones),
+  ]);
 
-  const { data: msgsAuto } = await supabase
-    .from("mensajes_automatizacion").select("*")
-    .in("telefono", phones).order("created_at", { ascending: true });
-
-  return { tagMap, tagsFull, leads, phones, msgsWA: msgsWA ?? [], msgsAuto: msgsAuto ?? [] };
+  return { tagMap, tagsFull, leads, phones, msgsWA, msgsAuto };
 }
 
 export default function TaggedExport() {
@@ -134,17 +196,10 @@ export default function TaggedExport() {
     try {
       const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
-      // Mensajes por teléfono, orden cronológico
-      const msgsByPhone = new Map<string, any[]>();
-      for (const l of leads) msgsByPhone.set(l.telefono, []);
-      const allMsgs = [
-        ...msgsWA.map((m: any)  => ({ ...m, _canal: "WhatsApp" })),
-        ...msgsAuto.map((m: any) => ({ ...m, _canal: m.canal ?? "Auto" })),
-      ].sort((a, b) => (a.created_at ?? "") > (b.created_at ?? "") ? 1 : -1);
-      for (const m of allMsgs) {
-        const arr = msgsByPhone.get(m.telefono);
-        if (arr) arr.push(m);
-      }
+      // Mensajes por teléfono: deduplicados, ordenados por fecha real y cruzados
+      // por teléfono normalizado (incluye los entrantes con sufijo "@...").
+      const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
+      const totalMsgs = [...msgsByPhone.values()].reduce((a, arr) => a + arr.length, 0);
 
       const esc = (s: string) => (s ?? "")
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -169,7 +224,7 @@ export default function TaggedExport() {
 
       // ── Helper: tarjeta de un lead ────────────────────────────────────────
       const buildLeadCard = (l: any, currentTag?: { nombre: string; color: string }) => {
-        const msgs      = msgsByPhone.get(l.telefono) ?? [];
+        const msgs      = msgsByPhone.get(normPhone(l.telefono)) ?? [];
         const enviados  = msgs.filter((m: any) => m.direccion === "outbound").length;
         const recibidos = msgs.filter((m: any) => m.direccion === "inbound").length;
         const ultimoMsg = msgs.at(-1);
@@ -181,7 +236,8 @@ export default function TaggedExport() {
 
         const bubbles = msgs.map((m: any) => {
           const esBot     = m.direccion === "outbound";
-          const canalBadge = m._canal !== "WhatsApp" ? `<span class="canal-badge">${esc(m._canal)}</span>` : "";
+          const esWhats   = (m._canal ?? "").toLowerCase() === "whatsapp";
+          const canalBadge = esWhats ? "" : `<span class="canal-badge">${esc(m._canal)}</span>`;
           const txt       = esc((m.contenido ?? "").trim());
           return `<div class="brow ${esBot ? "out" : "in"}">
             <div class="bub ${esBot ? "bout" : "bin"}">
@@ -247,7 +303,7 @@ export default function TaggedExport() {
         const tLeads = byTag.get(tag.id) ?? [];
         const tResp  = tLeads.filter((l: any) => l.ha_respondido).length;
         const tTasa  = tLeads.length ? Math.round(tResp / tLeads.length * 100) : 0;
-        const tMsgs  = tLeads.reduce((acc: number, l: any) => acc + (msgsByPhone.get(l.telefono)?.length ?? 0), 0);
+        const tMsgs  = tLeads.reduce((acc: number, l: any) => acc + (msgsByPhone.get(normPhone(l.telefono))?.length ?? 0), 0);
         const cards  = tLeads.length
           ? tLeads.map((l: any) => buildLeadCard(l, tag)).join("")
           : `<div class="no-msgs">Sin leads en esta etiqueta</div>`;
@@ -336,7 +392,7 @@ details[open] .arrow{transform:rotate(90deg)}
 </style></head><body>
 <div class="ph">
   <h1>📋 Leads Etiquetados</h1>
-  <p>Generado el ${today} &nbsp;·&nbsp; ${totalLeads} leads &nbsp;·&nbsp; ${allMsgs.length} mensajes &nbsp;·&nbsp; ${byTag.size} etiquetas</p>
+  <p>Generado el ${today} &nbsp;·&nbsp; ${totalLeads} leads &nbsp;·&nbsp; ${totalMsgs} mensajes &nbsp;·&nbsp; ${byTag.size} etiquetas</p>
 </div>
 <div class="kpis">
   <div class="kpi"><b>${totalLeads}</b><small>Total leads</small></div>
@@ -352,7 +408,7 @@ details[open] .arrow{transform:rotate(90deg)}
       const url  = URL.createObjectURL(blob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 30000);
-      toast({ title: "Reporte abierto", description: `${byTag.size} etiquetas · ${totalLeads} leads · ${allMsgs.length} mensajes.` });
+      toast({ title: "Reporte abierto", description: `${byTag.size} etiquetas · ${totalLeads} leads · ${totalMsgs} mensajes.` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -367,17 +423,9 @@ details[open] .arrow{transform:rotate(90deg)}
     try {
       const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
-      // Mensajes por teléfono, orden cronológico
-      const msgsByPhone = new Map<string, any[]>();
-      for (const l of leads) msgsByPhone.set(l.telefono, []);
-      const allMsgs = [
-        ...msgsWA.map((m: any)  => ({ ...m, _canal: "WhatsApp" })),
-        ...msgsAuto.map((m: any) => ({ ...m, _canal: m.canal ?? "Auto" })),
-      ].sort((a, b) => (a.created_at ?? "") > (b.created_at ?? "") ? 1 : -1);
-      for (const m of allMsgs) {
-        const arr = msgsByPhone.get(m.telefono);
-        if (arr) arr.push(m);
-      }
+      // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
+      const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
+      const totalMsgs = [...msgsByPhone.values()].reduce((a, arr) => a + arr.length, 0);
 
       // Agrupar leads por etiqueta
       const byTag = new Map<string, any[]>();
@@ -395,7 +443,7 @@ details[open] .arrow{transform:rotate(90deg)}
         const tasaResp  = tLeads.length ? Math.round(tResp / tLeads.length * 100) : 0;
 
         const leadsPayload = tLeads.map((l: any) => {
-          const msgs = msgsByPhone.get(l.telefono) ?? [];
+          const msgs = msgsByPhone.get(normPhone(l.telefono)) ?? [];
           return {
             id_contacto:          l.id_contacto ?? null,
             nombre:               l.nombre ?? "",
@@ -443,7 +491,7 @@ details[open] .arrow{transform:rotate(90deg)}
         timestamp:      new Date().toISOString(),
         filtro:         tagFilter === "all" ? "todas" : (tagMap.get(tagFilter)?.nombre ?? tagFilter),
         total_leads:    leads.length,
-        total_mensajes: allMsgs.length,
+        total_mensajes: totalMsgs,
         total_etiquetas: etiquetas.length,
         total_etiquetas_con_leads: byTag.size,
         etiquetas,
@@ -456,7 +504,7 @@ details[open] .arrow{transform:rotate(90deg)}
 
       toast({
         title: "Enviado a n8n ✓",
-        description: `${leads.length} leads · ${allMsgs.length} mensajes · ${byTag.size} etiquetas enviados a /expansion`,
+        description: `${leads.length} leads · ${totalMsgs} mensajes · ${byTag.size} etiquetas enviados a /expansion`,
       });
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
@@ -471,20 +519,23 @@ details[open] .arrow{transform:rotate(90deg)}
     try {
       const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
+      // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
+      const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
       const msgStats = new Map<string, { enviados: number; recibidos: number; ultimoMsg: string; ultimaFecha: string }>();
-      for (const l of leads) msgStats.set(l.telefono, { enviados: 0, recibidos: 0, ultimoMsg: "", ultimaFecha: "" });
-      for (const m of [...msgsWA, ...msgsAuto]) {
-        const s = msgStats.get(m.telefono); if (!s) continue;
-        if (m.direccion === "outbound") s.enviados++; else s.recibidos++;
-        if (!s.ultimaFecha || m.created_at > s.ultimaFecha) {
-          s.ultimaFecha = m.created_at ?? "";
-          s.ultimoMsg = (m.contenido ?? "").slice(0, 80);
-        }
+      for (const [phone, msgs] of msgsByPhone) {
+        const enviados  = msgs.filter((m: any) => m.direccion === "outbound").length;
+        const recibidos = msgs.filter((m: any) => m.direccion === "inbound").length;
+        const last = msgs.at(-1);
+        msgStats.set(phone, {
+          enviados, recibidos,
+          ultimoMsg: (last?.contenido ?? "").slice(0, 80),
+          ultimaFecha: last?.created_at ?? "",
+        });
       }
 
       const rows = leads.map((l) => {
         const etiquetas = (l.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id).join(", ");
-        const s = msgStats.get(l.telefono) ?? { enviados: 0, recibidos: 0, ultimoMsg: "", ultimaFecha: "" };
+        const s = msgStats.get(normPhone(l.telefono)) ?? { enviados: 0, recibidos: 0, ultimoMsg: "", ultimaFecha: "" };
         return {
           "ID Contacto":       l.id_contacto ?? "",
           "Nombre":            l.nombre ?? "",
@@ -521,7 +572,7 @@ details[open] .arrow{transform:rotate(90deg)}
         const tLeads = byTag.get(tag.id) ?? [];
         const tResp  = tLeads.filter((l: any) => l.ha_respondido).length;
         const tMsgs  = tLeads.reduce((acc: number, l: any) => {
-          const s = msgStats.get(l.telefono);
+          const s = msgStats.get(normPhone(l.telefono));
           return acc + (s ? s.enviados + s.recibidos : 0);
         }, 0);
         return {
@@ -559,17 +610,8 @@ details[open] .arrow{transform:rotate(90deg)}
     try {
       const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
-      // Agrupar todos los mensajes por teléfono, ordenados cronológicamente
-      const msgsByPhone = new Map<string, any[]>();
-      for (const l of leads) msgsByPhone.set(l.telefono, []);
-      const allMsgs = [
-        ...msgsWA.map((m) => ({ ...m, canal: "WhatsApp" })),
-        ...msgsAuto.map((m) => ({ ...m, canal: m.canal ?? "Auto" })),
-      ].sort((a, b) => (a.created_at ?? "") > (b.created_at ?? "") ? 1 : -1);
-      for (const m of allMsgs) {
-        const arr = msgsByPhone.get(m.telefono);
-        if (arr) arr.push(m);
-      }
+      // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
+      const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
 
       const divider = new Paragraph({
         border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "7C3AED" } },
@@ -605,7 +647,7 @@ details[open] .arrow{transform:rotate(90deg)}
       // Renderiza la ficha + conversación de un lead
       const renderLead = (lead: any) => {
         const etiquetas = (lead.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id).join("  ·  ");
-        const msgs = msgsByPhone.get(lead.telefono) ?? [];
+        const msgs = msgsByPhone.get(normPhone(lead.telefono)) ?? [];
 
         children.push(new Paragraph({
           children: [new TextRun({ text: lead.nombre ?? "Sin nombre", bold: true, size: 26, color: "7C3AED" })],
@@ -640,7 +682,7 @@ details[open] .arrow{transform:rotate(90deg)}
             const esBot    = m.direccion === "outbound";
             const quien    = esBot ? "BOT" : "CLIENTE";
             const hora     = formatDate(m.created_at);
-            const canal    = m.canal ? ` [${m.canal}]` : "";
+            const canal    = m._canal ? ` [${m._canal}]` : "";
             const contenido = (m.contenido ?? "").trim();
 
             children.push(new Paragraph({
