@@ -715,19 +715,28 @@ export default function NewStatsSection() {
             </DialogTitle>
           </DialogHeader>
 
+          <FiltersBar
+            showDate={false}
+            selectValue={tagsTagId}
+            onSelectValue={setTagsTagId}
+            selectOptions={tagOpts}
+            selectLabel="Etiqueta"
+            onClear={() => setTagsTagId("__all__")}
+          />
+
           <Card className="mb-4">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Conteo por etiqueta</CardTitle>
             </CardHeader>
             <CardContent className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tagStats.slice(0, 12)} margin={{ left: 0, right: 8, top: 8, bottom: 40 }}>
+                <BarChart data={tagStatsForChart.slice(0, 12)} margin={{ left: 0, right: 8, top: 8, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="nombre" angle={-25} textAnchor="end" interval={0} className="text-xs" />
                   <YAxis allowDecimals={false} className="text-xs" />
                   <Tooltip />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {tagStats.slice(0, 12).map((t, i) => (
+                    {tagStatsForChart.slice(0, 12).map((t, i) => (
                       <Cell key={t.id} fill={t.color || CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Bar>
