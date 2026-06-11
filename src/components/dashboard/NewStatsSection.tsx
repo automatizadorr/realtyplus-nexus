@@ -156,13 +156,24 @@ function trendByDay(items: { created_at?: string; last_at?: string }[], days = 1
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     buckets.set(d.toISOString().slice(0, 10), 0);
+  }
+  items.forEach((it) => {
+    const ts = it.created_at || it.last_at;
+    if (!ts) return;
+    const key = ts.slice(0, 10);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
+  });
+  return Array.from(buckets.entries()).map(([date, count]) => ({
+    date: date.slice(5),
+    count,
+  }));
 }
 
 type DateRange = { from: string; to: string };
 const emptyRange: DateRange = { from: "", to: "" };
 
 function inRange(ts: string | null | undefined, r: DateRange) {
-  if (!ts) return false;
+  if (!ts) return true;
   const day = ts.slice(0, 10);
   if (r.from && day < r.from) return false;
   if (r.to && day > r.to) return false;
@@ -223,7 +234,7 @@ function FiltersBar({
             {selectLabel || "Filtro"}
           </label>
           <Select value={selectValue || "__all__"} onValueChange={onSelectValue}>
-            <SelectTrigger className="h-8 w-[200px] text-xs">
+            <SelectTrigger className="h-8 w-[220px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -244,17 +255,6 @@ function FiltersBar({
       )}
     </div>
   );
-}
-  items.forEach((it) => {
-    const ts = it.created_at || it.last_at;
-    if (!ts) return;
-    const key = ts.slice(0, 10);
-    if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
-  });
-  return Array.from(buckets.entries()).map(([date, count]) => ({
-    date: date.slice(5),
-    count,
-  }));
 }
 
 export default function NewStatsSection() {
