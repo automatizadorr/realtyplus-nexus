@@ -358,45 +358,107 @@ export default function NewStatsSection() {
     [taggedLeads],
   );
 
-  // ── Derived data for charts ───────────────────────────────────────────
+  // ── Base (filter-aware) datasets feeding both charts and tables ───────
+  const scannerBase = useMemo(() => {
+    return scanner.filter(
+      (s) =>
+        inRange(s.created_at, scannerRange) &&
+        (scannerCampaign === "__all__" || (s.campaign_name || "Sin campaña") === scannerCampaign),
+    );
+  }, [scanner, scannerRange, scannerCampaign]);
+
+  const voiceBase = useMemo(() => {
+    return voiceLeads.filter(
+      (v) => voiceStatus === "__all__" || (v.status || "nuevo").toLowerCase() === voiceStatus,
+    );
+  }, [voiceLeads, voiceStatus]);
+
+  const aiContactsBase = useMemo(() => {
+    return aiContacts.filter(
+      (a) =>
+        inRange(a.last_at, aiRange) &&
+        (aiCampaign === "__all__" || (a.campaign_name || "Sin campaña") === aiCampaign),
+    );
+  }, [aiContacts, aiRange, aiCampaign]);
+
+  const aiMessagesBase = useMemo(
+    () => aiMessages.filter((m) => inRange(m.created_at, aiRange)),
+    [aiMessages, aiRange],
+  );
+
+  // Filter option lists
+  const scannerCampaignOpts = useMemo(
+    () =>
+      Array.from(new Set(scanner.map((s) => s.campaign_name || "Sin campaña")))
+        .sort()
+        .map((c) => ({ value: c, label: c })),
+    [scanner],
+  );
+  const aiCampaignOpts = useMemo(
+    () =>
+      Array.from(new Set(aiContacts.map((a) => a.campaign_name || "Sin campaña")))
+        .sort()
+        .map((c) => ({ value: c, label: c })),
+    [aiContacts],
+  );
+  const voiceStatusOpts = useMemo(
+    () =>
+      Array.from(new Set(voiceLeads.map((v) => (v.status || "nuevo").toLowerCase())))
+        .sort()
+        .map((s) => ({ value: s, label: s })),
+    [voiceLeads],
+  );
+  const tagOpts = useMemo(
+    () => tagStats.map((t) => ({ value: t.id, label: `${t.nombre} (${t.count})` })),
+    [tagStats],
+  );
+
+  // ── Derived data for charts (from filtered base) ──────────────────────
   const scannerByCampaign = useMemo(() => {
     const m = new Map<string, number>();
-    scanner.forEach((s) => m.set(s.campaign_name || "Sin campaña", (m.get(s.campaign_name || "Sin campaña") || 0) + 1));
+    scannerBase.forEach((s) =>
+      m.set(s.campaign_name || "Sin campaña", (m.get(s.campaign_name || "Sin campaña") || 0) + 1),
+    );
     return Array.from(m.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [scanner]);
+  }, [scannerBase]);
 
-  const scannerTrend = useMemo(() => trendByDay(scanner), [scanner]);
-  const aiTrend = useMemo(() => trendByDay(aiMessages), [aiMessages]);
+  const scannerTrend = useMemo(() => trendByDay(scannerBase), [scannerBase]);
+  const aiTrend = useMemo(() => trendByDay(aiMessagesBase), [aiMessagesBase]);
 
   const voiceByStatus = useMemo(() => {
     const m = new Map<string, number>();
-    voiceLeads.forEach((v) => {
+    voiceBase.forEach((v) => {
       const s = (v.status || "nuevo").toLowerCase();
       m.set(s, (m.get(s) || 0) + 1);
     });
     return Array.from(m.entries()).map(([name, value]) => ({ name, value }));
-  }, [voiceLeads]);
+  }, [voiceBase]);
 
   const aiByCampaign = useMemo(() => {
     const m = new Map<string, number>();
-    aiContacts.forEach((a) =>
+    aiContactsBase.forEach((a) =>
       m.set(a.campaign_name || "Sin campaña", (m.get(a.campaign_name || "Sin campaña") || 0) + a.count),
     );
     return Array.from(m.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [aiContacts]);
+  }, [aiContactsBase]);
 
-  // ── Filtering / sorting ───────────────────────────────────────────────
+  const tagStatsForChart = useMemo(() => {
+    if (tagsTagId === "__all__") return tagStats;
+    return tagStats.filter((t) => t.id === tagsTagId);
+  }, [tagStats, tagsTagId]);
+
+  // ── Filtering / sorting (tables) ──────────────────────────────────────
   const scannerFiltered = useMemo(() => {
     const q = scannerSearch.trim().toLowerCase();
     const filtered = !q
-      ? scanner
-      : scanner.filter((s) =>
+      ? scannerBase
+      : scannerBase.filter((s) =>
           [s.nombre, s.apellidos, s.telefono, s.email, s.pais, s.campaign_name, s.estado]
             .filter(Boolean)
             .some((v) => String(v).toLowerCase().includes(q)),
@@ -404,37 +466,38 @@ export default function NewStatsSection() {
     return sortBy(filtered, scannerSort.sort, (r, k) =>
       k === "nombre" ? `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() : (r as any)[k],
     );
-  }, [scanner, scannerSearch, scannerSort.sort]);
+  }, [scannerBase, scannerSearch, scannerSort.sort]);
 
   const voiceFiltered = useMemo(() => {
     const q = voiceSearch.trim().toLowerCase();
     const filtered = !q
-      ? voiceLeads
-      : voiceLeads.filter((v) =>
+      ? voiceBase
+      : voiceBase.filter((v) =>
           [v.nombre, v.telefono, v.tipo_interes, v.ubicacion, v.presupuesto, v.status]
             .filter(Boolean)
             .some((x) => String(x).toLowerCase().includes(q)),
         );
     return sortBy(filtered, voiceSort.sort, (r, k) => (r as any)[k]);
-  }, [voiceLeads, voiceSearch, voiceSort.sort]);
+  }, [voiceBase, voiceSearch, voiceSort.sort]);
 
   const aiFiltered = useMemo(() => {
     const q = aiSearch.trim().toLowerCase();
     const filtered = !q
-      ? aiContacts
-      : aiContacts.filter((a) =>
+      ? aiContactsBase
+      : aiContactsBase.filter((a) =>
           [a.nombre, a.telefono, a.pais, a.campaign_name]
             .filter(Boolean)
             .some((x) => String(x).toLowerCase().includes(q)),
         );
     return sortBy(filtered, aiSort.sort, (r, k) => (r as any)[k]);
-  }, [aiContacts, aiSearch, aiSort.sort]);
+  }, [aiContactsBase, aiSearch, aiSort.sort]);
 
   const tagStatsFiltered = useMemo(() => {
     const q = tagsSearch.trim().toLowerCase();
-    if (!q) return tagStats;
-    return tagStats.filter((t) => t.nombre.toLowerCase().includes(q));
-  }, [tagStats, tagsSearch]);
+    const base = tagsTagId === "__all__" ? tagStats : tagStats.filter((t) => t.id === tagsTagId);
+    if (!q) return base;
+    return base.filter((t) => t.nombre.toLowerCase().includes(q));
+  }, [tagStats, tagsSearch, tagsTagId]);
 
   const cards = [
     {
