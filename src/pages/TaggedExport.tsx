@@ -221,6 +221,9 @@ export default function TaggedExport() {
       const respondieron = leads.filter((l: any) => l.ha_respondido).length;
       const sinResp      = leads.filter((l: any) => !l.ha_respondido && !l.archivado).length;
       const tasa         = totalLeads > 0 ? Math.round(respondieron / totalLeads * 100) : 0;
+      // Leads con más de una etiqueta: por eso las secciones se solapan y la
+      // suma de píldoras por etiqueta supera el total de leads únicos.
+      const multiTag     = leads.filter((l: any) => (l.tag_ids ?? []).length > 1).length;
 
       // ── Helper: tarjeta de un lead ────────────────────────────────────────
       const buildLeadCard = (l: any, currentTag?: { nombre: string; color: string }) => {
@@ -312,8 +315,8 @@ export default function TaggedExport() {
           <summary class="tag-summary" style="border-left:4px solid ${tag.color}">
             <span class="tag-dot" style="background:${tag.color}"></span>
             <span class="tag-title">${esc(tag.nombre)}</span>
-            <span class="tag-pill" style="background:${tag.color}22;color:${tag.color}">${tLeads.length} leads</span>
-            <span class="tag-pill2">${tResp} respondieron &nbsp;·&nbsp; ${tTasa}%</span>
+            <span class="tag-pill" style="background:${tag.color}22;color:${tag.color}">${tLeads.length} ${tLeads.length === 1 ? "lead" : "leads"}</span>
+            <span class="tag-pill2">${tResp} ${tResp === 1 ? "respondió" : "respondieron"} &nbsp;·&nbsp; ${tTasa}%</span>
             <span class="tag-pill2">${tMsgs} mensajes</span>
             <span class="tag-arrow">▾</span>
           </summary>
@@ -392,7 +395,8 @@ details[open] .arrow{transform:rotate(90deg)}
 </style></head><body>
 <div class="ph">
   <h1>📋 Leads Etiquetados</h1>
-  <p>Generado el ${today} &nbsp;·&nbsp; ${totalLeads} leads &nbsp;·&nbsp; ${totalMsgs} mensajes &nbsp;·&nbsp; ${byTag.size} etiquetas</p>
+  <p>Generado el ${today} &nbsp;·&nbsp; ${totalLeads} leads únicos &nbsp;·&nbsp; ${totalMsgs} mensajes &nbsp;·&nbsp; ${byTag.size} etiquetas</p>
+  ${multiTag > 0 ? `<p style="margin-top:5px;color:#64748b;font-size:10px">ℹ️ ${multiTag} ${multiTag === 1 ? "lead está" : "leads están"} en varias etiquetas: aparecen en cada sección, por eso la suma de leads por etiqueta supera el total de leads únicos.</p>` : ""}
 </div>
 <div class="kpis">
   <div class="kpi"><b>${totalLeads}</b><small>Total leads</small></div>
