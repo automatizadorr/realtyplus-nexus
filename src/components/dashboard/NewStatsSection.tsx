@@ -17,6 +17,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ScanSearch,
   Tags,
@@ -27,6 +35,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Filter,
+  X,
 } from "lucide-react";
 import { useVoiceLeads } from "@/hooks/use-voice-leads";
 import {
@@ -159,6 +169,94 @@ function trendByDay(items: { created_at?: string; last_at?: string }[], days = 1
   }));
 }
 
+type DateRange = { from: string; to: string };
+const emptyRange: DateRange = { from: "", to: "" };
+
+function inRange(ts: string | null | undefined, r: DateRange) {
+  if (!ts) return true;
+  const day = ts.slice(0, 10);
+  if (r.from && day < r.from) return false;
+  if (r.to && day > r.to) return false;
+  return true;
+}
+
+function FiltersBar({
+  range,
+  onRange,
+  selectValue,
+  onSelectValue,
+  selectOptions,
+  selectLabel,
+  showDate = true,
+  onClear,
+}: {
+  range?: DateRange;
+  onRange?: (r: DateRange) => void;
+  selectValue?: string;
+  onSelectValue?: (v: string) => void;
+  selectOptions?: { value: string; label: string }[];
+  selectLabel?: string;
+  showDate?: boolean;
+  onClear: () => void;
+}) {
+  const hasActive =
+    (range && (range.from || range.to)) || (selectValue && selectValue !== "__all__");
+  return (
+    <div className="flex flex-wrap items-end gap-2 mb-3 p-3 rounded-lg border bg-muted/30">
+      <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground mr-1">
+        <Filter className="h-3.5 w-3.5" /> Filtros
+      </div>
+      {showDate && range && onRange && (
+        <>
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase text-muted-foreground mb-0.5">Desde</label>
+            <Input
+              type="date"
+              value={range.from}
+              onChange={(e) => onRange({ ...range, from: e.target.value })}
+              className="h-8 w-[140px] text-xs"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase text-muted-foreground mb-0.5">Hasta</label>
+            <Input
+              type="date"
+              value={range.to}
+              onChange={(e) => onRange({ ...range, to: e.target.value })}
+              className="h-8 w-[140px] text-xs"
+            />
+          </div>
+        </>
+      )}
+      {selectOptions && onSelectValue && (
+        <div className="flex flex-col">
+          <label className="text-[10px] uppercase text-muted-foreground mb-0.5">
+            {selectLabel || "Filtro"}
+          </label>
+          <Select value={selectValue || "__all__"} onValueChange={onSelectValue}>
+            <SelectTrigger className="h-8 w-[220px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {selectOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {hasActive && (
+        <Button variant="ghost" size="sm" onClick={onClear} className="h-8 text-xs">
+          <X className="h-3 w-3 mr-1" /> Limpiar
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export default function NewStatsSection() {
   const [scanner, setScanner] = useState<ScannerLead[]>([]);
   const [tags, setTags] = useState<TagRow[]>([]);
@@ -174,6 +272,14 @@ export default function NewStatsSection() {
   const [tagsSearch, setTagsSearch] = useState("");
   const [voiceSearch, setVoiceSearch] = useState("");
   const [aiSearch, setAiSearch] = useState("");
+
+  // advanced filters per dialog
+  const [scannerRange, setScannerRange] = useState<DateRange>(emptyRange);
+  const [scannerCampaign, setScannerCampaign] = useState("__all__");
+  const [voiceStatus, setVoiceStatus] = useState("__all__");
+  const [aiRange, setAiRange] = useState<DateRange>(emptyRange);
+  const [aiCampaign, setAiCampaign] = useState("__all__");
+  const [tagsTagId, setTagsTagId] = useState("__all__");
 
   // sort state per dialog
   const scannerSort = useSort<"nombre" | "telefono" | "pais" | "campaign_name" | "estado" | "created_at">({
@@ -252,45 +358,107 @@ export default function NewStatsSection() {
     [taggedLeads],
   );
 
-  // ── Derived data for charts ───────────────────────────────────────────
+  // ── Base (filter-aware) datasets feeding both charts and tables ───────
+  const scannerBase = useMemo(() => {
+    return scanner.filter(
+      (s) =>
+        inRange(s.created_at, scannerRange) &&
+        (scannerCampaign === "__all__" || (s.campaign_name || "Sin campaña") === scannerCampaign),
+    );
+  }, [scanner, scannerRange, scannerCampaign]);
+
+  const voiceBase = useMemo(() => {
+    return voiceLeads.filter(
+      (v) => voiceStatus === "__all__" || (v.status || "nuevo").toLowerCase() === voiceStatus,
+    );
+  }, [voiceLeads, voiceStatus]);
+
+  const aiContactsBase = useMemo(() => {
+    return aiContacts.filter(
+      (a) =>
+        inRange(a.last_at, aiRange) &&
+        (aiCampaign === "__all__" || (a.campaign_name || "Sin campaña") === aiCampaign),
+    );
+  }, [aiContacts, aiRange, aiCampaign]);
+
+  const aiMessagesBase = useMemo(
+    () => aiMessages.filter((m) => inRange(m.created_at, aiRange)),
+    [aiMessages, aiRange],
+  );
+
+  // Filter option lists
+  const scannerCampaignOpts = useMemo(
+    () =>
+      Array.from(new Set(scanner.map((s) => s.campaign_name || "Sin campaña")))
+        .sort()
+        .map((c) => ({ value: c, label: c })),
+    [scanner],
+  );
+  const aiCampaignOpts = useMemo(
+    () =>
+      Array.from(new Set(aiContacts.map((a) => a.campaign_name || "Sin campaña")))
+        .sort()
+        .map((c) => ({ value: c, label: c })),
+    [aiContacts],
+  );
+  const voiceStatusOpts = useMemo(
+    () =>
+      Array.from(new Set(voiceLeads.map((v) => (v.status || "nuevo").toLowerCase())))
+        .sort()
+        .map((s) => ({ value: s, label: s })),
+    [voiceLeads],
+  );
+  const tagOpts = useMemo(
+    () => tagStats.map((t) => ({ value: t.id, label: `${t.nombre} (${t.count})` })),
+    [tagStats],
+  );
+
+  // ── Derived data for charts (from filtered base) ──────────────────────
   const scannerByCampaign = useMemo(() => {
     const m = new Map<string, number>();
-    scanner.forEach((s) => m.set(s.campaign_name || "Sin campaña", (m.get(s.campaign_name || "Sin campaña") || 0) + 1));
+    scannerBase.forEach((s) =>
+      m.set(s.campaign_name || "Sin campaña", (m.get(s.campaign_name || "Sin campaña") || 0) + 1),
+    );
     return Array.from(m.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [scanner]);
+  }, [scannerBase]);
 
-  const scannerTrend = useMemo(() => trendByDay(scanner), [scanner]);
-  const aiTrend = useMemo(() => trendByDay(aiMessages), [aiMessages]);
+  const scannerTrend = useMemo(() => trendByDay(scannerBase), [scannerBase]);
+  const aiTrend = useMemo(() => trendByDay(aiMessagesBase), [aiMessagesBase]);
 
   const voiceByStatus = useMemo(() => {
     const m = new Map<string, number>();
-    voiceLeads.forEach((v) => {
+    voiceBase.forEach((v) => {
       const s = (v.status || "nuevo").toLowerCase();
       m.set(s, (m.get(s) || 0) + 1);
     });
     return Array.from(m.entries()).map(([name, value]) => ({ name, value }));
-  }, [voiceLeads]);
+  }, [voiceBase]);
 
   const aiByCampaign = useMemo(() => {
     const m = new Map<string, number>();
-    aiContacts.forEach((a) =>
+    aiContactsBase.forEach((a) =>
       m.set(a.campaign_name || "Sin campaña", (m.get(a.campaign_name || "Sin campaña") || 0) + a.count),
     );
     return Array.from(m.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [aiContacts]);
+  }, [aiContactsBase]);
 
-  // ── Filtering / sorting ───────────────────────────────────────────────
+  const tagStatsForChart = useMemo(() => {
+    if (tagsTagId === "__all__") return tagStats;
+    return tagStats.filter((t) => t.id === tagsTagId);
+  }, [tagStats, tagsTagId]);
+
+  // ── Filtering / sorting (tables) ──────────────────────────────────────
   const scannerFiltered = useMemo(() => {
     const q = scannerSearch.trim().toLowerCase();
     const filtered = !q
-      ? scanner
-      : scanner.filter((s) =>
+      ? scannerBase
+      : scannerBase.filter((s) =>
           [s.nombre, s.apellidos, s.telefono, s.email, s.pais, s.campaign_name, s.estado]
             .filter(Boolean)
             .some((v) => String(v).toLowerCase().includes(q)),
@@ -298,37 +466,38 @@ export default function NewStatsSection() {
     return sortBy(filtered, scannerSort.sort, (r, k) =>
       k === "nombre" ? `${r.nombre ?? ""} ${r.apellidos ?? ""}`.trim() : (r as any)[k],
     );
-  }, [scanner, scannerSearch, scannerSort.sort]);
+  }, [scannerBase, scannerSearch, scannerSort.sort]);
 
   const voiceFiltered = useMemo(() => {
     const q = voiceSearch.trim().toLowerCase();
     const filtered = !q
-      ? voiceLeads
-      : voiceLeads.filter((v) =>
+      ? voiceBase
+      : voiceBase.filter((v) =>
           [v.nombre, v.telefono, v.tipo_interes, v.ubicacion, v.presupuesto, v.status]
             .filter(Boolean)
             .some((x) => String(x).toLowerCase().includes(q)),
         );
     return sortBy(filtered, voiceSort.sort, (r, k) => (r as any)[k]);
-  }, [voiceLeads, voiceSearch, voiceSort.sort]);
+  }, [voiceBase, voiceSearch, voiceSort.sort]);
 
   const aiFiltered = useMemo(() => {
     const q = aiSearch.trim().toLowerCase();
     const filtered = !q
-      ? aiContacts
-      : aiContacts.filter((a) =>
+      ? aiContactsBase
+      : aiContactsBase.filter((a) =>
           [a.nombre, a.telefono, a.pais, a.campaign_name]
             .filter(Boolean)
             .some((x) => String(x).toLowerCase().includes(q)),
         );
     return sortBy(filtered, aiSort.sort, (r, k) => (r as any)[k]);
-  }, [aiContacts, aiSearch, aiSort.sort]);
+  }, [aiContactsBase, aiSearch, aiSort.sort]);
 
   const tagStatsFiltered = useMemo(() => {
     const q = tagsSearch.trim().toLowerCase();
-    if (!q) return tagStats;
-    return tagStats.filter((t) => t.nombre.toLowerCase().includes(q));
-  }, [tagStats, tagsSearch]);
+    const base = tagsTagId === "__all__" ? tagStats : tagStats.filter((t) => t.id === tagsTagId);
+    if (!q) return base;
+    return base.filter((t) => t.nombre.toLowerCase().includes(q));
+  }, [tagStats, tagsSearch, tagsTagId]);
 
   const cards = [
     {
@@ -423,6 +592,19 @@ export default function NewStatsSection() {
               Leads desde el Escáner ({scanner.length})
             </DialogTitle>
           </DialogHeader>
+
+          <FiltersBar
+            range={scannerRange}
+            onRange={setScannerRange}
+            selectValue={scannerCampaign}
+            onSelectValue={setScannerCampaign}
+            selectOptions={scannerCampaignOpts}
+            selectLabel="Campaña"
+            onClear={() => {
+              setScannerRange(emptyRange);
+              setScannerCampaign("__all__");
+            }}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <Card>
@@ -533,19 +715,28 @@ export default function NewStatsSection() {
             </DialogTitle>
           </DialogHeader>
 
+          <FiltersBar
+            showDate={false}
+            selectValue={tagsTagId}
+            onSelectValue={setTagsTagId}
+            selectOptions={tagOpts}
+            selectLabel="Etiqueta"
+            onClear={() => setTagsTagId("__all__")}
+          />
+
           <Card className="mb-4">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Conteo por etiqueta</CardTitle>
             </CardHeader>
             <CardContent className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tagStats.slice(0, 12)} margin={{ left: 0, right: 8, top: 8, bottom: 40 }}>
+                <BarChart data={tagStatsForChart.slice(0, 12)} margin={{ left: 0, right: 8, top: 8, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="nombre" angle={-25} textAnchor="end" interval={0} className="text-xs" />
                   <YAxis allowDecimals={false} className="text-xs" />
                   <Tooltip />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {tagStats.slice(0, 12).map((t, i) => (
+                    {tagStatsForChart.slice(0, 12).map((t, i) => (
                       <Cell key={t.id} fill={t.color || CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Bar>
@@ -634,9 +825,18 @@ export default function NewStatsSection() {
             </DialogTitle>
           </DialogHeader>
 
+          <FiltersBar
+            showDate={false}
+            selectValue={voiceStatus}
+            onSelectValue={setVoiceStatus}
+            selectOptions={voiceStatusOpts}
+            selectLabel="Estado"
+            onClear={() => setVoiceStatus("__all__")}
+          />
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {["nuevo", "contactado", "reanion", "cierre"].map((st) => {
-              const count = voiceLeads.filter((v) => (v.status || "nuevo").toLowerCase() === st).length;
+              const count = voiceBase.filter((v) => (v.status || "nuevo").toLowerCase() === st).length;
               return (
                 <div key={st} className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground capitalize">{st}</p>
@@ -728,6 +928,19 @@ export default function NewStatsSection() {
               Contactados por la IA ({aiContacts.length})
             </DialogTitle>
           </DialogHeader>
+
+          <FiltersBar
+            range={aiRange}
+            onRange={setAiRange}
+            selectValue={aiCampaign}
+            onSelectValue={setAiCampaign}
+            selectOptions={aiCampaignOpts}
+            selectLabel="Campaña"
+            onClear={() => {
+              setAiRange(emptyRange);
+              setAiCampaign("__all__");
+            }}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <Card>
