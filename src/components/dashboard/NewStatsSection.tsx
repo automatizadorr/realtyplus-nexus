@@ -17,6 +17,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ScanSearch,
   Tags,
@@ -27,6 +35,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Filter,
+  X,
 } from "lucide-react";
 import { useVoiceLeads } from "@/hooks/use-voice-leads";
 import {
