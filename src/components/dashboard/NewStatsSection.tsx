@@ -929,6 +929,19 @@ export default function NewStatsSection() {
             </DialogTitle>
           </DialogHeader>
 
+          <FiltersBar
+            range={aiRange}
+            onRange={setAiRange}
+            selectValue={aiCampaign}
+            onSelectValue={setAiCampaign}
+            selectOptions={aiCampaignOpts}
+            selectLabel="Campaña"
+            onClear={() => {
+              setAiRange(emptyRange);
+              setAiCampaign("__all__");
+            }}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <Card>
               <CardHeader className="pb-2">
