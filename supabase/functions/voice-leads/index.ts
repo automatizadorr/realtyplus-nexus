@@ -192,6 +192,25 @@ Deno.serve(async (req) => {
         return json({ success: true, row: rowNum, status });
       }
 
+      if (action === "delete") {
+        const phone = String(body?.phone || "").trim();
+        if (!phone) return json({ error: "phone required" }, 400);
+        const { data } = await readSheet();
+        const target = data.find(
+          (row) => normPhone(row["telefono"] || row["phone"] || "") === normPhone(phone),
+        );
+        if (!target) return json({ error: "lead not found" }, 404);
+        const rowNum = target.__row;
+        const range = `${SHEET_NAME}!A${rowNum}:ZZ${rowNum}`;
+        const r = await fetchWithRetry(
+          `${GATEWAY}/spreadsheets/${SHEET_ID}/values/${range}:clear`,
+          { method: "POST", headers: gwHeaders, body: "{}" },
+        );
+        if (!r.ok) throw new Error(`delete failed: ${await r.text()}`);
+        __sheetCache = null;
+        return json({ success: true, row: rowNum });
+      }
+
       return json({ error: "unknown action" }, 400);
     }
 
