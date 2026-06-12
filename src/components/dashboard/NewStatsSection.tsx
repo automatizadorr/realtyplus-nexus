@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { EditablePhoneCell } from "@/components/EditablePhoneCell";
 import {
   Select,
   SelectContent,
@@ -672,7 +673,7 @@ export default function NewStatsSection() {
                     <TableCell className="font-medium">
                       {[s.nombre, s.apellidos].filter(Boolean).join(" ")}
                     </TableCell>
-                    <TableCell className="text-sm">{s.telefono}</TableCell>
+                    <TableCell className="text-sm"><EditablePhoneCell phone={s.telefono} onUpdated={(np) => { s.telefono = np; }} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{s.email || "—"}</TableCell>
                     <TableCell className="text-sm">{s.pais || "—"}</TableCell>
                     <TableCell className="text-sm">{s.campaign_name}</TableCell>
@@ -797,7 +798,7 @@ export default function NewStatsSection() {
                     {selectedTag.leads.slice(0, 300).map((l) => (
                       <TableRow key={l.id}>
                         <TableCell className="font-medium">{l.nombre}</TableCell>
-                        <TableCell className="text-sm">{l.telefono}</TableCell>
+                        <TableCell className="text-sm"><EditablePhoneCell phone={l.telefono} onUpdated={(np) => { l.telefono = np; }} /></TableCell>
                       </TableRow>
                     ))}
                     {selectedTag.leads.length === 0 && (
@@ -897,7 +898,7 @@ export default function NewStatsSection() {
                 {voiceFiltered.map((v) => (
                   <TableRow key={v.row}>
                     <TableCell className="font-medium">{v.nombre}</TableCell>
-                    <TableCell className="text-sm">{v.telefono}</TableCell>
+                    <TableCell className="text-sm"><EditablePhoneCell phone={v.telefono} onUpdated={(np) => { v.telefono = np; }} /></TableCell>
                     <TableCell className="text-sm">{v.tipo_interes}</TableCell>
                     <TableCell className="text-sm">{v.ubicacion}</TableCell>
                     <TableCell className="text-sm">{v.presupuesto}</TableCell>
@@ -1003,7 +1004,7 @@ export default function NewStatsSection() {
                 {aiFiltered.slice(0, 500).map((a) => (
                   <TableRow key={a.telefono}>
                     <TableCell className="font-medium">{a.nombre || "—"}</TableCell>
-                    <TableCell className="text-sm">{a.telefono}</TableCell>
+                    <TableCell className="text-sm"><EditablePhoneCell phone={a.telefono} onUpdated={(np) => { a.telefono = np; }} /></TableCell>
                     <TableCell className="text-sm">{a.pais || "—"}</TableCell>
                     <TableCell className="text-sm">{a.campaign_name || "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{a.count}</TableCell>

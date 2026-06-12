@@ -48,6 +48,7 @@ import {
 import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
 import NewStatsSection from "@/components/dashboard/NewStatsSection";
+import { EditablePhoneCell } from "@/components/EditablePhoneCell";
 
 interface KPIs {
   totalMessages: number;
@@ -704,7 +705,9 @@ export default function Dashboard() {
                             }}
                           >
                             <TableCell className="font-medium">{l.nombre}</TableCell>
-                            <TableCell className="text-sm">{l.telefono}</TableCell>
+                            <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
+                              <EditablePhoneCell phone={l.telefono} onUpdated={fetchData} />
+                            </TableCell>
                             <TableCell className="text-sm text-muted-foreground">{l.estado || "—"}</TableCell>
                             <TableCell>
                               {wasContacted ? (
