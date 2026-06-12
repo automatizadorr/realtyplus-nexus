@@ -673,7 +673,7 @@ export default function NewStatsSection() {
                     <TableCell className="font-medium">
                       {[s.nombre, s.apellidos].filter(Boolean).join(" ")}
                     </TableCell>
-                    <TableCell className="text-sm">{s.telefono}</TableCell>
+                    <TableCell className="text-sm"><EditablePhoneCell phone={s.telefono} onUpdated={(np) => { s.telefono = np; }} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{s.email || "—"}</TableCell>
                     <TableCell className="text-sm">{s.pais || "—"}</TableCell>
                     <TableCell className="text-sm">{s.campaign_name}</TableCell>
