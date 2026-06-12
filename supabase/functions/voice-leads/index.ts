@@ -203,11 +203,17 @@ Deno.serve(async (req) => {
       if (action === "delete") {
         const phone = String(body?.phone || "").trim();
         if (!phone) return json({ error: "phone required" }, 400);
-        const { data } = await readSheet();
+        const normalized = normPhone(phone);
+        // Force fresh read to avoid stale cache across isolates
+        __sheetCache = null;
+        const { data } = await readSheet(false);
         const target = data.find(
-          (row) => normPhone(row["telefono"] || row["phone"] || "") === normPhone(phone),
+          (row) => normPhone(row["telefono"] || row["phone"] || "") === normalized,
         );
-        if (!target) return json({ error: "lead not found" }, 404);
+        if (!target) {
+          // Idempotent: already deleted or never existed — treat as success
+          return json({ success: true, alreadyDeleted: true });
+        }
         const rowNum = target.__row;
         const range = `${SHEET_NAME}!A${rowNum}:ZZ${rowNum}`;
         const r = await fetchWithRetry(
