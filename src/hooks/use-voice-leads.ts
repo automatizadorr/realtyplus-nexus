@@ -65,5 +65,21 @@ export function useVoiceLeads() {
     [fetchLeads],
   );
 
-  return { leads, loading, error, refetch: fetchLeads, updateStatus };
+  const deleteLead = useCallback(
+    async (phone: string) => {
+      const prev = leads;
+      setLeads((p) => p.filter((l) => l.telefono !== phone));
+      const { data, error } = await supabase.functions.invoke("voice-leads", {
+        method: "POST",
+        body: { action: "delete", phone },
+      });
+      if (error || !data?.success) {
+        setLeads(prev);
+        throw new Error(error?.message || data?.error || "Error eliminando");
+      }
+    },
+    [leads],
+  );
+
+  return { leads, loading, error, refetch: fetchLeads, updateStatus, deleteLead };
 }

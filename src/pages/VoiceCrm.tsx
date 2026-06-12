@@ -13,7 +13,19 @@ import {
   FileText,
   X,
   GripVertical,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -43,7 +55,7 @@ function normalizeStatus(s: string): ColKey {
 }
 
 export default function VoiceCrm() {
-  const { leads, loading, error, refetch, updateStatus } = useVoiceLeads();
+  const { leads, loading, error, refetch, updateStatus, deleteLead } = useVoiceLeads();
   const [dragging, setDragging] = useState<string | null>(null);
   const [hoverCol, setHoverCol] = useState<ColKey | null>(null);
   const [detail, setDetail] = useState<VoiceLead | null>(null);
@@ -142,9 +154,46 @@ export default function VoiceCrm() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <p className="font-semibold text-sm truncate">
+                            <p className="font-semibold text-sm truncate flex-1">
                               {lead.nombre || "Sin nombre"}
                             </p>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar este prospecto?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Se eliminará <strong>{lead.nombre || lead.telefono}</strong> de forma permanente. Esta acción no se puede deshacer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={async () => {
+                                      try {
+                                        await deleteLead(lead.telefono);
+                                        toast.success("Prospecto eliminado");
+                                      } catch (e) {
+                                        toast.error(e instanceof Error ? e.message : "Error");
+                                      }
+                                    }}
+                                  >
+                                    Eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                           <div className="space-y-1 text-xs text-muted-foreground">
                             {lead.telefono && (
