@@ -219,7 +219,6 @@ Deno.serve(async (req) => {
         return json({ success: true, row: rowNum });
       }
 
-      return json({ error: "unknown action" }, 400);
     }
 
     return json({ error: "Method not allowed" }, 405);
