@@ -147,6 +147,14 @@ Deno.serve(async (req) => {
       const body = await req.json().catch(() => ({}));
       const action = body?.action;
 
+      const allowedActions = ["update_status", "delete"];
+      if (!action || !allowedActions.includes(action)) {
+        return json(
+          { error: `Invalid action. Must be one of: ${allowedActions.join(", ")}. Received: ${action ?? "undefined"}` },
+          400,
+        );
+      }
+
       if (action === "update_status") {
         const phone = String(body?.phone || "").trim();
         const status = String(body?.status || "").trim();
@@ -211,7 +219,6 @@ Deno.serve(async (req) => {
         return json({ success: true, row: rowNum });
       }
 
-      return json({ error: "unknown action" }, 400);
     }
 
     return json({ error: "Method not allowed" }, 405);
