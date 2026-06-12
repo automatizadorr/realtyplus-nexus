@@ -48,6 +48,7 @@ import {
 import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
 import NewStatsSection from "@/components/dashboard/NewStatsSection";
+import { EditablePhoneCell } from "@/components/EditablePhoneCell";
 
 interface KPIs {
   totalMessages: number;
