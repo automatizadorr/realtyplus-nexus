@@ -798,7 +798,7 @@ export default function NewStatsSection() {
                     {selectedTag.leads.slice(0, 300).map((l) => (
                       <TableRow key={l.id}>
                         <TableCell className="font-medium">{l.nombre}</TableCell>
-                        <TableCell className="text-sm">{l.telefono}</TableCell>
+                        <TableCell className="text-sm"><EditablePhoneCell phone={l.telefono} onUpdated={(np) => { l.telefono = np; }} /></TableCell>
                       </TableRow>
                     ))}
                     {selectedTag.leads.length === 0 && (
