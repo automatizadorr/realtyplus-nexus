@@ -898,7 +898,7 @@ export default function NewStatsSection() {
                 {voiceFiltered.map((v) => (
                   <TableRow key={v.row}>
                     <TableCell className="font-medium">{v.nombre}</TableCell>
-                    <TableCell className="text-sm">{v.telefono}</TableCell>
+                    <TableCell className="text-sm"><EditablePhoneCell phone={v.telefono} onUpdated={(np) => { v.telefono = np; }} /></TableCell>
                     <TableCell className="text-sm">{v.tipo_interes}</TableCell>
                     <TableCell className="text-sm">{v.ubicacion}</TableCell>
                     <TableCell className="text-sm">{v.presupuesto}</TableCell>
