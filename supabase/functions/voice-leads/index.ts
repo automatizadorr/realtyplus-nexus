@@ -188,6 +188,7 @@ Deno.serve(async (req) => {
         );
         const updJson = await upd.json();
         if (!upd.ok) throw new Error(`update failed: ${JSON.stringify(updJson)}`);
+        __sheetCache = null; // invalidate cache after write
         return json({ success: true, row: rowNum, status });
       }
 
