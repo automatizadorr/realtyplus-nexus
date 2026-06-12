@@ -1004,7 +1004,7 @@ export default function NewStatsSection() {
                 {aiFiltered.slice(0, 500).map((a) => (
                   <TableRow key={a.telefono}>
                     <TableCell className="font-medium">{a.nombre || "—"}</TableCell>
-                    <TableCell className="text-sm">{a.telefono}</TableCell>
+                    <TableCell className="text-sm"><EditablePhoneCell phone={a.telefono} onUpdated={(np) => { a.telefono = np; }} /></TableCell>
                     <TableCell className="text-sm">{a.pais || "—"}</TableCell>
                     <TableCell className="text-sm">{a.campaign_name || "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{a.count}</TableCell>
