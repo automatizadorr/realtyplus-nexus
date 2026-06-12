@@ -34,6 +34,24 @@ function colLetter(n: number): string {
 
 const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
+// In-memory cache (per isolate) to avoid hitting Sheets quota on every request
+type SheetCache = { headers: string[]; data: Record<string, string>[]; ts: number };
+let __sheetCache: SheetCache | null = null;
+const CACHE_TTL_MS = 60_000; // 60s
+
+async function fetchWithRetry(url: string, init: RequestInit, tries = 4): Promise<Response> {
+  let delay = 800;
+  for (let i = 0; i < tries; i++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429 && res.status !== 503) return res;
+    if (i === tries - 1) return res;
+    await new Promise((r) => setTimeout(r, delay));
+    delay *= 2;
+  }
+  // unreachable
+  return fetch(url, init);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -67,26 +85,37 @@ Deno.serve(async (req) => {
       "Content-Type": "application/json",
     };
 
-    // Helper: leer toda la hoja
-    async function readSheet() {
+    // Helper: leer toda la hoja (con caché + retry en 429)
+    async function readSheet(useCache = true) {
+      if (useCache && __sheetCache && Date.now() - __sheetCache.ts < CACHE_TTL_MS) {
+        return { headers: __sheetCache.headers, data: __sheetCache.data };
+      }
       const range = `${SHEET_NAME}!A1:ZZ20000`;
-      const res = await fetch(`${GATEWAY}/spreadsheets/${SHEET_ID}/values/${range}`, {
+      const res = await fetchWithRetry(`${GATEWAY}/spreadsheets/${SHEET_ID}/values/${range}`, {
         headers: gwHeaders,
       });
       const j = await res.json();
-      if (!res.ok) throw new Error(`Sheets read error [${res.status}]: ${JSON.stringify(j)}`);
+      if (!res.ok) {
+        // Si rate-limit y hay caché aún utilizable, devuélvela como fallback
+        if (res.status === 429 && __sheetCache) {
+          return { headers: __sheetCache.headers, data: __sheetCache.data };
+        }
+        throw new Error(`Sheets read error [${res.status}]: ${JSON.stringify(j)}`);
+      }
       const rows: string[][] = j.values || [];
       const headers = (rows[0] || []).map((h) => (h || "").trim());
       const data = rows.slice(1).map((r, idx) => {
-        const obj: Record<string, string> = { __row: String(idx + 2) }; // 1-based + header
+        const obj: Record<string, string> = { __row: String(idx + 2) };
         headers.forEach((h, i) => {
           if (!h) return;
           obj[h] = (r[i] ?? "").toString();
         });
         return obj;
       });
+      __sheetCache = { headers, data, ts: Date.now() };
       return { headers, data };
     }
+
 
     if (req.method === "GET") {
       const { headers, data } = await readSheet();
@@ -159,6 +188,7 @@ Deno.serve(async (req) => {
         );
         const updJson = await upd.json();
         if (!upd.ok) throw new Error(`update failed: ${JSON.stringify(updJson)}`);
+        __sheetCache = null; // invalidate cache after write
         return json({ success: true, row: rowNum, status });
       }
 
