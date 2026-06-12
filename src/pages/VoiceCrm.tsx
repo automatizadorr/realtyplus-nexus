@@ -55,7 +55,7 @@ function normalizeStatus(s: string): ColKey {
 }
 
 export default function VoiceCrm() {
-  const { leads, loading, error, refetch, updateStatus } = useVoiceLeads();
+  const { leads, loading, error, refetch, updateStatus, deleteLead } = useVoiceLeads();
   const [dragging, setDragging] = useState<string | null>(null);
   const [hoverCol, setHoverCol] = useState<ColKey | null>(null);
   const [detail, setDetail] = useState<VoiceLead | null>(null);
