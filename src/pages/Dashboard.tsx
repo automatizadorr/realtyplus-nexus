@@ -706,7 +706,7 @@ export default function Dashboard() {
                           >
                             <TableCell className="font-medium">{l.nombre}</TableCell>
                             <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
-                              <EditablePhoneCell phone={l.telefono} onUpdated={loadData} />
+                              <EditablePhoneCell phone={l.telefono} onUpdated={fetchData} />
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">{l.estado || "—"}</TableCell>
                             <TableCell>
