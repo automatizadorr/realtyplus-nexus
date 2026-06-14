@@ -149,7 +149,7 @@ export default function TaggedMessages() {
           onClick={() => navigate("/tagged/export")}
         >
           <Download className="h-3.5 w-3.5" />
-          Exportar Excel
+          Descarga y segmenta vía etiquetas&nbsp;
         </Button>
       </div>
 
