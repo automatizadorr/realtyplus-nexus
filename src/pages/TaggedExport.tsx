@@ -539,28 +539,44 @@ details[open] .arrow{transform:rotate(90deg)}
 
       const rows = leads.map((l) => {
         const etiquetas = (l.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id).join(", ");
+        const etiquetasIds = (l.tag_ids ?? []).join(", ");
         const s = msgStats.get(normPhone(l.telefono)) ?? { enviados: 0, recibidos: 0, ultimoMsg: "", ultimaFecha: "" };
+        const telDigits = normPhone(l.telefono);
+        const telE164 = telDigits ? `+${telDigits}` : "";
+        const telWa = telDigits ? `https://wa.me/${telDigits}` : "";
         return {
-          "ID Contacto":       l.id_contacto ?? "",
-          "Nombre":            l.nombre ?? "",
-          "Teléfono":          l.telefono ?? "",
-          "Email":             l.email ?? "",
-          "País":              l.pais ?? "",
-          "Estado":            l.estado ?? "",
-          "Etiquetas":         etiquetas,
-          "Bot Activo":        yesNo(l.bot_activo),
-          "Archivado":         yesNo(l.archivado),
-          "Ha Respondido":     yesNo(l.ha_respondido),
-          "Puntuación":        l.puntuacion ?? "",
-          "Días Reales":       l.dias_reales ?? "",
-          "Origen":            l.origen ?? "",
-          "Último Contacto":   formatDate(l.ultimo_contacto_at),
-          "Fecha Respuesta":   formatDate(l.fecha_respuesta),
-          "Próximo Contacto":  formatDate(l.fecha_proximo_contacto),
-          "Msgs Enviados":     s.enviados,
-          "Msgs Recibidos":    s.recibidos,
-          "Último Mensaje":    s.ultimoMsg,
-          "Fecha Último Msg":  formatDate(s.ultimaFecha),
+          "ID Lead":            l.id ?? "",
+          "ID Contacto":        l.id_contacto ?? "",
+          "Nombre":             l.nombre ?? "",
+          "Teléfono":           l.telefono ?? "",
+          "Teléfono (E.164)":   telE164,
+          "Teléfono (dígitos)": telDigits,
+          "WhatsApp Link":      telWa,
+          "Email":              l.email ?? "",
+          "País":               l.pais ?? "",
+          "Timezone":           l.timezone ?? "",
+          "Estado":             l.estado ?? "",
+          "Motivo Cierre":      l.motivo_cierre ?? "",
+          "Etiquetas":          etiquetas,
+          "Etiquetas (IDs)":    etiquetasIds,
+          "Bot Activo":         yesNo(l.bot_activo),
+          "Archivado":          yesNo(l.archivado),
+          "Ha Respondido":      yesNo(l.ha_respondido),
+          "Puntuación":         l.puntuacion ?? "",
+          "Fase Secuencia":     l.fase_secuencia ?? "",
+          "Días Reales":        l.dias_reales ?? "",
+          "Origen":             l.origen ?? "",
+          "Franquiciado ID":    l.franquiciado_id ?? "",
+          "Creado":             formatDate(l.created_at),
+          "Actualizado":        formatDate(l.updated_at),
+          "Último Contacto":    formatDate(l.ultimo_contacto_at),
+          "Fecha Respuesta":    formatDate(l.fecha_respuesta),
+          "Próximo Contacto":   formatDate(l.fecha_proximo_contacto),
+          "Msgs Enviados":      s.enviados,
+          "Msgs Recibidos":     s.recibidos,
+          "Msgs Total":         s.enviados + s.recibidos,
+          "Último Mensaje":     s.ultimoMsg,
+          "Fecha Último Msg":   formatDate(s.ultimaFecha),
         };
       });
 
@@ -596,7 +612,7 @@ details[open] .arrow{transform:rotate(90deg)}
       XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen Etiquetas");
 
       const ws = XLSX.utils.json_to_sheet(rows);
-      ws["!cols"] = [14,28,16,32,12,14,30,11,11,14,11,11,16,20,20,20,14,14,40,20].map((wch) => ({ wch }));
+      ws["!cols"] = [36,14,28,16,18,16,28,32,14,10,14,18,30,30,11,11,14,11,11,11,14,36,18,18,18,18,18,12,12,12,40,20].map((wch) => ({ wch }));
       XLSX.utils.book_append_sheet(wb, ws, "Leads Etiquetados");
 
       const today = new Date().toISOString().slice(0, 10);
