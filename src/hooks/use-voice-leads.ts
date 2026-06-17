@@ -77,9 +77,12 @@ export function useVoiceLeads() {
         setLeads(prev);
         throw new Error(error?.message || data?.error || "Error eliminando");
       }
+      // Refetch to ensure the sheet state matches the UI (row physically removed)
+      await fetchLeads();
     },
-    [leads],
+    [leads, fetchLeads],
   );
+
 
   return { leads, loading, error, refetch: fetchLeads, updateStatus, deleteLead };
 }
