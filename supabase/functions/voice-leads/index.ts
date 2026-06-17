@@ -36,6 +36,7 @@ const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
 // In-memory cache (per isolate) to avoid hitting Sheets quota on every request
 type SheetCache = { headers: string[]; data: Record<string, string>[]; ts: number };
+type SheetRead = { headers: string[]; data: Record<string, string>[]; fallback?: boolean; error?: string };
 let __sheetCache: SheetCache | null = null;
 const CACHE_TTL_MS = 60_000; // 60s
 
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
     };
 
     // Helper: leer toda la hoja (con caché + retry en 429)
-    async function readSheet(useCache = true) {
+    async function readSheet(useCache = true): Promise<SheetRead> {
       if (useCache && __sheetCache && Date.now() - __sheetCache.ts < CACHE_TTL_MS) {
         return { headers: __sheetCache.headers, data: __sheetCache.data };
       }
@@ -96,11 +97,17 @@ Deno.serve(async (req) => {
       });
       const j = await res.json();
       if (!res.ok) {
+        const error = `Sheets read error [${res.status}]: ${JSON.stringify(j)}`;
         // Si rate-limit y hay caché aún utilizable, devuélvela como fallback
         if (res.status === 429 && __sheetCache) {
-          return { headers: __sheetCache.headers, data: __sheetCache.data };
+          return { headers: __sheetCache.headers, data: __sheetCache.data, fallback: true, error };
         }
-        throw new Error(`Sheets read error [${res.status}]: ${JSON.stringify(j)}`);
+        // En cuota agotada no devolvemos 500: evitamos pantalla en blanco y avisamos al cliente.
+        if (res.status === 429 || res.status >= 500) {
+          console.warn("voice-leads read fallback:", error);
+          return { headers: [], data: [], fallback: true, error };
+        }
+        throw new Error(error);
       }
       const rows: string[][] = j.values || [];
       const headers = (rows[0] || []).map((h) => (h || "").trim());
@@ -118,7 +125,7 @@ Deno.serve(async (req) => {
 
 
     if (req.method === "GET") {
-      const { headers, data } = await readSheet();
+      const { headers, data, fallback, error } = await readSheet();
       const leads = data
         .filter((r) => (r["nombre_completo"] || r["full_name"] || r["telefono"] || "").trim() !== "")
         .map((r) => ({
@@ -140,7 +147,7 @@ Deno.serve(async (req) => {
           tags: r["tags"] || "",
         }))
         .reverse();
-      return json({ success: true, total: leads.length, headers, leads });
+      return json({ success: true, total: leads.length, headers, leads, fallback, error });
     }
 
     if (req.method === "POST") {
@@ -160,7 +167,8 @@ Deno.serve(async (req) => {
         const status = String(body?.status || "").trim();
         if (!phone || !status) return json({ error: "phone & status required" }, 400);
 
-        const { headers, data } = await readSheet();
+        const { headers, data, fallback, error } = await readSheet();
+        if (fallback) return json({ success: false, fallback: true, error: error || "Sheets unavailable" });
         // Asegurar columna status
         let statusIdx = headers.indexOf("status");
         if (statusIdx === -1) {
@@ -206,7 +214,8 @@ Deno.serve(async (req) => {
         const normalized = normPhone(phone);
         // Force fresh read to avoid stale cache across isolates
         __sheetCache = null;
-        const { data } = await readSheet(false);
+        const { data, fallback, error } = await readSheet(false);
+        if (fallback) return json({ success: false, fallback: true, error: error || "Sheets unavailable" });
         const target = data.find(
           (row) => normPhone(row["telefono"] || row["phone"] || "") === normalized,
         );
