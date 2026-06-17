@@ -39,6 +39,7 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     items: [
       { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
       { title: "Expansión", url: "/tagged", icon: Tag, badge: { text: "NEXUS", variant: "beta" } },
+      { title: "Etiquetas IA", url: "/etiquetas", icon: Tag, badge: { text: "AI", variant: "ai" } },
     ],
   },
   {
@@ -202,3 +203,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
