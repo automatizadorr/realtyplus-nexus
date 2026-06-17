@@ -355,14 +355,14 @@ export default function Dashboard() {
 
   const kpiCards = [
     {
-      title: "Países (Sheets)",
+      title: "Países\u00a0",
       value: countries.length.toLocaleString(),
       icon: Globe2,
       accent: "text-cyan-600",
       bg: "bg-cyan-50 dark:bg-cyan-950",
     },
     {
-      title: "Contactos (Sheets)",
+      title: "Contactos\u00a0",
       value: countriesTotal.toLocaleString(),
       icon: Users,
       accent: "text-rose-600",
