@@ -214,16 +214,52 @@ Deno.serve(async (req) => {
           // Idempotent: already deleted or never existed — treat as success
           return json({ success: true, alreadyDeleted: true });
         }
-        const rowNum = target.__row;
-        const range = `${SHEET_NAME}!A${rowNum}:ZZ${rowNum}`;
+        const rowNum = Number(target.__row);
+
+        // Get the numeric sheetId (gid) for SHEET_NAME via spreadsheet metadata
+        const metaRes = await fetchWithRetry(
+          `${GATEWAY}/spreadsheets/${SHEET_ID}?fields=sheets(properties(sheetId,title))`,
+          { headers: gwHeaders },
+        );
+        const metaJson = await metaRes.json();
+        if (!metaRes.ok) throw new Error(`meta failed: ${JSON.stringify(metaJson)}`);
+        const sheet = (metaJson.sheets || []).find(
+          (s: any) => s?.properties?.title === SHEET_NAME,
+        );
+        const sheetId = sheet?.properties?.sheetId;
+        if (sheetId === undefined || sheetId === null) {
+          throw new Error(`sheet "${SHEET_NAME}" not found`);
+        }
+
+        // Physically remove the row (0-indexed; rowNum is 1-indexed including header)
+        const startIndex = rowNum - 1;
+        const endIndex = rowNum;
         const r = await fetchWithRetry(
-          `${GATEWAY}/spreadsheets/${SHEET_ID}/values/${range}:clear`,
-          { method: "POST", headers: gwHeaders, body: "{}" },
+          `${GATEWAY}/spreadsheets/${SHEET_ID}:batchUpdate`,
+          {
+            method: "POST",
+            headers: gwHeaders,
+            body: JSON.stringify({
+              requests: [
+                {
+                  deleteDimension: {
+                    range: {
+                      sheetId,
+                      dimension: "ROWS",
+                      startIndex,
+                      endIndex,
+                    },
+                  },
+                },
+              ],
+            }),
+          },
         );
         if (!r.ok) throw new Error(`delete failed: ${await r.text()}`);
         __sheetCache = null;
-        return json({ success: true, row: rowNum });
+        return json({ success: true, row: rowNum, deleted: true });
       }
+
 
     }
 
