@@ -19,6 +19,7 @@ import TaggedMessages from "./pages/TaggedMessages";
 import TaggedExport from "./pages/TaggedExport";
 import Settings from "./pages/Settings";
 import VoiceCrm from "./pages/VoiceCrm";
+import Etiquetas from "./pages/Etiquetas";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -51,6 +52,7 @@ const App = () => (
                       <Route path="/automation-inbox" element={<AdminRoute><AutomationInbox /></AdminRoute>} />
                       <Route path="/tagged" element={<AdminRoute><TaggedMessages /></AdminRoute>} />
                       <Route path="/tagged/export" element={<AdminRoute><TaggedExport /></AdminRoute>} />
+                      <Route path="/etiquetas" element={<AdminRoute><Etiquetas /></AdminRoute>} />
                       <Route path="/voice-crm" element={<AdminRoute><VoiceCrm /></AdminRoute>} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="*" element={<NotFound />} />
@@ -67,3 +69,4 @@ const App = () => (
 );
 
 export default App;
+
