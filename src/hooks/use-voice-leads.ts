@@ -24,6 +24,7 @@ export function useVoiceLeads() {
   const [leads, setLeads] = useState<VoiceLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isFallback, setIsFallback] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -34,9 +35,14 @@ export function useVoiceLeads() {
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Error desconocido");
-      setLeads(data.leads as VoiceLead[]);
+      setIsFallback(Boolean(data.fallback));
+      if (data.fallback) {
+        setError("Google Sheets alcanzó su límite de lectura. Mostrando datos disponibles; intenta actualizar en unos minutos.");
+      }
+      setLeads((data.leads || []) as VoiceLead[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setIsFallback(false);
     } finally {
       setLoading(false);
     }
@@ -59,7 +65,11 @@ export function useVoiceLeads() {
       if (error || !data?.success) {
         // revert
         await fetchLeads();
-        throw new Error(error?.message || data?.error || "Error actualizando");
+        throw new Error(
+          data?.fallback
+            ? "Google Sheets alcanzó su límite. Intenta mover el lead en unos minutos."
+            : error?.message || data?.error || "Error actualizando",
+        );
       }
     },
     [fetchLeads],
@@ -75,7 +85,11 @@ export function useVoiceLeads() {
       });
       if (error || !data?.success) {
         setLeads(prev);
-        throw new Error(error?.message || data?.error || "Error eliminando");
+        throw new Error(
+          data?.fallback
+            ? "Google Sheets alcanzó su límite. Intenta eliminar el lead en unos minutos."
+            : error?.message || data?.error || "Error eliminando",
+        );
       }
       // Refetch to ensure the sheet state matches the UI (row physically removed)
       await fetchLeads();
@@ -84,5 +98,5 @@ export function useVoiceLeads() {
   );
 
 
-  return { leads, loading, error, refetch: fetchLeads, updateStatus, deleteLead };
+  return { leads, loading, error, isFallback, refetch: fetchLeads, updateStatus, deleteLead };
 }
