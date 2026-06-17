@@ -73,12 +73,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -98,12 +98,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -123,12 +123,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -148,12 +148,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -173,12 +173,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -198,12 +198,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -223,12 +223,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -248,12 +248,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -296,12 +296,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "url": "=https://lex-house-ai-evolution-api.7u9ufb.easypanel.host/message/sendText/agente_lex_house_ia",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+            { "name": "apikey", "value": "0C9837900500-42C7-929F-A26B9B6DF762" }
           ]
         },
         "sendBody": true,
@@ -367,3 +367,4 @@
   "active": true,
   "versionId": "a1b2c3d4-ffff-ffff-ffff-000000000000"
 }
+
