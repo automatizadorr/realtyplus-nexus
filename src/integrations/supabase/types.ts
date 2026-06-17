@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      connection_state: {
+        Row: {
+          id: number
+          phone: string | null
+          qr_string: string | null
+          status: string
+          updated_at: number
+        }
+        Insert: {
+          id: number
+          phone?: string | null
+          qr_string?: string | null
+          status?: string
+          updated_at?: number
+        }
+        Update: {
+          id?: number
+          phone?: string | null
+          qr_string?: string | null
+          status?: string
+          updated_at?: number
+        }
+        Relationships: []
+      }
       contactos: {
         Row: {
           apellidos: string | null
@@ -41,6 +65,36 @@ export type Database = {
           nombres?: string
           pais?: string
           telefono?: string | null
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          created_at: number
+          id: number
+          jid: string | null
+          last_message_at: number | null
+          mode: string
+          name: string | null
+          phone: string
+        }
+        Insert: {
+          created_at?: number
+          id?: never
+          jid?: string | null
+          last_message_at?: number | null
+          mode?: string
+          name?: string | null
+          phone: string
+        }
+        Update: {
+          created_at?: number
+          id?: never
+          jid?: string | null
+          last_message_at?: number | null
+          mode?: string
+          name?: string | null
+          phone?: string
         }
         Relationships: []
       }
@@ -504,6 +558,73 @@ export type Database = {
           telefono?: string
         }
         Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: number
+          created_at: number
+          id: number
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: number
+          created_at?: number
+          id?: never
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: number
+          created_at?: number
+          id?: never
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outbox: {
+        Row: {
+          content: string
+          conversation_id: number
+          created_at: number
+          id: number
+          phone: string
+          sent: boolean
+        }
+        Insert: {
+          content: string
+          conversation_id: number
+          created_at?: number
+          id?: never
+          phone: string
+          sent?: boolean
+        }
+        Update: {
+          content?: string
+          conversation_id?: number
+          created_at?: number
+          id?: never
+          phone?: string
+          sent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbox_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
