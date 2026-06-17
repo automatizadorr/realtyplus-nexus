@@ -1,0 +1,369 @@
+{
+  "name": "Clasificacion IA - WhatsApp Segmentado",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook Clasificacion IA",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "clasificacion-ia-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\nconst leads = data.leads || [];\n\nreturn leads.map(lead => {\n  let tel = String(lead.telefono || '');\n  tel = tel.replace('@s.whatsapp.net', '');\n  tel = tel.replace('+', '');\n  tel = tel.replace(/\\D/g, '');\n\n  return {\n    json: {\n      ...lead,\n      telefono_limpio: tel,\n      timestamp_reporte: data.timestamp,\n      total_clasificados: data.leads_clasificados\n    }\n  };\n});"
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Separar Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "filter-no-interesa",
+              "leftValue": "={{ $json.etiqueta }}",
+              "rightValue": "No interesa",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Filtrar No Interesa",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.etiqueta }}",
+        "rules": {
+          "rules": [
+            { "value2": "Lead Caliente" },
+            { "value2": "Cita agendada" },
+            { "value2": "Interesado en Financiamiento" },
+            { "value2": "Listo para Cerrar" },
+            { "value2": "Solo Consultando" },
+            { "value2": "Requiere Seguimiento IA" },
+            { "value2": "Conversación Activa" },
+            { "value2": "Sin Respuesta al Bot" }
+          ]
+        },
+        "fallbackOutput": "none"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Switch Etiqueta",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=🔥 Hola {{ $json.nombre }}, notamos que mostraste mucho interés en nuestras propiedades.\n\n¿Te gustaría que un asesor te llame hoy para mostrarte las mejores opciones disponibles? ¡Tenemos algo especial para ti! 🏠" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0010-0010-0010-000000000010",
+      "name": "WA - Lead Caliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=📅 Hola {{ $json.nombre }}, confirmamos tu cita con nuestro equipo de asesores.\n\nPronto te contactaremos para coordinar todos los detalles. ¡Gracias por tu confianza en Realtyplus!" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0011-0011-0011-000000000011",
+      "name": "WA - Cita Agendada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=💰 Hola {{ $json.nombre }}, entendemos que el financiamiento es clave en tu decisión.\n\nTenemos planes de crédito adaptados a tu perfil. ¿Quieres que un asesor te explique las opciones disponibles?" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0012-0012-0012-000000000012",
+      "name": "WA - Financiamiento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=✅ Hola {{ $json.nombre }}, estás muy cerca de dar el gran paso.\n\nNuestro asesor está listo para acompañarte en el proceso de cierre. ¿Cuándo podemos hablar para finalizar los detalles?" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0013-0013-0013-000000000013",
+      "name": "WA - Listo para Cerrar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=🏡 Hola {{ $json.nombre }}, gracias por tu interés en Realtyplus.\n\nCuando estés listo para el siguiente paso, estaremos aquí para ayudarte. ¿Hay alguna propiedad que te haya llamado la atención?" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0014-0014-0014-000000000014",
+      "name": "WA - Solo Consultando",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=👋 Hola {{ $json.nombre }}, queremos asegurarnos de darte la mejor atención.\n\n¿Hay algo específico en lo que podamos ayudarte hoy sobre nuestras propiedades? Estamos disponibles para ti." }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0015-0015-0015-000000000015",
+      "name": "WA - Seguimiento IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=😊 Hola {{ $json.nombre }}, fue un placer conversar contigo.\n\nRecuerda que estamos aquí para cualquier consulta adicional sobre propiedades. ¡No dudes en escribirnos!" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0016-0016-0016-000000000016",
+      "name": "WA - Conversacion Activa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 720]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.telefono_limpio }}" },
+            { "name": "text", "value": "=📱 Hola {{ $json.nombre }}, intentamos comunicarnos contigo pero no recibimos respuesta.\n\nSi tienes alguna pregunta sobre nuestras propiedades, escríbenos cuando puedas. ¡Estamos aquí para ayudarte! 🏠" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0017-0017-0017-000000000017",
+      "name": "WA - Sin Respuesta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1100, 840]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "clashHandling": { "values": { "resolveClash": "addSuffix" } },
+        "mergeByFields": { "values": [] },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0020-0020-0020-000000000020",
+      "name": "Merge Envios",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1360, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst total = items.length;\n\n// Contar por etiqueta\nconst conteo = {};\nitems.forEach(item => {\n  const etiqueta = item.json.etiqueta || 'Sin etiqueta';\n  conteo[etiqueta] = (conteo[etiqueta] || 0) + 1;\n});\n\nconst emojis = {\n  'Lead Caliente': '🔥',\n  'Cita agendada': '📅',\n  'Interesado en Financiamiento': '💰',\n  'Listo para Cerrar': '✅',\n  'Solo Consultando': '🏡',\n  'Requiere Seguimiento IA': '👋',\n  'Conversación Activa': '😊',\n  'Sin Respuesta al Bot': '📵'\n};\n\nconst lineas = Object.entries(conteo)\n  .map(([etiqueta, cantidad]) => `${emojis[etiqueta] || '•'} ${etiqueta}: *${cantidad}*`)\n  .join('\\n');\n\nconst fecha = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });\n\nconst resumen = `📊 *Reporte Clasificación IA*\\n🕐 ${fecha}\\n\\nMensajes enviados: *${total}*\\n\\n${lineas}\\n\\n_Próxima clasificación en 5h_`;\n\nreturn [{ json: { resumen, total } }];"
+      },
+      "id": "a1b2c3d4-0021-0021-0021-000000000021",
+      "name": "Resumen para Agente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_EVOLUTION_URL/message/sendText/INSTANCE_NAME",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "YOUR_EVOLUTION_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "56981726148" },
+            { "name": "text", "value": "={{ $json.resumen }}" }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0022-0022-0022-000000000022",
+      "name": "Notificar Agente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1800, 420]
+    }
+  ],
+  "connections": {
+    "Webhook Clasificacion IA": {
+      "main": [[{ "node": "Separar Leads", "type": "main", "index": 0 }]]
+    },
+    "Separar Leads": {
+      "main": [[{ "node": "Filtrar No Interesa", "type": "main", "index": 0 }]]
+    },
+    "Filtrar No Interesa": {
+      "main": [
+        [{ "node": "Switch Etiqueta", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Switch Etiqueta": {
+      "main": [
+        [{ "node": "WA - Lead Caliente",      "type": "main", "index": 0 }],
+        [{ "node": "WA - Cita Agendada",       "type": "main", "index": 0 }],
+        [{ "node": "WA - Financiamiento",       "type": "main", "index": 0 }],
+        [{ "node": "WA - Listo para Cerrar",   "type": "main", "index": 0 }],
+        [{ "node": "WA - Solo Consultando",    "type": "main", "index": 0 }],
+        [{ "node": "WA - Seguimiento IA",      "type": "main", "index": 0 }],
+        [{ "node": "WA - Conversacion Activa", "type": "main", "index": 0 }],
+        [{ "node": "WA - Sin Respuesta",       "type": "main", "index": 0 }]
+      ]
+    },
+    "WA - Lead Caliente":      { "main": [[{ "node": "Merge Envios", "type": "main", "index": 0 }]] },
+    "WA - Cita Agendada":      { "main": [[{ "node": "Merge Envios", "type": "main", "index": 1 }]] },
+    "WA - Financiamiento":     { "main": [[{ "node": "Merge Envios", "type": "main", "index": 2 }]] },
+    "WA - Listo para Cerrar":  { "main": [[{ "node": "Merge Envios", "type": "main", "index": 3 }]] },
+    "WA - Solo Consultando":   { "main": [[{ "node": "Merge Envios", "type": "main", "index": 4 }]] },
+    "WA - Seguimiento IA":     { "main": [[{ "node": "Merge Envios", "type": "main", "index": 5 }]] },
+    "WA - Conversacion Activa":{ "main": [[{ "node": "Merge Envios", "type": "main", "index": 6 }]] },
+    "WA - Sin Respuesta":      { "main": [[{ "node": "Merge Envios", "type": "main", "index": 7 }]] },
+    "Merge Envios": {
+      "main": [[{ "node": "Resumen para Agente", "type": "main", "index": 0 }]]
+    },
+    "Resumen para Agente": {
+      "main": [[{ "node": "Notificar Agente", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "active": true,
+  "versionId": "a1b2c3d4-ffff-ffff-ffff-000000000000"
+}
