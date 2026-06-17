@@ -49,6 +49,7 @@ import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
 import NewStatsSection from "@/components/dashboard/NewStatsSection";
 import { EditablePhoneCell } from "@/components/EditablePhoneCell";
+import { AiTagsOverview } from "@/components/tags/AiTagsOverview";
 
 interface KPIs {
   totalMessages: number;
@@ -732,6 +733,12 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Panel de clasificación IA de leads */}
+      <div className="mt-8">
+        <AiTagsOverview />
+      </div>
     </div>
   );
 }
+
