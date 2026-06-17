@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { TagManager } from "@/components/tags/TagManager";
 import { Settings2, Check, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -114,6 +115,7 @@ export default function Settings() {
           <TabsTrigger value="apariencia">Apariencia</TabsTrigger>
           <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
           <TabsTrigger value="notificaciones">Notificaciones</TabsTrigger>
+          <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
         </TabsList>
 
         {/* ───────────── APARIENCIA ───────────── */}
@@ -453,7 +455,20 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ───────────── ETIQUETAS ───────────── */}
+        <TabsContent value="etiquetas" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Gestión de etiquetas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TagManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
