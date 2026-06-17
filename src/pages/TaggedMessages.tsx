@@ -138,7 +138,7 @@ export default function TaggedMessages() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-center gap-2">
         <Tag className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold text-foreground">Etiquetados</h1>
+        <h1 className="text-xl font-bold text-foreground">EXPANSIÓN&nbsp; &nbsp;</h1>
         <span className="text-xs text-muted-foreground">
           {total != null ? `${rows.length}/${total}` : `${rows.length}`}
         </span>
