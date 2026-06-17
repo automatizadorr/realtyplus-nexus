@@ -37,6 +37,7 @@ const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 // In-memory cache (per isolate) to avoid hitting Sheets quota on every request
 type SheetCache = { headers: string[]; data: Record<string, string>[]; ts: number };
 type SheetRead = { headers: string[]; data: Record<string, string>[]; fallback?: boolean; error?: string };
+type SheetMetadata = { sheets?: Array<{ properties?: { sheetId?: number; title?: string } }> };
 let __sheetCache: SheetCache | null = null;
 const CACHE_TTL_MS = 60_000; // 60s
 
@@ -233,8 +234,8 @@ Deno.serve(async (req) => {
         );
         const metaJson = await metaRes.json();
         if (!metaRes.ok) throw new Error(`meta failed: ${JSON.stringify(metaJson)}`);
-        const sheet = (metaJson.sheets || []).find(
-          (s: any) => s?.properties?.title === SHEET_NAME,
+        const sheet = ((metaJson as SheetMetadata).sheets || []).find(
+          (s) => s?.properties?.title === SHEET_NAME,
         );
         const sheetId = sheet?.properties?.sheetId;
         if (sheetId === undefined || sheetId === null) {
