@@ -44,6 +44,7 @@ async function fetchWithRetry(url: string, init: RequestInit, tries = 4): Promis
   let delay = 800;
   for (let i = 0; i < tries; i++) {
     const res = await fetch(url, init);
+    if (res.status === 429) return res;
     if (res.status !== 429 && res.status !== 503) return res;
     if (i === tries - 1) return res;
     await new Promise((r) => setTimeout(r, delay));
@@ -276,6 +277,9 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("voice-leads error:", msg);
+    if (msg.includes("429") || msg.includes("RATE_LIMIT_EXCEEDED") || msg.includes("RESOURCE_EXHAUSTED")) {
+      return json({ success: true, fallback: true, total: 0, headers: [], leads: [], error: msg });
+    }
     return json({ success: false, error: msg }, 500);
   }
 });
