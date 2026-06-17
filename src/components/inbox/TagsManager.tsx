@@ -112,7 +112,7 @@ export function TagsButton({ isAdmin, contact, allTags, onChange, onTagsRefresh 
             </Button>
           </div>
         )}
-        <ScrollArea className="max-h-60">
+        <ScrollArea className="h-72">
           {allTags.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center p-4">Sin etiquetas</p>
           ) : (
