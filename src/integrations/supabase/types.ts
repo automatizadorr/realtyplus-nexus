@@ -38,36 +38,6 @@ export type Database = {
         }
         Relationships: []
       }
-      contactos: {
-        Row: {
-          apellidos: string | null
-          email: string
-          fecha_creacion: string | null
-          id_contacto: number
-          nombres: string
-          pais: string
-          telefono: string | null
-        }
-        Insert: {
-          apellidos?: string | null
-          email: string
-          fecha_creacion?: string | null
-          id_contacto: number
-          nombres: string
-          pais: string
-          telefono?: string | null
-        }
-        Update: {
-          apellidos?: string | null
-          email?: string
-          fecha_creacion?: string | null
-          id_contacto?: number
-          nombres?: string
-          pais?: string
-          telefono?: string | null
-        }
-        Relationships: []
-      }
       conversations: {
         Row: {
           created_at: number
@@ -115,27 +85,6 @@ export type Database = {
           contenido?: string
           embedding?: string | null
           id?: never
-          metadata?: Json | null
-        }
-        Relationships: []
-      }
-      documents: {
-        Row: {
-          content: string | null
-          embedding: string | null
-          id: number
-          metadata: Json | null
-        }
-        Insert: {
-          content?: string | null
-          embedding?: string | null
-          id?: number
-          metadata?: Json | null
-        }
-        Update: {
-          content?: string | null
-          embedding?: string | null
-          id?: number
           metadata?: Json | null
         }
         Relationships: []
@@ -737,6 +686,7 @@ export type Database = {
       }
     }
     Functions: {
+      complete_onboarding: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
