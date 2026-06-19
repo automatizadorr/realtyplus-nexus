@@ -95,19 +95,7 @@ export default function Campaigns() {
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              try {
-                await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/4b7dff80-2d0e-42f9-8eae-1adbcaa07eff", {
-                  method: "POST",
-                  mode: "no-cors",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ source: "campaigns", triggeredAt: new Date().toISOString() }),
-                });
-                toast({ title: "Webhook enviado", description: "Disparador enviado a n8n correctamente." });
-              } catch (e: any) {
-                toast({ title: "Error", description: e?.message ?? "No se pudo enviar el webhook", variant: "destructive" });
-              }
-            }}
+            onClick={() => setN8nConfirmOpen(true)}
           >
             <Zap className="mr-2 h-4 w-4" /> Disparar n8n
           </Button>
