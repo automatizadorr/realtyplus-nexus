@@ -24,6 +24,8 @@ export default function Campaigns() {
   const [editTarget, setEditTarget] = useState<CampaignRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [n8nConfirmOpen, setN8nConfirmOpen] = useState(false);
+  const [n8nFiring, setN8nFiring] = useState(false);
 
   const fetchCampaigns = async () => {
     setLoading(true);
@@ -93,19 +95,7 @@ export default function Campaigns() {
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              try {
-                await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/4b7dff80-2d0e-42f9-8eae-1adbcaa07eff", {
-                  method: "POST",
-                  mode: "no-cors",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ source: "campaigns", triggeredAt: new Date().toISOString() }),
-                });
-                toast({ title: "Webhook enviado", description: "Disparador enviado a n8n correctamente." });
-              } catch (e: any) {
-                toast({ title: "Error", description: e?.message ?? "No se pudo enviar el webhook", variant: "destructive" });
-              }
-            }}
+            onClick={() => setN8nConfirmOpen(true)}
           >
             <Zap className="mr-2 h-4 w-4" /> Disparar n8n
           </Button>
@@ -241,6 +231,51 @@ export default function Campaigns() {
               }}
             >
               {deleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={n8nConfirmOpen} onOpenChange={(v) => !v && setN8nConfirmOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar disparo de webhook n8n</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Esta acción ejecuta un flujo automatizado que consume la API oficial de Meta (WhatsApp Business / Cloud API).</p>
+              <p><strong>Gastos asociados:</strong></p>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                <li>Cada mensaje de WhatsApp enviado se cobra según la tarifa de Meta por país y tipo de conversación.</li>
+                <li>Las conversaciones iniciadas por la empresa (utility, marketing, authentication) tienen costos variables por región.</li>
+                <li>El procesamiento de IA (n8n / OpenAI) puede generar cargos adicionales por tokens utilizados.</li>
+                <li>No se generan cargos desde esta plataforma; los costos son directamente con Meta y los proveedores de IA conectados.</li>
+              </ul>
+              <p className="text-sm text-muted-foreground">Asegúrate de tener saldo suficiente en tu cuenta de Meta Business y revisa los límites de tu plan antes de continuar.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={n8nFiring}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={n8nFiring}
+              onClick={async (e) => {
+                e.preventDefault();
+                setN8nFiring(true);
+                try {
+                  await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/4b7dff80-2d0e-42f9-8eae-1adbcaa07eff", {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ source: "campaigns", triggeredAt: new Date().toISOString() }),
+                  });
+                  toast({ title: "Webhook enviado", description: "Disparador enviado a n8n correctamente." });
+                } catch (err: any) {
+                  toast({ title: "Error", description: err?.message ?? "No se pudo enviar el webhook", variant: "destructive" });
+                } finally {
+                  setN8nFiring(false);
+                  setN8nConfirmOpen(false);
+                }
+              }}
+            >
+              {n8nFiring ? "Enviando..." : "Confirmar y disparar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
