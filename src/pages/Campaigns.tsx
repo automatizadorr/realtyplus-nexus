@@ -97,7 +97,7 @@ export default function Campaigns() {
             size="sm"
             onClick={() => setN8nConfirmOpen(true)}
           >
-            <Zap className="mr-2 h-4 w-4" /> Disparar n8n
+            <Zap className="mr-2 h-4 w-4" /> Re-Activar vía Whatsapp Meta AI
           </Button>
           <Button variant="outline" size="sm" onClick={fetchCampaigns} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
