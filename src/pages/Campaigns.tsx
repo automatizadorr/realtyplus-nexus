@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, RefreshCw, Plus, Users, Send, CheckCircle2, TrendingUp, Activity, Pencil, Trash2 } from "lucide-react";
+import { Megaphone, RefreshCw, Plus, Users, Send, CheckCircle2, TrendingUp, Activity, Pencil, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
