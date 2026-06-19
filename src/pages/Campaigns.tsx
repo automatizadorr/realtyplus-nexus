@@ -24,6 +24,8 @@ export default function Campaigns() {
   const [editTarget, setEditTarget] = useState<CampaignRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [n8nConfirmOpen, setN8nConfirmOpen] = useState(false);
+  const [n8nFiring, setN8nFiring] = useState(false);
 
   const fetchCampaigns = async () => {
     setLoading(true);
