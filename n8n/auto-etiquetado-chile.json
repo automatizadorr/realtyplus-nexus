@@ -1,0 +1,225 @@
+{
+  "name": "RealtyPlus — Auto-Etiquetado Campaña Chile",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auto-tag-chile",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook /auto-tag-chile",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -320,
+        300
+      ],
+      "webhookId": "auto-tag-chile",
+      "notes": "Recibe el evento de WhatsApp. Payload esperado: { telefono, mensaje, evento? }\nPuede llamarse desde el workflow /primer_contacto o directamente desde la integración de WhatsApp."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-secret",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] || '' }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET || '' }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-secret",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        300
+      ],
+      "notes": "Rechaza llamadas sin el secreto correcto. Configura N8N_WEBHOOK_SECRET en Variables de entorno de n8n."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"error\": \"Unauthorized\" }",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "node-401",
+      "name": "Respuesta 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -100,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Auto-clasificación de intención — campañas Chile ─────────────────────\n// Detecta la intención del mensaje del lead y define la transición de estado.\n// La POLÍTICA de etiquetas vive aquí (edita las listas y el bloque de decisión).\n\n// Si true, pide a tag-lead crear el lead cuando el teléfono no existe en la BD\n// (en vez de perder la etiqueta). Cámbialo a false para no crear leads nuevos.\nconst CREAR_LEAD_SI_NO_EXISTE = true;\n\n// Normaliza: minúsculas, sin tildes.\nconst norm = (s) => (s || \"\").toLowerCase().normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\");\n\n// Match por palabra/frase COMPLETA (evita falsos positivos de includes():\n// \"baja\" no matchea \"trabajando\", \"no\" no matchea \"nota\").\nconst esc = (s) => s.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\");\nconst matchAny = (texto, keywords) => {\n  for (const k of keywords) {\n    const kn = norm(k).trim();\n    if (!kn) continue;\n    const re = new RegExp(\"(^|[^\\\\p{L}\\\\p{N}])\" + esc(kn) + \"([^\\\\p{L}\\\\p{N}]|$)\", \"u\");\n    if (re.test(texto)) return k;\n  }\n  return null;\n};\n\n// RECHAZO — el lead NO está interesado (máxima prioridad).\nconst RECHAZO = [\n  \"no me interesa\", \"no me interesan\", \"no quiero\", \"no gracias\",\n  \"no estoy interesado\", \"no estoy interesada\", \"ya no me interesa\",\n  \"no interesa\", \"no quiero informacion\", \"no quiero saber nada\",\n  \"no molesten\", \"no me molesten\", \"dejen de escribir\", \"dar de baja\",\n  \"darme de baja\", \"eliminenme\", \"borrenme\", \"quitenme\", \"no contactar\"\n];\n\n// ANTI_RECHAZO — frases que invalidan un rechazo aparente.\nconst ANTI_RECHAZO = [\"dejar de recibir\", \"dejar de molestar\", \"perderme\"];\n\n// PROPIEDADES — el lead quiere ver opciones.\nconst PROPIEDADES = [\n  \"ver propiedades\", \"quiero ver\", \"enviame\", \"mandame\", \"envienme\",\n  \"catalogo\", \"lista de propiedades\", \"quiero informacion\",\n  \"que propiedades\", \"ver opciones\", \"enviar propiedades\",\n  \"que tienen disponible\", \"me interesan las propiedades\",\n  \"mas informacion\", \"quiero comprar\", \"quiero arrendar\"\n];\n\nconst body = ($input.first().json && $input.first().json.body) || $input.first().json || {};\n\n// Teléfono — acepta variantes con sufijo JID de WhatsApp (@s.whatsapp.net).\nconst telefonoRaw = (body.telefono || body.phone || body.numero || \"\").toString();\nconst telefono = telefonoRaw.split(\"@\")[0].replace(/\\D/g, \"\");\nif (!telefono) throw new Error(\"telefono requerido en el payload del webhook\");\n\nconst mensaje = norm(\n  body.mensaje || body.message || body.text ||\n  (body.data && body.data.message && body.data.message.conversation) || \"\"\n).trim();\nconst evento = (body.evento || \"mensaje_recibido\").toLowerCase();\nconst nombre = (body.nombre || body.name || \"\").toString();\n\n// ── Decisión de intención y transición de estado ───────────────────────\nlet intent, out;\nconst hitRechazo = matchAny(mensaje, RECHAZO);\nconst antiRechazo = matchAny(mensaje, ANTI_RECHAZO);\n\nif (hitRechazo && !antiRechazo) {\n  // Señal fuerte: reemplaza TODO el estado del lead por \"No interesa\".\n  intent = \"rechazo\";\n  out = { tag_nombres: [\"No interesa\"], mode: \"add\", grupo_exclusivo: \"estado_lead\" };\n} else if (matchAny(mensaje, PROPIEDADES)) {\n  // Quiere propiedades: quita estados contradictorios pero respeta agente/cita.\n  intent = \"propiedades\";\n  out = {\n    tag_nombres: [\"Solo quiere propiedades\"], mode: \"add\",\n    remove_tag_nombres: [\"No interesa\", \"Pendiente asignar agente\"]\n  };\n} else {\n  // Respondió algo (incl. media/vacío): marcar para agente SOLO si aún no\n  // tiene un estado asignado (no pisa \"Cita agendada\", \"Agente asignado\", etc.).\n  intent = \"respuesta_generica\";\n  out = {\n    tag_nombres: [\"Pendiente asignar agente\"], mode: \"add\",\n    grupo_exclusivo: \"estado_lead\", solo_si_grupo_vacio: true\n  };\n}\n\nreturn [{\n  json: {\n    telefono,\n    nombre,\n    crear_si_no_existe: CREAR_LEAD_SI_NO_EXISTE,\n    ...out,\n    _debug: { mensaje_original: body.mensaje || \"\", intent, evento }\n  }\n}];\n"
+      },
+      "id": "node-classify",
+      "name": "Clasificar intención",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        300
+      ],
+      "notes": "Clasifica el mensaje del lead por keywords (match por palabra completa).\nPrioridad: rechazo > propiedades > respuesta generica.\nEmite la transicion de estado (grupo_exclusivo / remove / solo_si_grupo_vacio).\nEdita RECHAZO / PROPIEDADES / ANTI_RECHAZO para ajustar el vocabulario."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_FUNCTIONS_URL }}/tag-lead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyType": "json",
+        "jsonBody": "={{ JSON.stringify({ telefono: $json.telefono, tag_nombres: $json.tag_nombres, remove_tag_nombres: $json.remove_tag_nombres, mode: $json.mode, grupo_exclusivo: $json.grupo_exclusivo, solo_si_grupo_vacio: $json.solo_si_grupo_vacio, crear_si_no_existe: $json.crear_si_no_existe, nombre: $json.nombre }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-http-tag",
+      "name": "Actualizar etiqueta en Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        380,
+        300
+      ],
+      "notes": "Llama a la Edge Function tag-lead.\nRequiere variable de entorno en n8n:\n  SUPABASE_FUNCTIONS_URL = https://[proyecto].supabase.co/functions/v1\n  N8N_WEBHOOK_SECRET = (el mismo secreto que en Supabase)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log de resultado — append-only (nunca borra)\nconst resultado = $input.first().json;\nconst debug = $('Clasificar intención').first().json._debug || {};\n\nconsole.log(JSON.stringify({\n  ts: new Date().toISOString(),\n  telefono: $('Clasificar intención').first().json.telefono,\n  intent: debug.intent,\n  tag_ids: resultado.tag_ids,\n  success: resultado.success,\n  warning: resultado.warning || null\n}));\n\nreturn [{ json: { ok: true, ...resultado } }];\n"
+      },
+      "id": "node-log",
+      "name": "Log resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        300
+      ],
+      "notes": "Registra el resultado en el log de n8n. Append-only."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, tag_ids: $json.tag_ids }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-200",
+      "name": "Respuesta 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook /auto-tag-chile": {
+      "main": [
+        [
+          {
+            "node": "Validar secreto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar secreto": {
+      "main": [
+        [
+          {
+            "node": "Clasificar intención",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar intención": {
+      "main": [
+        [
+          {
+            "node": "Actualizar etiqueta en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar etiqueta en Supabase": {
+      "main": [
+        [
+          {
+            "node": "Log resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log resultado": {
+      "main": [
+        [
+          {
+            "node": "Respuesta 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "realtyplus",
+    "campana-chile",
+    "etiquetas"
+  ]
+}

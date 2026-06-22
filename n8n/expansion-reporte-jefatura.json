@@ -1,0 +1,313 @@
+{
+  "name": "RealtyPlus — Reporte Etiquetados → Jefatura",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "expansion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook /expansion",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        300
+      ],
+      "webhookId": "expansion-jefatura"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-secret",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] || '' }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET || '' }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-secret",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        60,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n//  Nodo \"Construir Reporte HTML\" — RealtyPlus Nexus\n//  Transforma el payload de /expansion en un correo HTML\n//  con la marca RealtyPlus + un adjunto .html de fidelidad total.\n//  Modo de ejecución: \"Run Once for All Items\".\n// ============================================================\n\n// ── CONFIGURACIÓN (editar estas 3 líneas) ───────────────────\nconst DEST = \"jefatura@realtyplus.es\";          // <-- correo de la jefatura\nconst LOGO = \"https://realtyplus-nexus.vercel.app/realtyplus-logo.png\";\nconst NAVY = \"#003366\";\nconst RED  = \"#cc0000\";\n// ────────────────────────────────────────────────────────────\n\n// El webhook entrega el cuerpo en .json.body; si llega plano, usar .json\nconst p = ($input.first().json && $input.first().json.body) || $input.first().json || {};\nconst etiquetas = Array.isArray(p.etiquetas) ? p.etiquetas : [];\n\nconst esc = (s) => String(s ?? \"\")\n  .replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\")\n  .replace(/\\n/g, \"<br>\");\n\nconst fmtTs = (iso) => {\n  if (!iso) return \"\";\n  const d = new Date(iso);\n  if (isNaN(d.getTime())) return \"\";\n  return d.toLocaleDateString(\"es-ES\", { day: \"2-digit\", month: \"2-digit\", year: \"2-digit\" })\n    + \" \" + d.toLocaleTimeString(\"es-ES\", { hour: \"2-digit\", minute: \"2-digit\" });\n};\nconst fmtDate = (iso) => {\n  if (!iso) return \"—\";\n  const d = new Date(iso);\n  return isNaN(d.getTime()) ? \"—\"\n    : d.toLocaleDateString(\"es-ES\", { day: \"2-digit\", month: \"2-digit\", year: \"numeric\" });\n};\n\nconst hoy = new Date().toLocaleDateString(\"es-ES\", { day: \"2-digit\", month: \"long\", year: \"numeric\" });\n\n// ── KPIs globales ───────────────────────────────────────────\nconst totalLeads = p.total_leads ?? etiquetas.reduce((a, t) => a + (t.total_leads || 0), 0);\nconst totalMsgs  = p.total_mensajes ?? 0;\nconst respondieron = etiquetas.reduce((a, t) => a + (t.respondieron || 0), 0);\nconst tasa = totalLeads > 0 ? Math.round((respondieron / totalLeads) * 100) : 0;\n\n// ── Tarjeta de un lead con su conversación ──────────────────\nconst buildLead = (l, tagColor) => {\n  const msgs = Array.isArray(l.conversacion) ? l.conversacion : [];\n  const env = l.mensajes_enviados ?? msgs.filter((m) => m.direccion === \"outbound\").length;\n  const rec = l.mensajes_recibidos ?? msgs.filter((m) => m.direccion === \"inbound\").length;\n\n  const bubbles = msgs.map((m) => {\n    const out = m.direccion === \"outbound\";\n    const canal = (m.canal && m.canal !== \"WhatsApp\") ? `<span class=\"cb\">${esc(m.canal)}</span>` : \"\";\n    const txt = esc((m.contenido || \"\").trim());\n    return `<div class=\"brow ${out ? \"o\" : \"i\"}\"><div class=\"bub ${out ? \"bo\" : \"bi\"}\">${canal}<div class=\"bx\">${txt || \"<em style='opacity:.4'>Media</em>\"}</div><div class=\"bt\">${fmtTs(m.fecha)}</div></div></div>`;\n  }).join(\"\");\n\n  const etqs = (l.etiquetas || []).map((n) => `<span class=\"chip\">${esc(n)}</span>`).join(\"\");\n\n  return `<div class=\"lead\">\n    <div class=\"lhd\">\n      <div class=\"lav\" style=\"background:${tagColor || NAVY}\">${esc((l.nombre || \"?\").charAt(0).toUpperCase())}</div>\n      <div class=\"lin\">\n        <div class=\"lnm\">${esc(l.nombre || \"Sin nombre\")}</div>\n        <div class=\"lmt\">📱 ${esc(l.telefono || \"\")}${l.pais ? ` · 🌍 ${esc(l.pais)}` : \"\"}${l.email ? ` · ✉ ${esc(l.email)}` : \"\"}</div>\n        <div class=\"lbg\">\n          <span class=\"bg\">${esc(l.estado || \"sin estado\")}</span>\n          ${l.id_contacto ? `<span class=\"bg id\">ID ${esc(l.id_contacto)}</span>` : \"\"}\n          ${l.ha_respondido ? `<span class=\"bg ok\">✅ Respondió</span>` : \"\"}\n          ${l.bot_activo ? `<span class=\"bg bot\">🤖 Bot</span>` : \"\"}\n        </div>\n      </div>\n      <div class=\"lst\">\n        <div class=\"st\"><b style=\"color:#16a34a\">${env}</b><small>Env</small></div>\n        <div class=\"st\"><b style=\"color:${NAVY}\">${rec}</b><small>Rec</small></div>\n        <div class=\"st\"><b>${msgs.length}</b><small>Total</small></div>\n      </div>\n    </div>\n    ${etqs ? `<div class=\"erow\">${etqs}</div>` : \"\"}\n    <div class=\"drow\">Último contacto: <b>${fmtDate(l.ultimo_contacto_at)}</b>${l.fecha_proximo_contacto ? ` · Próximo: <b>${fmtDate(l.fecha_proximo_contacto)}</b>` : \"\"}${l.origen ? ` · Origen: <b>${esc(l.origen)}</b>` : \"\"}</div>\n    ${msgs.length ? `<div class=\"chd\">💬 ${msgs.length} mensajes</div><div class=\"cha\">${bubbles}</div>` : `<div class=\"nom\">Sin mensajes registrados</div>`}\n  </div>`;\n};\n\n// ── Secciones por etiqueta (ya vienen agrupadas en el payload) ──\nconst secciones = etiquetas.map((t) => {\n  const leads = Array.isArray(t.leads) ? t.leads : [];\n  const cards = leads.length\n    ? leads.map((l) => buildLead(l, t.color)).join(\"\")\n    : `<div class=\"nom\">Sin leads en esta etiqueta</div>`;\n  return `<div class=\"tag\">\n    <div class=\"thd\" style=\"border-left:5px solid ${t.color || NAVY}\">\n      <span class=\"tdot\" style=\"background:${t.color || NAVY}\"></span>\n      <span class=\"ttl\">${esc(t.nombre)}</span>\n      <span class=\"tpill\" style=\"background:${t.color || NAVY}1a;color:${t.color || NAVY}\">${t.total_leads ?? leads.length} leads</span>\n      <span class=\"tpill2\">${t.respondieron || 0} respondieron · ${t.tasa_respuesta || 0}%</span>\n    </div>\n    <div class=\"tbd\">${cards}</div>\n  </div>`;\n}).join(\"\");\n\n// ── HTML final (marca RealtyPlus) ───────────────────────────\nconst html = `<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Reporte de Leads Etiquetados — ${hoy}</title>\n<style>\n*{box-sizing:border-box;margin:0;padding:0}\nbody{font-family:'Segoe UI',Arial,sans-serif;background:#eef1f5;color:#1f2937;font-size:13px;line-height:1.5}\n.wrap{max-width:820px;margin:0 auto;background:#fff}\n.ph{background:#fff;border-bottom:4px solid ${RED};padding:22px 28px;text-align:center}\n.ph img{height:54px;width:auto}\n.ph h1{font-size:18px;color:${NAVY};margin-top:12px;font-weight:700}\n.ph p{color:#6b7280;font-size:12px;margin-top:4px}\n.kpis{display:flex;flex-wrap:wrap;gap:10px;padding:18px 28px;background:${NAVY}}\n.kpi{flex:1;min-width:120px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:14px;text-align:center}\n.kpi b{display:block;font-size:24px;color:#fff}.kpi small{font-size:10px;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px}\n.main{padding:20px 28px 36px}\n.tag{border:1px solid #e2e8f0;border-radius:10px;margin-bottom:18px;overflow:hidden}\n.thd{display:flex;align-items:center;gap:10px;padding:13px 16px;background:#f8fafc}\n.tdot{width:12px;height:12px;border-radius:50%;flex-shrink:0}\n.ttl{font-size:15px;font-weight:700;color:${NAVY};flex:1}\n.tpill{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}\n.tpill2{font-size:11px;color:#6b7280}\n.tbd{padding:12px}\n.lead{background:#fff;border:1px solid #eef1f5;border-radius:9px;margin-bottom:10px;overflow:hidden}\n.lhd{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fbfcfe}\n.lav{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}\n.lin{flex:1;min-width:0}\n.lnm{font-size:14px;font-weight:700;color:#111827}\n.lmt{font-size:11px;color:#6b7280;margin-top:2px}\n.lbg{margin-top:5px}\n.bg{display:inline-block;background:#eef1f5;color:#6b7280;padding:1px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-right:4px}\n.bg.id{background:#e0e7ff;color:${NAVY}}.bg.ok{background:#dcfce7;color:#16a34a}.bg.bot{background:#fef3c7;color:#b45309}\n.lst{display:flex;gap:14px;flex-shrink:0;text-align:center}\n.st b{display:block;font-size:16px}.st small{font-size:9px;color:#9ca3af}\n.erow{padding:8px 14px;border-top:1px solid #f1f5f9}\n.chip{display:inline-block;background:${NAVY}12;color:${NAVY};border:1px solid ${NAVY}33;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600;margin-right:4px}\n.drow{padding:7px 14px;font-size:11px;color:#9ca3af;border-top:1px solid #f1f5f9}.drow b{color:#374151}\n.nom{padding:12px 14px;color:#cbd5e1;font-style:italic}\n.chd{padding:8px 14px;background:${NAVY};color:#fff;font-size:11px;font-weight:600}\n.cha{background:#f6f8fb;padding:12px 14px}\n.brow{display:flex;margin-bottom:7px}.brow.o{justify-content:flex-end}.brow.i{justify-content:flex-start}\n.bub{max-width:74%;padding:7px 11px;border-radius:11px;word-break:break-word}\n.bo{background:${NAVY};color:#fff;border-bottom-right-radius:2px}\n.bi{background:#fff;color:#1f2937;border:1px solid #e2e8f0;border-bottom-left-radius:2px}\n.bx{font-size:12px}.bt{font-size:10px;opacity:.6;text-align:right;margin-top:3px}\n.cb{display:inline-block;background:rgba(0,0,0,.08);border-radius:3px;padding:0 4px;font-size:9px;margin-bottom:3px}\n.ft{text-align:center;padding:16px;color:#9ca3af;font-size:10px;border-top:1px solid #eef1f5}\n</style></head><body><div class=\"wrap\">\n<div class=\"ph\"><img src=\"${LOGO}\" alt=\"RealtyPlus — Servicios Inmobiliarios\"><h1>Reporte de Leads Etiquetados</h1><p>Generado el ${hoy} · Filtro: ${esc(p.filtro || \"todas\")} · ${totalLeads} leads · ${totalMsgs} mensajes</p></div>\n<div class=\"kpis\">\n  <div class=\"kpi\"><b>${totalLeads}</b><small>Total leads</small></div>\n  <div class=\"kpi\"><b>${respondieron}</b><small>Respondieron</small></div>\n  <div class=\"kpi\"><b>${tasa}%</b><small>Tasa respuesta</small></div>\n  <div class=\"kpi\"><b>${etiquetas.length}</b><small>Etiquetas</small></div>\n</div>\n<div class=\"main\">${secciones || '<div class=\"nom\">No hay leads etiquetados en este envío.</div>'}</div>\n<div class=\"ft\">RealtyPlus · Servicios Inmobiliarios · Generado automáticamente por RealtyPlus Nexus · ${hoy}</div>\n</div></body></html>`;\n\nconst asunto = `📋 RealtyPlus — Reporte de leads etiquetados (${p.filtro || \"todas\"}) · ${totalLeads} leads · ${hoy}`;\n\n// Adjunto .html de fidelidad total (los agentes lo abren en navegador)\nconst fileName = `reporte-leads-${new Date().toISOString().slice(0, 10)}.html`;\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(html, \"utf-8\"), fileName, \"text/html\");\n\nreturn [{\n  json: {\n    to: DEST,\n    subject: asunto,\n    html,\n    filtro: p.filtro || \"todas\",\n    total_leads: totalLeads,\n    total_mensajes: totalMsgs,\n    total_etiquetas: etiquetas.length,\n  },\n  binary: { reporte: binary },\n}];\n"
+      },
+      "id": "node-build",
+      "name": "Construir Reporte HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "no-reply@realtyplus.es",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {
+          "attachments": "reporte"
+        }
+      },
+      "id": "node-email",
+      "name": "Enviar Email Jefatura",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        540,
+        220
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "REEMPLAZAR",
+          "name": "SMTP RealtyPlus"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/rest/v1/logs_expansion",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ evento: \"enviado\", filtro: $json.filtro, total_leads: $json.total_leads, total_mensajes: $json.total_mensajes, total_etiquetas: $json.total_etiquetas, destinatario: $json.to, detalle: \"Correo enviado correctamente\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-log-ok",
+      "name": "Log éxito (Supabase)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        120
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/rest/v1/logs_expansion",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ evento: \"error\", filtro: ($json.filtro || \"desconocido\"), destinatario: \"jefatura\", detalle: (\"Fallo al enviar email: \" + ($json.error && $json.error.message ? $json.error.message : \"error desconocido\")) }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-log-err",
+      "name": "Log error (Supabase)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        360
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, enviado_a: $node[\"Construir Reporte HTML\"].json.to, total_leads: $node[\"Construir Reporte HTML\"].json.total_leads }) }}",
+        "options": {}
+      },
+      "id": "node-resp-ok",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: \"Fallo al enviar el correo. Registrado en logs_expansion.\" }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-resp-err",
+      "name": "Responder error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: \"Unauthorized: X-Webhook-Secret inválido\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "node-resp-401",
+      "name": "Responder 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook /expansion": {
+      "main": [
+        [
+          {
+            "node": "Validar secreto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar secreto": {
+      "main": [
+        [
+          {
+            "node": "Construir Reporte HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Reporte HTML": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email Jefatura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Email Jefatura": {
+      "main": [
+        [
+          {
+            "node": "Log éxito (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log éxito (Supabase)": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log error (Supabase)": {
+      "main": [
+        [
+          {
+            "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
