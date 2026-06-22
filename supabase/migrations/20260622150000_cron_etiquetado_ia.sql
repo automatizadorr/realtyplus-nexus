@@ -1,0 +1,38 @@
+-- =====================================================================
+-- CRON: auto-etiquetado con IA cada ~10 horas
+-- ---------------------------------------------------------------------
+-- Llama a la Edge Function `cron-etiquetado-ia`, que:
+--   1. toma los leads NO archivados con actividad reciente,
+--   2. los etiqueta con DeepSeek (vía `etiquetar-ia`) y genera un resumen,
+--   3. postea el lote al webhook de n8n /auto-tag-chile.
+--
+-- Ejecuta este bloque APARTE en el SQL Editor con tu secreto real.
+-- NO se versiona con el secreto. Requiere extensiones pg_cron y pg_net.
+--
+-- Nota sobre la cadencia: la expresión '0 */10 * * *' dispara a las 00:00,
+-- 10:00 y 20:00. La función usa una ventana de 12h (VENTANA_HORAS) con solape
+-- para que ningún lead con actividad quede sin procesar entre corridas.
+-- (Reetiquetar es idempotente, así que el solape no causa duplicados.)
+-- ---------------------------------------------------------------------
+-- create extension if not exists pg_cron;
+-- create extension if not exists pg_net;
+--
+-- select cron.schedule(
+--   'cron-etiquetado-ia',
+--   '0 */10 * * *',
+--   $$
+--     select net.http_post(
+--       url     := 'https://owykkhwqpnumvgdeugmj.functions.supabase.co/cron-etiquetado-ia',
+--       headers := jsonb_build_object(
+--                    'Content-Type','application/json',
+--                    'x-webhook-secret','<TU_N8N_WEBHOOK_SECRET>'
+--                  ),
+--       body    := '{}'::jsonb
+--     );
+--   $$
+-- );
+--
+-- Para ver / borrar el cron más tarde:
+--   select * from cron.job;
+--   select cron.unschedule('cron-etiquetado-ia');
+-- =====================================================================

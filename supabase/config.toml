@@ -15,4 +15,16 @@ verify_jwt = false
 [functions.voice-leads]
 verify_jwt = false
 
+[functions.tag-lead]
+verify_jwt = false
+
+[functions.etiquetar-ia]
+verify_jwt = false
+
+[functions.send-auto-tag-chile]
+verify_jwt = false
+
+[functions.cron-etiquetado-ia]
+verify_jwt = false
+
 
