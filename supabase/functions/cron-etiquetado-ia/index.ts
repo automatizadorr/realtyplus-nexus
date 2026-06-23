@@ -77,24 +77,47 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized" }, 401);
     }
 
+    // Modo de prueba: dry_run NO aplica etiquetas ni postea a n8n (solo devuelve el
+    // lote que SE enviaría). pais filtra los leads por país (ej. "Bolivia") en vez de
+    // por actividad reciente — útil para probar el pipeline sobre un segmento.
+    const body = await req.json().catch(() => ({}));
+    const dryRun = body?.dry_run === true;
+    const paisFiltro = (body?.pais ?? "").toString().trim();
+
     const VENTANA_HORAS = Number(Deno.env.get("VENTANA_HORAS") ?? "12");
     const MAX_LEADS = Number(Deno.env.get("MAX_LEADS") ?? "50");
     const cutoff = new Date(Date.now() - VENTANA_HORAS * 3600 * 1000).toISOString();
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // 1. Teléfonos con actividad reciente (cualquier dirección) dentro de la ventana.
-    const { data: recientes, error: recErr } = await supabase
-      .from("mensajes_whatsapp")
-      .select("telefono, created_at")
-      .gte("created_at", cutoff)
-      .order("created_at", { ascending: false });
-    if (recErr) throw recErr;
-
     // Normaliza al núcleo de dígitos (los mensajes pueden traer sufijo JID @s.whatsapp.net).
     const coreTel = (t: unknown) => (t ?? "").toString().split("@")[0].replace(/\D/g, "");
-    const telefonos = [...new Set((recientes ?? []).map((m) => coreTel(m.telefono)).filter(Boolean))]
-      .slice(0, MAX_LEADS);
+
+    // 1. Teléfonos a procesar:
+    //    - con `pais`: todos los leads (no archivados) de ese país.
+    //    - sin `pais`: teléfonos con actividad reciente dentro de la ventana.
+    let telefonos: string[];
+    if (paisFiltro) {
+      const { data: porPais, error: paisErr } = await supabase
+        .from("leads_campana")
+        .select("telefono, archivado, pais")
+        .ilike("pais", `%${paisFiltro}%`)
+        .limit(MAX_LEADS);
+      if (paisErr) throw paisErr;
+      telefonos = [...new Set((porPais ?? [])
+        .filter((l) => l.archivado !== true)
+        .map((l) => coreTel(l.telefono))
+        .filter(Boolean))].slice(0, MAX_LEADS);
+    } else {
+      const { data: recientes, error: recErr } = await supabase
+        .from("mensajes_whatsapp")
+        .select("telefono, created_at")
+        .gte("created_at", cutoff)
+        .order("created_at", { ascending: false });
+      if (recErr) throw recErr;
+      telefonos = [...new Set((recientes ?? []).map((m) => coreTel(m.telefono)).filter(Boolean))]
+        .slice(0, MAX_LEADS);
+    }
 
     // 2. Catálogo COMPLETO de etiquetas (service role → ignora RLS).
     const { data: tags, error: tagsErr } = await supabase
@@ -112,7 +135,7 @@ Deno.serve(async (req) => {
       // 2a. Lead no archivado para este teléfono (acepta sufijo JID de WhatsApp).
       const { data: lead } = await supabase
         .from("leads_campana")
-        .select("id, id_contacto, nombre, telefono, pais, archivado")
+        .select("id, id_contacto, nombre, telefono, pais, email, archivado")
         .or(`telefono.eq.${telefono},telefono.like.${telefono}@%`)
         .maybeSingle();
       if (!lead || lead.archivado === true) continue;
@@ -149,6 +172,7 @@ Deno.serve(async (req) => {
             nombre: lead.nombre ?? "",
             conversacion,
             crear_si_no_existe: false,
+            aplicar: !dryRun,
           }),
           signal: AbortSignal.timeout(35000),
         });
@@ -158,6 +182,7 @@ Deno.serve(async (req) => {
           telefono,
           id_contacto: lead.id_contacto ?? "",
           nombre: lead.nombre ?? "",
+          correo: lead.email ?? "",
           pais: lead.pais ?? "",
           etiquetas,
           resumen: (data?.resumen ?? "").toString(),
@@ -165,7 +190,7 @@ Deno.serve(async (req) => {
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        resultados.push({ telefono, id_contacto: lead.id_contacto ?? "", nombre: lead.nombre ?? "", pais: lead.pais ?? "", etiquetas: [], resumen: "", ok: false, error: msg });
+        resultados.push({ telefono, id_contacto: lead.id_contacto ?? "", nombre: lead.nombre ?? "", correo: lead.email ?? "", pais: lead.pais ?? "", etiquetas: [], resumen: "", ok: false, error: msg });
       }
     }
 
@@ -186,11 +211,13 @@ Deno.serve(async (req) => {
       (r) => (Array.isArray(r.etiquetas) ? r.etiquetas.length : 0) === 0,
     ).length;
 
-    // 4. Postear el lote al webhook de n8n (/auto-tag-chile). Si no hay leads que
-    //    enviar, se omite la llamada para no disparar el webhook con un lote vacío.
+    // 4. Postear el lote al webhook de n8n (/auto-tag-chile). En dry_run NO se postea
+    //    (ni se aplicaron etiquetas). Si no hay leads, se omite la llamada.
     let n8n_status = 0;
     let n8n_response = "";
-    if (leads_a_enviar.length > 0) {
+    if (dryRun) {
+      n8n_response = "dry_run: no se aplicaron etiquetas ni se posteó a n8n";
+    } else if (leads_a_enviar.length > 0) {
       const payload = {
         evento: "cron_etiquetado_ia",
         generado_en: new Date().toISOString(),
@@ -217,14 +244,17 @@ Deno.serve(async (req) => {
 
     return json({
       success: true,
+      ...(dryRun ? { dry_run: true } : {}),
+      ...(paisFiltro ? { pais: paisFiltro } : {}),
       ventana_horas: VENTANA_HORAS,
-      leads_con_actividad: telefonos.length,
+      leads_candidatos: telefonos.length,
       leads_procesados: resultados.length,
       leads_enviados: leads_a_enviar.length,
       omitidos_sigue_campana,
       omitidos_sin_etiqueta,
       n8n_status,
       n8n_response,
+      ...(dryRun ? { leads_preview: leads_a_enviar } : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

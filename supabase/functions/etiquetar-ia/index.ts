@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
     const telefono = (body?.telefono ?? "").toString().replace(/\D/g, "");
     const nombre = (body?.nombre ?? "").toString().trim();
     const crearSiNoExiste = body?.crear_si_no_existe !== false; // default true
+    const aplicar = body?.aplicar !== false; // default true; false = dry-run (no escribe en BD)
     const conversacion = conversacionATexto(body?.conversacion);
 
     if (!telefono) return json({ error: "telefono requerido" }, 400);
@@ -188,6 +189,17 @@ Deno.serve(async (req) => {
         success: true,
         skipped: true,
         reason: "DeepSeek no encontró señal suficiente para etiquetar",
+        telefono,
+        resumen,
+        decision,
+      });
+    }
+
+    // Modo dry-run: devolver la decisión SIN aplicar etiquetas (no escribe en BD).
+    if (!aplicar) {
+      return json({
+        success: true,
+        dry_run: true,
         telefono,
         resumen,
         decision,
