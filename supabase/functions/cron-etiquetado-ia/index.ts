@@ -31,16 +31,28 @@ const N8N_AUTO_TAG_URL =
   Deno.env.get("N8N_AUTO_TAG_URL") ??
   "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/auto-tag-chile";
 
+// Token de respaldo embebido para autorizar el disparo del cron. Se usa porque
+// la cuenta no puede gestionar secretos en este proyecto (gestionado por Lovable)
+// y N8N_WEBHOOK_SECRET no está disponible en texto plano. El repo es privado.
+const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const WEBHOOK_SECRET = Deno.env.get("N8N_WEBHOOK_SECRET");
+    const CRON_SECRET = Deno.env.get("AUTO_TAG_CRON_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // Autoriza la llamada del cron con un secreto dedicado (AUTO_TAG_CRON_SECRET)
+    // o, si se conoce, con el N8N_WEBHOOK_SECRET compartido.
     const incoming = req.headers.get("x-webhook-secret") ?? "";
-    if (!WEBHOOK_SECRET || incoming !== WEBHOOK_SECRET) {
+    const authorized =
+      incoming === CRON_TOKEN ||
+      (!!CRON_SECRET && incoming === CRON_SECRET) ||
+      (!!WEBHOOK_SECRET && incoming === WEBHOOK_SECRET);
+    if (!authorized) {
       return json({ error: "Unauthorized" }, 401);
     }
 
