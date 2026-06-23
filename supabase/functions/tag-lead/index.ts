@@ -43,6 +43,7 @@ const norm = (s: string) =>
 // Editable: si dos estados pueden coexistir, sácalos del grupo.
 const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
   estado_lead: [
+    "Sigue en campaña",
     "No interesa",
     "Agente asignado",
     "Pendiente asignar agente",

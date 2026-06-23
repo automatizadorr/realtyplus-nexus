@@ -35,6 +35,7 @@ const DEEPSEEK_MODEL = "deepseek-chat";
 // Un lead tiene UN solo estado de ciclo de vida a la vez.
 const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
   estado_lead: [
+    "Sigue en campaña",
     "No interesa",
     "Agente asignado",
     "Pendiente asignar agente",
@@ -118,8 +119,14 @@ Deno.serve(async (req) => {
       `2. Las siguientes son estados de ciclo de vida MUTUAMENTE EXCLUYENTES (elige máximo UNO): ` +
       estados.join(", ") + `. ` +
       `Si asignas uno de estos, pon "grupo_exclusivo": "estado_lead" para que reemplace al estado anterior.\n` +
-      `3. Criterios de estado:\n` +
-      `   - "No interesa": el lead rechaza, pide no ser contactado o darse de baja.\n` +
+      `3. Criterios de estado (el lead tiene EXACTAMENTE UNO):\n` +
+      `   - "Sigue en campaña": el lead AÚN NO HA RESPONDIDO. La conversación solo tiene ` +
+      `mensajes del agente (o no hay ninguna respuesta real del lead). Es el estado por ` +
+      `defecto mientras no conteste; sigue en campaña hasta que responda. ` +
+      `NO lo confundas con "No interesa".\n` +
+      `   - "No interesa": el lead SÍ respondió y RECHAZA explícitamente: dice que no le ` +
+      `interesa, pide no ser contactado o darse de baja. Requiere un rechazo claro del lead, ` +
+      `no el simple hecho de no haber contestado.\n` +
       `   - "Solo quiere propiedades": pide ver propiedades/catálogo/opciones o quiere comprar/arrendar.\n` +
       `   - "Cita agendada": acordó una reunión, visita o llamada con fecha/hora.\n` +
       `   - "Agente asignado": ya está en manos de un agente humano.\n` +

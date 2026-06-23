@@ -5,6 +5,12 @@
 //    que aplica las etiquetas en la BD y devuelve además un resumen breve.
 // 3. Postea un LOTE al webhook de n8n /auto-tag-chile con, por cada lead:
 //    { telefono, nombre, etiquetas, resumen }, más el catálogo completo de etiquetas.
+//    SOLO se envían los leads que recibieron alguna etiqueta, EXCLUYENDO únicamente
+//    "Sigue en campaña" (el lead aún no contestó). Todos los demás estados van a
+//    expansión, incluido "No interesa" (rechazó).
+//    Cuando un "Sigue en campaña" responde, su actividad reciente lo hace pasar de
+//    nuevo por etiquetar-ia, que (grupo exclusivo estado_lead) reemplaza ese estado
+//    por el que corresponda → deja de estar excluido y se envía a expansión.
 //
 // Auth: header X-Webhook-Secret (mismo secreto que N8N_WEBHOOK_SECRET).
 // Pensado para invocarse desde pg_cron vía pg_net (ver migración).
@@ -35,6 +41,21 @@ const N8N_AUTO_TAG_URL =
 // la cuenta no puede gestionar secretos en este proyecto (gestionado por Lovable)
 // y N8N_WEBHOOK_SECRET no está disponible en texto plano. El repo es privado.
 const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
+
+// Único estado que NO se envía a expansión: "Sigue en campaña" (el lead aún no ha
+// contestado, sigue trabajándose en campaña). El resto SÍ se envía, incluido
+// "No interesa" (rechazó). En cuanto un "Sigue en campaña" conteste, etiquetar-ia
+// (grupo exclusivo estado_lead) reemplaza ese estado y el lead entra al envío.
+const ETIQUETAS_NO_ENVIAR = ["Sigue en campaña"];
+
+// Normaliza para comparar nombres de etiqueta (minúsculas, sin tildes, sin espacios).
+const norm = (s: unknown) =>
+  (s ?? "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -148,29 +169,50 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Postear el lote al webhook de n8n (/auto-tag-chile).
-    const payload = {
-      evento: "cron_etiquetado_ia",
-      generado_en: new Date().toISOString(),
-      ventana_horas: VENTANA_HORAS,
-      total: resultados.length,
-      leads: resultados,
-      etiquetas_totales,
-    };
+    // 3. Filtrar qué leads se envían a expansión vía n8n:
+    //    - SOLO los que recibieron al menos una etiqueta.
+    //    - EXCLUYENDO únicamente "Sigue en campaña" (el lead aún no contestó). Al
+    //      contestar, etiquetar-ia reemplaza ese estado y el lead vuelve a entrar aquí.
+    const noEnviarNorm = ETIQUETAS_NO_ENVIAR.map(norm);
+    const tieneEstadoEnCampana = (etqs: unknown) =>
+      Array.isArray(etqs) && etqs.some((e) => noEnviarNorm.includes(norm(e)));
 
+    const leads_a_enviar = resultados.filter((r) => {
+      const etiquetas = Array.isArray(r.etiquetas) ? r.etiquetas : [];
+      return etiquetas.length > 0 && !tieneEstadoEnCampana(etiquetas);
+    });
+    const omitidos_sigue_campana = resultados.filter((r) => tieneEstadoEnCampana(r.etiquetas)).length;
+    const omitidos_sin_etiqueta = resultados.filter(
+      (r) => (Array.isArray(r.etiquetas) ? r.etiquetas.length : 0) === 0,
+    ).length;
+
+    // 4. Postear el lote al webhook de n8n (/auto-tag-chile). Si no hay leads que
+    //    enviar, se omite la llamada para no disparar el webhook con un lote vacío.
     let n8n_status = 0;
     let n8n_response = "";
-    try {
-      const wh = await fetch(N8N_AUTO_TAG_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-webhook-secret": WEBHOOK_SECRET },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(30000),
-      });
-      n8n_status = wh.status;
-      n8n_response = await wh.text();
-    } catch (e) {
-      n8n_response = e instanceof Error ? e.message : String(e);
+    if (leads_a_enviar.length > 0) {
+      const payload = {
+        evento: "cron_etiquetado_ia",
+        generado_en: new Date().toISOString(),
+        ventana_horas: VENTANA_HORAS,
+        total: leads_a_enviar.length,
+        leads: leads_a_enviar,
+        etiquetas_totales,
+      };
+      try {
+        const wh = await fetch(N8N_AUTO_TAG_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-webhook-secret": WEBHOOK_SECRET },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(30000),
+        });
+        n8n_status = wh.status;
+        n8n_response = await wh.text();
+      } catch (e) {
+        n8n_response = e instanceof Error ? e.message : String(e);
+      }
+    } else {
+      n8n_response = "sin leads que enviar (todos sin etiqueta o en 'Sigue en campaña')";
     }
 
     return json({
@@ -178,6 +220,9 @@ Deno.serve(async (req) => {
       ventana_horas: VENTANA_HORAS,
       leads_con_actividad: telefonos.length,
       leads_procesados: resultados.length,
+      leads_enviados: leads_a_enviar.length,
+      omitidos_sigue_campana,
+      omitidos_sin_etiqueta,
       n8n_status,
       n8n_response,
     });
