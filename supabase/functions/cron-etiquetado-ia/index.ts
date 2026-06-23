@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       // 2a. Lead no archivado para este teléfono (acepta sufijo JID de WhatsApp).
       const { data: lead } = await supabase
         .from("leads_campana")
-        .select("id, id_contacto, nombre, telefono, archivado")
+        .select("id, id_contacto, nombre, telefono, pais, archivado")
         .or(`telefono.eq.${telefono},telefono.like.${telefono}@%`)
         .maybeSingle();
       if (!lead || lead.archivado === true) continue;
@@ -137,13 +137,14 @@ Deno.serve(async (req) => {
           telefono,
           id_contacto: lead.id_contacto ?? "",
           nombre: lead.nombre ?? "",
+          pais: lead.pais ?? "",
           etiquetas,
           resumen: (data?.resumen ?? "").toString(),
           ok: res.ok && data?.success === true,
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        resultados.push({ telefono, id_contacto: lead.id_contacto ?? "", nombre: lead.nombre ?? "", etiquetas: [], resumen: "", ok: false, error: msg });
+        resultados.push({ telefono, id_contacto: lead.id_contacto ?? "", nombre: lead.nombre ?? "", pais: lead.pais ?? "", etiquetas: [], resumen: "", ok: false, error: msg });
       }
     }
 
