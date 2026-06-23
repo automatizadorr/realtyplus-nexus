@@ -60,10 +60,29 @@ const page = (inner) => '<!DOCTYPE html><html lang="es"><head><meta charset="utf
   + '<body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">'
   + '<table role="presentation" width="100%" style="background:#eef2f7;padding:24px 12px;"><tr><td align="center">' + wrap(inner) + '</td></tr></table></body></html>';
 
+// === Traer id_contacto y pais desde la BD (no depende del payload del cron) ===
+const coreTel = (t) => String(t || "").split("@")[0].replace(/\D/g, "");
+const infoTel = {};
+try {
+  const cores = [...new Set(leadsOrden.map((l) => coreTel(l.telefono)).filter(Boolean))];
+  if (cores.length) {
+    const rows = await this.helpers.httpRequest({
+      method: "GET",
+      url: SUPA + "/rest/v1/leads_campana?select=telefono,id_contacto,pais&telefono=in.(" + cores.join(",") + ")",
+      headers: { apikey: SVC, Authorization: "Bearer " + SVC },
+      json: true,
+    });
+    for (const r of (rows || [])) infoTel[coreTel(r.telefono)] = { id_contacto: r.id_contacto, pais: r.pais };
+  }
+} catch (e) { /* si falla la consulta, caemos a lo que venga en el payload */ }
+
+const idcDe = (l) => { const i = infoTel[coreTel(l.telefono)] || {}; return (i.id_contacto != null && i.id_contacto !== "") ? i.id_contacto : (l.id_contacto || ""); };
+const paisDe = (l) => { const i = infoTel[coreTel(l.telefono)] || {}; return (i.pais != null && i.pais !== "") ? i.pais : (l.pais || ""); };
+
 // === CSV para Excel (BOM + separador ;) ===
 const csvEsc = (s) => '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"';
 const csvRows = [["ID Contacto", "Nombre", "Telefono", "Pais", "Etiquetas", "Resumen"].map(csvEsc).join(";")];
-for (const l of leadsOrden) csvRows.push([l.id_contacto || "", l.nombre || "", l.telefono || "", l.pais || "", (l.etiquetas || []).join(", "), l.resumen || ""].map(csvEsc).join(";"));
+for (const l of leadsOrden) csvRows.push([idcDe(l), l.nombre || "", l.telefono || "", paisDe(l), (l.etiquetas || []).join(", "), l.resumen || ""].map(csvEsc).join(";"));
 const csv = "﻿" + csvRows.join("\r\n");
 
 // === Subir SOLO el CSV a Supabase Storage ===
