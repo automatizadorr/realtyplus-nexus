@@ -76,6 +76,22 @@ Deno.serve(async (req) => {
     const VENTANA_HORAS = Number(body?.ventana_horas) > 0 ? Number(body.ventana_horas) : 24;
     const cutoff = new Date(Date.now() - VENTANA_HORAS * 3600 * 1000).toISOString();
 
+    // Guarda de hora local (opcional): si se pasa hora_madrid, la función SOLO continúa
+    // cuando la hora actual en Europe/Madrid coincide. Permite agendar el cron a 06:00 Y
+    // 07:00 UTC y que dispare exactamente a las 08:00 de Madrid TODO el año (a prueba de
+    // horario de verano CEST/CET), sin enviar dos veces. No aplica en dry_run.
+    const horaMadrid =
+      body?.hora_madrid !== undefined && body?.hora_madrid !== null && Number.isFinite(Number(body.hora_madrid))
+        ? Math.floor(Number(body.hora_madrid)) : null;
+    if (!dryRun && horaMadrid !== null) {
+      const horaActual = Number(
+        new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }).format(new Date())
+      ) % 24;
+      if (horaActual !== horaMadrid) {
+        return json({ success: true, skipped: true, reason: `hora Madrid=${horaActual} ≠ objetivo ${horaMadrid}; no se envía en esta corrida` });
+      }
+    }
+
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
     // 1. Teléfonos con ACTIVIDAD en la ventana (WhatsApp + automatización).

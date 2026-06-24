@@ -9,9 +9,12 @@
 -- Ejecuta este bloque APARTE en el SQL Editor con tu secreto real.
 -- NO se versiona con el secreto. Requiere extensiones pg_cron y pg_net.
 --
--- Cadencia: '0 8 * * *' dispara todos los días a las 08:00 UTC. La función
--- usa ventana_horas=24 por defecto, así cubre exactamente el día anterior.
--- Ajusta la hora a tu conveniencia (UTC).
+-- Cadencia: 08:00 hora de MADRID, a prueba de horario de verano. pg_cron corre en
+-- UTC y Madrid alterna CEST (UTC+2, verano) / CET (UTC+1, invierno), así que se
+-- agenda a las 06:00 Y 07:00 UTC ('0 6,7 * * *') y la función usa la guarda
+-- hora_madrid=8: solo envía en la corrida cuya hora local de Madrid sea 08:00 (la
+-- otra se omite). Resultado: exactamente una vez al día a las 08:00 de Madrid.
+-- ventana_horas=24 cubre el día anterior completo.
 --
 -- Auth: el header x-webhook-secret acepta el N8N_WEBHOOK_SECRET o el token
 -- embebido del cron (rpchile_cron_2026_a8K3mZqL). Usa el que prefieras.
@@ -21,7 +24,7 @@
 --
 -- select cron.schedule(
 --   'enviar-expansion-24h',
---   '0 8 * * *',
+--   '0 6,7 * * *',
 --   $$
 --     select net.http_post(
 --       url     := 'https://owykkhwqpnumvgdeugmj.functions.supabase.co/enviar-expansion',
@@ -29,7 +32,7 @@
 --                    'Content-Type','application/json',
 --                    'x-webhook-secret','<TU_N8N_WEBHOOK_SECRET>'
 --                  ),
---       body    := jsonb_build_object('ventana_horas', 24)
+--       body    := jsonb_build_object('ventana_horas', 24, 'hora_madrid', 8)
 --     );
 --   $$
 -- );
