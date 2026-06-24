@@ -83,6 +83,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body?.dry_run === true;
     const paisFiltro = (body?.pais ?? "").toString().trim();
+    // Por defecto el cron SOLO ETIQUETA (acumula en leads_campana) y NO postea a n8n,
+    // para no fragmentar. El envío consolidado se hace todo junto a /expansion desde la
+    // página "Exportar Etiquetados" (TaggedExport) o con un servicio dedicado. Para
+    // restaurar el POST por-corrida al viejo /auto-tag-chile, pasar enviar:true.
+    const enviar = body?.enviar === true;
 
     const VENTANA_HORAS = Number(Deno.env.get("VENTANA_HORAS") ?? "12");
     const MAX_LEADS = Number(Deno.env.get("MAX_LEADS") ?? "50");
@@ -221,12 +226,15 @@ Deno.serve(async (req) => {
       (r) => (Array.isArray(r.etiquetas) ? r.etiquetas.length : 0) === 0,
     ).length;
 
-    // 4. Postear el lote al webhook de n8n (/auto-tag-chile). En dry_run NO se postea
-    //    (ni se aplicaron etiquetas). Si no hay leads, se omite la llamada.
+    // 4. POST a n8n. Por defecto NO se postea: el cron solo etiqueta y los datos quedan
+    //    en leads_campana para enviarlos TODOS JUNTOS a /expansion (reporte a jefatura).
+    //    Solo si enviar:true se hace el POST por-corrida al viejo /auto-tag-chile.
     let n8n_status = 0;
     let n8n_response = "";
     if (dryRun) {
       n8n_response = "dry_run: no se aplicaron etiquetas ni se posteó a n8n";
+    } else if (!enviar) {
+      n8n_response = "solo etiquetado: datos guardados en leads_campana. Enviar TODO JUNTO a /expansion desde 'Exportar Etiquetados'. (Para postear por-corrida usar enviar:true)";
     } else if (leads_a_enviar.length > 0) {
       const payload = {
         evento: "cron_etiquetado_ia",
@@ -255,6 +263,7 @@ Deno.serve(async (req) => {
     return json({
       success: true,
       ...(dryRun ? { dry_run: true } : {}),
+      ...(!dryRun && !enviar ? { solo_etiquetado: true } : {}),
       ...(paisFiltro ? { pais: paisFiltro } : {}),
       ventana_horas: VENTANA_HORAS,
       leads_candidatos: telefonos.length,
