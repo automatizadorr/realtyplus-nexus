@@ -69,6 +69,20 @@ function conversacionATexto(conv: unknown): string {
   return "";
 }
 
+// ¿El lead respondió alguna vez? true si la conversación trae al menos un turno del
+// LEAD con texto real (no solo mensajes del agente). Con array distinguimos por rol;
+// con string plano no se puede separar roles → asumimos true (que decida DeepSeek).
+function leadHaRespondido(conv: unknown): boolean {
+  if (!Array.isArray(conv)) return true;
+  return conv.some((turno) => {
+    const t = turno as Record<string, unknown>;
+    const rol = (t.rol ?? t.role ?? t.autor ?? "lead").toString();
+    const texto = (t.texto ?? t.text ?? t.content ?? t.mensaje ?? "").toString();
+    const esAgente = rol === "agente" || rol === "assistant" || rol === "agent";
+    return !esAgente && texto.trim().length > 0;
+  });
+}
+
 // Extrae el primer objeto JSON de la respuesta del modelo (tolera fences ```json).
 function parseJsonRespuesta(raw: string): Record<string, unknown> {
   let s = (raw ?? "").trim();
@@ -198,7 +212,10 @@ Deno.serve(async (req) => {
     // señal real, etiquetar-ia/tag-lead lo reemplazan.
     let fallback = false;
     if (tag_nombres.length === 0) {
-      tag_nombres.push(FALLBACK_TAG);
+      // Si el lead NUNCA respondió (solo mensajes del agente) es el caso "Sigue en
+      // campaña" → NO se envía a expansión. Si respondió pero sin intención clasificable,
+      // va al respaldo "Sin respuesta clara" (sí se envía, para revisión manual).
+      tag_nombres.push(leadHaRespondido(body?.conversacion) ? FALLBACK_TAG : "Sigue en campaña");
       grupo_exclusivo = "estado_lead";
       solo_si_grupo_vacio = true;
       fallback = true;
