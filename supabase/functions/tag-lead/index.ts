@@ -49,6 +49,7 @@ const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
     "Pendiente asignar agente",
     "Solo quiere propiedades",
     "Cita agendada",
+    "Sin respuesta clara",
   ],
 };
 

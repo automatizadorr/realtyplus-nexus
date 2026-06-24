@@ -44,6 +44,13 @@ const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
   ],
 };
 
+// Etiqueta de respaldo cuando DeepSeek no encuentra señal suficiente: en vez de dejar
+// el lead sin etiqueta, se le asigna este estado para que TODOS queden etiquetados.
+// Es parte del grupo estado_lead en tag-lead (así se reemplaza en cuanto el lead dé
+// una señal real) y SÍ se envía a expansión (no está en la exclusión del cron). NO se
+// muestra a DeepSeek en el prompt: es un fallback aplicado en código, no una opción.
+const FALLBACK_TAG = "Sin respuesta clara";
+
 // Convierte la conversación (string o array de turnos) a texto plano para el prompt.
 function conversacionATexto(conv: unknown): string {
   if (typeof conv === "string") return conv.trim();
@@ -180,19 +187,22 @@ Deno.serve(async (req) => {
     const remove_tag_nombres: string[] = Array.isArray(decision.remove_tag_nombres)
       ? (decision.remove_tag_nombres as unknown[]).map(String)
       : [];
-    const grupo_exclusivo = decision.grupo_exclusivo === "estado_lead" ? "estado_lead" : null;
+    let grupo_exclusivo = decision.grupo_exclusivo === "estado_lead" ? "estado_lead" : null;
+    let solo_si_grupo_vacio = false;
     const resumen = typeof decision.resumen === "string" ? decision.resumen : "";
 
-    // Sin señal suficiente: no etiquetamos, pero respondemos OK (append-only, no rompe el flujo).
+    // Sin señal suficiente: en vez de dejar el lead SIN etiqueta, le asignamos el estado
+    // de respaldo FALLBACK_TAG ("Sin respuesta clara") para que TODOS queden etiquetados.
+    // Va como estado (grupo estado_lead) y solo si el lead aún no tiene estado asignado
+    // (solo_si_grupo_vacio) → nunca pisa "Cita agendada", etc. En cuanto el lead dé una
+    // señal real, etiquetar-ia/tag-lead lo reemplazan.
+    let fallback = false;
     if (tag_nombres.length === 0) {
-      return json({
-        success: true,
-        skipped: true,
-        reason: "DeepSeek no encontró señal suficiente para etiquetar",
-        telefono,
-        resumen,
-        decision,
-      });
+      tag_nombres.push(FALLBACK_TAG);
+      grupo_exclusivo = "estado_lead";
+      solo_si_grupo_vacio = true;
+      fallback = true;
+      decision.tag_nombres = tag_nombres; // que el cron lo vea en decision.tag_nombres
     }
 
     // Modo dry-run: devolver la decisión SIN aplicar etiquetas (no escribe en BD).
@@ -203,6 +213,7 @@ Deno.serve(async (req) => {
         telefono,
         resumen,
         decision,
+        ...(fallback ? { fallback: true } : {}),
       });
     }
 
@@ -222,6 +233,7 @@ Deno.serve(async (req) => {
         remove_tag_nombres,
         mode: "add",
         grupo_exclusivo,
+        solo_si_grupo_vacio,
         crear_si_no_existe: crearSiNoExiste,
         nombre,
       }),
