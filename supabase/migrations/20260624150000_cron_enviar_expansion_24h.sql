@@ -1,0 +1,40 @@
+-- =====================================================================
+-- CRON: envío CONSOLIDADO a /expansion cada 24 horas (reporte a jefatura)
+-- ---------------------------------------------------------------------
+-- Llama a la Edge Function `enviar-expansion`, que junta los leads con
+-- actividad en las últimas 24h (excluyendo "Sigue en campaña"), arma UN
+-- solo payload agrupado por etiqueta con conversaciones y métricas, y lo
+-- postea una sola vez al webhook n8n /expansion.
+--
+-- Ejecuta este bloque APARTE en el SQL Editor con tu secreto real.
+-- NO se versiona con el secreto. Requiere extensiones pg_cron y pg_net.
+--
+-- Cadencia: '0 8 * * *' dispara todos los días a las 08:00 UTC. La función
+-- usa ventana_horas=24 por defecto, así cubre exactamente el día anterior.
+-- Ajusta la hora a tu conveniencia (UTC).
+--
+-- Auth: el header x-webhook-secret acepta el N8N_WEBHOOK_SECRET o el token
+-- embebido del cron (rpchile_cron_2026_a8K3mZqL). Usa el que prefieras.
+-- ---------------------------------------------------------------------
+-- create extension if not exists pg_cron;
+-- create extension if not exists pg_net;
+--
+-- select cron.schedule(
+--   'enviar-expansion-24h',
+--   '0 8 * * *',
+--   $$
+--     select net.http_post(
+--       url     := 'https://owykkhwqpnumvgdeugmj.functions.supabase.co/enviar-expansion',
+--       headers := jsonb_build_object(
+--                    'Content-Type','application/json',
+--                    'x-webhook-secret','<TU_N8N_WEBHOOK_SECRET>'
+--                  ),
+--       body    := jsonb_build_object('ventana_horas', 24)
+--     );
+--   $$
+-- );
+--
+-- Para ver / borrar / reprogramar el cron más tarde:
+--   select * from cron.job;
+--   select cron.unschedule('enviar-expansion-24h');
+-- =====================================================================
