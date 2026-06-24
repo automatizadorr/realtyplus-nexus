@@ -126,11 +126,28 @@ export default function CampaignExecuteWarning({
   const estimatedCost = (totalLeads * 0.0499).toFixed(2);
   const allChecked = checkedTemplates && checkedCosts && checkedOptOut;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!allChecked) return;
+    try {
+      await fetch(
+        "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas",
+        {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignName,
+            totalLeads,
+            channel,
+            triggeredAt: new Date().toISOString(),
+          }),
+        }
+      );
+    } catch (err) {
+      console.error("n8n webhook error:", err);
+    }
     onConfirm();
     onOpenChange(false);
-    // Reset checkboxes for next time
     setCheckedTemplates(false);
     setCheckedCosts(false);
     setCheckedOptOut(false);
