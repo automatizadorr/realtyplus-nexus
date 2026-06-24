@@ -1,8 +1,9 @@
 // Envío CONSOLIDADO a n8n /expansion (reporte a jefatura), pensado para correr en
-// AUTOMÁTICO cada 24h desde pg_cron. Junta los leads con actividad en la ventana
-// (default 24h), arma UN solo payload agrupado por etiqueta con conversaciones y
-// métricas (mismo formato que el botón "Enviar a n8n /expansion" de TaggedExport) y
-// lo postea una sola vez. EXCLUYE los leads en "Sigue en campaña" (nunca respondieron).
+// AUTOMÁTICO cada 24h desde pg_cron. Junta los leads de la ventana (default 24h) por
+// UNIÓN de dos criterios: (A) etiquetados/actualizados en la ventana (updated_at) y
+// (B) con actividad de mensajes en la ventana. Arma UN solo payload agrupado por
+// etiqueta con conversaciones y métricas (mismo formato que el botón "Enviar a n8n
+// /expansion" de TaggedExport) y lo postea una sola vez. EXCLUYE "Sigue en campaña".
 //
 // Auth: header X-Webhook-Secret (CRON_TOKEN embebido, AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
 //
@@ -105,9 +106,8 @@ Deno.serve(async (req) => {
       const c = coreTel(m.telefono);
       if (c) activos.add(c);
     }
-    if (activos.size === 0) {
-      return json({ success: true, ventana_horas: VENTANA_HORAS, total_leads: 0, total_mensajes: 0, total_etiquetas: 0, n8n_status: 0, n8n_response: "sin actividad en la ventana" });
-    }
+    // (No se corta aquí aunque no haya actividad: el Set A —etiquetados/actualizados en
+    //  la ventana— puede traer leads igual, por el criterio unión.)
 
     // 2. Catálogo de etiquetas (service role → ignora RLS).
     const { data: tags, error: tagsErr } = await supabase
@@ -117,20 +117,42 @@ Deno.serve(async (req) => {
     for (const t of tags ?? []) tagMap.set(t.id, { nombre: t.nombre, color: t.color, es_permanente: !!t.es_permanente });
     const sigueId = (tags ?? []).find((t) => norm(t.nombre) === norm(ETIQUETA_NO_ENVIAR))?.id ?? null;
 
-    // 3. Leads NO archivados, etiquetados, con país opcional. Filtra a los activos en la
-    //    ventana y excluye los que están en "Sigue en campaña".
-    let leadsQuery = supabase
-      .from("leads_campana")
-      .select("id, id_contacto, nombre, telefono, email, pais, estado, bot_activo, ha_respondido, archivado, ultimo_contacto_at, fecha_respuesta, fecha_proximo_contacto, origen, tag_ids")
-      .not("tag_ids", "is", null).neq("tag_ids", "{}");
-    if (paisFiltro) leadsQuery = leadsQuery.ilike("pais", `%${paisFiltro}%`);
-    const { data: leadsRaw, error: leadsErr } = await leadsQuery;
-    if (leadsErr) throw leadsErr;
+    // 3. Leads candidatos = UNIÓN de dos sets (etiquetados, no archivados, país opcional):
+    //    A) ACTUALIZADOS en la ventana (updated_at >= cutoff): captura los etiquetados hoy
+    //       aunque su conversación sea vieja (ej. backfills).
+    //    B) Con ACTIVIDAD de mensajes en la ventana (teléfono en `activos`).
+    //    Se excluye "Sigue en campaña". Consultar por estos dos criterios (en vez de traer
+    //    TODOS los etiquetados) evita el tope de 1000 filas de PostgREST.
+    const LEAD_COLS =
+      "id, id_contacto, nombre, telefono, email, pais, estado, bot_activo, ha_respondido, archivado, ultimo_contacto_at, fecha_respuesta, fecha_proximo_contacto, origen, tag_ids";
 
-    const leads = (leadsRaw ?? [])
+    // Set A: etiquetados actualizados en la ventana.
+    let qA = supabase.from("leads_campana").select(LEAD_COLS)
+      .not("tag_ids", "is", null).neq("tag_ids", "{}").gte("updated_at", cutoff);
+    if (paisFiltro) qA = qA.ilike("pais", `%${paisFiltro}%`);
+    const { data: setA, error: aErr } = await qA;
+    if (aErr) throw aErr;
+
+    // Set B: etiquetados con actividad de mensajes en la ventana (por lotes de teléfonos).
+    const activosArr = [...activos];
+    const setB: Record<string, unknown>[] = [];
+    for (let i = 0; i < activosArr.length; i += 40) {
+      const batch = activosArr.slice(i, i + 40);
+      const orFilter = batch.flatMap((p) => [`telefono.eq.${p}`, `telefono.like.${p}@%`]).join(",");
+      let qB = supabase.from("leads_campana").select(LEAD_COLS)
+        .not("tag_ids", "is", null).neq("tag_ids", "{}").or(orFilter);
+      if (paisFiltro) qB = qB.ilike("pais", `%${paisFiltro}%`);
+      const { data, error } = await qB;
+      if (error) throw error;
+      if (data) setB.push(...data);
+    }
+
+    // Unión por id + filtros finales (no archivados, fuera "Sigue en campaña").
+    const byId = new Map<string, Record<string, unknown>>();
+    for (const l of [...(setA ?? []), ...setB]) byId.set(l.id as string, l);
+    const leads = [...byId.values()]
       .filter((l) => l.archivado !== true)
-      .filter((l) => activos.has(coreTel(l.telefono)))
-      .filter((l) => !(sigueId && Array.isArray(l.tag_ids) && l.tag_ids.includes(sigueId)))
+      .filter((l) => !(sigueId && Array.isArray(l.tag_ids) && (l.tag_ids as string[]).includes(sigueId)))
       .slice(0, MAX_LEADS);
 
     if (leads.length === 0) {
