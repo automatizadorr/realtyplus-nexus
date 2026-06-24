@@ -88,6 +88,15 @@ Deno.serve(async (req) => {
     const MAX_LEADS = Number(Deno.env.get("MAX_LEADS") ?? "50");
     const cutoff = new Date(Date.now() - VENTANA_HORAS * 3600 * 1000).toISOString();
 
+    // Overrides por body para procesar en LOTES y no exceder el límite de recursos de la
+    // Edge Function (error 546) en corridas reales (cada lead hace DeepSeek + tag-lead).
+    //   max_leads: tamaño del lote (default MAX_LEADS).
+    //   offset:    salta los primeros N teléfonos únicos (paginar: 0, max_leads, 2*max_leads…).
+    // Operan sobre la lista de teléfonos ÚNICOS ya ordenada, así la paginación es estable.
+    const maxLeads = Number(body?.max_leads) > 0 ? Math.floor(Number(body.max_leads)) : MAX_LEADS;
+    const offset = Number(body?.offset) > 0 ? Math.floor(Number(body.offset)) : 0;
+    const HARD_CAP = 1000; // techo de filas a traer antes de deduplicar/paginar
+
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
     // Normaliza al núcleo de dígitos (los mensajes pueden traer sufijo JID @s.whatsapp.net).
@@ -102,12 +111,13 @@ Deno.serve(async (req) => {
         .from("leads_campana")
         .select("telefono, archivado, pais")
         .ilike("pais", `%${paisFiltro}%`)
-        .limit(MAX_LEADS);
+        .order("telefono", { ascending: true })
+        .limit(HARD_CAP);
       if (paisErr) throw paisErr;
       telefonos = [...new Set((porPais ?? [])
         .filter((l) => l.archivado !== true)
         .map((l) => coreTel(l.telefono))
-        .filter(Boolean))].slice(0, MAX_LEADS);
+        .filter(Boolean))].slice(offset, offset + maxLeads);
     } else {
       const { data: recientes, error: recErr } = await supabase
         .from("mensajes_whatsapp")
@@ -116,7 +126,7 @@ Deno.serve(async (req) => {
         .order("created_at", { ascending: false });
       if (recErr) throw recErr;
       telefonos = [...new Set((recientes ?? []).map((m) => coreTel(m.telefono)).filter(Boolean))]
-        .slice(0, MAX_LEADS);
+        .slice(offset, offset + maxLeads);
     }
 
     // 2. Catálogo COMPLETO de etiquetas (service role → ignora RLS).
