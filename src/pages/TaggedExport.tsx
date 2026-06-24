@@ -427,20 +427,35 @@ details[open] .arrow{transform:rotate(90deg)}
     try {
       const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
+      // Excluir del envío a /expansion los leads en "Sigue en campaña": nunca
+      // respondieron y por regla de negocio NO van a expansión/jefatura. (Excel,
+      // Word y HTML sí los siguen mostrando, son para revisión interna.)
+      const normTag = (s: string) =>
+        (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+      const sigueId = tagsFull.find((t) => normTag(t.nombre) === "sigue en campana")?.id ?? null;
+      const leadsEnviar = sigueId
+        ? leads.filter((l: any) => !(l.tag_ids ?? []).includes(sigueId))
+        : leads;
+      if (leadsEnviar.length === 0) {
+        toast({ title: "Nada que enviar", description: "Todos los leads del filtro están en 'Sigue en campaña' (no van a expansión)." });
+        return;
+      }
+
       // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
-      const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
+      const msgsByPhone = buildMsgsByPhone(leadsEnviar, msgsWA, msgsAuto);
       const totalMsgs = [...msgsByPhone.values()].reduce((a, arr) => a + arr.length, 0);
 
       // Agrupar leads por etiqueta
       const byTag = new Map<string, any[]>();
-      for (const l of leads) {
+      for (const l of leadsEnviar) {
         for (const tid of (l.tag_ids ?? [])) {
           if (!byTag.has(tid)) byTag.set(tid, []);
           byTag.get(tid)!.push(l);
         }
       }
 
-      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter);
+      // Excluye también la sección "Sigue en campaña" (queda vacía tras el filtro).
+      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter).filter((t) => t.id !== sigueId);
       const etiquetas = orderedTags.map((tag) => {
         const tLeads    = byTag.get(tag.id) ?? [];
         const tResp     = tLeads.filter((l: any) => l.ha_respondido).length;
@@ -494,7 +509,7 @@ details[open] .arrow{transform:rotate(90deg)}
       const payload = {
         timestamp:      new Date().toISOString(),
         filtro:         tagFilter === "all" ? "todas" : (tagMap.get(tagFilter)?.nombre ?? tagFilter),
-        total_leads:    leads.length,
+        total_leads:    leadsEnviar.length,
         total_mensajes: totalMsgs,
         total_etiquetas: etiquetas.length,
         total_etiquetas_con_leads: byTag.size,
@@ -508,7 +523,7 @@ details[open] .arrow{transform:rotate(90deg)}
 
       toast({
         title: "Enviado a n8n ✓",
-        description: `${leads.length} leads · ${totalMsgs} mensajes · ${byTag.size} etiquetas enviados a /expansion`,
+        description: `${leadsEnviar.length} leads · ${totalMsgs} mensajes · ${byTag.size} etiquetas enviados a /expansion`,
       });
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
