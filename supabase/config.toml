@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.ensure-lead]
 verify_jwt = false
 
+[functions.log-auto-message]
+verify_jwt = false
+
 [functions.sheets-country-kpis]
 verify_jwt = false
 
