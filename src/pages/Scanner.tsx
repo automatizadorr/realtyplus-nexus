@@ -84,13 +84,19 @@ function parseScientificPhone(raw: string): string {
   return trimmed.replace(/\D/g, "");
 }
 
-// Detecta si el texto pegado es el formato estructurado con columnas tabuladas
-// Columnas: id_contacto | nombres | apellidos | email | telefono | pais | dias
+// Separa una línea en columnas por TAB o por coma (acepta Excel/CSV y pegado manual).
+function splitCols(line: string): string[] {
+  return line.trim().split(/\t+|\s*,\s*/).map((c) => c.trim());
+}
+
+// Detecta el formato estructurado por columnas, en este ORDEN EXACTO:
+//   id | nombre | telefono | correo | pais
+// Se reconoce cuando la 1ª columna es un ID numérico y hay al menos 4 columnas.
 function isStructuredFormat(text: string): boolean {
-  const firstLine = text.trim().split("\n").find((l) => l.trim().length > 10);
+  const firstLine = text.trim().split("\n").find((l) => l.trim().length > 6);
   if (!firstLine) return false;
-  const cols = firstLine.trim().split(/\t+/);
-  return cols.length >= 5 && /^\d{4,7}$/.test(cols[0].trim());
+  const cols = splitCols(firstLine);
+  return cols.length >= 4 && /^\d{3,12}$/.test(cols[0]);
 }
 
 export default function Scanner() {
@@ -118,21 +124,19 @@ export default function Scanner() {
     const parsed: ParsedContact[] = [];
 
     if (isStructuredFormat(rawText)) {
-      // ── Formato estructurado: id | nombres | apellidos | email | telefono | pais | dias ──
+      // ── Formato estructurado, en ORDEN: id | nombre | telefono | correo | pais ──
       for (const rawLine of rawLines) {
-        const cols = rawLine.trim().split(/\t+/);
-        if (cols.length < 5) continue;
-        const idContacto = cols[0].trim();
-        if (!/^\d{4,7}$/.test(idContacto)) continue;
+        const cols = splitCols(rawLine);
+        if (cols.length < 4) continue;
+        const idContacto = cols[0];
+        if (!/^\d{3,12}$/.test(idContacto)) continue;
 
-        const nombres   = (cols[1] || "").trim();
-        const apellidos = (cols[2] || "").trim();
-        const nombre    = capitalize([nombres, apellidos].filter(Boolean).join(" ")) || "Sin nombre";
-        const email     = (cols[3] || "").trim();
-        const telefonoDigits = parseScientificPhone(cols[4] || "");
+        const nombre = capitalize(cols[1] || "") || "Sin nombre";
+        const telefonoDigits = parseScientificPhone(cols[2] || "");
         if (telefonoDigits.length < 7) continue;
-        const telefono  = "+" + telefonoDigits;
-        const pais      = (cols[5] || "").trim() || inferCountryByPhone(telefonoDigits) || "Desconocido";
+        const telefono = "+" + telefonoDigits;
+        const email = (cols[3] || "").trim();
+        const pais = (cols[4] || "").trim() || inferCountryByPhone(telefonoDigits) || "Desconocido";
 
         parsed.push({ nombre, telefono, email, pais, fuente, id_contacto: idContacto });
       }
@@ -432,8 +436,8 @@ export default function Scanner() {
               <Textarea value={messageTemplate} onChange={(e) => setMessageTemplate(e.target.value)} placeholder="Hola {nombre}, te contactamos de Realtyplus..." rows={3} />
             </div>
             <div className="space-y-2">
-              <Label>Pegar Contactos (nombre, teléfono, email por línea)</Label>
-              <Textarea value={rawText} onChange={(e) => setRawText(e.target.value)} placeholder="Juan Pérez, +5491112345678, juan@email.com&#10;María López, +5491198765432" rows={6} />
+              <Label>Pegar Contactos — orden: id, nombre, teléfono, correo, país (uno por línea)</Label>
+              <Textarea value={rawText} onChange={(e) => setRawText(e.target.value)} placeholder="54778, Mohamed Adel, +201093953193, mohamed@email.com, Egypt&#10;54777, Yasser Badr, +201283110053, yasser@email.com, Egypt" rows={6} />
             </div>
             <div className="space-y-1">
               <input
@@ -483,10 +487,10 @@ export default function Scanner() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>ID</TableHead>
                         <TableHead>Nombre</TableHead>
                         <TableHead>Teléfono</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>ID Hoja</TableHead>
+                        <TableHead>Correo</TableHead>
                         <TableHead>País</TableHead>
                         <TableHead className="w-10"></TableHead>
                       </TableRow>
@@ -494,10 +498,10 @@ export default function Scanner() {
                     <TableBody>
                       {contacts.map((c, i) => (
                         <TableRow key={i}>
+                          <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
                           <TableCell className="font-medium">{c.nombre}</TableCell>
                           <TableCell>{c.telefono}</TableCell>
                           <TableCell>{c.email}</TableCell>
-                          <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
                           <TableCell>
                             <span className="mr-1">{COUNTRY_FLAGS[c.pais] || "🌍"}</span>
                             <span className="text-xs">{c.pais}</span>
