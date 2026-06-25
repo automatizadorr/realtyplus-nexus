@@ -1,232 +1,36 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import {
-  motion,
-  useInView,
-  useMotionValue,
-  useTransform,
-  animate,
-} from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion, animate } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { VoiceAgentHero } from "@/components/VoiceAgentHero";
 import {
-  MessageSquare,
-  Megaphone,
-  BarChart3,
-  ArrowRight,
-  Star,
-  Menu,
-  X,
-  CheckCircle2,
-  Zap,
-  TrendingDown,
-  TrendingUp,
-  ShieldCheck,
-  Gift,
-  Clock,
-  Users,
-  DollarSign,
-  XCircle,
-  ChevronDown,
-  Phone,
+  MessageSquare, CalendarCheck, Tags, Megaphone, ScanLine, Mic,
+  FileSpreadsheet, LayoutDashboard, ArrowRight, Check, Menu, X,
+  ChevronDown, Phone, Sparkles, Clock, Globe, ShieldCheck,
 } from "lucide-react";
-import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
-// ─── Countdown Timer ──────────────────────────────────────────────────────────
-function CountdownTimer() {
-  const getEndOfMonth = () => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0);
-  };
-  const calc = () => {
-    const diff = getEndOfMonth().getTime() - Date.now();
-    if (diff <= 0) return { d: 0, h: 0, m: 0, s: 0 };
-    return {
-      d: Math.floor(diff / 86400000),
-      h: Math.floor((diff % 86400000) / 3600000),
-      m: Math.floor((diff % 3600000) / 60000),
-      s: Math.floor((diff % 60000) / 1000),
-    };
-  };
-  const [t, setT] = useState(calc);
-  useEffect(() => {
-    const id = setInterval(() => setT(calc()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    <div className="flex items-center gap-3 justify-center">
-      {[{ v: t.d, l: "días" }, { v: t.h, l: "hrs" }, { v: t.m, l: "min" }, { v: t.s, l: "seg" }].map(({ v, l }) => (
-        <div key={l} className="flex flex-col items-center">
-          <span className="text-2xl font-black text-white tabular-nums">{pad(v)}</span>
-          <span className="text-white/40 text-xs">{l}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+// ── Paleta de marca RE/MAX (azul · rojo · blanco) ─────────────────────────────
+const INK = "#021B4D";       // navy-azul RE/MAX (secciones oscuras y texto)
+const INK2 = "#0A2E6E";      // navy-azul elevado
+const BLUE = "#003DA5";      // AZUL RE/MAX (marca, sobre fondos claros)
+const BLUE_LT = "#7FA8FF";   // azul claro (acentos sobre fondos oscuros)
+const BRAND = "#DC1C2E";     // ROJO RE/MAX (acción)
+const SIGNAL = "#25D366";    // verde WhatsApp — SOLO dentro del canal WhatsApp
+const HOT = "#F59E0B";       // lead caliente
 
-// ─── FAQ Accordion ────────────────────────────────────────────────────────────
-const FAQS = [
-  { q: "¿Necesito saber de tecnología para usar RealtyPlus?", a: "No. El sistema está diseñado para agentes, no para técnicos. Si sabes usar WhatsApp, sabes usar RealtyPlus. Además incluimos setup 1:1 donde configuramos todo por ti en menos de 48 horas." },
-  { q: "¿Qué pasa con los leads que ya tengo en mi celular?", a: "Los importamos todos. Subís tu lista de contactos (Excel, CSV o directamente desde WhatsApp) y el sistema los clasifica automáticamente por intención de compra en menos de 1 hora." },
-  { q: "¿Funciona si trabajo solo o necesito un equipo?", a: "Funciona perfecto para agentes independientes y también para agencias con equipos de 50+ personas. El plan gratuito cubre a un solo usuario y los planes de equipo arrancan desde el primer mes de uso activo." },
-  { q: "¿RealtyPlus reemplaza a mi WhatsApp Business?", a: "No lo reemplaza, lo potencia. RealtyPlus se conecta a tu número de WhatsApp existente y le agrega automatización, campañas masivas y métricas. Seguís usando el mismo número." },
-  { q: "¿Y si no veo resultados en los primeros 30 días?", a: "Te devolvemos cada centavo sin preguntas. Podés cancelar desde el panel en un clic. No hay contratos anuales ni letras pequeñas." },
-  { q: "¿Mis datos están seguros?", a: "Sí. Toda la información está encriptada en servidores certificados SOC 2. Nunca vendemos ni compartimos tus datos de clientes. Somos RGPD y LGPD compliant." },
-];
-
-function FAQ() {
-  const [open, setOpen] = useState<number | null>(null);
-  return (
-    <div className="space-y-3">
-      {FAQS.map((faq, i) => (
-        <div key={i} className="border border-gray-100 rounded-xl overflow-hidden">
-          <button
-            className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-            onClick={() => setOpen(open === i ? null : i)}
-            aria-expanded={open === i}
-          >
-            <span className="font-semibold text-[#040d1e] text-sm md:text-base pr-4">{faq.q}</span>
-            <ChevronDown className={`w-5 h-5 text-[#cf142b] shrink-0 transition-transform duration-200 ${open === i ? "rotate-180" : ""}`} />
-          </button>
-          {open === i && (
-            <div className="px-6 pb-5 text-[#040d1e]/65 text-sm leading-relaxed border-t border-gray-50">
-              <p className="pt-4">{faq.a}</p>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Dashboard Mockup ─────────────────────────────────────────────────────────
-function DashboardMockup() {
-  return (
-    <div className="relative w-full max-w-lg mx-auto" aria-hidden="true">
-      {/* Ventana del browser */}
-      <div className="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
-        {/* Barra del browser */}
-        <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-2">
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-400" />
-            <div className="w-3 h-3 rounded-full bg-yellow-400" />
-            <div className="w-3 h-3 rounded-full bg-green-400" />
-          </div>
-          <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-gray-400 ml-2">
-            app.realtyplus.com/dashboard
-          </div>
-        </div>
-        {/* Contenido del dashboard */}
-        <div className="bg-[#040d1e] p-4 space-y-3">
-          {/* Stats row */}
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { label: "Leads hoy", value: "47", color: "#cf142b" },
-              { label: "Calientes", value: "12", color: "#f59e0b" },
-              { label: "Cierres", value: "3", color: "#10b981" },
-              { label: "Respuestas", value: "98%", color: "#3b82f6" },
-            ].map((s) => (
-              <div key={s.label} className="bg-white/5 rounded-lg p-2 text-center">
-                <div className="text-lg font-black" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-white/40 text-[10px]">{s.label}</div>
-              </div>
-            ))}
-          </div>
-          {/* Inbox preview */}
-          <div className="bg-white/5 rounded-lg p-3 space-y-2">
-            <div className="text-white/60 text-xs font-semibold mb-2">Inbox unificado</div>
-            {[
-              { name: "Carlos M.", msg: "¿Tienen casas en Miraflores?", time: "hace 2 min", hot: true },
-              { name: "Ana R.", msg: "Quiero información del dpto 203", time: "hace 8 min", hot: true },
-              { name: "Luis P.", msg: "Cuál es el precio final?", time: "hace 15 min", hot: false },
-            ].map((c) => (
-              <div key={c.name} className="flex items-center gap-2 py-1.5 border-b border-white/5">
-                <div className="w-7 h-7 rounded-full bg-[#0f2b5a] flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  {c.name[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="text-white text-xs font-semibold">{c.name}</span>
-                    {c.hot && <span className="text-[10px] bg-[#cf142b]/20 text-[#cf142b] px-1.5 rounded-full">🔥 Caliente</span>}
-                  </div>
-                  <div className="text-white/40 text-[10px] truncate">{c.msg}</div>
-                </div>
-                <span className="text-white/25 text-[10px] shrink-0">{c.time}</span>
-              </div>
-            ))}
-          </div>
-          {/* Campaign bar */}
-          <div className="bg-white/5 rounded-lg p-3">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-white/60 text-xs font-semibold">Campaña activa</span>
-              <span className="text-green-400 text-xs">● En vivo</span>
-            </div>
-            <div className="text-white text-xs mb-1">Reactivación Enero — 340 contactos</div>
-            <div className="w-full h-1.5 bg-white/10 rounded-full">
-              <div className="h-full bg-[#cf142b] rounded-full" style={{ width: "68%" }} />
-            </div>
-            <div className="text-white/30 text-[10px] mt-1">68% entregado · 23% respondieron</div>
-          </div>
-        </div>
-      </div>
-      {/* Glow decorativo */}
-      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-[#cf142b]/20 blur-xl rounded-full" />
-    </div>
-  );
-}
-
-// ─── Animated Counter ──────────────────────────────────────────────────────────
-function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    const ctrl = animate(0, target, { duration: 2, ease: "easeOut", onUpdate: (v) => setValue(Math.round(v)) });
-    return () => ctrl.stop();
-  }, [inView, target]);
-  return <span ref={ref}>{value.toLocaleString()}{suffix}</span>;
-}
-
-// ─── 3D Tilt Card ──────────────────────────────────────────────────────────────
-function TiltCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useTransform(y, [-0.5, 0.5], [10, -10]);
-  const rotateY = useTransform(x, [-0.5, 0.5], [-10, 10]);
-  return (
-    <motion.div
-      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      whileHover={{ scale: 1.02 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className={className}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        x.set((e.clientX - rect.left) / rect.width - 0.5);
-        y.set((e.clientY - rect.top) / rect.height - 0.5);
-      }}
-      onMouseLeave={() => { x.set(0); y.set(0); }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-// ─── Scroll fade-in wrapper ────────────────────────────────────────────────────
+// ── Helpers de animación ──────────────────────────────────────────────────────
 function FadeSection({ children, className = "", delay = 0 }: {
   children: React.ReactNode; className?: string; delay?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
+  const reduce = useReducedMotion();
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
-      transition={{ duration: 0.6, delay, ease: "easeOut" }}
+      initial={reduce ? false : { opacity: 0, y: 28 }}
+      animate={inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
+      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
       {children}
@@ -234,654 +38,566 @@ function FadeSection({ children, className = "", delay = 0 }: {
   );
 }
 
-// ─── WhatsApp 3D Button ────────────────────────────────────────────────────────
-const WA_PATH = "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z";
+function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true });
+  const reduce = useReducedMotion();
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    if (reduce) { setValue(target); return; }
+    const ctrl = animate(0, target, { duration: 1.6, ease: "easeOut", onUpdate: (v) => setValue(Math.round(v)) });
+    return () => ctrl.stop();
+  }, [inView, target, reduce]);
+  return <span ref={ref}>{value.toLocaleString("es")}{suffix}</span>;
+}
 
-function WhatsAppButton() {
-  const [hovered, setHovered] = useState(false);
+// ── SIGNATURE: conversación que se auto-clasifica ─────────────────────────────
+const THREAD = [
+  { from: "lead",   text: "Hola, vi el mensaje sobre la franquicia 👀" },
+  { from: "isabel", text: "¡Claro! Te cuento. ¿Buscas empezar tú solo o montar oficina con equipo?" },
+  { from: "lead",   text: "con equipo, estoy en Madrid" },
+  { from: "isabel", text: "Perfecto, eso encaja con el modelo QUARTZ. ¿Te agendo una reunión el jueves a las 10:00?" },
+  { from: "lead",   text: "sí, me viene bien" },
+];
 
-  const rings = [
-    { color: "#25d366", delay: 0,   duration: 2.4 },
-    { color: "#cf142b", delay: 0.8, duration: 2.4 },
-    { color: "#0f2b5a", delay: 1.6, duration: 2.4 },
-  ];
+function LiveConversation() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const reduce = useReducedMotion();
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    if (reduce) { setStep(THREAD.length); return; }
+    setStep(0);
+    const id = setInterval(() => {
+      setStep((s) => (s >= THREAD.length ? s : s + 1));
+    }, 900);
+    return () => clearInterval(id);
+  }, [inView, reduce]);
+
+  const agendada = step >= THREAD.length;
 
   return (
-    <motion.div
-      className="fixed bottom-28 right-6 z-40"
-      style={{ perspective: "600px" }}
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: 2.5, duration: 0.6, type: "spring", stiffness: 180 }}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-    >
-      {/* Anillos sonar 3D */}
-      {rings.map((ring, i) => (
-        <motion.div
-          key={i}
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{ border: `2px solid ${ring.color}` }}
-          animate={{ scale: [1, 2.2], opacity: [0.7, 0] }}
-          transition={{ repeat: Infinity, duration: ring.duration, delay: ring.delay, ease: "easeOut" }}
-        />
-      ))}
-
-      {/* Tooltip con número */}
-      <motion.div
-        className="absolute right-full mr-4 top-1/2 -translate-y-1/2 pointer-events-none"
-        initial={{ opacity: 0, x: 12, scale: 0.9 }}
-        animate={hovered ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: 12, scale: 0.9 }}
-        transition={{ duration: 0.22 }}
-      >
-        <div className="bg-white rounded-2xl shadow-xl px-4 py-2.5 whitespace-nowrap border border-gray-100">
-          <p className="text-[10px] text-[#040d1e]/40 font-semibold uppercase tracking-wider mb-0.5">
-            WhatsApp
-          </p>
-          <p className="text-sm font-black text-[#040d1e]">+56 971 806 730</p>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2">
-            <div className="w-3 h-3 bg-white border-r border-t border-gray-100 rotate-45" />
+    <div ref={ref} className="relative w-full max-w-md mx-auto">
+      {/* Tarjeta de estado del lead (flota arriba) */}
+      <div className="absolute -top-5 -right-3 z-20 sm:right-2">
+        <div
+          className="rounded-xl border px-3.5 py-2.5 shadow-lg backdrop-blur transition-colors duration-500"
+          style={{
+            background: "rgba(255,255,255,0.96)",
+            borderColor: agendada ? `${BLUE}66` : "#e5e7eb",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors duration-500"
+              style={{
+                background: agendada ? `${BLUE}1f` : "#f1f5f9",
+                color: agendada ? BLUE : "#64748b",
+              }}
+            >
+              {agendada ? "CITA AGENDADA" : "SIGUE EN CAMPAÑA"}
+            </span>
+          </div>
+          <div className="mt-1.5 flex items-center gap-3">
+            <span className="font-mono text-[10px]" style={{ color: INK }}>
+              score <b style={{ color: agendada ? BLUE : HOT }}>{agendada ? "92" : "—"}</b>
+            </span>
+            <span className="font-mono text-[10px] text-slate-400">
+              {agendada ? "jue · 10:00" : "esperando…"}
+            </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Botón principal 3D */}
-      <motion.a
-        href="https://wa.me/56971806730"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="WhatsApp +56 971 806 730"
-        className="relative flex w-16 h-16 rounded-full items-center justify-center"
+      {/* Hilo de WhatsApp */}
+      <div className="rounded-[26px] border border-white/10 bg-[#0b1730] overflow-hidden shadow-2xl">
+        {/* Cabecera */}
+        <div className="flex items-center gap-3 px-4 py-3" style={{ background: INK2 }}>
+          <div className="w-9 h-9 rounded-full grid place-items-center text-white font-bold text-sm shrink-0"
+               style={{ background: `linear-gradient(135deg, ${BRAND}, ${INK})` }}>
+            iS
+          </div>
+          <div className="min-w-0">
+            <div className="text-white text-sm font-semibold leading-tight">iSabel · Asesora IA</div>
+            <div className="flex items-center gap-1.5 text-[11px]" style={{ color: SIGNAL }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: SIGNAL }} />
+              en línea
+            </div>
+          </div>
+          <span className="ml-auto font-mono text-[10px] text-white/30">WhatsApp</span>
+        </div>
+
+        {/* Mensajes */}
+        <div className="px-3.5 py-4 space-y-2.5 min-h-[300px]"
+             style={{ background: "linear-gradient(180deg,#0b1730,#0d1c3a)" }}>
+          {THREAD.slice(0, step).map((m, i) => {
+            const lead = m.from === "lead";
+            return (
+              <motion.div
+                key={i}
+                initial={reduce ? false : { opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className={`flex ${lead ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className="max-w-[80%] px-3.5 py-2 text-[13px] leading-snug rounded-2xl"
+                  style={
+                    lead
+                      ? { background: SIGNAL, color: "#06251a", borderBottomRightRadius: 4 }
+                      : { background: "#ffffff", color: INK, borderBottomLeftRadius: 4 }
+                  }
+                >
+                  {m.text}
+                </div>
+              </motion.div>
+            );
+          })}
+          {!agendada && step > 0 && (
+            <div className="flex justify-start">
+              <div className="px-3 py-2 rounded-2xl bg-white/90" style={{ borderBottomLeftRadius: 4 }}>
+                <span className="flex gap-1">
+                  {[0, 1, 2].map((d) => (
+                    <span key={d} className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce"
+                          style={{ animationDelay: `${d * 0.15}s` }} />
+                  ))}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pie: lo que hizo el sistema */}
+      <div
+        className="mt-3 flex items-center gap-2 rounded-xl border px-3.5 py-2.5 transition-all duration-500"
         style={{
-          background: "linear-gradient(135deg, #25d366 0%, #0f2b5a 60%, #cf142b 100%)",
-          boxShadow: hovered
-            ? "0 20px 48px rgba(207,20,43,0.45), 0 8px 20px rgba(15,43,90,0.3), 0 0 0 3px rgba(37,211,102,0.4)"
-            : "0 8px 28px rgba(15,43,90,0.35), 0 4px 12px rgba(207,20,43,0.2)",
-          transformStyle: "preserve-3d",
+          background: agendada ? `${BLUE}1f` : "rgba(255,255,255,0.04)",
+          borderColor: agendada ? `${BLUE_LT}55` : "rgba(255,255,255,0.1)",
         }}
-        animate={{
-          y: [0, -7, 0],
-          rotateY: [0, 18, 0, -18, 0],
-          rotateX: [0, 6, 0, -6, 0],
-        }}
-        transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
-        whileHover={{
-          scale: 1.18,
-          rotateY: 25,
-          rotateX: 10,
-          y: -10,
-          transition: { duration: 0.25 },
-        }}
-        whileTap={{ scale: 0.92, rotateY: 0 }}
       >
-        {/* Ícono WhatsApp */}
-        <svg viewBox="0 0 24 24" className="w-8 h-8 fill-white relative z-10" aria-hidden="true">
-          <path d={WA_PATH} />
-        </svg>
-
-        {/* Highlight especular 3D */}
-        <div
-          className="absolute top-1.5 left-2.5 w-4 h-4 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(255,255,255,0.55) 0%, transparent 70%)" }}
-        />
-
-        {/* Borde inferior (profundidad 3D) */}
-        <div
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            background: "linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.25) 100%)",
-          }}
-        />
-      </motion.a>
-    </motion.div>
+        <CalendarCheck className="w-4 h-4 shrink-0" style={{ color: agendada ? BLUE_LT : "#64748b" }} />
+        <span className="text-[12px]" style={{ color: agendada ? "#bcd0ff" : "rgba(255,255,255,0.5)" }}>
+          {agendada
+            ? "Reunión creada en Google Calendar · lead enviado al reporte de jefatura"
+            : "iSabel está calificando al lead…"}
+        </span>
+      </div>
+    </div>
   );
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────────
+// ── FAQ ────────────────────────────────────────────────────────────────────────
+const FAQS = [
+  { q: "¿Usa mi número de WhatsApp actual?", a: "Sí. iSabel se conecta a tu WhatsApp existente y le agrega respuestas automáticas, agenda y clasificación. Sigues con el mismo número de siempre." },
+  { q: "¿La IA agenda reuniones de verdad?", a: "Sí. Cuando el lead confirma día y hora, iSabel crea el evento en tu Google Calendar (con un mínimo de 18 horas de antelación) y envía la invitación por correo." },
+  { q: "¿Cómo clasifica los leads?", a: "Lee la conversación y le asigna un estado por intención: Cita agendada, Solo quiere propiedades, No interesa, Sigue en campaña… Así sabes de un vistazo quién está caliente." },
+  { q: "¿Recibo un resumen de los leads?", a: "Cada mañana a las 08:00 (hora de Madrid) recibes un reporte consolidado con los leads del día, agrupados por etiqueta y con sus conversaciones. Sin abrir el panel." },
+  { q: "¿Necesito saber de tecnología?", a: "No. Si sabes usar WhatsApp, sabes usar RealtyPlus. El inbox, las campañas y los reportes están pensados para agentes, no para técnicos." },
+  { q: "¿Mis datos están seguros?", a: "Tus conversaciones y leads viven en tu propia base con control de acceso por roles (RLS). No vendemos ni compartimos datos de tus clientes." },
+];
+
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-slate-200">
+      <button
+        className="w-full flex items-center justify-between gap-4 py-5 text-left"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        <span className="font-semibold text-[15px]" style={{ color: INK }}>{q}</span>
+        <ChevronDown className={`w-5 h-5 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} style={{ color: BRAND }} />
+      </button>
+      {open && <p className="pb-5 -mt-1 text-[14px] leading-relaxed text-slate-500">{a}</p>}
+    </div>
+  );
+}
+
+// ── WhatsApp flotante ───────────────────────────────────────────────────────────
+const WA_PATH = "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z";
+
+function WhatsAppFloat() {
+  return (
+    <a
+      href="https://wa.me/56971806730"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Escríbenos por WhatsApp"
+      className="fixed bottom-6 right-6 z-40 flex w-14 h-14 rounded-full items-center justify-center shadow-lg transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      style={{ background: SIGNAL, boxShadow: `0 10px 30px ${SIGNAL}55` }}
+    >
+      <span className="absolute inset-0 rounded-full animate-ping opacity-30" style={{ background: SIGNAL }} />
+      <svg viewBox="0 0 24 24" className="w-7 h-7 fill-white relative z-10" aria-hidden="true">
+        <path d={WA_PATH} />
+      </svg>
+    </a>
+  );
+}
+
+// ── Datos de secciones ──────────────────────────────────────────────────────────
+const STEPS = [
+  { k: "01", title: "Llega el mensaje", desc: "WhatsApp, campaña o web — todo entra a un inbox unificado. Ningún lead se pierde a las 11 de la noche.", icon: MessageSquare },
+  { k: "02", title: "iSabel responde y agenda", desc: "La IA contesta en segundos con tu conocimiento de marca, califica al lead y agenda la reunión en tu calendario.", icon: Sparkles },
+  { k: "03", title: "Se etiqueta por intención", desc: "Cada conversación queda clasificada: cita agendada, solo quiere propiedades, no interesa… Sabes quién está caliente.", icon: Tags },
+  { k: "04", title: "Reporte a jefatura · 08:00", desc: "Cada mañana, un informe consolidado de los leads del día agrupados por etiqueta. Automático, sin abrir el panel.", icon: Clock },
+];
+
+const FEATURES = [
+  { title: "Inbox unificado", desc: "Todas tus conversaciones de WhatsApp en un solo panel, con notas, búsqueda y respuestas rápidas.", icon: MessageSquare },
+  { title: "iSabel · Asesora con IA", desc: "Responde 24/7 con memoria de la conversación, tu base de conocimiento y agenda en Google Calendar.", icon: Sparkles },
+  { title: "Etiquetado inteligente", desc: "La IA clasifica cada lead por intención de compra automáticamente. Tú solo trabajas a los calientes.", icon: Tags },
+  { title: "Campañas segmentadas", desc: "Envía mensajes personalizados a miles de contactos por país, etiqueta o estado, sin copiar y pegar.", icon: Megaphone },
+  { title: "Scanner de leads", desc: "Importa tu base desde Excel o CSV; deduplica y deja todo listo para contactar en minutos.", icon: ScanLine },
+  { title: "VoiceCRM", desc: "Un agente de voz que atiende y cualifica por llamada, integrado al mismo flujo de leads.", icon: Mic },
+  { title: "Exportar y reportar", desc: "Descarga leads y conversaciones en Excel, Word o HTML, o envíalos a expansión con un clic.", icon: FileSpreadsheet },
+  { title: "Dashboard en vivo", desc: "Leads del día, calientes, citas y tasa de respuesta — todo en tiempo real.", icon: LayoutDashboard },
+];
+
+// Mock del reporte diario (lo que llega a jefatura)
+const REPORT_TAGS = [
+  { name: "Cita agendada", count: 6, color: BLUE_LT },
+  { name: "Solo quiere propiedades", count: 9, color: "#3b82f6" },
+  { name: "Sin respuesta clara", count: 4, color: HOT },
+  { name: "No interesa", count: 2, color: "#94a3b8" },
+];
+
+// ── Página ───────────────────────────────────────────────────────────────────────
 export default function Index() {
   const [loaded, setLoaded] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const { session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirigir al dashboard si ya está autenticado
   useEffect(() => {
-    if (!authLoading && session) {
-      navigate("/dashboard", { replace: true });
-    }
+    if (!authLoading && session) navigate("/dashboard", { replace: true });
   }, [session, authLoading, navigate]);
 
-
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-    const t = setTimeout(() => setLoaded(true), 1500);
+    const t = setTimeout(() => setLoaded(true), 700);
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
+    const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const features = [
-    { icon: MessageSquare, title: "Inbox Unificado",           desc: "Centraliza WhatsApp, email y redes sociales en un solo panel. Nunca pierdas un lead.",                       color: "#cf142b", bg: "#fff0f1" },
-    { icon: Megaphone,     title: "CAMPAÑAS IA",          desc: "Envía campañas personalizadas a miles de contactos con segmentación inteligente y alta entrega.",            color: "#0f2b5a", bg: "#f0f4ff" },
-    { icon: BarChart3,     title: "Analytics en Tiempo Real",  desc: "Visualiza conversiones, tasas de apertura y ROI de cada campaña con dashboards interactivos.",               color: "#cf142b", bg: "#fff0f1" },
-  ];
-
-  const stats = [
-    { value: 500, suffix: "+",  label: "Inmobiliarias activas" },
-    { value: 2,   suffix: "M+", label: "Mensajes enviados" },
-    { value: 98,  suffix: "%",  label: "Satisfacción del cliente" },
-    { value: 3,   suffix: "x",  label: "Más conversiones" },
-  ];
-
-  const testimonials = [
-    { name: "María González", role: "Directora Comercial · Inmobiliaria Norte", quote: "En el primer mes cerré 11 operaciones usando las campañas de reactivación. Antes promediaba 4 por mes.", avatar: "MG", result: "+175% cierres" },
-    { name: "Carlos Mendoza", role: "CEO · PropTech Soluciones",                quote: "Pasamos de responder en 3 horas a responder en 40 segundos. Eso solo duplicó nuestra tasa de contacto.",    avatar: "CM", result: "40 seg respuesta" },
-    { name: "Ana Rodríguez",  role: "Agente Independiente",                     quote: "Reactivé 200 leads dormidos en una tarde. 18 respondieron. 5 compraron. Fue el mejor mes de mi carrera.", avatar: "AR", result: "5 ventas de leads muertos" },
-  ];
+  const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#reporte", "Reporte diario"], ["#faq", "FAQ"]];
 
   return (
-    <div className="relative bg-white text-[#040d1e] overflow-x-hidden">
-
-      {/* ── Loading screen ── */}
+    <div className="relative bg-white font-sans" style={{ color: INK }}>
+      {/* Loading */}
       <div
-        className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-700"
+        className="fixed inset-0 z-50 bg-white grid place-items-center transition-opacity duration-500"
         style={{ opacity: loaded ? 0 : 1, pointerEvents: loaded ? "none" : "all" }}
         aria-hidden={loaded}
       >
-        <img src={realtyplusLogo} alt="RealtyPlus cargando" className="w-40 mb-8" width="160" height="60" />
-        <div className="w-40 h-1 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full bg-[#cf142b] rounded-full transition-all duration-[1300ms] ease-in-out" style={{ width: loaded ? "100%" : "0%" }} />
-        </div>
-        <p className="mt-4 text-gray-400 text-sm">Cargando…</p>
+        <img src={realtyplusLogo} alt="RealtyPlus" className="w-36 animate-pulse" width="144" height="54" />
       </div>
 
-      {/* ── WhatsApp 3D flotante ── */}
-      <WhatsAppButton />
+      <WhatsAppFloat />
 
-      {/* ── Nav ── */}
+      {/* Nav */}
       <nav
         aria-label="Navegación principal"
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          scrolled ? "bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm" : "bg-transparent"
+        className={`fixed top-0 inset-x-0 z-40 transition-all duration-300 ${
+          scrolled ? "bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm" : "bg-transparent"
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <img src={realtyplusLogo} alt="RealtyPlus — CRM inmobiliario" className="h-9 w-auto" width="120" height="36" />
-
-          <div className="hidden md:flex items-center gap-8 text-sm text-[#040d1e]/70">
-            <a href="#oferta"        className="hover:text-[#cf142b] transition-colors">La oferta</a>
-            <a href="#features"      className="hover:text-[#cf142b] transition-colors">Características</a>
-            <a href="#testimonials"  className="hover:text-[#cf142b] transition-colors">Resultados</a>
-            <a href="#faq"           className="hover:text-[#cf142b] transition-colors">FAQ</a>
+          <img src={realtyplusLogo} alt="RealtyPlus Nexus" className="h-8 w-auto" width="120" height="32" />
+          <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href} className="hover:text-[#E11D34] transition-colors">{label}</a>
+            ))}
           </div>
-
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/auth" className="px-4 py-2 text-sm text-[#040d1e]/70 hover:text-[#040d1e] transition-colors">
-              Iniciar sesión
-            </Link>
-            <Link to="/auth" className="px-5 py-2 text-sm font-semibold bg-[#cf142b] hover:bg-[#e01530] text-white rounded-lg transition-colors shadow-sm">
+          <div className="hidden md:flex items-center gap-2">
+            <Link to="/auth" className="px-4 py-2 text-sm text-slate-600 hover:text-[#0A1228] transition-colors">Iniciar sesión</Link>
+            <Link to="/auth" className="px-5 py-2 text-sm font-semibold text-white rounded-lg transition-transform hover:scale-105" style={{ background: BRAND }}>
               Comenzar gratis
             </Link>
           </div>
-
           <button
             aria-label={mobileMenu ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={mobileMenu}
-            className="md:hidden text-[#040d1e]/70 p-1"
+            className="md:hidden text-slate-600 p-1"
             onClick={() => setMobileMenu(!mobileMenu)}
           >
             {mobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
-
         {mobileMenu && (
-          <div className="md:hidden bg-white border-b border-gray-100 px-6 py-4 flex flex-col gap-3">
-            {[["#oferta","La oferta"],["#features","Características"],["#testimonials","Resultados"],["#faq","FAQ"]].map(([href, label]) => (
-              <a key={href} href={href} className="text-[#040d1e]/70 hover:text-[#cf142b] text-sm py-1" onClick={() => setMobileMenu(false)}>{label}</a>
+          <div className="md:hidden bg-white border-b border-slate-100 px-6 py-4 flex flex-col gap-3">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href} className="text-slate-600 text-sm py-1" onClick={() => setMobileMenu(false)}>{label}</a>
             ))}
-            <Link to="/auth" className="mt-1 px-5 py-2.5 text-sm font-semibold bg-[#cf142b] text-white rounded-lg text-center" onClick={() => setMobileMenu(false)}>
+            <Link to="/auth" className="mt-1 px-5 py-2.5 text-sm font-semibold text-white rounded-lg text-center" style={{ background: BRAND }} onClick={() => setMobileMenu(false)}>
               Comenzar gratis
             </Link>
           </div>
         )}
       </nav>
 
-      {/* ── Hero ── */}
       <main>
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white" aria-labelledby="hero-heading">
-        {/* Plexus solo en desktop */}
-        {!isMobile && (
-          <div className="absolute inset-0 z-[0] opacity-15" aria-hidden="true">
-            <RealEstatePlexus />
-          </div>
-        )}
-        <div className="absolute inset-0 z-[1] bg-gradient-to-br from-red-50/50 via-white/70 to-blue-50/50" aria-hidden="true" />
+        {/* ── Hero ── */}
+        <section className="relative overflow-hidden" style={{ background: INK }} aria-labelledby="hero-heading">
+          {/* fondo: grid sutil + glows */}
+          <div className="absolute inset-0 opacity-[0.06]" aria-hidden="true"
+               style={{ backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-25" style={{ background: BRAND }} aria-hidden="true" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-25" style={{ background: BLUE }} aria-hidden="true" />
 
-        <div className="relative z-[2] w-full max-w-7xl mx-auto px-6 pt-24 pb-16">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Texto */}
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#cf142b]/30 bg-[#cf142b]/8 text-[#cf142b] text-xs font-semibold mb-6 tracking-wide uppercase">
-                <Zap className="w-3.5 h-3.5" aria-hidden="true" />
-                CRM Inmobiliario #1 en Latinoamérica
+          <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
+            <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 mb-7">
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BRAND }} />
+                  <span className="font-mono text-[11px] tracking-wide text-white/70">CRM inmobiliario · sobre WhatsApp</span>
+                </div>
+
+                <h1 id="hero-heading" className="font-display font-extrabold text-white leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl">
+                  De un “hola” en WhatsApp
+                  <br />
+                  a una <span style={{ color: BRAND }}>cita agendada</span>.
+                </h1>
+
+                <p className="mt-6 text-lg leading-relaxed text-white/60 max-w-xl">
+                  <strong className="text-white/90">iSabel</strong>, tu asesora con IA, responde en segundos,
+                  califica cada lead por intención y agenda la reunión en tu calendario.
+                  Tú solo cierras.
+                </p>
+
+                <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                  <Link to="/auth" className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 font-bold text-white rounded-xl text-[15px] transition-transform hover:scale-[1.03]" style={{ background: BRAND, boxShadow: `0 12px 30px ${BRAND}40` }}>
+                    Comenzar gratis
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+                  </Link>
+                  <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-white rounded-xl text-[15px] border border-white/15 hover:bg-white/5 transition-colors">
+                    Ver cómo funciona
+                  </a>
+                </div>
+
+                <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] text-white/40">
+                  {["Sobre tu propio WhatsApp", "Agenda en Google Calendar", "Reporte diario 08:00"].map((t) => (
+                    <span key={t} className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5" style={{ color: BLUE_LT }} aria-hidden="true" />{t}
+                    </span>
+                  ))}
+                </div>
               </div>
 
-              <h1 id="hero-heading" className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-5">
-                <span className="text-[#040d1e]">Automatiza tu inmobiliaria.</span>{" "}
-                <span style={{ background: "linear-gradient(90deg,#cf142b,#ff4d6d)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                  Convierte más leads.
-                </span>
-              </h1>
+              <div className="pt-6 lg:pt-0">
+                <LiveConversation />
+              </div>
+            </div>
+          </div>
+        </section>
 
-              <p className="text-lg text-[#040d1e]/60 mb-8 leading-relaxed">
-                Inbox centralizado, campañas WhatsApp y analytics en una sola plataforma.
-                Responde en segundos, no en horas.
+        {/* ── Cómo funciona (secuencia real) ── */}
+        <section id="como" className="py-24 px-6 bg-white" aria-labelledby="como-heading">
+          <div className="max-w-7xl mx-auto">
+            <FadeSection className="max-w-2xl mb-14">
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>El recorrido de un lead</span>
+              <h2 id="como-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
+                Cuatro pasos, cero trabajo manual.
+              </h2>
+            </FadeSection>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {STEPS.map((s, i) => (
+                <FadeSection key={s.k} delay={i * 0.08}>
+                  <div className="relative h-full p-6 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-card transition-all duration-300">
+                    <div className="flex items-center justify-between mb-5">
+                      <span className="font-mono text-sm font-bold text-slate-300">{s.k}</span>
+                      <s.icon className="w-5 h-5" style={{ color: BRAND }} aria-hidden="true" />
+                    </div>
+                    <h3 className="font-display font-semibold text-lg mb-2">{s.title}</h3>
+                    <p className="text-sm leading-relaxed text-slate-500">{s.desc}</p>
+                    {i < STEPS.length - 1 && (
+                      <span className="hidden lg:block absolute top-7 -right-2.5 text-slate-200" aria-hidden="true">→</span>
+                    )}
+                  </div>
+                </FadeSection>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Funciones reales ── */}
+        <section id="funciones" className="py-24 px-6" style={{ background: "#F6F7FB" }} aria-labelledby="func-heading">
+          <div className="max-w-7xl mx-auto">
+            <FadeSection className="max-w-2xl mb-14">
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>La plataforma</span>
+              <h2 id="func-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
+                Todo lo que de verdad usas, en un solo lugar.
+              </h2>
+              <p className="mt-4 text-slate-500 text-lg">Ocho herramientas conectadas alrededor de la misma conversación.</p>
+            </FadeSection>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {FEATURES.map((f, i) => (
+                <FadeSection key={f.title} delay={(i % 4) * 0.06}>
+                  <div className="h-full p-6 rounded-2xl bg-white border border-slate-100 hover:border-[#E11D34]/25 hover:shadow-card transition-all duration-300">
+                    <div className="w-11 h-11 rounded-xl grid place-items-center mb-4" style={{ background: `${BRAND}10` }}>
+                      <f.icon className="w-5 h-5" style={{ color: BRAND }} aria-hidden="true" />
+                    </div>
+                    <h3 className="font-semibold text-[15px] mb-1.5">{f.title}</h3>
+                    <p className="text-[13px] leading-relaxed text-slate-500">{f.desc}</p>
+                  </div>
+                </FadeSection>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Reporte diario (lo que construimos) ── */}
+        <section id="reporte" className="py-24 px-6" style={{ background: INK }} aria-labelledby="rep-heading">
+          <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+            <FadeSection>
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BLUE_LT }}>Automático · 08:00</span>
+              <h2 id="rep-heading" className="font-display font-bold text-3xl sm:text-4xl text-white mt-3 leading-tight">
+                Cada mañana, los leads del día en tu correo.
+              </h2>
+              <p className="mt-5 text-white/60 text-lg leading-relaxed">
+                A las 08:00 (hora de Madrid) jefatura recibe un reporte consolidado: todos los leads
+                que se movieron en las últimas 24 horas, agrupados por etiqueta y con su conversación
+                completa. Los que aún no responden quedan fuera — solo lo que importa.
               </p>
+              <ul className="mt-7 space-y-3">
+                {["Agrupado por intención del lead", "Conversación completa de cada uno", "Excluye automáticamente a los que no respondieron"].map((t) => (
+                  <li key={t} className="flex items-center gap-3 text-white/75 text-sm">
+                    <Check className="w-4 h-4 shrink-0" style={{ color: BLUE_LT }} aria-hidden="true" />{t}
+                  </li>
+                ))}
+              </ul>
+            </FadeSection>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link to="/auth" className="group flex items-center justify-center gap-2 px-8 py-4 bg-[#cf142b] hover:bg-[#e01530] text-white font-bold rounded-xl text-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-[#cf142b]/25">
-                  Empezar gratis ahora
+            <FadeSection delay={0.1}>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden shadow-2xl">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10" style={{ background: INK2 }}>
+                  <span className="font-display font-semibold text-white text-sm">Reporte de leads · hoy</span>
+                  <span className="font-mono text-[10px] text-white/40">21 leads · 4 etiquetas</span>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {REPORT_TAGS.map((t) => (
+                    <div key={t.name} className="flex items-center gap-3 px-5 py-3.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
+                      <span className="text-white/80 text-sm flex-1">{t.name}</span>
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md" style={{ background: `${t.color}1f`, color: t.color }}>
+                        {t.count} leads
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-5 py-3 text-center font-mono text-[10px] text-white/30 bg-white/[0.02]">
+                  enviado a jefatura@realty-plus.es · 08:00
+                </div>
+              </div>
+            </FadeSection>
+          </div>
+        </section>
+
+        {/* ── Datos honestos ── */}
+        <section className="py-20 px-6 bg-white" aria-label="Datos">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-6">
+            {[
+              { icon: Globe, value: 25, suffix: "+", label: "Países en la red RealtyPlus" },
+              { icon: Sparkles, value: 24, suffix: "/7", label: "iSabel atendiendo leads" },
+              { icon: Clock, value: 8, suffix: ":00", label: "Reporte diario a jefatura" },
+              { icon: Tags, value: 100, suffix: "%", label: "Leads clasificados por IA" },
+            ].map((s, i) => (
+              <FadeSection key={s.label} delay={i * 0.08} className="text-center">
+                <s.icon className="w-6 h-6 mx-auto mb-3" style={{ color: BRAND }} aria-hidden="true" />
+                <div className="font-display font-extrabold text-4xl sm:text-5xl" style={{ color: INK }}>
+                  <AnimatedCounter target={s.value} suffix={s.suffix} />
+                </div>
+                <div className="mt-2 text-sm text-slate-500">{s.label}</div>
+              </FadeSection>
+            ))}
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section id="faq" className="py-24 px-6" style={{ background: "#F6F7FB" }} aria-labelledby="faq-heading">
+          <div className="max-w-3xl mx-auto">
+            <FadeSection className="mb-8">
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>Preguntas frecuentes</span>
+              <h2 id="faq-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3">Lo que sueles preguntar.</h2>
+            </FadeSection>
+            <FadeSection>
+              <div className="rounded-2xl bg-white border border-slate-100 px-6">
+                {FAQS.map((f) => <FAQItem key={f.q} {...f} />)}
+              </div>
+            </FadeSection>
+            <FadeSection className="mt-8 text-center">
+              <a href="https://wa.me/56971806730" target="_blank" rel="noopener noreferrer"
+                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold border-2 transition-colors hover:text-white"
+                 style={{ borderColor: SIGNAL, color: "#15803d" }}
+                 onMouseEnter={(e) => (e.currentTarget.style.background = SIGNAL)}
+                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                <Phone className="w-4 h-4" aria-hidden="true" />¿Otra pregunta? Escríbenos por WhatsApp
+              </a>
+            </FadeSection>
+          </div>
+        </section>
+
+        {/* ── CTA final ── */}
+        <section className="py-24 px-6 bg-white" aria-labelledby="cta-heading">
+          <FadeSection>
+            <div className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden px-8 py-16 sm:px-16 sm:py-20 text-center" style={{ background: INK }}>
+              <div className="absolute -top-20 -right-16 w-72 h-72 rounded-full blur-3xl opacity-25" style={{ background: BRAND }} aria-hidden="true" />
+              <div className="absolute -bottom-20 -left-16 w-72 h-72 rounded-full blur-3xl opacity-25" style={{ background: BLUE }} aria-hidden="true" />
+              <div className="relative">
+                <ShieldCheck className="w-10 h-10 mx-auto mb-5" style={{ color: BLUE_LT }} aria-hidden="true" />
+                <h2 id="cta-heading" className="font-display font-extrabold text-3xl sm:text-5xl text-white leading-tight">
+                  Deja que iSabel atienda.
+                  <br />Tú dedícate a cerrar.
+                </h2>
+                <p className="mt-5 text-white/60 text-lg max-w-lg mx-auto">
+                  Conecta tu WhatsApp y empieza gratis. Sin tarjeta, sin contratos.
+                </p>
+                <Link to="/auth" className="mt-9 group inline-flex items-center gap-2 px-9 py-4 font-bold text-white rounded-xl text-lg transition-transform hover:scale-105" style={{ background: BRAND, boxShadow: `0 14px 36px ${BRAND}50` }}>
+                  Comenzar gratis
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                 </Link>
-                <a href="#oferta" className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-[#0f2b5a]/20 hover:border-[#0f2b5a]/40 text-[#0f2b5a] font-semibold rounded-xl text-lg transition-all duration-200">
-                  Ver la oferta completa
-                </a>
-              </div>
-
-              <div className="flex flex-wrap gap-4 text-sm text-[#040d1e]/50">
-                {["Sin tarjeta de crédito", "Setup en 5 minutos", "Soporte 24/7"].map((item) => (
-                  <span key={item} className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#cf142b]" aria-hidden="true" />
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Dashboard mockup */}
-            <div className="hidden md:block">
-              <DashboardMockup />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Agente de Voz IA ── */}
-      <VoiceAgentHero />
-
-      {/* ── Sección de ventas Hormozi ── */}
-      <section id="oferta" className="py-28 px-6 bg-[#040d1e] text-white overflow-hidden" aria-labelledby="oferta-heading">
-        <div className="max-w-4xl mx-auto">
-
-          <FadeSection className="text-center mb-20">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-[#cf142b]/20 text-[#cf142b] text-xs font-bold uppercase tracking-widest mb-6">
-              Leer esto si eres agente inmobiliario
-            </span>
-            <h2 id="oferta-heading" className="text-4xl md:text-6xl font-black leading-tight mb-6">
-              Cada día sin un sistema,{" "}
-              <span className="text-[#cf142b]">estás regalando dinero</span>{" "}
-              a tu competencia.
-            </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              No es tu culpa. El mercado inmobiliario es caótico. Pero hay una razón
-              por la que el 90% de los agentes gana lo mismo que hace 3 años.
-            </p>
-          </FadeSection>
-
-          <FadeSection className="mb-20">
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                "Recibes una consulta por WhatsApp a las 11pm, te quedas dormido y al día siguiente ya no contesta.",
-                "Tienes 200 contactos en el celular que alguna vez preguntaron por una propiedad... y nunca les volviste a escribir.",
-                "Tu competencia cierra en la primera llamada porque responde en 5 minutos. Tú tardas 3 horas.",
-                "Mandas el mismo mensaje copiado y pegado a 50 personas. Uno por uno. Perdiendo 2 horas.",
-                "No sabes cuántos leads tienes, cuántos son calientes, ni cuántos ya compraron con otro.",
-                "Cada mes empiezas de cero buscando nuevos clientes cuando los que ya tienes podrían volver a comprar.",
-              ].map((pain, i) => (
-                <motion.div
-                  key={i}
-                  className="flex gap-4 p-5 rounded-xl bg-white/5 border border-white/10"
-                  whileHover={{ borderColor: "rgba(207,20,43,0.4)", backgroundColor: "rgba(207,20,43,0.05)" }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <XCircle className="w-5 h-5 text-[#cf142b] shrink-0 mt-0.5" aria-hidden="true" />
-                  <p className="text-white/70 text-sm leading-relaxed">{pain}</p>
-                </motion.div>
-              ))}
-            </div>
-          </FadeSection>
-
-          <FadeSection className="text-center mb-20">
-            <div className="inline-block p-8 rounded-2xl bg-[#cf142b]/10 border border-[#cf142b]/30">
-              <TrendingDown className="w-12 h-12 text-[#cf142b] mx-auto mb-4" aria-hidden="true" />
-              <p className="text-2xl font-bold text-white mb-2">
-                El agente promedio pierde <span className="text-[#cf142b]">el 73% de sus leads</span>
-              </p>
-              <p className="text-white/55">por falta de seguimiento en las primeras 5 horas. No por falta de producto.</p>
-            </div>
-          </FadeSection>
-
-          <FadeSection className="mb-20">
-            <div className="text-center mb-12">
-              <TrendingUp className="w-10 h-10 text-green-400 mx-auto mb-4" aria-hidden="true" />
-              <h3 className="text-3xl md:text-4xl font-black text-white mb-4">Imagina que mañana al despertar…</h3>
-              <p className="text-white/60 text-lg max-w-2xl mx-auto">
-                Tu sistema ya respondió 40 consultas, reactivó 15 leads dormidos y te mandó un reporte de quién está listo para comprar.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {[
-                { icon: Zap,      title: "Sistema de Captación Automática",    desc: "Cada lead que llega —WhatsApp, redes, web— entra solo a tu pipeline, recibe respuesta en segundos y queda clasificado por intención de compra.", tag: "Captación",    color: "#cf142b" },
-                { icon: Users,    title: "Sistema de Reactivación de Leads",   desc: "Tu base de contactos dormidos es una mina de oro. Nuestro sistema los contacta automáticamente con el mensaje correcto en el momento correcto.",    tag: "Reactivación", color: "#3b82f6" },
-                { icon: BarChart3, title: "CRM + Analytics Inmobiliario",      desc: "Panel central donde ves todo: quién está caliente, quién necesita seguimiento, cuánto llevas en comisiones y qué campañas funcionan.",             tag: "Control total", color: "#10b981" },
-              ].map((item, i) => (
-                <FadeSection key={item.title} delay={i * 0.1}>
-                  <div className="h-full p-7 rounded-2xl bg-white/5 border border-white/10 hover:border-white/25 transition-colors">
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4" style={{ background: `${item.color}22`, color: item.color }}>{item.tag}</span>
-                    <item.icon className="w-8 h-8 mb-4" style={{ color: item.color }} aria-hidden="true" />
-                    <h4 className="text-white font-bold text-lg mb-3">{item.title}</h4>
-                    <p className="text-white/55 text-sm leading-relaxed">{item.desc}</p>
-                  </div>
-                </FadeSection>
-              ))}
-            </div>
-          </FadeSection>
-
-          {/* Value Stack */}
-          <FadeSection className="mb-20">
-            <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-              <div className="p-8 border-b border-white/10 text-center">
-                <h3 className="text-2xl md:text-3xl font-black text-white">Todo lo que obtienes con RealtyPlus</h3>
-              </div>
-              <div className="divide-y divide-white/5">
-                {[
-                  { item: "Sistema de Captación Automática 24/7",      value: "$497/mes" },
-                  { item: "Sistema de Reactivación de Leads Dormidos", value: "$397/mes" },
-                  { item: "CRM Inmobiliario Completo",                 value: "$297/mes" },
-                  { item: "Campañas WhatsApp Masivas ilimitadas",      value: "$197/mes" },
-                  { item: "Inbox Unificado (WhatsApp + redes + web)",  value: "$147/mes" },
-                  { item: "Analytics y reportes en tiempo real",       value: "$97/mes"  },
-                  { item: "Soporte prioritario 24/7",                  value: "$97/mes"  },
-                  { item: "Onboarding y setup completo 1:1",           value: "$500 único" },
-                ].map(({ item, value }) => (
-                  <div key={item} className="flex items-center justify-between px-8 py-4">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" aria-hidden="true" />
-                      <span className="text-white/80 text-sm">{item}</span>
-                    </div>
-                    <span className="text-white/35 text-sm line-through shrink-0 ml-4">{value}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="p-8 bg-white/5">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div>
-                    <p className="text-white/50 text-sm mb-1">Valor total del sistema</p>
-                    <p className="text-white/35 text-2xl font-bold line-through">$2,229/mes</p>
-                  </div>
-                  <div className="text-center md:text-right">
-                    <p className="text-white/50 text-sm mb-1">Tu inversión hoy</p>
-                    <div className="flex items-baseline gap-2 justify-center md:justify-end">
-                      <span className="text-5xl font-black text-[#cf142b]">Gratis</span>
-                      <span className="text-white/40 text-lg">para empezar</span>
-                    </div>
-                    <p className="text-white/35 text-xs mt-1">Sin tarjeta · Cancela cuando quieras</p>
-                  </div>
-                </div>
               </div>
             </div>
           </FadeSection>
-
-          {/* Bonos */}
-          <FadeSection className="mb-20">
-            <h3 className="text-2xl font-black text-white text-center mb-8">
-              <Gift className="w-7 h-7 text-[#cf142b] inline mr-2 -mt-1" aria-hidden="true" />
-              Bonos exclusivos para los primeros 50
-            </h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                { title: "Script de Cierre Inmobiliario",      desc: "El guión exacto que usan nuestros mejores agentes para cerrar en la primera llamada.", valor: "$197" },
-                { title: "100 Mensajes de Reactivación",       desc: "Plantillas probadas para re-enganchar leads fríos. Solo copia, pega y personaliza.",   valor: "$97"  },
-                { title: "Masterclass: Pipeline de 7 Figuras", desc: "Cómo construir un flujo de leads que genera comisiones mientras duermes.",             valor: "$297" },
-                { title: "Setup Personalizado 1:1",            desc: "Un especialista configura tu cuenta desde cero en menos de 48 horas.",                  valor: "$500" },
-              ].map((bonus) => (
-                <div key={bonus.title} className="flex gap-4 p-6 rounded-2xl bg-gradient-to-br from-[#cf142b]/10 to-transparent border border-[#cf142b]/20">
-                  <Gift className="w-6 h-6 text-[#cf142b] shrink-0 mt-0.5" aria-hidden="true" />
-                  <div>
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-white font-bold text-sm">{bonus.title}</span>
-                      <span className="text-[#cf142b] text-xs font-bold">({bonus.valor} valor)</span>
-                    </div>
-                    <p className="text-white/50 text-xs leading-relaxed">{bonus.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </FadeSection>
-
-          {/* Garantía */}
-          <FadeSection className="mb-20">
-            <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-3xl border-2 border-green-400/30 bg-green-400/5">
-              <ShieldCheck className="w-20 h-20 text-green-400 shrink-0" aria-hidden="true" />
-              <div>
-                <h3 className="text-2xl font-black text-white mb-3">Garantía de resultados 30 días</h3>
-                <p className="text-white/65 leading-relaxed">
-                  Si en 30 días de uso activo no ves un aumento en tus leads calificados,
-                  te devolvemos cada centavo sin preguntas.{" "}
-                  <strong className="text-white">Tú llevas cero riesgo.</strong>
-                </p>
-              </div>
-            </div>
-          </FadeSection>
-
-          {/* Urgencia + Countdown */}
-          <FadeSection>
-            <div className="text-center">
-              <div className="inline-block p-6 rounded-2xl bg-white/5 border border-white/10 mb-8">
-                <div className="flex items-center gap-2 justify-center mb-4">
-                  <Clock className="w-5 h-5 text-[#cf142b]" aria-hidden="true" />
-                  <span className="text-white/70 text-sm font-semibold">Oferta con setup gratuito vence en:</span>
-                </div>
-                <CountdownTimer />
-                <p className="text-white/35 text-xs mt-3">Solo quedan <strong className="text-white">23 cupos</strong> con setup 1:1 gratuito este mes</p>
-              </div>
-
-              <h3 className="text-4xl md:text-5xl font-black text-white mb-4">¿Sigues esperando el momento perfecto?</h3>
-              <p className="text-white/55 text-lg mb-10 max-w-xl mx-auto">
-                El momento perfecto fue hace 6 meses. El segundo mejor momento es hoy.
-                Cada día que esperas, tu competencia cierra los leads que deberían ser tuyos.
-              </p>
-              <Link
-                to="/auth"
-                className="group inline-flex items-center gap-3 px-10 py-5 bg-[#cf142b] hover:bg-[#e01530] text-white font-black rounded-xl text-xl transition-all duration-200 hover:scale-105 shadow-2xl shadow-[#cf142b]/40"
-              >
-                <DollarSign className="w-6 h-6" aria-hidden="true" />
-                Quiero mis leads automatizados
-                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-              </Link>
-              <p className="mt-4 text-white/30 text-sm">Sin tarjeta · Sin contrato · Cancela cuando quieras</p>
-            </div>
-          </FadeSection>
-        </div>
-      </section>
-
-      {/* ── Features ── */}
-      <section id="features" className="py-28 px-6 bg-gray-50" aria-labelledby="features-heading">
-        <div className="max-w-7xl mx-auto">
-          <FadeSection className="text-center mb-16">
-            <span className="text-[#cf142b] text-sm font-semibold uppercase tracking-widest">Plataforma completa</span>
-            <h2 id="features-heading" className="text-4xl md:text-5xl font-bold text-[#040d1e] mt-3 mb-4">
-              Todo lo que necesitas para<br />cerrar más negocios
-            </h2>
-            <p className="text-[#040d1e]/50 text-lg max-w-xl mx-auto">
-              Herramientas diseñadas para el mercado inmobiliario latinoamericano.
-            </p>
-          </FadeSection>
-          <div className="grid md:grid-cols-3 gap-6" style={{ perspective: "1000px" }}>
-            {features.map((f, i) => (
-              <FadeSection key={f.title} delay={i * 0.12}>
-                <TiltCard className="h-full">
-                  <div className="h-full p-8 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-[#cf142b]/20 transition-all duration-300 group">
-                    <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6" style={{ background: f.bg }}>
-                      <f.icon className="w-7 h-7" style={{ color: f.color }} aria-hidden="true" />
-                    </div>
-                    <h3 className="text-xl font-bold text-[#040d1e] mb-3">{f.title}</h3>
-                    <p className="text-[#040d1e]/55 leading-relaxed">{f.desc}</p>
-                    <div className="mt-6 flex items-center gap-2 text-[#cf142b] text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                      Explorar <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                    </div>
-                  </div>
-                </TiltCard>
-              </FadeSection>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Stats ── */}
-      <section id="stats" className="py-24 px-6 bg-[#040d1e]" aria-labelledby="stats-heading">
-        <div className="max-w-7xl mx-auto">
-          <FadeSection className="text-center mb-12">
-            <h2 id="stats-heading" className="text-3xl font-black text-white">Números que no mienten</h2>
-          </FadeSection>
-          <FadeSection>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
-              {stats.map((s, i) => (
-                <FadeSection key={s.label} delay={i * 0.1}>
-                  <div className="text-5xl md:text-6xl font-black text-white mb-3">
-                    <AnimatedCounter target={s.value} suffix={s.suffix} />
-                  </div>
-                  <div className="text-white/50 text-sm font-medium">{s.label}</div>
-                </FadeSection>
-              ))}
-            </div>
-          </FadeSection>
-        </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section id="testimonials" className="py-28 px-6 bg-white" aria-labelledby="testimonials-heading">
-        <div className="max-w-7xl mx-auto">
-          <FadeSection className="text-center mb-16">
-            <span className="text-[#cf142b] text-sm font-semibold uppercase tracking-widest">Resultados reales</span>
-            <h2 id="testimonials-heading" className="text-4xl md:text-5xl font-bold text-[#040d1e] mt-3">
-              Lo que dicen nuestros clientes
-            </h2>
-          </FadeSection>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <FadeSection key={t.name} delay={i * 0.12}>
-                <div className="h-full p-7 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300 flex flex-col">
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex gap-1">
-                      {Array.from({ length: 5 }).map((_, j) => (
-                        <Star key={j} className="w-4 h-4 fill-[#cf142b] text-[#cf142b]" aria-hidden="true" />
-                      ))}
-                    </div>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">{t.result}</span>
-                  </div>
-                  <p className="text-[#040d1e]/70 leading-relaxed flex-1 text-base italic">"{t.quote}"</p>
-                  <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-100">
-                    <div className="w-10 h-10 rounded-full bg-[#cf142b]/10 border border-[#cf142b]/20 flex items-center justify-center text-[#cf142b] font-bold text-sm shrink-0" aria-hidden="true">
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <div className="text-[#040d1e] font-semibold text-sm">{t.name}</div>
-                      <div className="text-[#040d1e]/40 text-xs">{t.role}</div>
-                    </div>
-                  </div>
-                </div>
-              </FadeSection>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FAQ ── */}
-      <section id="faq" className="py-28 px-6 bg-gray-50" aria-labelledby="faq-heading">
-        <div className="max-w-3xl mx-auto">
-          <FadeSection className="text-center mb-12">
-            <span className="text-[#cf142b] text-sm font-semibold uppercase tracking-widest">Preguntas frecuentes</span>
-            <h2 id="faq-heading" className="text-4xl font-bold text-[#040d1e] mt-3 mb-4">
-              Resolvemos tus dudas
-            </h2>
-            <p className="text-[#040d1e]/50">Si no encuentras tu respuesta aquí, escríbenos por WhatsApp.</p>
-          </FadeSection>
-          <FadeSection>
-            <FAQ />
-          </FadeSection>
-          <FadeSection className="text-center mt-10">
-            <a
-              href="https://wa.me/message/REALTYPLUS"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-[#25d366] text-[#25d366] hover:bg-[#25d366] hover:text-white font-semibold transition-all duration-200"
-            >
-              <Phone className="w-4 h-4" aria-hidden="true" />
-              ¿Otra pregunta? Escríbenos por WhatsApp
-            </a>
-          </FadeSection>
-        </div>
-      </section>
-
-      {/* ── Final CTA ── */}
-      <section className="py-28 px-6 bg-white" aria-labelledby="cta-heading">
-        <FadeSection>
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="p-12 md:p-20 rounded-3xl border-2 border-[#cf142b]/15 bg-white shadow-xl relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-[#cf142b]/5" aria-hidden="true" />
-              <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-[#0f2b5a]/5" aria-hidden="true" />
-              <h2 id="cta-heading" className="relative text-4xl md:text-5xl font-black text-[#040d1e] mb-5">
-                Empieza hoy, <span className="text-[#cf142b]">sin costo.</span>
-              </h2>
-              <p className="relative text-[#040d1e]/55 text-lg mb-8 max-w-md mx-auto">
-                Únete a más de 500 inmobiliarias que ya automatizan sus ventas con RealtyPlus.
-              </p>
-              <Link
-                to="/auth"
-                className="relative inline-flex items-center gap-3 px-10 py-4 bg-[#cf142b] hover:bg-[#e01530] text-white font-bold rounded-xl text-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-[#cf142b]/25"
-              >
-                Comenzar gratis ahora
-                <ArrowRight className="w-5 h-5" aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-        </FadeSection>
-      </section>
+        </section>
       </main>
 
       {/* ── Footer ── */}
-      <footer className="bg-[#040d1e] py-16 px-6" aria-labelledby="footer-heading">
+      <footer className="py-14 px-6" style={{ background: INK }} aria-label="Pie de página">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-10 mb-12">
-            <div className="md:col-span-1">
-              <img src={realtyplusLogo} alt="RealtyPlus" className="h-10 w-auto mb-4 brightness-0 invert" width="130" height="40" />
-              <p className="text-white/40 text-sm leading-relaxed">La plataforma CRM inmobiliaria más completa de Latinoamérica.</p>
+          <div className="grid md:grid-cols-4 gap-10 mb-10">
+            <div>
+              <img src={realtyplusLogo} alt="RealtyPlus" className="h-9 w-auto mb-4 brightness-0 invert" width="120" height="36" />
+              <p className="text-white/40 text-sm leading-relaxed">CRM inmobiliario sobre WhatsApp, con IA que responde, agenda y clasifica.</p>
             </div>
             {[
-              { title: "Producto", links: ["Inbox Unificado","Campañas WhatsApp","Analytics","Automatizaciones","Integraciones"] },
-              { title: "Empresa",  links: ["Acerca de","Blog","Clientes","Prensa","Trabaja con nosotros"] },
-              { title: "Contacto", links: ["Soporte 24/7","Documentación","Estado del sistema","Política de privacidad","Términos de uso"] },
+              { title: "Plataforma", links: ["Inbox unificado", "iSabel · Asesora IA", "Etiquetado IA", "Campañas", "Scanner", "VoiceCRM"] },
+              { title: "Recursos", links: ["Reporte diario", "Exportar leads", "Dashboard", "Integraciones"] },
+              { title: "RealtyPlus", links: ["Red de franquicias", "Soporte", "Privacidad", "Términos"] },
             ].map((col) => (
               <div key={col.title}>
-                <h3 className="text-white font-semibold mb-4 text-sm">{col.title}</h3>
+                <h3 className="font-mono text-white/70 text-xs uppercase tracking-widest mb-4">{col.title}</h3>
                 <ul className="space-y-2.5">
                   {col.links.map((l) => (
-                    <li key={l}><a href="#" className="text-white/45 hover:text-white text-sm transition-colors">{l}</a></li>
+                    <li key={l}><span className="text-white/45 text-sm">{l}</span></li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
-          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-white/30 text-xs">
-            <span>© {new Date().getFullYear()} RealtyPlus. Todos los derechos reservados.</span>
-            <span>Hecho con ❤️ para el mercado inmobiliario latinoamericano</span>
+          <div className="border-t border-white/10 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/30 text-xs">
+            <span>© {new Date().getFullYear()} RealtyPlus · Servicios Inmobiliarios Plus Sur SL</span>
+            <span className="font-mono">Hecho por AI-MaX Intelligence</span>
           </div>
         </div>
       </footer>
