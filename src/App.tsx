@@ -24,7 +24,11 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// refetchOnWindowFocus desactivado: evita que React Query refetchee (y muestre estados
+// de carga) cada vez que vuelves a la pestaña, lo que causaba parpadeos/recargas.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { refetchOnWindowFocus: false } },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

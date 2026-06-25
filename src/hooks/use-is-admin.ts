@@ -29,7 +29,12 @@ export function useIsAdmin() {
     return () => {
       active = false;
     };
-  }, [user]);
+    // Dependemos del user.id (estable), NO del objeto `user`: al volver el foco a la
+    // pestaña, Supabase refresca el token y crea un nuevo objeto `user` con el MISMO id.
+    // Si dependiéramos de `user`, el efecto se re-ejecutaría, AdminRoute mostraría su
+    // spinner y DESMONTARÍA la página → se perderían los datos escritos. Con user.id el
+    // re-chequeo solo ocurre en login/logout reales.
+  }, [user?.id]);
 
   return { isAdmin, loading };
 }
