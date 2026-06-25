@@ -126,26 +126,11 @@ export default function CampaignExecuteWarning({
   const estimatedCost = (totalLeads * 0.0499).toFixed(2);
   const allChecked = checkedTemplates && checkedCosts && checkedOptOut;
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     if (!allChecked) return;
-    try {
-      await fetch(
-        "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas",
-        {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            campaignName,
-            totalLeads,
-            channel,
-            triggeredAt: new Date().toISOString(),
-          }),
-        }
-      );
-    } catch (err) {
-      console.error("n8n webhook error:", err);
-    }
+    // El envío REAL (payload completo con la lista de leads, target_filters y sheet) lo
+    // hace el componente padre en onConfirm (Scanner.launchCampaign / Ejecutar campaña),
+    // que postea a /camapañas_segmentadas vía send-n8n-webhook. Aquí solo se confirma.
     onConfirm();
     onOpenChange(false);
     setCheckedTemplates(false);
