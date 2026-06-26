@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "etiquetas-leads-nuevos",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
