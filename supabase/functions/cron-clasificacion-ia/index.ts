@@ -251,6 +251,14 @@ Deno.serve(async (req) => {
     } else if (leads_a_enviar.length > 0) {
       // Adjunta el Excel (misma lógica que TaggedExport) generado por
       // clasificacion-excel. Best-effort: si falla, el reporte se envía igual sin él.
+      // Mapa teléfono(dígitos) → resumen IA de esta corrida, para añadir la columna
+      // "Resumen IA" al Excel (el resumen no se persiste en BD, vive solo aquí).
+      const resumenes: Record<string, string> = {};
+      for (const r of resultados) {
+        const tel = (r.telefono ?? "").toString();
+        const res = (r.resumen ?? "").toString();
+        if (tel && res) resumenes[tel] = res;
+      }
       try {
         const exRes = await fetch(`${SUPABASE_URL}/functions/v1/clasificacion-excel`, {
           method: "POST",
@@ -260,7 +268,7 @@ Deno.serve(async (req) => {
             "Authorization": `Bearer ${SERVICE_KEY}`,
             "apikey": SERVICE_KEY,
           },
-          body: JSON.stringify({ ventana_horas: VENTANA_HORAS, pais: paisFiltro }),
+          body: JSON.stringify({ ventana_horas: VENTANA_HORAS, pais: paisFiltro, resumenes }),
           signal: AbortSignal.timeout(40000),
         });
         const ex = await exRes.json().catch(() => ({}));

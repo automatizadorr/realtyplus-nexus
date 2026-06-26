@@ -65,6 +65,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const paisFiltro = (body?.pais ?? "").toString().trim();
     const VENTANA_HORAS = Number(body?.ventana_horas) > 0 ? Number(body.ventana_horas) : 24;
+    // Resúmenes IA de la corrida (telefono dígitos → resumen). No se persisten en BD;
+    // los pasa cron-clasificacion-ia para añadir la columna "Resumen IA".
+    const resumenes: Record<string, string> =
+      body?.resumenes && typeof body.resumenes === "object" ? body.resumenes : {};
     const cutoff = new Date(Date.now() - VENTANA_HORAS * 3600 * 1000).toISOString();
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -178,6 +182,7 @@ Deno.serve(async (req) => {
         "Estado": l.estado ?? "",
         "Motivo Cierre": l.motivo_cierre ?? "",
         "Etiquetas": etiquetas,
+        "Resumen IA": resumenes[normPhone(l.telefono)] ?? "",
         "Etiquetas (IDs)": tagIds.join(", "),
         "Bot Activo": yesNo(l.bot_activo),
         "Archivado": yesNo(l.archivado),
@@ -239,7 +244,7 @@ Deno.serve(async (req) => {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     (ws as Record<string, unknown>)["!cols"] =
-      [36, 14, 28, 16, 18, 16, 28, 32, 14, 10, 14, 18, 30, 30, 11, 11, 14, 11, 11, 11, 14, 36, 18, 18, 18, 18, 18, 12, 12, 12, 40, 20].map((wch) => ({ wch }));
+      [36, 14, 28, 16, 18, 16, 28, 32, 14, 10, 14, 18, 30, 60, 30, 11, 11, 14, 11, 11, 11, 14, 36, 18, 18, 18, 18, 18, 12, 12, 12, 40, 20].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(wb, ws, "Leads Etiquetados");
 
     const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
