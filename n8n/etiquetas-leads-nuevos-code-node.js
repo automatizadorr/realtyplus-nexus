@@ -2,9 +2,10 @@
 //  Nodo "Construir Reporte HTML" — Clasificación IA leads nuevos
 //  Transforma el payload de /etiquetas-leads-nuevos (Edge Function
 //  cron-clasificacion-ia) en un correo HTML de expansión con marca
-//  RealtyPlus (paleta RE/MAX), agrupado por etiqueta, con el RESUMEN IA
-//  siempre visible y la conversación DESPLEGABLE (colapsada por defecto)
-//  para poder llegar al Excel adjunto de inmediato.
+//  RealtyPlus (paleta RE/MAX), agrupado por etiqueta, mostrando SOLO el
+//  RESUMEN IA por lead (cuerpo compacto). La conversación completa NO va en el
+//  correo: viaja en el Excel adjunto (columna «Conversación»). Gmail no soporta
+//  desplegables <details>, por eso el cuerpo se mantiene corto.
 //  Adjunta SOLO el Excel (el .xlsx que envía la edge function en excel_base64).
 //  Modo de ejecución: "Run Once for All Items".
 //  IMPORTANTE: en el nodo Gmail, Email Type = HTML (si no, sale en texto plano).
@@ -50,29 +51,20 @@ for (const l of leads) {
 }
 const nombresOrden = Object.keys(grupos).sort((a, b) => a.localeCompare(b, "es"));
 
-// ── Tarjeta de un lead (resumen visible + conversación desplegable) ──
+// ── Tarjeta de un lead (SOLO resumen IA; la conversación completa va en el Excel) ──
 const buildLead = (l) => {
   const msgs = Array.isArray(l.mensajes) ? l.mensajes : [];
-  const bubbles = msgs.map((m) => {
-    const out = (m.rol === "agente" || m.rol === "agent" || m.rol === "assistant");
-    const txt = esc((m.texto || m.contenido || "").trim());
-    return `<div class="brow ${out ? "o" : "i"}"><div class="bub ${out ? "bo" : "bi"}"><div class="bx">${txt || "<em style='opacity:.4'>—</em>"}</div></div></div>`;
-  }).join("");
-
   const color = COLORS[l.etiqueta] || AZUL;
   return `<div class="lead">
     <div class="lhd">
       <div class="lav" style="background:${color}">${esc((l.nombre || "?").charAt(0).toUpperCase())}</div>
       <div class="lin">
         <div class="lnm">${esc(l.nombre || "Sin nombre")}</div>
-        <div class="lmt">📱 ${esc(l.telefono || "")}${l.lead_id ? ` · ID ${esc(l.lead_id)}` : ""}</div>
+        <div class="lmt">📱 ${esc(l.telefono || "")}${l.lead_id ? ` · ID ${esc(l.lead_id)}` : ""}${msgs.length ? ` · 💬 ${msgs.length} msgs` : ""}</div>
       </div>
       <span class="chip" style="background:${color}1a;color:${color};border:1px solid ${color}55">${esc(l.etiqueta || "Sin etiqueta")}</span>
     </div>
-    ${l.resumen ? `<div class="res"><b>🧠 Resumen IA:</b> ${esc(l.resumen)}</div>` : ""}
-    ${msgs.length
-      ? `<details class="conv"><summary>💬 Ver conversación (${msgs.length} mensajes)</summary><div class="cha">${bubbles}</div></details>`
-      : `<div class="nom">Sin mensajes registrados</div>`}
+    ${l.resumen ? `<div class="res"><b>🧠 Resumen IA:</b> ${esc(l.resumen)}</div>` : `<div class="nom">Sin resumen</div>`}
   </div>`;
 };
 
@@ -120,21 +112,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#eef1f5;color:#1f2937;fo
 .chip{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
 .res{padding:9px 14px;font-size:12px;color:#374151;background:#fffbeb;border-top:1px solid #fef3c7}.res b{color:#b45309}
 .nom{padding:12px 14px;color:#cbd5e1;font-style:italic}
-.conv{border-top:1px solid #eef1f5}
-.conv>summary{cursor:pointer;list-style:none;padding:9px 14px;font-size:12px;font-weight:600;color:${AZUL};background:#f6f8fb;user-select:none}
-.conv>summary::-webkit-details-marker{display:none}
-.conv>summary:before{content:"\\25B8 ";color:${AZUL}}
-.conv[open]>summary:before{content:"\\25BE "}
-.cha{background:#f6f8fb;padding:12px 14px;border-top:1px solid #eef1f5}
-.brow{display:flex;margin-bottom:7px}.brow.o{justify-content:flex-end}.brow.i{justify-content:flex-start}
-.bub{max-width:74%;padding:7px 11px;border-radius:11px;word-break:break-word}
-.bo{background:${AZUL};color:#fff;border-bottom-right-radius:2px}
-.bi{background:#fff;color:#1f2937;border:1px solid #e2e8f0;border-bottom-left-radius:2px}
-.bx{font-size:12px}
 .ft{text-align:center;padding:16px;color:#9ca3af;font-size:10px;border-top:1px solid #eef1f5}
 </style></head><body><div class="wrap">
 <div class="ph"><img src="${LOGO}" alt="RealtyPlus — Servicios Inmobiliarios"><h1>Clasificación IA de leads nuevos</h1><p>Generado el ${hoy} · ${leads.length} leads · ${nombresOrden.length} etiquetas · ventana ${esc(p.ventana_horas || 24)}h</p></div>
-<div class="note">📎 El detalle completo va en el Excel adjunto (hojas «Resumen Etiquetas» y «Leads Etiquetados»). Las conversaciones de abajo están plegadas: ábrelas solo si las necesitas.</div>
+<div class="note">📎 Resumen IA por lead abajo. La conversación COMPLETA de cada lead está en el Excel adjunto (columna «Conversación»), junto con todas las métricas.</div>
 <div class="kpis">
   <div class="kpi"><b>${leads.length}</b><small>Leads clasificados</small></div>
   <div class="kpi"><b>${nombresOrden.length}</b><small>Etiquetas</small></div>

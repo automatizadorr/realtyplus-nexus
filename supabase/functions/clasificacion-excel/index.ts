@@ -168,6 +168,15 @@ Deno.serve(async (req) => {
       const etiquetas = tagIds.map((id) => tagMap.get(id)?.nombre ?? id).join(", ");
       const s = msgStats.get(normPhone(l.telefono)) ?? { enviados: 0, recibidos: 0, ultimoMsg: "", ultimaFecha: "" };
       const telDigits = normPhone(l.telefono);
+      // Conversación COMPLETA (hilo real) para la columna del Excel.
+      const conversacion = (msgsByPhone.get(normPhone(l.telefono)) ?? [])
+        .map((m) => {
+          const who = m.direccion === "outbound" ? "Bot" : "Cliente";
+          const fecha = m.created_at ? formatDate(m.created_at) : "";
+          const txt = (m.contenido ?? "").toString().trim();
+          return `[${fecha}] ${who}: ${txt}`;
+        })
+        .join("\n");
       return {
         "ID Lead": l.id ?? "",
         "ID Contacto": l.id_contacto ?? "",
@@ -202,6 +211,7 @@ Deno.serve(async (req) => {
         "Msgs Total": s.enviados + s.recibidos,
         "Último Mensaje": s.ultimoMsg,
         "Fecha Último Msg": formatDate(s.ultimaFecha),
+        "Conversación": conversacion,
       };
     });
 
@@ -244,7 +254,7 @@ Deno.serve(async (req) => {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     (ws as Record<string, unknown>)["!cols"] =
-      [36, 14, 28, 16, 18, 16, 28, 32, 14, 10, 14, 18, 30, 60, 30, 11, 11, 14, 11, 11, 11, 14, 36, 18, 18, 18, 18, 18, 12, 12, 12, 40, 20].map((wch) => ({ wch }));
+      [36, 14, 28, 16, 18, 16, 28, 32, 14, 10, 14, 18, 30, 60, 30, 11, 11, 14, 11, 11, 11, 14, 36, 18, 18, 18, 18, 18, 12, 12, 12, 40, 20, 90].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(wb, ws, "Leads Etiquetados");
 
     const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
