@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "functionCode": "const data = items[0].json;\nconst leads = data.leads || [];\n\nreturn leads.map(function(lead) {\n  var tel = String(lead.telefono || '');\n  tel = tel.replace('@s.whatsapp.net', '');\n  tel = tel.replace('+', '');\n  tel = tel.replace(/[^0-9]/g, '');\n  return {\n    json: {\n      lead_id: lead.lead_id,\n      nombre: lead.nombre,\n      telefono: lead.telefono,\n      telefono_limpio: tel,\n      etiqueta: lead.etiqueta,\n      mensajes: lead.mensajes,\n      timestamp_reporte: data.timestamp,\n      total_clasificados: data.leads_clasificados\n    }\n  };\n});"
+        "functionCode": "const data = items[0].json;\nconst leads = data.leads || [];\n\nreturn leads.map(function(lead) {\n  var tel = String(lead.telefono || '');\n  tel = tel.replace('@s.whatsapp.net', '');\n  tel = tel.replace('+', '');\n  tel = tel.replace(/[^0-9]/g, '');\n  return {\n    json: {\n      lead_id: lead.lead_id,\n      nombre: lead.nombre,\n      telefono: lead.telefono,\n      telefono_limpio: tel,\n      etiqueta: lead.etiqueta,\n      resumen: lead.resumen,\n      mensajes: lead.mensajes,\n      timestamp_reporte: data.timestamp,\n      total_clasificados: data.leads_clasificados\n    }\n  };\n});"
       },
       "id": "node-fn-002",
       "name": "Separar Leads",
