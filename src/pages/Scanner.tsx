@@ -51,6 +51,24 @@ const COUNTRY_FLAGS: Record<string, string> = {
 
 const STATUS_WORDS = new Set(["nuevo", "contactado", "sin", "definir", "seguimiento", "finalizada", "meet", "llamar", "cerrado", "activo", "inactivo", "respondió", "respondio"]);
 
+// Plantillas de primer contacto para leads nuevos. Usa {nombre} como marcador
+// (n8n lo reemplaza por el nombre del lead). El texto elegido viaja en el webhook
+// como message_template_whatsapp.
+const MESSAGE_TEMPLATES: { label: string; idioma: string; texto: string }[] = [
+  {
+    label: "Primer contacto · Español",
+    idioma: "es",
+    texto:
+      "Hola {nombre}. Soy Sofia del Equipo de Expansión Internacional de la Red de Franquicias Inmobiliarias REALTYPLUS. Acabamos de recibir tu solicitud de información sobre nuestro modelo de negocio de franquicias inmobiliarias y nos ponemos a tu disposición para ampliarte lo que necesites. Nuestra oferta de franquicias y nuestro ecosistema de servicios están dirigidos a profesionales y nuevos emprendedores que quieran hacer algo distinto en el mundo inmobiliario, crecer y ampliar horizontes. ¿Empezamos?",
+  },
+  {
+    label: "Primer contacto · English",
+    idioma: "en",
+    texto:
+      "Hello {nombre}. I'm Sofia from the International Expansion Team of the REALTYPLUS Real Estate Franchise Network. We've just received your request for information about our real estate franchise business model, and we're here to help with anything you need.\n\nOur franchise offer and service ecosystem are designed for professionals and new entrepreneurs who want to do something different in the real estate world, grow, and broaden their horizons. Shall we get started?",
+  },
+];
+
 function inferCountryByPhone(digits: string): string | null {
   for (const { prefix, pais } of COUNTRY_PREFIXES) {
     if (digits.startsWith(prefix)) return pais;
@@ -103,6 +121,7 @@ export default function Scanner() {
   const [rawText, setRawText] = useState("");
   const [campaignName, setCampaignName] = useState("");
   const [messageTemplate, setMessageTemplate] = useState("");
+  const [templateIdioma, setTemplateIdioma] = useState("");
   const [contacts, setContacts] = useState<ParsedContact[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState<"" | "syncing" | "importing">("");
@@ -373,6 +392,7 @@ export default function Scanner() {
             status: "pendiente",
             total_leads: enriched.length,
             message_template_whatsapp: messageTemplate || "",
+            idioma: templateIdioma || null,
             message_template_email: null,
             subject_email: null,
             target_filters: {
@@ -397,6 +417,7 @@ export default function Scanner() {
       setRawText("");
       setCampaignName("");
       setMessageTemplate("");
+      setTemplateIdioma("");
       setContacts([]);
       setFileName("");
     } catch (err: any) {
@@ -433,7 +454,33 @@ export default function Scanner() {
             </div>
             <div className="space-y-2">
               <Label>Plantilla de Mensaje (WhatsApp)</Label>
-              <Textarea value={messageTemplate} onChange={(e) => setMessageTemplate(e.target.value)} placeholder="Hola {nombre}, te contactamos de Realtyplus..." rows={3} />
+              <div className="flex flex-wrap gap-2">
+                {MESSAGE_TEMPLATES.map((t) => (
+                  <Button
+                    key={t.idioma}
+                    type="button"
+                    size="sm"
+                    variant={templateIdioma === t.idioma ? "default" : "outline"}
+                    onClick={() => { setMessageTemplate(t.texto); setTemplateIdioma(t.idioma); }}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+                {messageTemplate && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => { setMessageTemplate(""); setTemplateIdioma(""); }}>
+                    Limpiar
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                value={messageTemplate}
+                onChange={(e) => { setMessageTemplate(e.target.value); setTemplateIdioma(""); }}
+                placeholder="Elige una plantilla arriba o escribe tu mensaje. Usa {nombre} para personalizar."
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">
+                Usa <code>{"{nombre}"}</code> para personalizar con el nombre del lead.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Pegar Contactos — orden: id, nombre, teléfono, correo, país (uno por línea)</Label>
