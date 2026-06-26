@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, UserPlus, Info, X } from "lucide-react";
+import { LogIn, UserPlus, Info, X, ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
 import { BrandShowcase } from "@/components/auth/BrandShowcase";
@@ -174,6 +174,17 @@ export default function Auth() {
         }}
         aria-hidden
       />
+
+      {/* Botón para volver a la landing page */}
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        className="absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-white/80 backdrop-blur-md px-3.5 py-2 text-sm font-semibold shadow-md ring-1 ring-white/60 transition-all hover:bg-white hover:opacity-90"
+        style={{ color: BRAND.navy }}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Volver al inicio
+      </button>
 
       {/* --- INICIO DEL MODAL EMERGENTE DE INFORMACIÓN --- */}
       {isModalOpen && (
