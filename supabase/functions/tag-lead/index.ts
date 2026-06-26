@@ -51,6 +51,20 @@ const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
     "Cita agendada",
     "Sin respuesta clara",
   ],
+  // Segmento de clasificación IA - WhatsApp (clasificar-whatsapp-ia). Un lead está en
+  // UN segmento a la vez. OJO: "Cita agendada" y "No interesa" NO se incluyen aquí a
+  // propósito: ya viven en estado_lead (mismo concepto, misma fila), así que el
+  // clasificador los enruta por estado_lead y solo estos 7 se limpian entre sí. Así
+  // asignar un segmento no borra el estado de ciclo de vida del lead, ni al revés.
+  segmento_clasificacion: [
+    "Lead Caliente",
+    "Interesado en Financiamiento",
+    "Listo para Cerrar",
+    "Solo Consultando",
+    "Requiere Seguimiento IA",
+    "Conversación Activa",
+    "Sin Respuesta al Bot",
+  ],
 };
 
 Deno.serve(async (req) => {

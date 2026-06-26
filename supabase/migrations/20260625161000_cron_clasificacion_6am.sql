@@ -1,0 +1,43 @@
+-- =====================================================================
+-- CRON: CLASIFICACIÓN IA - WhatsApp Segmentado a las 06:00 de MADRID
+-- ---------------------------------------------------------------------
+-- Llama a la Edge Function `cron-clasificacion-ia`, que clasifica los leads
+-- con actividad en las últimas 24h (asigna 1 de 9 segmentos vía DeepSeek) y
+-- postea UN lote al webhook n8n /etiquetas-leads-nuevos, EXCLUYENDO los leads
+-- en "Sin Respuesta al Bot" o "Sigue en campaña" (siguen en campaña).
+--
+-- Ejecuta este bloque APARTE en el SQL Editor con tu secreto real.
+-- NO se versiona con el secreto. Requiere extensiones pg_cron y pg_net.
+--
+-- Cadencia: 06:00 hora de MADRID, a prueba de horario de verano. pg_cron corre en
+-- UTC y Madrid alterna CEST (UTC+2, verano) / CET (UTC+1, invierno), así que se
+-- agenda a las 04:00 Y 05:00 UTC ('0 4,5 * * *') y la función usa la guarda
+-- hora_madrid=6: solo clasifica en la corrida cuya hora local de Madrid sea 06:00
+-- (la otra se omite). Resultado: exactamente una vez al día a las 06:00 de Madrid.
+-- ventana_horas=24 cubre el día anterior completo.
+--
+-- Auth: el header x-webhook-secret acepta el N8N_WEBHOOK_SECRET o el token
+-- embebido del cron (rpchile_cron_2026_a8K3mZqL). Usa el que prefieras.
+-- ---------------------------------------------------------------------
+-- create extension if not exists pg_cron;
+-- create extension if not exists pg_net;
+--
+-- select cron.schedule(
+--   'cron-clasificacion-ia-6am',
+--   '0 4,5 * * *',
+--   $$
+--     select net.http_post(
+--       url     := 'https://owykkhwqpnumvgdeugmj.functions.supabase.co/cron-clasificacion-ia',
+--       headers := jsonb_build_object(
+--                    'Content-Type','application/json',
+--                    'x-webhook-secret','<TU_N8N_WEBHOOK_SECRET>'
+--                  ),
+--       body    := jsonb_build_object('ventana_horas', 24, 'hora_madrid', 6)
+--     );
+--   $$
+-- );
+--
+-- Para ver / borrar / reprogramar el cron más tarde:
+--   select * from cron.job;
+--   select cron.unschedule('cron-clasificacion-ia-6am');
+-- =====================================================================
