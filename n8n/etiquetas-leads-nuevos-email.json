@@ -1,0 +1,207 @@
+{
+  "name": "RealtyPlus — Clasificación IA leads nuevos → Expansión (email)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "etiquetas-leads-nuevos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook /etiquetas-leads-nuevos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        300
+      ],
+      "webhookId": "etiquetas-leads-nuevos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-secret",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] || '' }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET || '' }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-secret",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        60,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n//  Nodo \"Construir Reporte HTML\" — Clasificación IA leads nuevos\n//  Transforma el payload de /etiquetas-leads-nuevos (enviado por la\n//  Edge Function cron-clasificacion-ia) en un correo HTML de expansión,\n//  agrupado por etiqueta, con el RESUMEN IA y la conversación de cada lead.\n//  Modo de ejecución: \"Run Once for All Items\".\n//\n//  Payload esperado:\n//   { evento, timestamp, ventana_horas, leads_clasificados,\n//     leads: [{ lead_id, nombre, telefono, etiqueta, resumen,\n//               mensajes: [{ rol: \"lead\"|\"agente\", texto }] }] }\n// ============================================================\n\n// ── CONFIGURACIÓN (editar estas líneas) ─────────────────────\nconst DEST = \"expansion@realtyplus.es\";          // <-- CORREO DE EXPANSIÓN (cámbialo)\nconst LOGO = \"https://realtyplus-nexus.vercel.app/realtyplus-logo.png\";\nconst NAVY = \"#003366\";\nconst RED  = \"#cc0000\";\n// ────────────────────────────────────────────────────────────\n\n// Colores por etiqueta (mismos del catálogo lead_tags).\nconst COLORS = {\n  \"Lead Caliente\": \"#ef4444\",\n  \"Cita agendada\": \"#8b5cf6\",\n  \"Interesado en Financiamiento\": \"#10b981\",\n  \"Listo para Cerrar\": \"#f97316\",\n  \"Solo Consultando\": \"#3b82f6\",\n  \"Requiere Seguimiento IA\": \"#eab308\",\n  \"Conversación Activa\": \"#06b6d4\",\n  \"Sin Respuesta al Bot\": \"#94a3b8\",\n  \"No interesa\": \"#6b7280\",\n};\n\n// El webhook entrega el cuerpo en .json.body; si llega plano, usar .json\nconst p = ($input.first().json && $input.first().json.body) || $input.first().json || {};\nconst leads = Array.isArray(p.leads) ? p.leads : [];\n\nconst esc = (s) => String(s ?? \"\")\n  .replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\")\n  .replace(/\\n/g, \"<br>\");\n\nconst hoy = new Date().toLocaleDateString(\"es-ES\", { day: \"2-digit\", month: \"long\", year: \"numeric\" });\n\n// ── Agrupar leads por etiqueta ──────────────────────────────\nconst grupos = {};\nfor (const l of leads) {\n  const k = (l.etiqueta || \"Sin etiqueta\").toString();\n  (grupos[k] = grupos[k] || []).push(l);\n}\nconst nombresOrden = Object.keys(grupos).sort((a, b) => a.localeCompare(b, \"es\"));\n\n// ── Tarjeta de un lead (resumen + conversación) ─────────────\nconst buildLead = (l) => {\n  const msgs = Array.isArray(l.mensajes) ? l.mensajes : [];\n  const bubbles = msgs.map((m) => {\n    const out = (m.rol === \"agente\" || m.rol === \"agent\" || m.rol === \"assistant\");\n    const txt = esc((m.texto || m.contenido || \"\").trim());\n    return `<div class=\"brow ${out ? \"o\" : \"i\"}\"><div class=\"bub ${out ? \"bo\" : \"bi\"}\"><div class=\"bx\">${txt || \"<em style='opacity:.4'>—</em>\"}</div></div></div>`;\n  }).join(\"\");\n\n  const color = COLORS[l.etiqueta] || NAVY;\n  return `<div class=\"lead\">\n    <div class=\"lhd\">\n      <div class=\"lav\" style=\"background:${color}\">${esc((l.nombre || \"?\").charAt(0).toUpperCase())}</div>\n      <div class=\"lin\">\n        <div class=\"lnm\">${esc(l.nombre || \"Sin nombre\")}</div>\n        <div class=\"lmt\">📱 ${esc(l.telefono || \"\")}${l.lead_id ? ` · ID ${esc(l.lead_id)}` : \"\"}</div>\n      </div>\n    </div>\n    ${l.resumen ? `<div class=\"res\"><b>🧠 Resumen IA:</b> ${esc(l.resumen)}</div>` : \"\"}\n    ${msgs.length ? `<div class=\"chd\">💬 ${msgs.length} mensajes</div><div class=\"cha\">${bubbles}</div>` : `<div class=\"nom\">Sin mensajes registrados</div>`}\n  </div>`;\n};\n\n// ── Secciones por etiqueta ──────────────────────────────────\nconst secciones = nombresOrden.map((nombre) => {\n  const ls = grupos[nombre];\n  const color = COLORS[nombre] || NAVY;\n  return `<div class=\"tag\">\n    <div class=\"thd\" style=\"border-left:5px solid ${color}\">\n      <span class=\"tdot\" style=\"background:${color}\"></span>\n      <span class=\"ttl\">${esc(nombre)}</span>\n      <span class=\"tpill\" style=\"background:${color}1a;color:${color}\">${ls.length} leads</span>\n    </div>\n    <div class=\"tbd\">${ls.map(buildLead).join(\"\")}</div>\n  </div>`;\n}).join(\"\");\n\n// ── HTML final (marca RealtyPlus) ───────────────────────────\nconst html = `<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Clasificación IA de leads nuevos — ${hoy}</title>\n<style>\n*{box-sizing:border-box;margin:0;padding:0}\nbody{font-family:'Segoe UI',Arial,sans-serif;background:#eef1f5;color:#1f2937;font-size:13px;line-height:1.5}\n.wrap{max-width:820px;margin:0 auto;background:#fff}\n.ph{background:#fff;border-bottom:4px solid ${RED};padding:22px 28px;text-align:center}\n.ph img{height:54px;width:auto}\n.ph h1{font-size:18px;color:${NAVY};margin-top:12px;font-weight:700}\n.ph p{color:#6b7280;font-size:12px;margin-top:4px}\n.kpis{display:flex;flex-wrap:wrap;gap:10px;padding:18px 28px;background:${NAVY}}\n.kpi{flex:1;min-width:120px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:14px;text-align:center}\n.kpi b{display:block;font-size:24px;color:#fff}.kpi small{font-size:10px;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px}\n.main{padding:20px 28px 36px}\n.tag{border:1px solid #e2e8f0;border-radius:10px;margin-bottom:18px;overflow:hidden}\n.thd{display:flex;align-items:center;gap:10px;padding:13px 16px;background:#f8fafc}\n.tdot{width:12px;height:12px;border-radius:50%;flex-shrink:0}\n.ttl{font-size:15px;font-weight:700;color:${NAVY};flex:1}\n.tpill{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}\n.tbd{padding:12px}\n.lead{background:#fff;border:1px solid #eef1f5;border-radius:9px;margin-bottom:10px;overflow:hidden}\n.lhd{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fbfcfe}\n.lav{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}\n.lin{flex:1;min-width:0}\n.lnm{font-size:14px;font-weight:700;color:#111827}\n.lmt{font-size:11px;color:#6b7280;margin-top:2px}\n.res{padding:9px 14px;font-size:12px;color:#374151;background:#fffbeb;border-top:1px solid #fef3c7}.res b{color:#b45309}\n.nom{padding:12px 14px;color:#cbd5e1;font-style:italic}\n.chd{padding:8px 14px;background:${NAVY};color:#fff;font-size:11px;font-weight:600}\n.cha{background:#f6f8fb;padding:12px 14px}\n.brow{display:flex;margin-bottom:7px}.brow.o{justify-content:flex-end}.brow.i{justify-content:flex-start}\n.bub{max-width:74%;padding:7px 11px;border-radius:11px;word-break:break-word}\n.bo{background:${NAVY};color:#fff;border-bottom-right-radius:2px}\n.bi{background:#fff;color:#1f2937;border:1px solid #e2e8f0;border-bottom-left-radius:2px}\n.bx{font-size:12px}\n.ft{text-align:center;padding:16px;color:#9ca3af;font-size:10px;border-top:1px solid #eef1f5}\n</style></head><body><div class=\"wrap\">\n<div class=\"ph\"><img src=\"${LOGO}\" alt=\"RealtyPlus — Servicios Inmobiliarios\"><h1>Clasificación IA de leads nuevos</h1><p>Generado el ${hoy} · ${leads.length} leads · ${nombresOrden.length} etiquetas · ventana ${esc(p.ventana_horas || 24)}h</p></div>\n<div class=\"kpis\">\n  <div class=\"kpi\"><b>${leads.length}</b><small>Leads clasificados</small></div>\n  <div class=\"kpi\"><b>${nombresOrden.length}</b><small>Etiquetas</small></div>\n  <div class=\"kpi\"><b>${esc(p.ventana_horas || 24)}h</b><small>Ventana</small></div>\n</div>\n<div class=\"main\">${secciones || '<div class=\"nom\">No hay leads clasificados en este envío.</div>'}</div>\n<div class=\"ft\">RealtyPlus · Servicios Inmobiliarios · Generado automáticamente por RealtyPlus Nexus · ${hoy}</div>\n</div></body></html>`;\n\nconst asunto = `📋 RealtyPlus — Clasificación IA de leads nuevos · ${leads.length} leads · ${hoy}`;\n\n// Adjunto .html de fidelidad total\nconst fileName = `clasificacion-leads-${new Date().toISOString().slice(0, 10)}.html`;\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(html, \"utf-8\"), fileName, \"text/html\");\n\nreturn [{\n  json: {\n    to: DEST,\n    subject: asunto,\n    html,\n    total_leads: leads.length,\n    total_etiquetas: nombresOrden.length,\n  },\n  binary: { reporte: binary },\n}];\n"
+      },
+      "id": "node-build",
+      "name": "Construir Reporte HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "no-reply@realtyplus.es",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {
+          "attachments": "reporte"
+        }
+      },
+      "id": "node-email",
+      "name": "Enviar Email Expansión",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        540,
+        220
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "REEMPLAZAR",
+          "name": "SMTP RealtyPlus"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, enviado_a: $node[\"Construir Reporte HTML\"].json.to, total_leads: $node[\"Construir Reporte HTML\"].json.total_leads }) }}",
+        "options": {}
+      },
+      "id": "node-resp-ok",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: \"Fallo al enviar el correo de expansión.\" }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-resp-err",
+      "name": "Responder error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: \"Unauthorized: X-Webhook-Secret inválido\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "node-resp-401",
+      "name": "Responder 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook /etiquetas-leads-nuevos": {
+      "main": [
+        [
+          {
+            "node": "Validar secreto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar secreto": {
+      "main": [
+        [
+          {
+            "node": "Construir Reporte HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Reporte HTML": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email Expansión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Email Expansión": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
