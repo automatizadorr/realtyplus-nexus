@@ -137,7 +137,17 @@ const asunto = `📋 RealtyPlus — Clasificación IA de leads nuevos · ${leads
 
 // Adjunto .html de fidelidad total
 const fileName = `clasificacion-leads-${new Date().toISOString().slice(0, 10)}.html`;
-const binary = await this.helpers.prepareBinaryData(Buffer.from(html, "utf-8"), fileName, "text/html");
+const binary = { reporte: await this.helpers.prepareBinaryData(Buffer.from(html, "utf-8"), fileName, "text/html") };
+
+// Adjunto Excel (.xlsx) si la edge function lo incluyó en el payload (excel_base64).
+// Misma lógica que la exportación de reactivación (TaggedExport): 2 hojas.
+if (p.excel_base64) {
+  binary.excel = await this.helpers.prepareBinaryData(
+    Buffer.from(p.excel_base64, "base64"),
+    p.excel_filename || `leads-clasificados-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+}
 
 return [{
   json: {
@@ -146,6 +156,7 @@ return [{
     html,
     total_leads: leads.length,
     total_etiquetas: nombresOrden.length,
+    con_excel: !!p.excel_base64,
   },
-  binary: { reporte: binary },
+  binary,
 }];

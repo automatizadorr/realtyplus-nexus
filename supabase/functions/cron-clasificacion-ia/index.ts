@@ -249,6 +249,27 @@ Deno.serve(async (req) => {
     if (dryRun) {
       n8n_response = "dry_run: no se aplicaron etiquetas ni se posteó a n8n";
     } else if (leads_a_enviar.length > 0) {
+      // Adjunta el Excel (misma lógica que TaggedExport) generado por
+      // clasificacion-excel. Best-effort: si falla, el reporte se envía igual sin él.
+      try {
+        const exRes = await fetch(`${SUPABASE_URL}/functions/v1/clasificacion-excel`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-webhook-secret": WEBHOOK_SECRET ?? CRON_TOKEN,
+            "Authorization": `Bearer ${SERVICE_KEY}`,
+            "apikey": SERVICE_KEY,
+          },
+          body: JSON.stringify({ ventana_horas: VENTANA_HORAS, pais: paisFiltro }),
+          signal: AbortSignal.timeout(40000),
+        });
+        const ex = await exRes.json().catch(() => ({}));
+        if (exRes.ok && ex?.success && ex?.base64) {
+          (payload as Record<string, unknown>).excel_base64 = ex.base64;
+          (payload as Record<string, unknown>).excel_filename = ex.filename;
+        }
+      } catch (_e) { /* sigue sin Excel */ }
+
       try {
         const wh = await fetch(N8N_CLASIFICACION_URL, {
           method: "POST",
