@@ -63,7 +63,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     }
 
     const phone = selectedContact.telefono;
-    const normalize = (t?: string | null) => (t || "").split("@")[0];
+    // Normaliza a SOLO DÍGITOS (descarta '+', '(', ')', espacios y sufijo @...).
+    // Los mensajes se guardan en formatos sucios e inconsistentes; comparar por
+    // dígitos (vía phone_key de la vista) engancha todos los formatos.
+    const normalize = (t?: string | null) => (t || "").replace(/\D/g, "");
     const phoneBase = normalize(phone);
     phoneBaseRef.current = phoneBase;
 
@@ -73,10 +76,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       setHasMoreOlder(true);
       oldestCreatedAtRef.current = null;
       // Load latest PAGE_SIZE messages, descending then reverse for ASC display
-      const { data } = await supabase
-        .from("mensajes_whatsapp")
+      const { data } = await (supabase as any)
+        .from("vista_mensajes_whatsapp")
         .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
-        .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
+        .eq("phone_key", phoneBase)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
       const ordered = (data || []).slice().reverse() as MensajeWhatsapp[];
@@ -88,12 +91,14 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       }
       setLoading(false);
 
-      await supabase
-        .from("mensajes_whatsapp")
-        .update({ leido: true })
-        .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
-        .eq("direccion", "inbound")
-        .eq("leido", false);
+      // Marca como leídos por ID (el match por teléfono fallaba con formatos sucios
+      // como "(+56)958060832"). Tomamos los ids inbound no leídos ya cargados.
+      const unreadIds = ordered
+        .filter((m) => m.direccion === "inbound" && !m.leido)
+        .map((m) => m.id);
+      if (unreadIds.length > 0) {
+        await supabase.from("mensajes_whatsapp").update({ leido: true }).in("id", unreadIds);
+      }
     };
     fetchMessages();
 
@@ -161,10 +166,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     const prevHeight = viewport?.scrollHeight ?? 0;
     const prevTop = viewport?.scrollTop ?? 0;
 
-    const { data } = await supabase
-      .from("mensajes_whatsapp")
+    const { data } = await (supabase as any)
+      .from("vista_mensajes_whatsapp")
       .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
-      .or(`telefono.eq.${phoneBase},telefono.like.${phoneBase}@%`)
+      .eq("phone_key", phoneBase)
       .lt("created_at", cursor)
       .order("created_at", { ascending: false })
       .limit(PAGE_SIZE);
