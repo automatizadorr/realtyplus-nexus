@@ -1,0 +1,181 @@
+{
+  "name": "RealtyPlus — Meta WhatsApp Inbound (Leads Nuevos)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "meta-inbound-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-get",
+      "name": "Webhook GET — Verificación Meta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-300, 180],
+      "webhookId": "meta-inbound-whatsapp-get"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Meta Cloud API - verificación del webhook\n// Docs: https://developers.facebook.com/docs/graph-api/webhooks/getting-started\nconst q = $input.first().json.query || {};\nconst mode      = q['hub.mode'];\nconst token     = q['hub.verify_token'];\nconst challenge = q['hub.challenge'];\n\nconst expected = $env.META_VERIFY_TOKEN || '';\n\nif (mode === 'subscribe' && token === expected) {\n  return [{ json: { challenge, status: 200 } }];\n}\nreturn [{ json: { challenge: null, status: 403 } }];\n"
+      },
+      "id": "node-verify",
+      "name": "Validar token Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-80, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.challenge }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      },
+      "id": "node-respond-verify",
+      "name": "Responder Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [160, 180]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meta-inbound-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-post",
+      "name": "Webhook POST — Mensajes Meta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-300, 380],
+      "webhookId": "meta-inbound-whatsapp-post"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae mensajes de texto del payload de Meta Cloud API.\n// Ignora status updates (delivered/read) y mensajes sin texto.\n// Referencia: https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples\n\nconst body = $input.first().json.body || $input.first().json;\n\nconst results = [];\n\nfor (const entry of body.entry || []) {\n  for (const change of entry.changes || []) {\n    const value = change.value;\n    if (!value || change.field !== 'messages') continue;\n    if (!value.messages || value.messages.length === 0) continue;\n\n    const contacts = value.contacts || [];\n\n    for (const msg of value.messages) {\n      // Solo texto por ahora (ignorar imagen, audio, sticker, etc.)\n      if (msg.type !== 'text') continue;\n\n      const telefono = msg.from; // wa_id, e.g. \"34971806730\"\n      const contenido = msg.text?.body || '';\n      if (!contenido.trim()) continue;\n\n      // Buscar nombre en contacts[] por wa_id\n      const contact = contacts.find(c => c.wa_id === telefono);\n      const nombre = contact?.profile?.name || null;\n\n      results.push({\n        json: {\n          telefono,\n          contenido,\n          nombre,\n          wamid: msg.id,\n          direccion: 'inbound',\n          canal: 'whatsapp',\n          campaign_name: 'Leads Nuevos Meta',\n          leido: false,\n          n8n_execution_id: $execution?.id || null\n        }\n      });\n    }\n  }\n}\n\nreturn results.length > 0 ? results : [{ json: { skip: true } }];\n"
+      },
+      "id": "node-extract",
+      "name": "Extraer Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-80, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-skip",
+      "name": "¿Tiene mensaje?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [160, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/log-auto-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "telefono": "={{ $json.telefono }}",
+          "contenido": "={{ $json.contenido }}",
+          "nombre": "={{ $json.nombre }}",
+          "wamid": "={{ $json.wamid }}",
+          "direccion": "inbound",
+          "canal": "whatsapp",
+          "campaign_name": "={{ $json.campaign_name }}",
+          "leido": false,
+          "n8n_execution_id": "={{ $json.n8n_execution_id }}"
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-log",
+      "name": "Registrar en Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\": true}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "node-respond-ok",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\": true, \"skipped\": true}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "node-respond-skip",
+      "name": "Responder Skip",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [400, 480]
+    }
+  ],
+  "connections": {
+    "Webhook GET — Verificación Meta": {
+      "main": [[{ "node": "Validar token Meta", "type": "main", "index": 0 }]]
+    },
+    "Validar token Meta": {
+      "main": [[{ "node": "Responder Challenge", "type": "main", "index": 0 }]]
+    },
+    "Webhook POST — Mensajes Meta": {
+      "main": [[{ "node": "Extraer Mensaje", "type": "main", "index": 0 }]]
+    },
+    "Extraer Mensaje": {
+      "main": [[{ "node": "¿Tiene mensaje?", "type": "main", "index": 0 }]]
+    },
+    "¿Tiene mensaje?": {
+      "main": [
+        [{ "node": "Registrar en Supabase", "type": "main", "index": 0 }],
+        [{ "node": "Responder Skip", "type": "main", "index": 0 }]
+      ]
+    },
+    "Registrar en Supabase": {
+      "main": [[{ "node": "Responder OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "realtyplus-nexus"
+  }
+}
