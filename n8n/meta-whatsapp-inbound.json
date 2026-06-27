@@ -1,5 +1,5 @@
 {
-  "name": "RealtyPlus — 2 Nodos Leads Nuevos (importar y copiar)",
+  "name": "RealtyPlus — Nodo Outbound Leads Nuevos (importar y copiar)",
   "nodes": [
     {
       "parameters": {
@@ -10,56 +10,46 @@
           "parameters": [
             {
               "name": "x-webhook-secret",
-              "value": "407e3317847ce6994c7d742a1f9f5cb283739e4ec58985df47cbc519fc258809"
+              "value": "rpchile_cron_2026_a8K3mZqL"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eWtraHdxcG51bXZnZGV1Z21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQzOTAsImV4cCI6MjA4OTM2MDM5MH0.2u07gv6LvMlDEry0UmY_XAsNw6ONwvmE2pvTFU73nA4"
+            },
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eWtraHdxcG51bXZnZGV1Z21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODQzOTAsImV4cCI6MjA4OTM2MDM5MH0.2u07gv6LvMlDEry0UmY_XAsNw6ONwvmE2pvTFU73nA4"
             }
           ]
         },
         "sendBody": true,
-        "contentType": "json",
-        "body": {
-          "telefono": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
-          "contenido": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}",
-          "nombre": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}",
-          "wamid": "={{ $('WhatsApp Trigger1').item.json.messages[0].id }}",
-          "direccion": "inbound",
-          "canal": "whatsapp",
-          "campaign_name": "Leads Nuevos Meta",
-          "leido": false
-        },
-        "options": { "timeout": 15000 }
-      },
-      "id": "c0c8a5d9-c8d4-4d00-a094-bb9fbc8390bb",
-      "name": "Registrar en Supabase1",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-1104, 5472]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/log-auto-message",
-        "sendHeaders": true,
-        "headerParameters": {
+        "bodyParameters": {
           "parameters": [
             {
-              "name": "x-webhook-secret",
-              "value": "407e3317847ce6994c7d742a1f9f5cb283739e4ec58985df47cbc519fc258809"
+              "name": "mensaje",
+              "value": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}"
+            },
+            {
+              "name": "telefono",
+              "value": "={{ $('Edit Fields1').item.json.contacts[0].wa_id }}"
+            },
+            {
+              "name": "nombre",
+              "value": "={{ $('Edit Fields1').item.json.contacts[0].profile.name }}"
+            },
+            {
+              "name": "direccion",
+              "value": "outbound"
+            },
+            {
+              "name": "campaña",
+              "value": "={{ $workflow.name }}"
             }
           ]
         },
-        "sendBody": true,
-        "contentType": "json",
-        "body": {
-          "telefono": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
-          "contenido": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}",
-          "nombre": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}",
-          "direccion": "outbound",
-          "canal": "whatsapp",
-          "campaign_name": "Leads Nuevos Meta",
-          "estado_envio": "enviado",
-          "leido": true
-        },
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "d1e2f3a4-b5c6-7890-abcd-ef1234567890",
       "name": "Leads Nuevos - Respuesta IA",
@@ -68,10 +58,8 @@
       "position": [1888, 5216]
     }
   ],
-  "connections": {
-    "Registrar en Supabase1": { "main": [[]] },
-    "Leads Nuevos - Respuesta IA": { "main": [[]] }
-  },
+  "connections": {},
+  "pinData": {},
   "meta": {
     "instanceId": "a549832225d9c0406174cec76d918a3746d50e0acf5608a79c6f16721bd3abe6"
   }
