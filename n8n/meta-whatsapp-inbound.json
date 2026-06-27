@@ -1,26 +1,38 @@
 {
-  "name": "RealtyPlus — Meta WhatsApp Inbound (Leads Nuevos)",
+  "name": "RealtyPlus — 2 Nodos Leads Nuevos (importar y copiar)",
   "nodes": [
     {
       "parameters": {
-        "updates": ["messages"]
+        "method": "POST",
+        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/log-auto-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "407e3317847ce6994c7d742a1f9f5cb283739e4ec58985df47cbc519fc258809"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "telefono": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+          "contenido": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}",
+          "nombre": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}",
+          "wamid": "={{ $('WhatsApp Trigger1').item.json.messages[0].id }}",
+          "direccion": "inbound",
+          "canal": "whatsapp",
+          "campaign_name": "Leads Nuevos Meta",
+          "leido": false
+        },
+        "options": { "timeout": 15000 }
       },
-      "id": "node-wa-trigger",
-      "name": "WhatsApp Trigger1",
-      "type": "n8n-nodes-base.whatsAppTrigger",
-      "typeVersion": 1,
-      "position": [-1200, 5376],
-      "webhookId": "meta-inbound-whatsapp-trigger"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Filtra solo mensajes de texto entrantes. Ignora status updates (delivered/read).\nconst item = $input.first().json;\nconst messages = item.messages || [];\nconst contacts = item.contacts || [];\n\nif (!messages.length) return [];\n\nconst msg = messages[0];\nif (msg.type !== 'text') return [];\n\nconst contact = contacts.find(c => c.wa_id === msg.from);\n\nreturn [{\n  json: {\n    telefono: msg.from,\n    contenido: msg.text?.body || '',\n    nombre: contact?.profile?.name || null,\n    wamid: msg.id,\n    timestamp: msg.timestamp\n  }\n}];\n"
-      },
-      "id": "node-extract",
-      "name": "Extraer Mensaje",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-980, 5376]
+      "id": "c0c8a5d9-c8d4-4d00-a094-bb9fbc8390bb",
+      "name": "Registrar en Supabase1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1104, 5472]
     },
     {
       "parameters": {
@@ -38,38 +50,28 @@
         "sendBody": true,
         "contentType": "json",
         "body": {
-          "telefono": "={{ $json.telefono }}",
-          "contenido": "={{ $json.contenido }}",
-          "nombre": "={{ $json.nombre }}",
-          "wamid": "={{ $json.wamid }}",
-          "direccion": "inbound",
+          "telefono": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+          "contenido": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}",
+          "nombre": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}",
+          "direccion": "outbound",
           "canal": "whatsapp",
           "campaign_name": "Leads Nuevos Meta",
-          "leido": false
+          "estado_envio": "enviado",
+          "leido": true
         },
-        "options": {
-          "timeout": 15000
-        }
+        "options": { "timeout": 15000 }
       },
-      "id": "30376d7f-7043-4848-b816-63c460c91cc9",
-      "name": "Registrar en Supabase",
+      "id": "d1e2f3a4-b5c6-7890-abcd-ef1234567890",
+      "name": "Leads Nuevos - Respuesta IA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, 5376]
+      "position": [1888, 5216]
     }
   ],
   "connections": {
-    "WhatsApp Trigger1": {
-      "main": [[{ "node": "Extraer Mensaje", "type": "main", "index": 0 }]]
-    },
-    "Extraer Mensaje": {
-      "main": [[{ "node": "Registrar en Supabase", "type": "main", "index": 0 }]]
-    }
+    "Registrar en Supabase1": { "main": [[]] },
+    "Leads Nuevos - Respuesta IA": { "main": [[]] }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "staticData": null,
   "meta": {
     "instanceId": "a549832225d9c0406174cec76d918a3746d50e0acf5608a79c6f16721bd3abe6"
   }
