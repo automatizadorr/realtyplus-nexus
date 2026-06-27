@@ -75,6 +75,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       return;
     }
     const phone = selectedContact.telefono;
+    const phoneKey = phone.replace(/[^0-9]/g, "");
     phoneRef.current = phone;
 
     const fetchMessages = async () => {
@@ -83,9 +84,9 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       setHasMoreOlder(true);
       oldestCreatedAtRef.current = null;
       const { data } = await (supabase as any)
-        .from("mensajes_automatizacion")
+        .from("vista_mensajes_automatizacion")
         .select("id, telefono, contenido, direccion, created_at, leido, campaign_name, dia_secuencia, estado_envio")
-        .eq("telefono", phone)
+        .eq("phone_key", phoneKey)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
       const ordered = (data || []).slice().reverse() as MensajeAuto[];
@@ -100,7 +101,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       await (supabase as any)
         .from("mensajes_automatizacion")
         .update({ leido: true })
-        .eq("telefono", phone)
+        .ilike("telefono", `%${phoneKey}%`)
         .eq("direccion", "inbound")
         .eq("leido", false);
     };
@@ -113,7 +114,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
         { event: "INSERT", schema: "public", table: "mensajes_automatizacion" },
         (payload) => {
           const msg = payload.new as MensajeAuto;
-          if (msg.telefono === phone) {
+          if (msg.telefono.replace(/[^0-9]/g, "") === phoneKey) {
             setMessages((prev) => {
               if (prev.find((m) => m.id === msg.id)) return prev;
               if (msg.direccion === "inbound" && !isAtBottomRef.current) {
@@ -169,10 +170,11 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     const prevHeight = viewport?.scrollHeight ?? 0;
     const prevTop = viewport?.scrollTop ?? 0;
 
+    const phoneKey = phone.replace(/[^0-9]/g, "");
     const { data } = await (supabase as any)
-      .from("mensajes_automatizacion")
+      .from("vista_mensajes_automatizacion")
       .select("id, telefono, contenido, direccion, created_at, leido, campaign_name, dia_secuencia, estado_envio")
-      .eq("telefono", phone)
+      .eq("phone_key", phoneKey)
       .lt("created_at", cursor)
       .order("created_at", { ascending: false })
       .limit(PAGE_SIZE);
