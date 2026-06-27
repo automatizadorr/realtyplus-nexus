@@ -474,13 +474,17 @@ export default function Scanner() {
               </div>
               <Textarea
                 value={messageTemplate}
-                onChange={(e) => { setMessageTemplate(e.target.value); setTemplateIdioma(""); }}
-                placeholder="Elige una plantilla arriba o escribe tu mensaje. Usa {nombre} para personalizar."
+                onChange={(e) => !templateIdioma && setMessageTemplate(e.target.value)}
+                readOnly={!!templateIdioma}
+                placeholder="Elige una plantilla arriba."
                 rows={4}
+                className={templateIdioma ? "cursor-default opacity-80" : ""}
               />
-              <p className="text-xs text-muted-foreground">
-                Usa <code>{"{nombre}"}</code> para personalizar con el nombre del lead.
-              </p>
+              {!templateIdioma && (
+                <p className="text-xs text-muted-foreground">
+                  Selecciona una plantilla para continuar.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Pegar Contactos — orden: id, nombre, teléfono, correo, país (uno por línea)</Label>
