@@ -1,0 +1,122 @@
+{
+  "name": "RealtyPlus — Oportunidades Outbound (Respuesta Manual /primer_contacto)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "primer_contacto",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-pc",
+      "name": "Webhook /primer_contacto",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-320, 300],
+      "webhookId": "primer-contacto-outbound"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-secret",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] || '' }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET || '' }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-secret",
+      "name": "¿Secreto válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1070824479455864",
+        "recipientPhoneNumber": "={{ $('Webhook /primer_contacto').item.json.body.telefono }}",
+        "messageType": "text",
+        "textBody": "={{ $('Webhook /primer_contacto').item.json.body.contenido }}",
+        "additionalFields": {}
+      },
+      "id": "node-wa-send",
+      "name": "Enviar WhatsApp (texto)",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [180, 200],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CRED_ENVIO",
+          "name": "RealtyPLus-AI (envío)"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true, \"wamid\": $json.messages ? $json.messages[0].id : null } }}",
+        "options": {}
+      },
+      "id": "node-resp-ok",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 120]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 502,
+        "responseBody": "={{ { \"ok\": false, \"error\": \"whatsapp_send_failed\", \"detail\": $json.error || 'unknown' } }}",
+        "options": {}
+      },
+      "id": "node-resp-err",
+      "name": "Responder Error envío",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 401,
+        "responseBody": "={{ { \"ok\": false, \"error\": \"unauthorized\" } }}",
+        "options": {}
+      },
+      "id": "node-resp-401",
+      "name": "Responder 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [180, 460]
+    }
+  ],
+  "connections": {
+    "Webhook /primer_contacto": {
+      "main": [[{ "node": "¿Secreto válido?", "type": "main", "index": 0 }]]
+    },
+    "¿Secreto válido?": {
+      "main": [
+        [{ "node": "Enviar WhatsApp (texto)", "type": "main", "index": 0 }],
+        [{ "node": "Responder 401", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enviar WhatsApp (texto)": {
+      "main": [
+        [{ "node": "Responder OK", "type": "main", "index": 0 }],
+        [{ "node": "Responder Error envío", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "a549832225d9c0406174cec76d918a3746d50e0acf5608a79c6f16721bd3abe6"
+  }
+}
