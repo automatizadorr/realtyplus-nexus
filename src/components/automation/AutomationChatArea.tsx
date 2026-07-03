@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Send, Loader2, ArrowLeft, Search, ArrowDown, Zap } from "lucide-react";
+import { Send, Loader2, ArrowLeft, Search, ArrowDown, Zap, Clock, Check, CheckCheck, AlertCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ChatSearchBar } from "@/components/inbox/ChatSearchBar";
 import { QuickRepliesPopover } from "@/components/inbox/QuickRepliesPopover";
 import { EmojiPickerButton } from "@/components/inbox/EmojiPickerButton";
+import { AttachmentButton } from "@/components/inbox/AttachmentButton";
+import { MediaBubble } from "@/components/inbox/MediaBubble";
 import { FormattedText } from "@/lib/whatsappFormat";
 import { countryFlag } from "@/lib/countryFlag";
 import type { AutomationContact } from "./AutomationSidebar";
@@ -26,6 +28,8 @@ interface MensajeAuto {
   campaign_name?: string | null;
   dia_secuencia?: number | null;
   estado_envio?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
 }
 
 interface Props {
@@ -46,6 +50,7 @@ function estadoColor(estado: string | null | undefined) {
 export function AutomationChatArea({ selectedContact, onBack }: Props) {
   const [messages, setMessages] = useState<MensajeAuto[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [pendingMedia, setPendingMedia] = useState<{ url: string; type: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -85,7 +90,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       oldestCreatedAtRef.current = null;
       const { data } = await (supabase as any)
         .from("vista_mensajes_automatizacion")
-        .select("id, telefono, contenido, direccion, created_at, leido, campaign_name, dia_secuencia, estado_envio")
+        .select("id, telefono, contenido, direccion, created_at, leido, campaign_name, dia_secuencia, estado_envio, media_url, media_type")
         .eq("phone_key", phoneKey)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -98,12 +103,9 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       }
       setLoading(false);
 
-      await (supabase as any)
-        .from("mensajes_automatizacion")
-        .update({ leido: true })
-        .ilike("telefono", `%${phoneKey}%`)
-        .eq("direccion", "inbound")
-        .eq("leido", false);
+      // Marca leído por phone_key EXACTO (evita contaminar teléfonos
+      // que sean subcadena de otros). RPC en la migración 20260703120000.
+      await (supabase as any).rpc("marcar_leidos_automatizacion", { p_phone_key: phoneKey });
     };
     fetchMessages();
 
@@ -265,11 +267,38 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     [messages],
   );
 
+  // Confirma el envío contra n8n: si el webhook falla, marca el mensaje
+  // como "fallido" (en BD y en la vista local) para no dar por enviado
+  // algo que nunca salió.
+  const confirmarEnvio = async (
+    msgId: string,
+    payload: Record<string, any>,
+  ) => {
+    const { error } = await supabase.functions.invoke("send-n8n-webhook", {
+      body: { target: "primer_contacto", payload },
+    });
+    const nuevoEstado = error ? "fallido" : "enviado";
+    if (error) {
+      console.warn("Webhook warning:", error);
+      toast({
+        title: "No se pudo enviar",
+        description: "El mensaje quedó marcado como fallido. Puedes reintentar.",
+        variant: "destructive",
+      });
+    }
+    await (supabase as any)
+      .from("mensajes_automatizacion")
+      .update({ estado_envio: nuevoEstado })
+      .eq("id", msgId);
+    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, estado_envio: nuevoEstado } : m)));
+  };
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedContact?.telefono) return;
+    if ((!newMessage.trim() && !pendingMedia) || !selectedContact?.telefono) return;
     setSending(true);
     try {
       const contenido = newMessage;
+      const media = pendingMedia;
       const { data: inserted, error: insertError } = await (supabase as any)
         .from("mensajes_automatizacion")
         .insert({
@@ -282,37 +311,64 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
           canal: "whatsapp",
           user_id: user?.id,
           dia_secuencia: ultimoDia + 1,
-          estado_envio: "enviado",
+          estado_envio: "enviando",
+          media_url: media?.url ?? null,
+          media_type: media?.type ?? null,
         })
         .select()
         .single();
       if (insertError) throw insertError;
+      let newId: string | null = null;
       if (inserted) {
         const newMsg = inserted as MensajeAuto;
+        newId = newMsg.id;
         setMessages((prev) => (prev.find((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
       }
       setNewMessage("");
+      setPendingMedia(null);
 
-      supabase.functions.invoke("send-n8n-webhook", {
-        body: {
-          target: "primer_contacto",
-          payload: {
-            tipo: "respuesta_manual",
-            telefono: selectedContact.telefono,
-            nombre: selectedContact.nombre,
-            pais: selectedContact.pais,
-            campaign_name: selectedContact.campaign_name,
-            contenido,
-            user_id: user?.id,
-            timestamp: new Date().toISOString(),
-          },
-        },
-      }).catch((e) => console.warn("Webhook warning:", e));
+      if (newId) {
+        const payload: Record<string, any> = {
+          tipo: "respuesta_manual",
+          telefono: selectedContact.telefono,
+          nombre: selectedContact.nombre,
+          pais: selectedContact.pais,
+          campaign_name: selectedContact.campaign_name,
+          contenido,
+          user_id: user?.id,
+          timestamp: new Date().toISOString(),
+        };
+        if (media) {
+          payload.media_url = media.url;
+          payload.media_type = media.type;
+        }
+        void confirmarEnvio(newId, payload);
+      }
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
       setSending(false);
     }
+  };
+
+  const reintentar = async (msg: MensajeAuto) => {
+    if (!selectedContact?.telefono) return;
+    setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, estado_envio: "enviando" } : m)));
+    const payload: Record<string, any> = {
+      tipo: "respuesta_manual",
+      telefono: selectedContact.telefono,
+      nombre: selectedContact.nombre,
+      pais: selectedContact.pais,
+      campaign_name: selectedContact.campaign_name,
+      contenido: msg.contenido,
+      user_id: user?.id,
+      timestamp: new Date().toISOString(),
+    };
+    if (msg.media_url) {
+      payload.media_url = msg.media_url;
+      payload.media_type = msg.media_type;
+    }
+    await confirmarEnvio(msg.id, payload);
   };
 
   if (!selectedContact) {
@@ -457,9 +513,14 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
                               isHighlighted ? "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse" : ""
                             }`}
                           >
+                            {msg.media_url && (
+                              <div className={msg.contenido ? "mb-1.5" : ""}>
+                                <MediaBubble url={msg.media_url} type={msg.media_type} />
+                              </div>
+                            )}
                             {msg.contenido && <FormattedText text={msg.contenido} highlight={searchQuery} />}
                             <div
-                              className={`text-[10px] mt-1.5 flex justify-end gap-1 ${
+                              className={`text-[10px] mt-1.5 flex items-center justify-end gap-1 ${
                                 isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
                               }`}
                             >
@@ -474,6 +535,26 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
                               <span>
                                 {msgDate.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
                               </span>
+                              {isOutbound && msg.estado_envio === "enviando" && (
+                                <Clock className="h-3 w-3 shrink-0" aria-label="Enviando" />
+                              )}
+                              {isOutbound && msg.estado_envio === "enviado" && (
+                                <Check className="h-3 w-3 shrink-0" aria-label="Enviado" />
+                              )}
+                              {isOutbound && msg.estado_envio === "respondido" && (
+                                <CheckCheck className="h-3 w-3 shrink-0" aria-label="Respondido" />
+                              )}
+                              {isOutbound && msg.estado_envio === "fallido" && (
+                                <button
+                                  type="button"
+                                  onClick={() => reintentar(msg)}
+                                  className="inline-flex items-center gap-0.5 text-rose-200 hover:text-white font-medium"
+                                  title="Reintentar envío"
+                                >
+                                  <AlertCircle className="h-3 w-3 shrink-0" />
+                                  Reintentar
+                                </button>
+                              )}
                             </div>
                           </div>
                         </motion.div>
@@ -525,9 +606,26 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
 
         {/* Input */}
         <div className="p-3 bg-card border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+          {pendingMedia && (
+            <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-2 py-1.5 text-xs">
+              <div className="min-w-0 flex-1">
+                <MediaBubble url={pendingMedia.url} type={pendingMedia.type} />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0"
+                onClick={() => setPendingMedia(null)}
+                title="Quitar adjunto"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           <div className="flex gap-1 max-w-3xl mx-auto items-end">
             <QuickRepliesPopover isAdmin={isAdmin} onPick={insertText} contactName={selectedContact.nombre || ""} />
             <EmojiPickerButton onPick={insertText} />
+            <AttachmentButton isAdmin={isAdmin} onUploaded={(url, type) => setPendingMedia({ url, type })} />
             <Input
               ref={inputRef}
               value={newMessage}
@@ -539,7 +637,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 onClick={sendMessage}
-                disabled={!newMessage.trim() || sending}
+                disabled={(!newMessage.trim() && !pendingMedia) || sending}
                 size="icon"
                 className="rounded-xl h-10 w-10 shadow-md"
               >

@@ -52,6 +52,14 @@ function relTime(iso: string | null) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
 }
 
+function estadoColor(estado: string | null | undefined) {
+  if (estado === "enviado") return "text-emerald-600 bg-emerald-500/15 border-emerald-500/30";
+  if (estado === "respondido") return "text-blue-600 bg-blue-500/15 border-blue-500/30";
+  if (estado === "fallido") return "text-rose-600 bg-rose-500/15 border-rose-500/30";
+  if (estado === "enviando") return "text-amber-600 bg-amber-500/15 border-amber-500/30";
+  return "text-muted-foreground bg-muted border-border";
+}
+
 export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 400);
@@ -78,30 +86,26 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
     direccion,
   });
 
-  // Load filter options
+  // Load filter options — RPC devuelve campañas/países distintos en una
+  // sola llamada (antes traía hasta 5000 filas al cliente).
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("vista_inbox_automatizacion")
-        .select("campaign_name, pais")
-        .limit(5000);
+      const { data } = await (supabase as any).rpc("opciones_inbox_automatizacion");
       if (cancelled || !data) return;
-      const cs = new Set<string>();
-      const ps = new Set<string>();
-      for (const r of data as { campaign_name: string | null; pais: string | null }[]) {
-        if (r.campaign_name) cs.add(r.campaign_name);
-        if (r.pais) ps.add(r.pais);
-      }
-      setCampaigns(Array.from(cs).sort());
-      setCountries(Array.from(ps).sort());
+      setCampaigns(((data.campaigns as string[]) || []).slice());
+      setCountries(((data.paises as string[]) || []).slice());
     })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Realtime row updates
+  // Realtime row updates — coalescemos ráfagas: acumulamos los teléfonos
+  // tocados y refrescamos una vez cada ~400ms (una query por teléfono
+  // único), en vez de disparar refreshPhone por cada evento entrante.
+  const pendingPhonesRef = useRef<Set<string>>(new Set());
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const channel = supabase
       .channel("automation-row-updates")
@@ -110,7 +114,15 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
         { event: "*", schema: "public", table: "mensajes_automatizacion" },
         (payload) => {
           const tel = (payload.new as any)?.telefono ?? (payload.old as any)?.telefono;
-          if (tel) refreshPhone(tel);
+          if (tel) {
+            pendingPhonesRef.current.add(tel);
+            if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+            flushTimerRef.current = setTimeout(() => {
+              const phones = Array.from(pendingPhonesRef.current);
+              pendingPhonesRef.current.clear();
+              phones.forEach((p) => refreshPhone(p));
+            }, 400);
+          }
           if (payload.eventType === "INSERT" && (payload.new as any)?.direccion === "inbound") {
             playNotificationSound();
           }
@@ -118,6 +130,7 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
       )
       .subscribe();
     return () => {
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
       supabase.removeChannel(channel);
     };
   }, [refreshPhone]);
@@ -137,6 +150,21 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
     () => (total != null ? `${rows.length}/${total}` : `${rows.length}`),
     [rows.length, total],
   );
+
+  const hasActiveFilters =
+    searchInput.trim() !== "" ||
+    campaign !== "all" ||
+    country !== "all" ||
+    estado !== "all" ||
+    direccion !== "all";
+
+  const clearFilters = () => {
+    setSearchInput("");
+    setCampaign("all");
+    setCountry("all");
+    setEstado("all");
+    setDireccion("all");
+  };
 
   const handleSelect = (row: AutomationContactRow) => {
     onSelectContact({
@@ -319,7 +347,16 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : rows.length === 0 ? (
-            <p className="text-center text-muted-foreground text-sm p-6">Sin conversaciones</p>
+            hasActiveFilters ? (
+              <div className="text-center p-6 space-y-2">
+                <p className="text-muted-foreground text-sm">Sin resultados para tu búsqueda o filtros</p>
+                <button onClick={clearFilters} className="text-xs text-primary hover:underline">
+                  Limpiar filtros
+                </button>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground text-sm p-6">Sin conversaciones</p>
+            )
           ) : (
             rows.map((c) => {
               const isSelected = selectedContact?.telefono === c.telefono;
@@ -368,6 +405,19 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
                               className="h-4 px-1 text-[9px] font-medium text-accent-foreground bg-accent/40 border-accent/40"
                             >
                               {c.campaign_name}
+                            </Badge>
+                          )}
+                          {c.ultimo_estado && (
+                            <Badge
+                              variant="outline"
+                              className={`h-4 px-1 text-[9px] font-medium ${estadoColor(c.ultimo_estado)}`}
+                            >
+                              {c.ultimo_estado}
+                            </Badge>
+                          )}
+                          {c.ultimo_dia != null && c.ultimo_dia > 0 && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px]">
+                              Día {c.ultimo_dia}
                             </Badge>
                           )}
                           {unread > 0 && (
