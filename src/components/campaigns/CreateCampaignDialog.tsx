@@ -53,6 +53,8 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
   const [minDays, setMinDays] = useState("");
   const [maxDays, setMaxDays] = useState("");
   const [contactedSet, setContactedSet] = useState<Set<string>>(new Set());
+  const [contactedLoaded, setContactedLoaded] = useState(false);
+  const [loadingContacted, setLoadingContacted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingLeads, setLoadingLeads] = useState(false);
 
@@ -73,27 +75,42 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       setIdFilter("");
       setMinDays("");
       setMaxDays("");
+      setContactedSet(new Set());
+      setContactedLoaded(false);
     }
   }, [open]);
 
+  // Carga diferida del set de contactados solo cuando el filtro lo necesita.
+  useEffect(() => {
+    if (open && contactFilter !== "all" && !contactedLoaded && !loadingContacted) {
+      fetchContactedSet();
+    }
+  }, [open, contactFilter, contactedLoaded, loadingContacted]);
+
   const fetchLeads = async () => {
     setLoadingLeads(true);
-    const [{ data, error }, outRes] = await Promise.all([
-      supabase
-        .from("leads_campana")
-        .select("id, nombre, telefono, email, pais, estado, bot_activo, id_contacto, dias_reales")
-        .order("nombre"),
-      supabase
-        .from("mensajes_whatsapp")
-        .select("telefono")
-        .eq("direccion", "outbound")
-        .limit(50000),
-    ]);
+    const { data, error } = await supabase
+      .from("leads_campana")
+      .select("id, nombre, telefono, email, pais, estado, bot_activo, id_contacto, dias_reales")
+      .order("nombre");
     if (!error && data) setLeads(data as Lead[]);
-    if (outRes.data) {
-      setContactedSet(new Set(outRes.data.map((m: any) => normPhone(m.telefono)).filter(Boolean)));
-    }
     setLoadingLeads(false);
+  };
+
+  // El set de "contactados" (mensajes_whatsapp outbound) es pesado, así que solo
+  // se carga la primera vez que el usuario usa el filtro de contactados.
+  const fetchContactedSet = async () => {
+    setLoadingContacted(true);
+    const { data } = await supabase
+      .from("mensajes_whatsapp")
+      .select("telefono")
+      .eq("direccion", "outbound")
+      .limit(50000);
+    if (data) {
+      setContactedSet(new Set(data.map((m: any) => normPhone(m.telefono)).filter(Boolean)));
+    }
+    setContactedLoaded(true);
+    setLoadingContacted(false);
   };
 
   const estados = useMemo(() => [...new Set(leads.map(l => l.estado).filter(Boolean))], [leads]);
@@ -121,6 +138,12 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       return matchSearch && matchEstado && matchPais && matchId && matchContact && matchMin && matchMax;
     });
   }, [leads, searchQuery, filterEstado, filterPais, idFilter, contactFilter, contactedSet, minDays, maxDays]);
+
+  // Solo renderizamos un máximo de filas en el DOM para no congelar el navegador
+  // con miles de contactos. El total filtrado sigue disponible para contador,
+  // "seleccionar todos" y el lanzamiento de la campaña.
+  const MAX_VISIBLE = 200;
+  const visible = useMemo(() => filtered.slice(0, MAX_VISIBLE), [filtered]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -382,13 +405,13 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
             </div>
 
             <ScrollArea className="h-[240px] border rounded-md">
-              {loadingLeads ? (
+              {loadingLeads || loadingContacted ? (
                 <p className="text-center text-muted-foreground py-8 text-sm">Cargando contactos...</p>
               ) : filtered.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8 text-sm">No se encontraron contactos.</p>
               ) : (
                 <div className="divide-y">
-                  {filtered.map(lead => (
+                  {visible.map(lead => (
                     <label key={lead.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer">
                       <Checkbox
                         checked={selectedIds.has(lead.id)}
@@ -404,6 +427,12 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
                 </div>
               )}
             </ScrollArea>
+            {!loadingLeads && !loadingContacted && filtered.length > MAX_VISIBLE && (
+              <p className="text-[11px] text-muted-foreground text-center">
+                Mostrando {MAX_VISIBLE} de {filtered.length}. Usa los filtros o la búsqueda para acotar.
+                Puedes seleccionar todos ({filtered.length}) igualmente.
+              </p>
+            )}
           </div>
         </div>
 
