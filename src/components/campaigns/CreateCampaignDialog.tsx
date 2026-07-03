@@ -23,6 +23,13 @@ interface Lead {
   bot_activo: boolean | null;
   id_contacto: string | null;
   dias_reales: number | null;
+  tag_ids: string[] | null;
+}
+
+interface Tag {
+  id: string;
+  nombre: string;
+  color: string | null;
 }
 
 const normPhone = (p: string) => ((p || "").split("/")[0].trim()).replace(/\D/g, "");
@@ -48,6 +55,8 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEstado, setFilterEstado] = useState("all");
   const [filterPais, setFilterPais] = useState("all");
+  const [filterTag, setFilterTag] = useState("all");
+  const [tags, setTags] = useState<Tag[]>([]);
   const [contactFilter, setContactFilter] = useState<"all" | "contacted" | "uncontacted">("all");
   const [idFilter, setIdFilter] = useState("");
   const [minDays, setMinDays] = useState("");
@@ -71,6 +80,7 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       setSearchQuery("");
       setFilterEstado("all");
       setFilterPais("all");
+      setFilterTag("all");
       setContactFilter("all");
       setIdFilter("");
       setMinDays("");
@@ -89,11 +99,18 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
 
   const fetchLeads = async () => {
     setLoadingLeads(true);
-    const { data, error } = await supabase
-      .from("leads_campana")
-      .select("id, nombre, telefono, email, pais, estado, bot_activo, id_contacto, dias_reales")
-      .order("nombre");
+    const [{ data, error }, tagsRes] = await Promise.all([
+      supabase
+        .from("leads_campana")
+        .select("id, nombre, telefono, email, pais, estado, bot_activo, id_contacto, dias_reales, tag_ids")
+        .order("nombre"),
+      supabase
+        .from("lead_tags")
+        .select("id, nombre, color")
+        .order("nombre"),
+    ]);
     if (!error && data) setLeads(data as Lead[]);
+    if (tagsRes.data) setTags(tagsRes.data as Tag[]);
     setLoadingLeads(false);
   };
 
@@ -126,6 +143,7 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
         (l.email && l.email.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchEstado = filterEstado === "all" || l.estado === filterEstado;
       const matchPais = filterPais === "all" || l.pais === filterPais;
+      const matchTag = filterTag === "all" || (l.tag_ids || []).includes(filterTag);
       const matchId = !idFilter || (l.id_contacto || "").toLowerCase().includes(idFilter.toLowerCase());
       const isContacted = contactedSet.has(normPhone(l.telefono));
       const matchContact =
@@ -135,9 +153,9 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
       const dias = l.dias_reales ?? 0;
       const matchMin = min === null || dias >= min;
       const matchMax = max === null || dias <= max;
-      return matchSearch && matchEstado && matchPais && matchId && matchContact && matchMin && matchMax;
+      return matchSearch && matchEstado && matchPais && matchTag && matchId && matchContact && matchMin && matchMax;
     });
-  }, [leads, searchQuery, filterEstado, filterPais, idFilter, contactFilter, contactedSet, minDays, maxDays]);
+  }, [leads, searchQuery, filterEstado, filterPais, filterTag, idFilter, contactFilter, contactedSet, minDays, maxDays]);
 
   // Solo renderizamos un máximo de filas en el DOM para no congelar el navegador
   // con miles de contactos. El total filtrado sigue disponible para contador,
@@ -177,6 +195,7 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
         lead_ids: Array.from(selectedIds),
         estado: filterEstado,
         pais: filterPais,
+        tag_id: filterTag === "all" ? null : filterTag,
         contacto: contactFilter,
         id_contacto: idFilter || null,
         min_dias: minDays === "" ? null : Number(minDays),
@@ -358,6 +377,23 @@ export default function CreateCampaignDialog({ open, onOpenChange, onCreated }: 
                 </SelectContent>
               </Select>
             </div>
+
+            {tags.length > 0 && (
+              <Select value={filterTag} onValueChange={setFilterTag}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Etiqueta" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las etiquetas</SelectItem>
+                  {tags.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: t.color || "#888" }} />
+                        {t.nombre}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <div className="flex gap-2">
               <Select value={contactFilter} onValueChange={(v: any) => setContactFilter(v)}>
