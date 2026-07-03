@@ -281,20 +281,21 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     [messages],
   );
 
-  // Confirma el envío contra n8n: si el webhook falla, marca el mensaje
-  // como "fallido" (en BD y en la vista local) para no dar por enviado
-  // algo que nunca salió.
-  const confirmarEnvio = async (
-    msgId: string,
-    payload: Record<string, any>,
-  ) => {
+  // Envía por el flujo n8n `crmrp` (mismo probado del inbox normal y la
+  // reactivación de leads): Webhook /crmrp → Send WhatsApp → guarda en
+  // mensajes_whatsapp. Contrato del body: { telefono, mensaje, autor }.
+  // Si el webhook falla, marcamos el mensaje como "fallido" para no darlo
+  // por enviado.
+  const confirmarEnvio = async (msgId: string, contenido: string) => {
+    if (!selectedContact?.telefono) return;
     const { data, error } = await supabase.functions.invoke("send-n8n-webhook", {
-      body: { target: "primer_contacto", payload },
+      body: {
+        target: "crmrp",
+        payload: { telefono: selectedContact.telefono, mensaje: contenido, autor: "admin" },
+      },
     });
-    // La Edge Function es "best-effort": ante un n8n caído o que responde
-    // no-2xx (p.ej. webhook 404 por workflow inactivo) devuelve HTTP 200 con
-    // { success:true, warning:"...", status:404 }. Para no dar por enviado algo
-    // que n8n rechazó, inspeccionamos también el cuerpo, no solo el error HTTP.
+    // La Edge Function es "best-effort": ante n8n caído/no-2xx devuelve HTTP 200
+    // con { success:true, warning, status }. Inspeccionamos también el cuerpo.
     const d = data as { success?: boolean; warning?: string; status?: number } | null;
     const entregado =
       !error &&
@@ -305,7 +306,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     if (!entregado) {
       console.warn("Webhook no entregado:", error || d);
       toast({
-        title: "No se entregó a n8n",
+        title: "No se pudo enviar",
         description: d?.status
           ? `n8n respondió ${d.status}. Mensaje marcado como fallido; puedes reintentar.`
           : "El mensaje quedó marcado como fallido. Puedes reintentar.",
@@ -358,22 +359,8 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       setNewMessage("");
       setPendingMedia(null);
 
-      if (newId) {
-        const payload: Record<string, any> = {
-          tipo: "respuesta_manual",
-          telefono: selectedContact.telefono,
-          nombre: selectedContact.nombre,
-          pais: selectedContact.pais,
-          campaign_name: selectedContact.campaign_name,
-          contenido,
-          user_id: user?.id,
-          timestamp: new Date().toISOString(),
-        };
-        if (media) {
-          payload.media_url = media.url;
-          payload.media_type = media.type;
-        }
-        void confirmarEnvio(newId, payload);
+      if (newId && contenido.trim()) {
+        void confirmarEnvio(newId, contenido);
       }
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
@@ -385,21 +372,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
   const reintentar = async (msg: MensajeAuto) => {
     if (!selectedContact?.telefono) return;
     setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, estado_envio: "enviando" } : m)));
-    const payload: Record<string, any> = {
-      tipo: "respuesta_manual",
-      telefono: selectedContact.telefono,
-      nombre: selectedContact.nombre,
-      pais: selectedContact.pais,
-      campaign_name: selectedContact.campaign_name,
-      contenido: msg.contenido,
-      user_id: user?.id,
-      timestamp: new Date().toISOString(),
-    };
-    if (msg.media_url) {
-      payload.media_url = msg.media_url;
-      payload.media_type = msg.media_type;
-    }
-    await confirmarEnvio(msg.id, payload);
+    await confirmarEnvio(msg.id, msg.contenido);
   };
 
   if (!selectedContact) {
