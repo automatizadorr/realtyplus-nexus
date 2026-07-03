@@ -26,7 +26,7 @@
             {
               "id": "a1a1a1a1-b2b2-4c4c-9d9d-numero000001",
               "name": "numero_destino",
-              "value": "={{ $('Get row(s) in sheet').item.json.TELEFONO || $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+              "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
               "type": "string"
             }
           ]
