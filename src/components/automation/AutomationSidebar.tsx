@@ -86,15 +86,32 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
     direccion,
   });
 
-  // Load filter options — RPC devuelve campañas/países distintos en una
-  // sola llamada (antes traía hasta 5000 filas al cliente).
+  // Load filter options — intenta el RPC (una sola llamada); si aún no existe
+  // (migración no aplicada) cae al método anterior de leer filas distintas.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase as any).rpc("opciones_inbox_automatizacion");
-      if (cancelled || !data) return;
-      setCampaigns(((data.campaigns as string[]) || []).slice());
-      setCountries(((data.paises as string[]) || []).slice());
+      const { data, error } = await (supabase as any).rpc("opciones_inbox_automatizacion");
+      if (cancelled) return;
+      if (!error && data) {
+        setCampaigns(((data.campaigns as string[]) || []).slice());
+        setCountries(((data.paises as string[]) || []).slice());
+        return;
+      }
+      // Fallback
+      const { data: rows } = await (supabase as any)
+        .from("vista_inbox_automatizacion")
+        .select("campaign_name, pais")
+        .limit(5000);
+      if (cancelled || !rows) return;
+      const cs = new Set<string>();
+      const ps = new Set<string>();
+      for (const r of rows as { campaign_name: string | null; pais: string | null }[]) {
+        if (r.campaign_name) cs.add(r.campaign_name);
+        if (r.pais) ps.add(r.pais);
+      }
+      setCampaigns(Array.from(cs).sort());
+      setCountries(Array.from(ps).sort());
     })();
     return () => {
       cancelled = true;

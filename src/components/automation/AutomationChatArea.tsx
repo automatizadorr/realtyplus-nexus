@@ -90,7 +90,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       oldestCreatedAtRef.current = null;
       const { data } = await (supabase as any)
         .from("vista_mensajes_automatizacion")
-        .select("id, telefono, contenido, direccion, created_at, leido, campaign_name, dia_secuencia, estado_envio, media_url, media_type")
+        .select("*")
         .eq("phone_key", phoneKey)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -103,9 +103,23 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       }
       setLoading(false);
 
-      // Marca leído por phone_key EXACTO (evita contaminar teléfonos
-      // que sean subcadena de otros). RPC en la migración 20260703120000.
-      await (supabase as any).rpc("marcar_leidos_automatizacion", { p_phone_key: phoneKey });
+      // Marca leído por phone_key EXACTO: primero resolvemos los ids de los
+      // mensajes inbound sin leer (vía la vista con phone_key normalizado) y
+      // actualizamos por id. Evita el bug de ilike '%telefono%' que contaminaba
+      // teléfonos que eran subcadena de otros, y no depende de ninguna migración.
+      const { data: unreadRows } = await (supabase as any)
+        .from("vista_mensajes_automatizacion")
+        .select("id")
+        .eq("phone_key", phoneKey)
+        .eq("direccion", "inbound")
+        .eq("leido", false);
+      const unreadIds = (unreadRows || []).map((r: { id: string }) => r.id);
+      if (unreadIds.length > 0) {
+        await (supabase as any)
+          .from("mensajes_automatizacion")
+          .update({ leido: true })
+          .in("id", unreadIds);
+      }
     };
     fetchMessages();
 
@@ -299,22 +313,27 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     try {
       const contenido = newMessage;
       const media = pendingMedia;
+      // Solo referenciamos las columnas de media cuando hay adjunto, para no
+      // romper el insert si la migración de media aún no se aplicó.
+      const insertRow: Record<string, any> = {
+        telefono: selectedContact.telefono,
+        nombre: selectedContact.nombre,
+        pais: selectedContact.pais,
+        campaign_name: selectedContact.campaign_name,
+        contenido,
+        direccion: "outbound",
+        canal: "whatsapp",
+        user_id: user?.id,
+        dia_secuencia: ultimoDia + 1,
+        estado_envio: "enviando",
+      };
+      if (media) {
+        insertRow.media_url = media.url;
+        insertRow.media_type = media.type;
+      }
       const { data: inserted, error: insertError } = await (supabase as any)
         .from("mensajes_automatizacion")
-        .insert({
-          telefono: selectedContact.telefono,
-          nombre: selectedContact.nombre,
-          pais: selectedContact.pais,
-          campaign_name: selectedContact.campaign_name,
-          contenido,
-          direccion: "outbound",
-          canal: "whatsapp",
-          user_id: user?.id,
-          dia_secuencia: ultimoDia + 1,
-          estado_envio: "enviando",
-          media_url: media?.url ?? null,
-          media_type: media?.type ?? null,
-        })
+        .insert(insertRow)
         .select()
         .single();
       if (insertError) throw insertError;

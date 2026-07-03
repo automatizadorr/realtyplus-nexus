@@ -1,14 +1,13 @@
 -- ============================================================
 -- Mejoras mensajería de oportunidades (2026-07-03)
 --
--- 1) Adjuntos: añade media_url / media_type a mensajes_automatizacion
---    y re-expande vista_mensajes_automatizacion (usa m.* → hay que
---    recrearla para que incluya las columnas nuevas).
--- 2) Marcado de leído exacto por phone_key: RPC que reemplaza el
---    UPDATE con ilike '%phone%' (que contaminaba teléfonos que eran
---    subcadena de otros). También corrige el contador de no leídos.
--- 3) Rendimiento filtros: RPC que devuelve campañas/países distintos
---    en una sola llamada, en vez de traer hasta 5000 filas al cliente.
+-- NOTA: el frontend es resiliente y funciona CON o SIN esta migración.
+-- Esta migración habilita dos cosas opcionales:
+--   1) Adjuntos (media_url / media_type) en el chat de oportunidades.
+--   2) RPC de opciones de filtro (rendimiento; hay fallback en el cliente).
+--
+-- El marcado de leído ya NO depende de ninguna función: el cliente resuelve
+-- los ids inbound no leídos vía la vista (phone_key exacto) y actualiza por id.
 -- ============================================================
 
 -- 1) Adjuntos ------------------------------------------------
@@ -16,8 +15,12 @@ ALTER TABLE public.mensajes_automatizacion
   ADD COLUMN IF NOT EXISTS media_url  text,
   ADD COLUMN IF NOT EXISTS media_type text;
 
--- Recrear la vista para que m.* incluya las columnas nuevas.
-CREATE OR REPLACE VIEW public.vista_mensajes_automatizacion AS
+-- La vista usa m.* (expandido al crearse), así que hay que recrearla para
+-- exponer las columnas nuevas. Usamos DROP + CREATE porque CREATE OR REPLACE
+-- exige que las columnas nuevas queden AL FINAL, y m.* las inserta antes de
+-- phone_key → CREATE OR REPLACE fallaría con "cannot change name of column".
+DROP VIEW IF EXISTS public.vista_mensajes_automatizacion;
+CREATE VIEW public.vista_mensajes_automatizacion AS
 SELECT
   m.*,
   regexp_replace(m.telefono, '[^0-9]', '', 'g') AS phone_key
@@ -26,27 +29,7 @@ FROM public.mensajes_automatizacion m;
 ALTER VIEW public.vista_mensajes_automatizacion SET (security_invoker = true);
 GRANT SELECT ON public.vista_mensajes_automatizacion TO anon, authenticated;
 
--- 2) Marcar leídos por phone_key exacto ----------------------
-CREATE OR REPLACE FUNCTION public.marcar_leidos_automatizacion(p_phone_key text)
-RETURNS integer
-LANGUAGE sql
--- security_invoker (default): respeta la RLS igual que el UPDATE previo
-SET search_path = public
-AS $$
-  WITH upd AS (
-    UPDATE public.mensajes_automatizacion
-    SET leido = true
-    WHERE regexp_replace(telefono, '[^0-9]', '', 'g') = p_phone_key
-      AND direccion = 'inbound'
-      AND leido IS DISTINCT FROM true
-    RETURNING 1
-  )
-  SELECT count(*)::int FROM upd;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.marcar_leidos_automatizacion(text) TO anon, authenticated;
-
--- 3) Opciones de filtro (campañas / países distintos) --------
+-- 2) Opciones de filtro (campañas / países distintos) --------
 CREATE OR REPLACE FUNCTION public.opciones_inbox_automatizacion()
 RETURNS jsonb
 LANGUAGE sql
