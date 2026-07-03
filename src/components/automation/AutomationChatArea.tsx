@@ -288,15 +288,27 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     msgId: string,
     payload: Record<string, any>,
   ) => {
-    const { error } = await supabase.functions.invoke("send-n8n-webhook", {
+    const { data, error } = await supabase.functions.invoke("send-n8n-webhook", {
       body: { target: "primer_contacto", payload },
     });
-    const nuevoEstado = error ? "fallido" : "enviado";
-    if (error) {
-      console.warn("Webhook warning:", error);
+    // La Edge Function es "best-effort": ante un n8n caído o que responde
+    // no-2xx (p.ej. webhook 404 por workflow inactivo) devuelve HTTP 200 con
+    // { success:true, warning:"...", status:404 }. Para no dar por enviado algo
+    // que n8n rechazó, inspeccionamos también el cuerpo, no solo el error HTTP.
+    const d = data as { success?: boolean; warning?: string; status?: number } | null;
+    const entregado =
+      !error &&
+      d?.success !== false &&
+      !d?.warning &&
+      !(typeof d?.status === "number" && d.status >= 400);
+    const nuevoEstado = entregado ? "enviado" : "fallido";
+    if (!entregado) {
+      console.warn("Webhook no entregado:", error || d);
       toast({
-        title: "No se pudo enviar",
-        description: "El mensaje quedó marcado como fallido. Puedes reintentar.",
+        title: "No se entregó a n8n",
+        description: d?.status
+          ? `n8n respondió ${d.status}. Mensaje marcado como fallido; puedes reintentar.`
+          : "El mensaje quedó marcado como fallido. Puedes reintentar.",
         variant: "destructive",
       });
     }
