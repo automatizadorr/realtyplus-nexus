@@ -5,8 +5,8 @@
       "parameters": {
         "operation": "send",
         "phoneNumberId": "1070824479455864",
-        "recipientPhoneNumber": "={{ $('Edit Fields1').item.json.contacts[0].wa_id }}",
-        "textBody": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}",
+        "recipientPhoneNumber": "={{ $json.numero_destino }}",
+        "textBody": "={{ $json.text_to_send }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.whatsApp",
@@ -21,10 +21,30 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1a1a1a1-b2b2-4c4c-9d9d-numero000001",
+              "name": "numero_destino",
+              "value": "={{ $('Get row(s) in sheet').item.json.TELEFONO || $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1648, 5136],
+      "id": "d5d5d5d5-e6e6-4f4f-8a8a-numero000002",
+      "name": "🎯 Set Número Destino"
+    },
+    {
+      "parameters": {
         "tableId": "mensajes_whatsapp",
         "fieldsUi": {
           "fieldValues": [
-            { "fieldId": "telefono", "fieldValue": "={{ $('Edit Fields1').item.json.contacts[0].wa_id }}" },
+            { "fieldId": "telefono", "fieldValue": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}" },
             { "fieldId": "direccion", "fieldValue": "outbound" },
             { "fieldId": "contenido", "fieldValue": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}" }
           ]
@@ -437,12 +457,27 @@
       "position": [-288, 5552],
       "id": "5c720095-e910-4650-9f99-15aa7dec5215",
       "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
       "credentials": { "googleSheetsOAuth2Api": { "id": "nkGcI2QxH17ERKMj", "name": "Google Sheets account 2" } }
     },
     {
       "parameters": {
-        "rules": { "values": [ { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "leftValue": "", "rightValue": "", "operator": { "type": "string", "operation": "equals" }, "id": "532f7e1c-c8f5-4994-b420-d1612fce0ba3" } ], "combinator": "and" } } ] },
-        "options": {}
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+                "conditions": [
+                  { "id": "c-en-sheet", "leftValue": "={{ $json.TELEFONO }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "en_sheet"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
       },
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
@@ -520,10 +555,11 @@
     "🔀 ¿Hay Reserva?": { "main": [[{ "node": "📅 Ejecutar Reserva (Standard)1", "type": "main", "index": 0 }]] },
     "WhatsApp Trigger1": { "main": [[{ "node": "Switch", "type": "main", "index": 0 }]] },
     "🧩 Parseador Nexus3": { "main": [[{ "node": "Loop Over Items1", "type": "main", "index": 0 }, { "node": "Loop Over Items", "type": "main", "index": 0 }]] },
-    "Loop Over Items1": { "main": [[], [{ "node": "Send message", "type": "main", "index": 0 }]] },
+    "Loop Over Items1": { "main": [[], [{ "node": "🎯 Set Número Destino", "type": "main", "index": 0 }]] },
+    "🎯 Set Número Destino": { "main": [[{ "node": "Send message", "type": "main", "index": 0 }]] },
     "📥 Redis - Agregar a Buffer1": { "main": [[{ "node": "📤 Redis - Leer Buffer1", "type": "main", "index": 0 }]] },
     "📤 Redis - Leer Buffer1": { "main": [[{ "node": "Wait1", "type": "main", "index": 0 }]] },
-    "🧹 Redis - Limpiar Buffer1": { "main": [[{ "node": "Switch1", "type": "main", "index": 0 }]] },
+    "🧹 Redis - Limpiar Buffer1": { "main": [[{ "node": "Get row(s) in sheet", "type": "main", "index": 0 }]] },
     "Wait": { "main": [[{ "node": "Loop Over Items1", "type": "main", "index": 0 }]] },
     "DeepSeek Chat Model": { "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]] },
     "Edit Fields": { "main": [[{ "node": "📥 Redis - Agregar a Buffer1", "type": "main", "index": 0 }, { "node": "Create a row3", "type": "main", "index": 0 }]] },
@@ -532,8 +568,8 @@
     "Loop Over Items": { "main": [[], [{ "node": "Create a row", "type": "main", "index": 0 }]] },
     "Wait2": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] },
     "🧩 Parseador Nexus": { "main": [[{ "node": "🔀 ¿Hay Reserva?", "type": "main", "index": 0 }]] },
-    "Get row(s) in sheet": { "main": [[{ "node": "Edit Fields1", "type": "main", "index": 0 }]] },
-    "Switch1": { "main": [[{ "node": "Get row(s) in sheet", "type": "main", "index": 0 }, { "node": "Edit Fields3", "type": "main", "index": 0 }]] },
+    "Get row(s) in sheet": { "main": [[{ "node": "Switch1", "type": "main", "index": 0 }]] },
+    "Switch1": { "main": [[{ "node": "Edit Fields1", "type": "main", "index": 0 }], [{ "node": "Edit Fields3", "type": "main", "index": 0 }]] },
     "Edit Fields3": { "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]] },
     "Registrar en Supabase1": { "main": [[{ "node": "Wait2", "type": "main", "index": 0 }]] }
   },
