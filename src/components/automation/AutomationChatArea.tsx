@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { useAuth } from "@/contexts/AuthContext";
 import { ChatSearchBar } from "@/components/inbox/ChatSearchBar";
 import { QuickRepliesPopover } from "@/components/inbox/QuickRepliesPopover";
 import { EmojiPickerButton } from "@/components/inbox/EmojiPickerButton";
@@ -72,7 +71,6 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
   const phoneRef = useRef<string>("");
   const { toast } = useToast();
   const { isAdmin } = useIsAdmin();
-  const { user } = useAuth();
 
   useEffect(() => {
     if (!selectedContact?.telefono) {
@@ -133,6 +131,18 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
           if (msg.telefono.replace(/[^0-9]/g, "") === phoneKey) {
             setMessages((prev) => {
               if (prev.find((m) => m.id === msg.id)) return prev;
+              // Reconcilia el mensaje optimista (id temp-) con la fila real que
+              // acaba de insertar n8n, para no duplicar el outbound.
+              if (msg.direccion === "outbound") {
+                const tempIdx = prev.findIndex(
+                  (m) => m.id.startsWith("temp-") && m.direccion === "outbound" && m.contenido === msg.contenido,
+                );
+                if (tempIdx !== -1) {
+                  const copy = prev.slice();
+                  copy[tempIdx] = msg;
+                  return copy;
+                }
+              }
               if (msg.direccion === "inbound" && !isAtBottomRef.current) {
                 setUnreadCount((c) => c + 1);
                 lastInboundIdRef.current = msg.id;
@@ -281,17 +291,24 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
     [messages],
   );
 
-  // Envía por el flujo n8n `crmrp` (mismo probado del inbox normal y la
-  // reactivación de leads): Webhook /crmrp → Send WhatsApp → guarda en
-  // mensajes_whatsapp. Contrato del body: { telefono, mensaje, autor }.
-  // Si el webhook falla, marcamos el mensaje como "fallido" para no darlo
-  // por enviado.
-  const confirmarEnvio = async (msgId: string, contenido: string) => {
-    if (!selectedContact?.telefono) return;
+  // Envía por el flujo n8n `oportunidades` (espejo de crmrp pero guarda en
+  // mensajes_automatizacion): Webhook /oportunidades → Send WhatsApp → insert.
+  // n8n es el ÚNICO que escribe en la tabla (evita duplicados); el chat muestra
+  // el mensaje de forma optimista y lo reconcilia por realtime. Devuelve si se
+  // entregó, y avisa por toast cuando falla.
+  const enviarPorWebhook = async (contenido: string): Promise<boolean> => {
+    if (!selectedContact?.telefono) return false;
     const { data, error } = await supabase.functions.invoke("send-n8n-webhook", {
       body: {
-        target: "crmrp",
-        payload: { telefono: selectedContact.telefono, mensaje: contenido, autor: "admin" },
+        target: "oportunidades",
+        payload: {
+          telefono: selectedContact.telefono,
+          mensaje: contenido,
+          autor: "admin",
+          nombre: selectedContact.nombre,
+          pais: selectedContact.pais,
+          campaign_name: selectedContact.campaign_name,
+        },
       },
     });
     // La Edge Function es "best-effort": ante n8n caído/no-2xx devuelve HTTP 200
@@ -302,7 +319,6 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       d?.success !== false &&
       !d?.warning &&
       !(typeof d?.status === "number" && d.status >= 400);
-    const nuevoEstado = entregado ? "enviado" : "fallido";
     if (!entregado) {
       console.warn("Webhook no entregado:", error || d);
       toast({
@@ -313,56 +329,36 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
         variant: "destructive",
       });
     }
-    await (supabase as any)
-      .from("mensajes_automatizacion")
-      .update({ estado_envio: nuevoEstado })
-      .eq("id", msgId);
-    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, estado_envio: nuevoEstado } : m)));
+    return entregado;
   };
 
   const sendMessage = async () => {
-    if ((!newMessage.trim() && !pendingMedia) || !selectedContact?.telefono) return;
+    const contenido = newMessage.trim();
+    if (!contenido || !selectedContact?.telefono) return;
     setSending(true);
+    // Mensaje optimista (id temporal). n8n insertará la fila real y realtime la
+    // reconciliará reemplazando este temp; si realtime no llega, el temp queda
+    // con su estado hasta el próximo fetch (sin duplicar en BD).
+    const tempId = `temp-${Date.now()}`;
+    const optimista: MensajeAuto = {
+      id: tempId,
+      telefono: selectedContact.telefono,
+      contenido,
+      direccion: "outbound",
+      created_at: new Date().toISOString(),
+      estado_envio: "enviando",
+      campaign_name: selectedContact.campaign_name,
+    };
+    setMessages((prev) => [...prev, optimista]);
+    setNewMessage("");
+    setPendingMedia(null);
     try {
-      const contenido = newMessage;
-      const media = pendingMedia;
-      // Solo referenciamos las columnas de media cuando hay adjunto, para no
-      // romper el insert si la migración de media aún no se aplicó.
-      const insertRow: Record<string, any> = {
-        telefono: selectedContact.telefono,
-        nombre: selectedContact.nombre,
-        pais: selectedContact.pais,
-        campaign_name: selectedContact.campaign_name,
-        contenido,
-        direccion: "outbound",
-        canal: "whatsapp",
-        user_id: user?.id,
-        dia_secuencia: ultimoDia + 1,
-        estado_envio: "enviando",
-      };
-      if (media) {
-        insertRow.media_url = media.url;
-        insertRow.media_type = media.type;
-      }
-      const { data: inserted, error: insertError } = await (supabase as any)
-        .from("mensajes_automatizacion")
-        .insert(insertRow)
-        .select()
-        .single();
-      if (insertError) throw insertError;
-      let newId: string | null = null;
-      if (inserted) {
-        const newMsg = inserted as MensajeAuto;
-        newId = newMsg.id;
-        setMessages((prev) => (prev.find((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
-      }
-      setNewMessage("");
-      setPendingMedia(null);
-
-      if (newId && contenido.trim()) {
-        void confirmarEnvio(newId, contenido);
-      }
+      const entregado = await enviarPorWebhook(contenido);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, estado_envio: entregado ? "enviado" : "fallido" } : m)),
+      );
     } catch (err: any) {
+      setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, estado_envio: "fallido" } : m)));
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
       setSending(false);
@@ -372,7 +368,10 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
   const reintentar = async (msg: MensajeAuto) => {
     if (!selectedContact?.telefono) return;
     setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, estado_envio: "enviando" } : m)));
-    await confirmarEnvio(msg.id, msg.contenido);
+    const entregado = await enviarPorWebhook(msg.contenido);
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, estado_envio: entregado ? "enviado" : "fallido" } : m)),
+    );
   };
 
   if (!selectedContact) {
