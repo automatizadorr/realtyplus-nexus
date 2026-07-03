@@ -1,0 +1,542 @@
+{
+  "name": "RealtyPlus — Atención IA iSabel (Agendamiento Inteligente) [OFICIAL]",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1070824479455864",
+        "recipientPhoneNumber": "={{ $('Edit Fields1').item.json.contacts[0].wa_id }}",
+        "textBody": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [1872, 5136],
+      "id": "c477e30e-ab38-46c0-90a9-1c27828008e8",
+      "name": "Send message",
+      "webhookId": "d7374601-af07-4cee-880b-e41ab3c82c90",
+      "credentials": {
+        "whatsAppApi": { "id": "aahJDBWDqqC6G26B", "name": "RealtyPlus- enviar Mensaje" }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "mensajes_whatsapp",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "telefono", "fieldValue": "={{ $('Edit Fields1').item.json.contacts[0].wa_id }}" },
+            { "fieldId": "direccion", "fieldValue": "outbound" },
+            { "fieldId": "contenido", "fieldValue": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1888, 5472],
+      "id": "ba4d7120-5d8f-45b8-81b2-d5ad13f234b7",
+      "name": "Create a row",
+      "credentials": { "supabaseApi": { "id": "URfIkTGt4gkOkJX8", "name": "RealtyPlus AI" } }
+    },
+    {
+      "parameters": {
+        "tableId": "mensajes_whatsapp",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "telefono", "fieldValue": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}" },
+            { "fieldId": "direccion", "fieldValue": "inbound" },
+            { "fieldId": "contenido", "fieldValue": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-1408, 5456],
+      "id": "fba37a43-6787-4f6b-af40-9ba892ca223d",
+      "name": "Create a row3",
+      "credentials": { "supabaseApi": { "id": "URfIkTGt4gkOkJX8", "name": "RealtyPlus AI" } },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": { "__rl": true, "value": "realtyplus.leads@gmail.com", "mode": "id" },
+        "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [544, 5968],
+      "id": "42f576b8-e40f-4282-bbe4-0e3983cad5ed",
+      "name": "Cancela1",
+      "credentials": { "googleCalendarOAuth2Api": { "id": "PaF3Bn4waH44ae20", "name": "calendar realty- plus" } }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": { "__rl": true, "value": "realtyplus.leads@gmail.com", "mode": "id" },
+        "limit": 5,
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [672, 5968],
+      "id": "818d7c64-2656-4adf-90a3-c7ea5c3b2f06",
+      "name": "Consulta1",
+      "credentials": { "googleCalendarOAuth2Api": { "id": "PaF3Bn4waH44ae20", "name": "calendar realty- plus" } }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "calendar": { "__rl": true, "value": "realtyplus.leads@gmail.com", "mode": "id" },
+        "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+        "updateFields": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [800, 5968],
+      "id": "7c0b9a0f-491f-4240-9717-be809ee7579b",
+      "name": "Modifica1",
+      "credentials": { "googleCalendarOAuth2Api": { "id": "PaF3Bn4waH44ae20", "name": "calendar realty- plus" } }
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": { "__rl": true, "value": "realtyplus.leads@gmail.com", "mode": "id" },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Time', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Time', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [928, 5968],
+      "id": "5b8f75fb-6ee9-4426-8eed-d1eadce29ab0",
+      "name": "Disponibilidad1",
+      "credentials": { "googleCalendarOAuth2Api": { "id": "PaF3Bn4waH44ae20", "name": "calendar realty- plus" } }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+        "tableName": "evento_18_chat_memories",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [416, 5968],
+      "id": "c46676cb-cd9e-4b49-b2c9-2d756df0b47c",
+      "name": "Postgres Chat Memory1",
+      "credentials": { "postgres": { "id": "G69C7SgeE5KJDcBg", "name": "Postgres account 2" } }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Nombre del usuario: {{ $json.contacts[0].profile.name }} {{ $json.NOMBRES }} {{ $json.APELLIDOS }}\n\nMensaje del usuario o transcripción de audio:{{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=# iSabel — Asesora Virtual RealtyPlus. (Prompt completo conservado en n8n; ver nodo AI Agent en el editor). Responde SIEMPRE en JSON { \"messages\": [ {\"text\": \"...\"} ] }."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [544, 5744],
+      "id": "fe717507-d6f7-4bd0-a5a3-e9155573654d",
+      "name": "AI Agent",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca en la Base de Conocimiento Oficial de Realtyplus...",
+        "tableName": { "__rl": true, "value": "documents", "mode": "id" },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [1056, 5968],
+      "id": "fe023952-95ac-43b5-a85b-a114ce04e160",
+      "name": "Supabase Vector Store1",
+      "credentials": { "supabaseApi": { "id": "URfIkTGt4gkOkJX8", "name": "RealtyPlus AI" } }
+    },
+    {
+      "parameters": { "options": {} },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [1136, 6176],
+      "id": "42c0eb7f-9b20-41f5-9f93-0507e0dfe5e8",
+      "name": "Embeddings OpenAI1",
+      "credentials": { "openAiApi": { "id": "crDkBQMwsHwZ9F0H", "name": "OpenAi account" } }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "e3a7ea34-6f7a-424b-9f35-cc467f9bd745", "name": "timezone", "value": "={{ $json.timezone || 'UTC' }}", "type": "string" },
+            { "id": "ed9907d9-0eda-4964-9b7b-707da2d5fb36", "name": "contacts[0].profile.name", "value": "={{ $json.NOMBRES }} {{ $json.APELLIDOS }}", "type": "string" },
+            { "id": "fa322b47-1ba3-4f3b-9202-7a88a11e4b8a", "name": "contacts[0].wa_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}", "type": "string" },
+            { "id": "e64b39c5-c439-4836-8bcb-c1cc1032dee7", "name": "contacts[0].user_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].user_id }}", "type": "string" },
+            { "id": "8085a877-1b50-4a6f-a81a-e16ed4f6de4a", "name": "messages[0].text.body", "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-64, 5552],
+      "id": "a1119d74-0189-43ab-b8c0-3ce4b862a653",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": { "options": { "temperature": 0.1 } },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [288, 5968],
+      "id": "f3440b99-012e-4e29-a55e-84634376685d",
+      "name": "Google Gemini Chat Model1",
+      "credentials": { "googlePalmApi": { "id": "pNTO6IVg29lgDvdX", "name": "Google Gemini(PaLM) Api account 2" } }
+    },
+    {
+      "parameters": {
+        "calendar": { "__rl": true, "value": "realtyplus.leads@gmail.com", "mode": "id" },
+        "start": "={{ $json.datos_reserva.start }}",
+        "end": "={{ $json.datos_reserva.end }}",
+        "additionalFields": { "attendees": ["={{ $json.datos_reserva.email }}"], "summary": "={{ $json.datos_reserva.summary }}" }
+      },
+      "id": "f9dd86fe-a182-4983-8726-c8f5ac13325d",
+      "name": "📅 Ejecutar Reserva (Standard)1",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.1,
+      "position": [1872, 5744],
+      "credentials": { "googleCalendarOAuth2Api": { "id": "PaF3Bn4waH44ae20", "name": "calendar realty- plus" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $json.datos_reserva }}", "rightValue": "", "operator": { "type": "object", "operation": "exists", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "739e6530-ddbf-48bf-9014-d45f6f841f9d",
+      "name": "🔀 ¿Hay Reserva?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1648, 5744]
+    },
+    {
+      "parameters": { "updates": ["messages"], "options": {} },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [-2080, 5552],
+      "id": "a3205624-b97a-4a75-95a9-25251bfd4cfe",
+      "name": "WhatsApp Trigger1",
+      "webhookId": "c9deb83c-de73-420c-9c61-218379c13ce6",
+      "credentials": { "whatsAppTriggerApi": { "id": "DdQNo1ShRoTcebkk", "name": "RealtyPLus-AI" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// NEXUS PROTOCOL: Parseador para Mensajes en Partes\nconst items = $input.all();\nlet newItems = [];\n\nfor (const item of items) {\n  let rawOutput = item.json.output || item.json.text || \"\";\n  let parsedMessages = [];\n\n  if (typeof rawOutput === 'string') {\n    rawOutput = rawOutput.replace(/```json/gi, \"\").replace(/```/g, \"\").trim();\n  }\n\n  function extractJsonFromString(str) {\n    const jsonMatch = str.match(/\\{[\\s\\S]*\\}/s);\n    if (jsonMatch) {\n      try { return JSON.parse(jsonMatch[0]); } catch(e) { return null; }\n    }\n    return null;\n  }\n\n  try {\n    let jsonData = typeof rawOutput === 'string' ? JSON.parse(rawOutput) : rawOutput;\n    if (jsonData.messages && Array.isArray(jsonData.messages)) {\n      parsedMessages = jsonData.messages.map(m => m.text || m.mensaje || \"\");\n    } else { parsedMessages = [rawOutput]; }\n  } catch (error) {\n    if (typeof rawOutput === 'string') {\n      const extracted = extractJsonFromString(rawOutput);\n      if (extracted) {\n        if (extracted.messages && Array.isArray(extracted.messages)) {\n          parsedMessages = extracted.messages.map(m => m.text || m.mensaje || \"\");\n        } else { parsedMessages = [rawOutput]; }\n      } else { parsedMessages = [rawOutput]; }\n    } else { parsedMessages = [rawOutput]; }\n  }\n\n  parsedMessages = parsedMessages.filter(m => m && m.trim() !== \"\");\n\n  for (let i = 0; i < parsedMessages.length; i++) {\n    let delay = 1;\n    if (i > 0) { delay = Math.max(2, Math.floor(parsedMessages[i-1].length / 30)); }\n    newItems.push({ json: { ...item.json, text_to_send: parsedMessages[i], delay_seconds: delay, message_index: i + 1, total_messages: parsedMessages.length } });\n  }\n}\n\nreturn newItems;"
+      },
+      "id": "486efb1e-5d7b-4974-b6e9-d685aa6510d0",
+      "name": "🧩 Parseador Nexus3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1424, 5456]
+    },
+    {
+      "parameters": { "options": {} },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1648, 5216],
+      "id": "c1b83be0-d77b-4e8c-ac2a-6b61c14685e4",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "=wa:buffer:{{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+        "messageData": "={{ JSON.stringify({ text: $json.message_text, ts: $json.message_timestamp, id: $json.message_id, type: $json.message_type, push_name: $json.push_name, telefono: $json.telefono, chat_id: $json.chat_id }) }}",
+        "tail": true
+      },
+      "id": "94fc5a32-20ae-45a2-bd64-5df670dd32fb",
+      "name": "📥 Redis - Agregar a Buffer1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [-1408, 5744],
+      "credentials": { "redis": { "id": "EbQ7xCJhHb7eikjC", "name": "Redis account" } }
+    },
+    {
+      "parameters": { "operation": "get", "propertyName": "buffer_messages", "key": "={{ $json.buffer }}", "options": {} },
+      "id": "aff90bb6-d23a-4df2-86bf-20d3a1c9882e",
+      "name": "📤 Redis - Leer Buffer1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [-1184, 5744],
+      "credentials": { "redis": { "id": "EbQ7xCJhHb7eikjC", "name": "Redis account" } }
+    },
+    {
+      "parameters": { "operation": "delete", "key": "=={{ String($json.buffer_key || '') }}" },
+      "id": "ca8b49b6-ce34-45a1-a3bc-1080e2bee59b",
+      "name": "🧹 Redis - Limpiar Buffer1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [-736, 5744],
+      "credentials": { "redis": { "id": "EbQ7xCJhHb7eikjC", "name": "Redis account" } }
+    },
+    {
+      "parameters": { "amount": 2 },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2096, 5216],
+      "id": "7df1a062-4ac6-4581-9d52-e0b5b8c47b18",
+      "name": "Wait",
+      "webhookId": "64fc86bc-b948-40cc-b49e-a21d9335ab9c"
+    },
+    {
+      "parameters": { "model": "deepseek-v4-pro", "options": {} },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [160, 5968],
+      "id": "94ab5478-61ac-4fd9-a149-eca15099e8df",
+      "name": "DeepSeek Chat Model",
+      "credentials": { "deepSeekApi": { "id": "PiZMWOATEvwgs2JK", "name": "DeepSeek account" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "realtyplus.leads@gmail.com",
+        "subject": "Error del agente ISABEL",
+        "emailType": "text",
+        "message": "=Error Isabel agent\nFecha y hora: {{ $now }}\nnombre: {{ $('Edit Fields1').item.json.contacts[0].profile.name }}\ntelefono:{{ $('Edit Fields1').item.json.contacts[0].user_id }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1424, 5936],
+      "id": "2e103f54-9d15-47ba-8dbc-06e6c1a4b879",
+      "name": "Send a message",
+      "webhookId": "a4b9571b-e8b8-4c48-bcb5-fb78064da755",
+      "credentials": { "gmailOAuth2": { "id": "QFJyrUfsgznJw9M6", "name": "realtyplusleads@gmail" } }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [ { "id": "58cb1913-4110-4f57-96c2-6ffbf2688680", "name": "buffer", "value": "=wa:buffer:{{ $json.contacts[0].wa_id }}", "type": "string" } ] },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1632, 5552],
+      "id": "6693aed1-feca-40af-afc3-6277b4fff9e8",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": { "amount": 3 },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-960, 5744],
+      "id": "7fa7b1e8-ba73-458a-bb45-eacb0f2d4915",
+      "name": "Wait1",
+      "webhookId": "1676f900-13c6-47a8-8083-e9477e2caf84",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "leftValue": "={{ $json.statuses[0].pricing.type }}", "rightValue": "free_customer_service", "operator": { "type": "string", "operation": "equals" }, "id": "3958d4b8-1033-4233-8fea-3caf213090a1" } ], "combinator": "and" } },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "id": "ba4887a1-b771-427c-8596-1871befc1963", "leftValue": "={{ $json.messages[0].type }}", "rightValue": "text", "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" } } ], "combinator": "and" } },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "id": "bb0c23dc-f495-459f-b25e-39f858c3cc1e", "leftValue": "={{ $json.statuses[0].errors[0].error_data.details }}", "rightValue": "Message failed to send because there were one or more errors related to your payment method.", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "pago de tarjeta" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [-1856, 5536],
+      "id": "9799a061-3b2e-46a5-9722-3d4515c88bb6",
+      "name": "Switch"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [-1632, 5360],
+      "id": "63299ee1-bf69-45ca-9ee9-6189bd4ef2b9",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": { "options": {} },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1648, 5504],
+      "id": "94553824-18b0-41e4-a7a2-6598286e004c",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": { "amount": 2 },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2384, 5504],
+      "id": "5b2387b8-07c4-409b-84a5-6e4fb96add50",
+      "name": "Wait2",
+      "webhookId": "64fc86bc-b948-40cc-b49e-a21d9335ab9c"
+    },
+    {
+      "parameters": {
+        "sendTo": "alberto.murcia@realty-plus.es",
+        "subject": "Aviso de Saldo- Whatsapp  Meta  Marketing",
+        "emailType": "text",
+        "message": "=Hablar con +56971806730 - mario valdes. \n{{ $json.statuses[0].errors[0].message }}\n\n{{ $json.statuses[0].errors[0].error_data.details }}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [-1632, 5744],
+      "id": "17acaea7-9227-40b7-b5f7-be478c7250ee",
+      "name": "Send a message1",
+      "webhookId": "01c435e1-a5d2-4fd2-bcb2-e67a33c39d8a",
+      "credentials": { "gmailOAuth2": { "id": "QFJyrUfsgznJw9M6", "name": "realtyplusleads@gmail" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "expansion@realty-plus.org",
+        "subject": "Aviso de Oportunidad⚡🔥",
+        "message": "={{ $('🧩 Parseador Nexus').item.json.mensaje_1 }}\n{{ $('🧩 Parseador Nexus').item.json.mensaje_2 }}\n{{ $('🧩 Parseador Nexus').item.json.mensaje_3 }}\n{{ $('🧩 Parseador Nexus').item.json.mensaje_4 }}\n{{ $('🧩 Parseador Nexus').item.json.mensaje_5 }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [2096, 5744],
+      "id": "5df6a859-5124-47e7-a9b5-4ba458ef145a",
+      "name": "Send a message2",
+      "webhookId": "a8ad35bc-86d4-40f3-bc30-1ceeb748914b",
+      "credentials": { "gmailOAuth2": { "id": "QFJyrUfsgznJw9M6", "name": "realtyplusleads@gmail" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// NEXUS PROTOCOL: Parseador + Interceptor de Reservas v2\nconst items = $input.all();\n\nfor (const item of items) {\n  let rawOutput = item.json.output || item.json.text || \"\";\n  let parsedMessages = [];\n  let reservaData = null;\n\n  if (typeof rawOutput === 'string') {\n    rawOutput = rawOutput.replace(/```json/gi, \"\").replace(/```/g, \"\").trim();\n  }\n\n  function extractJsonFromString(str) {\n    const jsonMatch = str.match(/\\{[\\s\\S]*\\}/s);\n    if (jsonMatch) { try { return JSON.parse(jsonMatch[0]); } catch(e) { return null; } }\n    return null;\n  }\n\n  try {\n    let jsonData = typeof rawOutput === 'string' ? JSON.parse(rawOutput) : rawOutput;\n    if (jsonData.messages && Array.isArray(jsonData.messages)) { parsedMessages = jsonData.messages.map(m => m.text || m.mensaje || \"\"); } else { parsedMessages = [rawOutput]; }\n    if (jsonData.reserva && jsonData.reserva.email) { reservaData = jsonData.reserva; }\n  } catch (error) {\n    if (typeof rawOutput === 'string') {\n      const extracted = extractJsonFromString(rawOutput);\n      if (extracted) {\n        if (extracted.messages && Array.isArray(extracted.messages)) { parsedMessages = extracted.messages.map(m => m.text || m.mensaje || \"\"); } else { parsedMessages = [rawOutput]; }\n        if (extracted.reserva && extracted.reserva.email) { reservaData = extracted.reserva; }\n      } else { parsedMessages = [rawOutput]; }\n    } else { parsedMessages = [rawOutput]; }\n  }\n\n  item.json.mensaje_1 = parsedMessages[0] || \"\";\n  item.json.mensaje_2 = parsedMessages[1] || \"\";\n  item.json.mensaje_3 = parsedMessages[2] || \"\";\n  item.json.datos_reserva = reservaData;\n  delete item.json.output;\n}\n\nreturn items;"
+      },
+      "id": "92ea15d8-cac2-4ef6-94d4-dc5b2419f695",
+      "name": "🧩 Parseador Nexus",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1424, 5744]
+    },
+    {
+      "parameters": {
+        "documentId": { "__rl": true, "value": "17CnhYEbTUrSGUhu9-e2cZo_vkPu4nLkta7ksXwrFnCs", "mode": "list", "cachedResultName": "realtyplus leads", "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17CnhYEbTUrSGUhu9-e2cZo_vkPu4nLkta7ksXwrFnCs/edit?usp=drivesdk" },
+        "sheetName": { "__rl": true, "value": 1762785592, "mode": "list", "cachedResultName": "Sheet4", "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17CnhYEbTUrSGUhu9-e2cZo_vkPu4nLkta7ksXwrFnCs/edit#gid=1762785592" },
+        "filtersUI": { "values": [ { "lookupColumn": "TELEFONO", "lookupValue": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}" } ] },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-288, 5552],
+      "id": "5c720095-e910-4650-9f99-15aa7dec5215",
+      "name": "Get row(s) in sheet",
+      "credentials": { "googleSheetsOAuth2Api": { "id": "nkGcI2QxH17ERKMj", "name": "Google Sheets account 2" } }
+    },
+    {
+      "parameters": {
+        "rules": { "values": [ { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "leftValue": "", "rightValue": "", "operator": { "type": "string", "operation": "equals" }, "id": "532f7e1c-c8f5-4994-b420-d1612fce0ba3" } ], "combinator": "and" } } ] },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [-512, 5744],
+      "id": "4fe5736c-a39a-4288-b751-10e1d77addff",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "e3a7ea34-6f7a-424b-9f35-cc467f9bd745", "name": "timezone", "value": "={{ $json.timezone || 'UTC' }}", "type": "string" },
+            { "id": "ed9907d9-0eda-4964-9b7b-707da2d5fb36", "name": "contacts[0].profile.name", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}", "type": "string" },
+            { "id": "fa322b47-1ba3-4f3b-9202-7a88a11e4b8a", "name": "contacts[0].wa_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}", "type": "string" },
+            { "id": "e64b39c5-c439-4836-8bcb-c1cc1032dee7", "name": "contacts[0].user_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].user_id }}", "type": "string" },
+            { "id": "8085a877-1b50-4a6f-a81a-e16ed4f6de4a", "name": "messages[0].text.body", "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-64, 5744],
+      "id": "568642b0-767a-4c78-b8aa-bcd1698e2393",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/log-auto-message",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "x-webhook-secret", "value": "rpchile_cron_2026_a8K3mZqL" }, { "name": "Authorization", "value": "Bearer <ANON_KEY>" }, { "name": "apikey", "value": "<ANON_KEY>" } ] },
+        "sendBody": true,
+        "bodyParameters": { "parameters": [ { "name": "mensaje", "value": "={{ $json.contenido }}" }, { "name": "telefono", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}" }, { "name": "nombre", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}" }, { "name": "campaña", "value": "={{ $workflow.name }}" }, { "name": "mensaje", "value": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}" }, { "name": "tipo", "value": "outbound" } ] },
+        "options": { "timeout": 15000 }
+      },
+      "id": "c0c8a5d9-c8d4-4d00-a094-bb9fbc8390bb",
+      "name": "Registrar en Supabase1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2096, 5488]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/log-auto-message",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "x-webhook-secret", "value": "rpchile_cron_2026_a8K3mZqL" }, { "name": "Authorization", "value": "Bearer <ANON_KEY>" }, { "name": "apikey", "value": "<ANON_KEY>" } ] },
+        "sendBody": true,
+        "bodyParameters": { "parameters": [ { "name": "mensaje", "value": "={{ $json.contenido }}" }, { "name": "telefono", "value": "={{ $json.telefono }}" }, { "name": "nombre", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}" }, { "name": "direccion", "value": "inbound" }, { "name": "campaña", "value": "={{ $workflow.name }}" } ] },
+        "options": { "timeout": 15000 }
+      },
+      "id": "6e4f863b-e780-475c-a71a-85cb8238f927",
+      "name": "Leads Nuevos - Respuesta IA1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1200, 5456]
+    }
+  ],
+  "connections": {
+    "Send message": { "main": [[{ "node": "Wait", "type": "main", "index": 0 }]] },
+    "Create a row": { "main": [[{ "node": "Registrar en Supabase1", "type": "main", "index": 0 }]] },
+    "Create a row3": { "main": [[{ "node": "Leads Nuevos - Respuesta IA1", "type": "main", "index": 0 }]] },
+    "Cancela1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Consulta1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Modifica1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Disponibilidad1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Postgres Chat Memory1": { "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]] },
+    "AI Agent": { "main": [[{ "node": "🧩 Parseador Nexus", "type": "main", "index": 0 }, { "node": "🧩 Parseador Nexus3", "type": "main", "index": 0 }], [{ "node": "Send a message", "type": "main", "index": 0 }]] },
+    "Supabase Vector Store1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Embeddings OpenAI1": { "ai_embedding": [[{ "node": "Supabase Vector Store1", "type": "ai_embedding", "index": 0 }]] },
+    "Edit Fields1": { "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]] },
+    "Google Gemini Chat Model1": { "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 1 }]] },
+    "📅 Ejecutar Reserva (Standard)1": { "main": [[{ "node": "Send a message2", "type": "main", "index": 0 }]] },
+    "🔀 ¿Hay Reserva?": { "main": [[{ "node": "📅 Ejecutar Reserva (Standard)1", "type": "main", "index": 0 }]] },
+    "WhatsApp Trigger1": { "main": [[{ "node": "Switch", "type": "main", "index": 0 }]] },
+    "🧩 Parseador Nexus3": { "main": [[{ "node": "Loop Over Items1", "type": "main", "index": 0 }, { "node": "Loop Over Items", "type": "main", "index": 0 }]] },
+    "Loop Over Items1": { "main": [[], [{ "node": "Send message", "type": "main", "index": 0 }]] },
+    "📥 Redis - Agregar a Buffer1": { "main": [[{ "node": "📤 Redis - Leer Buffer1", "type": "main", "index": 0 }]] },
+    "📤 Redis - Leer Buffer1": { "main": [[{ "node": "Wait1", "type": "main", "index": 0 }]] },
+    "🧹 Redis - Limpiar Buffer1": { "main": [[{ "node": "Switch1", "type": "main", "index": 0 }]] },
+    "Wait": { "main": [[{ "node": "Loop Over Items1", "type": "main", "index": 0 }]] },
+    "DeepSeek Chat Model": { "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Edit Fields": { "main": [[{ "node": "📥 Redis - Agregar a Buffer1", "type": "main", "index": 0 }, { "node": "Create a row3", "type": "main", "index": 0 }]] },
+    "Wait1": { "main": [[{ "node": "🧹 Redis - Limpiar Buffer1", "type": "main", "index": 0 }]] },
+    "Switch": { "main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }], [{ "node": "Edit Fields", "type": "main", "index": 0 }], [{ "node": "Send a message1", "type": "main", "index": 0 }]] },
+    "Loop Over Items": { "main": [[], [{ "node": "Create a row", "type": "main", "index": 0 }]] },
+    "Wait2": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] },
+    "🧩 Parseador Nexus": { "main": [[{ "node": "🔀 ¿Hay Reserva?", "type": "main", "index": 0 }]] },
+    "Get row(s) in sheet": { "main": [[{ "node": "Edit Fields1", "type": "main", "index": 0 }]] },
+    "Switch1": { "main": [[{ "node": "Get row(s) in sheet", "type": "main", "index": 0 }, { "node": "Edit Fields3", "type": "main", "index": 0 }]] },
+    "Edit Fields3": { "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]] },
+    "Registrar en Supabase1": { "main": [[{ "node": "Wait2", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "a549832225d9c0406174cec76d918a3746d50e0acf5608a79c6f16721bd3abe6" }
+}
