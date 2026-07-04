@@ -82,6 +82,11 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
   return <span ref={ref}>{value.toLocaleString("es")}{suffix}</span>;
 }
 
+// Acento editorial: Fraunces itálica dentro de un titular sans (eco del hero)
+function Serif({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <span className={`font-serif italic font-medium tracking-normal ${className}`}>{children}</span>;
+}
+
 // Botón/CTA magnético — el elemento sigue sutilmente al cursor (solo puntero fino)
 function Magnetic({ children, strength = 0.35, className = "" }: {
   children: React.ReactNode; strength?: number; className?: string;
@@ -519,7 +524,7 @@ export default function Index() {
             <FadeSection className="max-w-2xl mb-14">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>El recorrido de un lead</span>
               <h2 id="como-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
-                Cuatro pasos, cero trabajo manual.
+                Cuatro pasos, <Serif>cero trabajo manual</Serif>.
               </h2>
             </FadeSection>
 
@@ -551,7 +556,7 @@ export default function Index() {
             <FadeSection className="max-w-2xl mb-14">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>La plataforma</span>
               <h2 id="func-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
-                Todo lo que de verdad usas, en un solo lugar.
+                Todo lo que de verdad usas, <Serif>en un solo lugar</Serif>.
               </h2>
               <p className="mt-4 text-slate-500 text-lg">Ocho herramientas conectadas alrededor de la misma conversación.</p>
             </FadeSection>
@@ -578,7 +583,7 @@ export default function Index() {
             <FadeSection>
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BLUE_LT }}>Automático · 08:00</span>
               <h2 id="rep-heading" className="font-display font-bold text-3xl sm:text-4xl text-white mt-3 leading-tight">
-                Cada mañana, los leads del día en tu correo.
+                <Serif>Cada mañana</Serif>, los leads del día en tu correo.
               </h2>
               <p className="mt-5 text-white/60 text-lg leading-relaxed">
                 A las 08:00 (hora de Madrid) jefatura recibe un reporte consolidado: todos los leads
@@ -644,7 +649,7 @@ export default function Index() {
           <div className="max-w-3xl mx-auto">
             <FadeSection className="mb-8">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>Preguntas frecuentes</span>
-              <h2 id="faq-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3">Lo que sueles preguntar.</h2>
+              <h2 id="faq-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3">Lo que <Serif>sueles preguntar</Serif>.</h2>
             </FadeSection>
             <FadeSection>
               <div className="rounded-2xl bg-white border border-slate-100 px-6">
@@ -673,7 +678,7 @@ export default function Index() {
                 <ShieldCheck className="w-10 h-10 mx-auto mb-5" style={{ color: BLUE_LT }} aria-hidden="true" />
                 <h2 id="cta-heading" className="font-display font-extrabold text-3xl sm:text-5xl text-white leading-tight">
                   Deja que iSabel atienda.
-                  <br />Tú dedícate a cerrar.
+                  <br />Tú dedícate a <Serif className="font-semibold">cerrar</Serif>.
                 </h2>
                 <p className="mt-5 text-white/60 text-lg max-w-lg mx-auto">
                   Conecta tu WhatsApp y empieza gratis. Sin tarjeta, sin contratos.
