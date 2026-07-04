@@ -654,6 +654,7 @@ export type Database = {
           last_message_text: string | null
           nombre: string | null
           pais: string | null
+          tag_ids: string[] | null
           telefono: string | null
           total_mensajes: number | null
           ultimo_dia: number | null
@@ -684,6 +685,62 @@ export type Database = {
         }
         Relationships: []
       }
+      vista_mensajes_automatizacion: {
+        Row: {
+          campaign_name: string | null
+          contenido: string | null
+          created_at: string | null
+          dia_secuencia: number | null
+          direccion: string | null
+          estado_envio: string | null
+          id: string | null
+          leido: boolean | null
+          media_type: string | null
+          media_url: string | null
+          phone_key: string | null
+          telefono: string | null
+        }
+        Relationships: []
+      }
+      vista_mensajes_whatsapp: {
+        Row: {
+          autor: string | null
+          contenido: string | null
+          created_at: string | null
+          direccion: string | null
+          id: string | null
+          leido: boolean | null
+          media_type: string | null
+          media_url: string | null
+          phone_key: string | null
+          telefono: string | null
+        }
+        Insert: {
+          autor?: string | null
+          contenido?: string | null
+          created_at?: string | null
+          direccion?: string | null
+          id?: string | null
+          leido?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          phone_key?: never
+          telefono?: string | null
+        }
+        Update: {
+          autor?: string | null
+          contenido?: string | null
+          created_at?: string | null
+          direccion?: string | null
+          id?: string | null
+          leido?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          phone_key?: never
+          telefono?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       complete_onboarding: { Args: never; Returns: undefined }
@@ -703,6 +760,10 @@ export type Database = {
           recientes_7d: number
           total: number
         }[]
+      }
+      marcar_leidos_conversacion: {
+        Args: { p_phone_key: string }
+        Returns: number
       }
       match_documents: {
         Args: { filter?: Json; match_count?: number; query_embedding: string }
