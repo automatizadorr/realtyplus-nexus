@@ -13,6 +13,7 @@ import {
   Volume2, Sparkles, Clock, Globe, ShieldCheck,
 } from "lucide-react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
+import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
 
 // ── Paleta de marca RE/MAX (azul · rojo · blanco) ─────────────────────────────
 const INK = "#021B4D";       // navy-azul RE/MAX (secciones oscuras y texto)
@@ -693,6 +694,21 @@ export default function Index() {
   const gridY = useTransform(scrollYProgress, [0, 1], [0, 50]);
   const cardY = useTransform(scrollYProgress, [0, 1], [0, -46]);
 
+  // Efecto "hidro" (agua): el hero captura el mouse y lo pasa al canvas del ripple
+  const rippleRef = useRef<HydroRippleHandle>(null);
+  const heroLastPos = useRef({ x: -9999, y: -9999 });
+  const onHeroEnter = useCallback((e: React.MouseEvent) => {
+    rippleRef.current?.triggerSplash(e.clientX, e.clientY, "enter");
+    heroLastPos.current = { x: e.clientX, y: e.clientY };
+  }, []);
+  const onHeroMove = useCallback((e: React.MouseEvent) => {
+    const dx = e.clientX - heroLastPos.current.x;
+    const dy = e.clientY - heroLastPos.current.y;
+    if (dx * dx + dy * dy < 48 * 48) return;
+    rippleRef.current?.triggerSplash(e.clientX, e.clientY, "trail");
+    heroLastPos.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
   useEffect(() => {
     if (!authLoading && session) navigate("/dashboard", { replace: true });
   }, [session, authLoading, navigate]);
@@ -766,12 +782,14 @@ export default function Index() {
 
       <main>
         {/* ── Hero ── */}
-        <section ref={heroRef} className="relative overflow-hidden" style={{ background: INK }} aria-labelledby="hero-heading">
-          {/* fondo: imagen real con Ken Burns + overlay navy (legibilidad) */}
+        <section ref={heroRef} className="relative overflow-hidden" style={{ background: INK }}
+                 aria-labelledby="hero-heading" onMouseEnter={onHeroEnter} onMouseMove={onHeroMove}>
+          {/* fondo: imagen real con efecto HIDRO (agua) + overlay navy (legibilidad) */}
           <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-            <img src="/landing/hero-office.jpg" alt=""
-                 className={`w-full h-full object-cover ${reduce ? "" : "animate-kenburns"}`} />
-            <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${INK}f2 0%, ${INK}e6 55%, ${INK}fa 100%)` }} />
+            <HydroRipple ref={rippleRef} src="/landing/hero-office.jpg" alt="" cover passthrough
+                         className="absolute inset-0 w-full h-full" imgClassName="w-full h-full object-cover" />
+            <div className="absolute inset-0 pointer-events-none"
+                 style={{ background: `linear-gradient(180deg, ${INK}dd 0%, ${INK}c2 48%, ${INK}ee 100%)` }} />
           </div>
           {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
           <motion.div className="absolute inset-0 opacity-[0.06] will-change-transform" aria-hidden="true"
@@ -792,7 +810,8 @@ export default function Index() {
                   <span className="font-mono text-[11px] tracking-wide text-white/70">CRM inmobiliario · sobre WhatsApp</span>
                 </motion.div>
 
-                <h1 id="hero-heading" className="font-display font-extrabold text-white leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl">
+                <h1 id="hero-heading" className="font-display font-extrabold text-white leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl"
+                    style={{ textShadow: "0 2px 30px rgba(2,27,77,0.6)" }}>
                   <motion.span variants={heroItem} className="block">De un “hola” en WhatsApp</motion.span>
                   <motion.span variants={heroItem} className="block">
                     a una{" "}
