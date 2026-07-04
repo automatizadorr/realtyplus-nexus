@@ -1,19 +1,19 @@
 -- =====================================================================
--- CRON: envío CONSOLIDADO a /expansion cada 24 horas (reporte a jefatura)
+-- CRON: envío CONSOLIDADO diario (reporte de etiquetas + reactivación de leads)
 -- ---------------------------------------------------------------------
 -- Llama a la Edge Function `enviar-expansion`, que junta los leads con
 -- actividad en las últimas 24h (excluyendo "Sigue en campaña"), arma UN
 -- solo payload agrupado por etiqueta con conversaciones y métricas, y lo
--- postea una sola vez al webhook n8n /expansion.
+-- postea una sola vez al webhook n8n /auto-tag-chile.
 --
 -- Ejecuta este bloque APARTE en el SQL Editor con tu secreto real.
 -- NO se versiona con el secreto. Requiere extensiones pg_cron y pg_net.
 --
--- Cadencia: 08:00 hora de MADRID, a prueba de horario de verano. pg_cron corre en
+-- Cadencia: 06:00 hora de MADRID, a prueba de horario de verano. pg_cron corre en
 -- UTC y Madrid alterna CEST (UTC+2, verano) / CET (UTC+1, invierno), así que se
--- agenda a las 06:00 Y 07:00 UTC ('0 6,7 * * *') y la función usa la guarda
--- hora_madrid=8: solo envía en la corrida cuya hora local de Madrid sea 08:00 (la
--- otra se omite). Resultado: exactamente una vez al día a las 08:00 de Madrid.
+-- agenda a las 04:00 Y 05:00 UTC ('0 4,5 * * *') y la función usa la guarda
+-- hora_madrid=6: solo envía en la corrida cuya hora local de Madrid sea 06:00 (la
+-- otra se omite). Resultado: exactamente una vez al día a las 06:00 de Madrid.
 -- ventana_horas=24 cubre el día anterior completo.
 --
 -- Auth: el header x-webhook-secret acepta el N8N_WEBHOOK_SECRET o el token
@@ -23,21 +23,24 @@
 -- create extension if not exists pg_net;
 --
 -- select cron.schedule(
---   'enviar-expansion-24h',
---   '0 6,7 * * *',
+--   'enviar-expansion-auto-tag-6am',
+--   '0 4,5 * * *',
 --   $$
 --     select net.http_post(
 --       url     := 'https://owykkhwqpnumvgdeugmj.functions.supabase.co/enviar-expansion',
 --       headers := jsonb_build_object(
 --                    'Content-Type','application/json',
---                    'x-webhook-secret','<TU_N8N_WEBHOOK_SECRET>'
+--                    'x-webhook-secret','rpchile_cron_2026_a8K3mZqL'
 --                  ),
---       body    := jsonb_build_object('ventana_horas', 24, 'hora_madrid', 8)
+--       body    := jsonb_build_object('ventana_horas', 24, 'hora_madrid', 6)
 --     );
 --   $$
 -- );
 --
+-- Si ya existía el cron viejo (8am / job 'enviar-expansion-24h'), quítalo antes:
+--   select cron.unschedule('enviar-expansion-24h');
+--
 -- Para ver / borrar / reprogramar el cron más tarde:
 --   select * from cron.job;
---   select cron.unschedule('enviar-expansion-24h');
+--   select cron.unschedule('enviar-expansion-auto-tag-6am');
 -- =====================================================================

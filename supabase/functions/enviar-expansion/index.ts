@@ -27,10 +27,11 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-// URL del webhook de expansión en n8n (reporte a jefatura). Configurable por env.
+// URL del webhook en n8n que recibe el reporte diario consolidado (etiquetas +
+// resumen de reactivación). Configurable por env; fallback = /auto-tag-chile.
 const N8N_EXPANSION_URL =
   Deno.env.get("N8N_EXPANSION_URL") ??
-  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/expansion";
+  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/auto-tag-chile";
 
 // Token de respaldo embebido (mismo que cron-etiquetado-ia): la cuenta no puede
 // gestionar secretos en este proyecto (gestionado por Lovable). El repo es privado.
@@ -276,30 +277,43 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Secreto de SALIDA: usa N8N_WEBHOOK_SECRET si está seteado; si no (este proyecto
+    // es gestionado por Lovable y no se pueden crear secrets), cae al CRON_TOKEN
+    // embebido para NUNCA postear sin secreto. n8n valida x-webhook-secret contra su
+    // env N8N_WEBHOOK_SECRET, que debe valer este mismo token.
+    const outgoingSecret = WEBHOOK_SECRET || CRON_TOKEN;
+
     let n8n_status = 0;
     let n8n_response = "";
+    let delivered = false;
     try {
       const wh = await fetch(N8N_EXPANSION_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(WEBHOOK_SECRET ? { "x-webhook-secret": WEBHOOK_SECRET } : {}) },
+        headers: { "Content-Type": "application/json", "x-webhook-secret": outgoingSecret },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(30000),
       });
       n8n_status = wh.status;
       n8n_response = await wh.text();
+      delivered = wh.ok;
     } catch (e) {
       n8n_response = e instanceof Error ? e.message : String(e);
     }
 
+    // success refleja la ENTREGA real: si n8n no confirma 2xx, no fue silencioso.
     return json({
-      success: true,
+      success: delivered,
       ventana_horas: VENTANA_HORAS,
       ...(paisFiltro ? { pais: paisFiltro } : {}),
       total_leads: leads.length,
       total_mensajes: totalMsgs,
       total_etiquetas: etiquetas.length,
+      n8n_url: N8N_EXPANSION_URL,
       n8n_status,
       n8n_response,
+      ...(delivered
+        ? {}
+        : { warning: "n8n no confirmó 2xx: verifica que el workflow esté ACTIVO y que su N8N_WEBHOOK_SECRET coincida con el token" }),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
