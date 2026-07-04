@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView, useReducedMotion, animate } from "framer-motion";
+import {
+  motion, useInView, useReducedMotion, animate,
+  useScroll, useTransform, useSpring, useMotionValue,
+} from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -18,6 +21,33 @@ const BRAND = "#DC1C2E";     // ROJO RE/MAX (acción)
 const SIGNAL = "#25D366";    // verde WhatsApp — SOLO dentro del canal WhatsApp
 const HOT = "#F59E0B";       // lead caliente
 
+// easeOutExpo — se siente "caro" (skill diseno-web-lujo)
+const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
+
+// ¿el puntero es fino (mouse/trackpad)? — para desactivar tilt/magnético en touch
+function useFinePointer() {
+  const [fine, setFine] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(pointer: fine)");
+    const upd = () => setFine(mq.matches);
+    upd();
+    mq.addEventListener?.("change", upd);
+    return () => mq.removeEventListener?.("change", upd);
+  }, []);
+  return fine;
+}
+
+// Secuencia de entrada orquestada del hero (stagger)
+const heroContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.11, delayChildren: 0.08 } },
+};
+const heroItem = {
+  hidden: { opacity: 0, y: 22 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.75, ease: EASE } },
+};
+
 // ── Helpers de animación ──────────────────────────────────────────────────────
 function FadeSection({ children, className = "", delay = 0 }: {
   children: React.ReactNode; className?: string; delay?: number;
@@ -30,7 +60,7 @@ function FadeSection({ children, className = "", delay = 0 }: {
       ref={ref}
       initial={reduce ? false : { opacity: 0, y: 28 }}
       animate={inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
-      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.65, delay, ease: EASE }}
       className={className}
     >
       {children}
@@ -50,6 +80,70 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
     return () => ctrl.stop();
   }, [inView, target, reduce]);
   return <span ref={ref}>{value.toLocaleString("es")}{suffix}</span>;
+}
+
+// Botón/CTA magnético — el elemento sigue sutilmente al cursor (solo puntero fino)
+function Magnetic({ children, strength = 0.35, className = "" }: {
+  children: React.ReactNode; strength?: number; className?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const reduce = useReducedMotion();
+  const fine = useFinePointer();
+  const on = fine && !reduce;
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const sx = useSpring(x, { stiffness: 170, damping: 15, mass: 0.1 });
+  const sy = useSpring(y, { stiffness: 170, damping: 15, mass: 0.1 });
+  return (
+    <motion.span
+      ref={ref}
+      className={`inline-flex ${className}`}
+      style={{ x: on ? sx : 0, y: on ? sy : 0 }}
+      onMouseMove={(e) => {
+        if (!on || !ref.current) return;
+        const r = ref.current.getBoundingClientRect();
+        x.set((e.clientX - (r.left + r.width / 2)) * strength);
+        y.set((e.clientY - (r.top + r.height / 2)) * strength);
+      }}
+      onMouseLeave={() => { x.set(0); y.set(0); }}
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+// Card con tilt 3D al hover (solo puntero fino) — reacciona a la posición del cursor
+function TiltCard({ children, className = "", max = 7 }: {
+  children: React.ReactNode; className?: string; max?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const fine = useFinePointer();
+  const on = fine && !reduce;
+  const rx = useMotionValue(0);
+  const ry = useMotionValue(0);
+  const srx = useSpring(rx, { stiffness: 200, damping: 18 });
+  const sry = useSpring(ry, { stiffness: 200, damping: 18 });
+  return (
+    <div style={{ perspective: 900 }} className={className}>
+      <motion.div
+        ref={ref}
+        className="h-full [transform-style:preserve-3d]"
+        style={{ rotateX: on ? srx : 0, rotateY: on ? sry : 0 }}
+        onMouseMove={(e) => {
+          if (!on || !ref.current) return;
+          const r = ref.current.getBoundingClientRect();
+          const px = (e.clientX - r.left) / r.width - 0.5;
+          const py = (e.clientY - r.top) / r.height - 0.5;
+          ry.set(px * max);
+          rx.set(-py * max);
+        }}
+        onMouseLeave={() => { rx.set(0); ry.set(0); }}
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
 }
 
 // ── SIGNATURE: conversación que se auto-clasifica ─────────────────────────────
@@ -272,6 +366,14 @@ export default function Index() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const { session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const reduce = useReducedMotion();
+
+  // Parallax sutil del hero (solo transform · rAF interno de framer)
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const glowY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+  const gridY = useTransform(scrollYProgress, [0, 1], [0, 50]);
+  const cardY = useTransform(scrollYProgress, [0, 1], [0, -46]);
 
   useEffect(() => {
     if (!authLoading && session) navigate("/dashboard", { replace: true });
@@ -346,55 +448,64 @@ export default function Index() {
 
       <main>
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden" style={{ background: INK }} aria-labelledby="hero-heading">
-          {/* fondo: grid sutil + glows */}
-          <div className="absolute inset-0 opacity-[0.06]" aria-hidden="true"
-               style={{ backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
-          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-25" style={{ background: BRAND }} aria-hidden="true" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-25" style={{ background: BLUE }} aria-hidden="true" />
+        <section ref={heroRef} className="relative overflow-hidden" style={{ background: INK }} aria-labelledby="hero-heading">
+          {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
+          <motion.div className="absolute inset-0 opacity-[0.06] will-change-transform" aria-hidden="true"
+               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
+          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-25 will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
+          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-25 will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
             <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 mb-7">
+              {/* Columna izquierda: secuencia de entrada orquestada */}
+              <motion.div
+                variants={heroContainer}
+                initial={reduce ? false : "hidden"}
+                animate={reduce ? false : (loaded ? "show" : "hidden")}
+              >
+                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 mb-7">
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BRAND }} />
                   <span className="font-mono text-[11px] tracking-wide text-white/70">CRM inmobiliario · sobre WhatsApp</span>
-                </div>
+                </motion.div>
 
                 <h1 id="hero-heading" className="font-display font-extrabold text-white leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl">
-                  De un “hola” en WhatsApp
-                  <br />
-                  a una <span style={{ color: BRAND }}>cita agendada</span>.
+                  <motion.span variants={heroItem} className="block">De un “hola” en WhatsApp</motion.span>
+                  <motion.span variants={heroItem} className="block">
+                    a una <span style={{ color: BRAND }}>cita agendada</span>.
+                  </motion.span>
                 </h1>
 
-                <p className="mt-6 text-lg leading-relaxed text-white/60 max-w-xl">
+                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-white/60 max-w-xl">
                   <strong className="text-white/90">iSabel</strong>, tu asesora con IA, responde en segundos,
                   califica cada lead por intención y agenda la reunión en tu calendario.
                   Tú solo cierras.
-                </p>
+                </motion.p>
 
-                <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                  <Link to="/auth" className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 font-bold text-white rounded-xl text-[15px] transition-transform hover:scale-[1.03]" style={{ background: BRAND, boxShadow: `0 12px 30px ${BRAND}40` }}>
-                    Comenzar gratis
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-                  </Link>
+                <motion.div variants={heroItem} className="mt-8 flex flex-col sm:flex-row gap-3">
+                  <Magnetic>
+                    <Link to="/auth" className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 font-bold text-white rounded-xl text-[15px] transition-transform hover:scale-[1.03]" style={{ background: BRAND, boxShadow: `0 12px 30px ${BRAND}40` }}>
+                      Comenzar gratis
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+                    </Link>
+                  </Magnetic>
                   <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-white rounded-xl text-[15px] border border-white/15 hover:bg-white/5 transition-colors">
                     Ver cómo funciona
                   </a>
-                </div>
+                </motion.div>
 
-                <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] text-white/40">
+                <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] text-white/40">
                   {["Sobre tu propio WhatsApp", "Agenda en Google Calendar", "Reporte diario 08:00"].map((t) => (
                     <span key={t} className="flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5" style={{ color: BLUE_LT }} aria-hidden="true" />{t}
                     </span>
                   ))}
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
 
-              <div className="pt-6 lg:pt-0">
+              {/* Columna derecha: tarjeta de conversación con parallax sutil */}
+              <motion.div className="pt-6 lg:pt-0 will-change-transform" style={{ y: reduce ? 0 : cardY }}>
                 <LiveConversation />
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
@@ -412,17 +523,19 @@ export default function Index() {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
               {STEPS.map((s, i) => (
                 <FadeSection key={s.k} delay={i * 0.08}>
-                  <div className="relative h-full p-6 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-card transition-all duration-300">
-                    <div className="flex items-center justify-between mb-5">
-                      <span className="font-mono text-sm font-bold text-slate-300">{s.k}</span>
-                      <s.icon className="w-5 h-5" style={{ color: BRAND }} aria-hidden="true" />
+                  <TiltCard className="h-full">
+                    <div className="relative h-full p-6 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-card transition-all duration-300">
+                      <div className="flex items-center justify-between mb-5">
+                        <span className="font-mono text-sm font-bold text-slate-300" style={{ transform: "translateZ(28px)" }}>{s.k}</span>
+                        <s.icon className="w-5 h-5" style={{ color: BRAND, transform: "translateZ(28px)" }} aria-hidden="true" />
+                      </div>
+                      <h3 className="font-display font-semibold text-lg mb-2" style={{ transform: "translateZ(20px)" }}>{s.title}</h3>
+                      <p className="text-sm leading-relaxed text-slate-500">{s.desc}</p>
+                      {i < STEPS.length - 1 && (
+                        <span className="hidden lg:block absolute top-7 -right-2.5 text-slate-200" aria-hidden="true">→</span>
+                      )}
                     </div>
-                    <h3 className="font-display font-semibold text-lg mb-2">{s.title}</h3>
-                    <p className="text-sm leading-relaxed text-slate-500">{s.desc}</p>
-                    {i < STEPS.length - 1 && (
-                      <span className="hidden lg:block absolute top-7 -right-2.5 text-slate-200" aria-hidden="true">→</span>
-                    )}
-                  </div>
+                  </TiltCard>
                 </FadeSection>
               ))}
             </div>
@@ -562,10 +675,12 @@ export default function Index() {
                 <p className="mt-5 text-white/60 text-lg max-w-lg mx-auto">
                   Conecta tu WhatsApp y empieza gratis. Sin tarjeta, sin contratos.
                 </p>
-                <Link to="/auth" className="mt-9 group inline-flex items-center gap-2 px-9 py-4 font-bold text-white rounded-xl text-lg transition-transform hover:scale-105" style={{ background: BRAND, boxShadow: `0 14px 36px ${BRAND}50` }}>
-                  Comenzar gratis
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-                </Link>
+                <Magnetic className="mt-9" strength={0.3}>
+                  <Link to="/auth" className="group inline-flex items-center gap-2 px-9 py-4 font-bold text-white rounded-xl text-lg transition-transform hover:scale-105" style={{ background: BRAND, boxShadow: `0 14px 36px ${BRAND}50` }}>
+                    Comenzar gratis
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+                  </Link>
+                </Magnetic>
               </div>
             </div>
           </FadeSection>
