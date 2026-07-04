@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { UserAvatar } from "@/components/UserAvatar";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
 interface LayoutProps {
@@ -49,6 +50,7 @@ export function Layout({ children }: LayoutProps) {
               alt="Realtyplus - Servicios Inmobiliarios"
               className="h-10 w-auto object-contain"
             />
+            <UserAvatar editable className="ml-auto h-9 w-9" textClassName="text-sm" />
           </header>
           <main className="flex-1 overflow-auto">{children}</main>
         </div>

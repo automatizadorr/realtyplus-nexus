@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { TagManager } from "@/components/tags/TagManager";
+import { UserAvatar } from "@/components/UserAvatar";
 import { Settings2, Check, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -355,12 +356,11 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
-                  {(fullName || user?.email || "?").charAt(0).toUpperCase()}
-                </div>
+                <UserAvatar editable className="h-16 w-16" textClassName="text-2xl" />
                 <div>
                   <div className="font-semibold">{fullName || "Sin nombre"}</div>
                   <div className="text-sm text-muted-foreground">{user?.email}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">Haz clic en la foto para cambiarla</div>
                 </div>
               </div>
 
