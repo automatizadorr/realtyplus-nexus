@@ -8,8 +8,9 @@
 // payload del webhook /etiquetas-leads-nuevos (reporte de expansión por correo).
 //
 // Alcance: leads ETIQUETADOS, no archivados, con actividad O actualizados en la
-// ventana (default 24h). Incluye TODOS (también "Sigue en campaña"): el Excel es para
-// revisión interna, igual que en TaggedExport.
+// ventana (default 24h). EXCLUYE "Sigue en campaña" (el lead aún no ha contestado,
+// sigue trabajándose en campaña; no va al reporte de expansión), igual que el cuerpo
+// del correo y enviar-expansion.
 //
 // Auth: header X-Webhook-Secret (CRON_TOKEN embebido, AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
 // Body: { ventana_horas?: number, pais?: string }
@@ -91,6 +92,12 @@ Deno.serve(async (req) => {
     if (tagsErr) throw tagsErr;
     const tagsFull = (tags ?? []) as Array<{ id: string; nombre: string; color: string; es_permanente: boolean }>;
     const tagMap = new Map(tagsFull.map((t) => [t.id, t]));
+    // Estado "Sigue en campaña": el lead aún no ha contestado; NO va al reporte de
+    // expansión (igual que enviar-expansion y el cuerpo del correo). Se excluye de
+    // AMBAS hojas del Excel.
+    const normNombre = (s: string) =>
+      (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+    const sigueId = tagsFull.find((t) => normNombre(t.nombre) === "sigue en campana")?.id ?? null;
 
     // 3. Leads candidatos = etiquetados, no archivados, (actualizados en ventana) ∪
     //    (con actividad de mensajes en ventana). País opcional.
@@ -118,7 +125,9 @@ Deno.serve(async (req) => {
 
     const byId = new Map<string, Record<string, unknown>>();
     for (const l of [...setA, ...setB]) byId.set(l.id as string, l);
-    const leads = [...byId.values()].filter((l) => l.archivado !== true);
+    const leads = [...byId.values()]
+      .filter((l) => l.archivado !== true)
+      .filter((l) => !(sigueId && Array.isArray(l.tag_ids) && (l.tag_ids as string[]).includes(sigueId)));
 
     // 4. Mensajes de esos leads (WhatsApp + automatización), por lotes; dedup + orden.
     const phones = [...new Set(leads.map((l) => normPhone(l.telefono)).filter(Boolean))];
@@ -226,6 +235,7 @@ Deno.serve(async (req) => {
       }
     }
     const ordered = tagsFull
+      .filter((t) => t.id !== sigueId) // no mostrar "Sigue en campaña" en el resumen
       .filter((t) => t.es_permanente || (byTag.get(t.id)?.length ?? 0) > 0)
       .sort((a, b) => {
         if (!!a.es_permanente !== !!b.es_permanente) return a.es_permanente ? -1 : 1;
