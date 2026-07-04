@@ -270,6 +270,63 @@ function LiveConversation() {
               </div>
             </div>
           )}
+
+          {/* Tarjeta de cita agendada: imagen real + animaciones al confirmar */}
+          {agendada && (
+            <motion.div
+              initial={reduce ? false : { opacity: 0, y: 16, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={reduce ? undefined : { type: "spring", stiffness: 210, damping: 20, delay: 0.2 }}
+              className="pt-1.5"
+            >
+              <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl">
+                <img
+                  src="/landing/closing-deal.jpg"
+                  alt="Reunión de expansión agendada"
+                  className={`w-full h-32 object-cover ${reduce ? "" : "animate-kenburns"}`}
+                  loading="lazy"
+                />
+                <div className="absolute inset-0"
+                     style={{ background: `linear-gradient(180deg, rgba(2,27,77,0.12) 0%, ${INK}f2 100%)` }} />
+
+                {/* check de confirmación con anillo pulsante */}
+                <motion.div
+                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full grid place-items-center shadow-lg"
+                  style={{ background: BLUE }}
+                  initial={reduce ? false : { scale: 0, rotate: -30 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={reduce ? undefined : { type: "spring", stiffness: 400, damping: 13, delay: 0.5 }}
+                >
+                  <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                  {!reduce && (
+                    <motion.span
+                      className="absolute inset-0 rounded-full"
+                      style={{ border: `2px solid ${BLUE_LT}` }}
+                      initial={{ scale: 1, opacity: 0.7 }}
+                      animate={{ scale: 1.9, opacity: 0 }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut", delay: 0.7 }}
+                    />
+                  )}
+                </motion.div>
+
+                {/* detalle de la cita */}
+                <motion.div
+                  className="absolute bottom-0 left-0 right-0 p-3 flex items-center gap-2.5"
+                  initial={reduce ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={reduce ? undefined : { duration: 0.4, delay: 0.45, ease: EASE }}
+                >
+                  <div className="w-9 h-9 rounded-xl grid place-items-center shrink-0" style={{ background: `${BLUE}e6` }}>
+                    <CalendarCheck className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-white text-[13px] font-semibold leading-tight">Reunión confirmada</div>
+                    <div className="font-mono text-[10px] text-white/70">jueves · 10:00 · Google Calendar</div>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 
