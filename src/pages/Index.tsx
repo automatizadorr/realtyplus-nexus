@@ -839,7 +839,13 @@ export default function Index() {
 
                 <h1 id="hero-heading" className="font-display font-extrabold text-white leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl"
                     style={{ textShadow: "0 2px 30px rgba(2,27,77,0.6)" }}>
-                  <motion.span variants={heroItem} className="block">De un “hola” en WhatsApp</motion.span>
+                  <motion.span variants={heroItem} className="block">
+                    De un{" "}
+                    <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: SIGNAL }}>
+                      “hola”
+                    </span>{" "}
+                    en WhatsApp
+                  </motion.span>
                   <motion.span variants={heroItem} className="block">
                     a una{" "}
                     <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: BRAND }}>
