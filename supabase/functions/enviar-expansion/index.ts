@@ -12,7 +12,10 @@
 //   pais: string            filtra los leads por país (ej. "Bolivia")
 //   dry_run: boolean        NO postea a n8n; solo devuelve los conteos de lo que se enviaría
 //
-// Respuesta: { success, ventana_horas, total_leads, total_mensajes, total_etiquetas, n8n_status, n8n_response }
+// Adjunto: llama a clasificacion-excel y añade excel_base64 + excel_filename al payload
+// (el Code node de n8n los decodifica y adjunta el .xlsx; n8n no puede armar el xlsx solo).
+//
+// Respuesta: { success, ventana_horas, total_leads, total_mensajes, total_etiquetas, con_excel, n8n_status, n8n_response }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -277,6 +280,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 5.b Adjuntar el Excel (.xlsx) con la MISMA lógica que TaggedExport, generado por la
+    // Edge Function clasificacion-excel. El Code node de n8n NO puede construir el xlsx
+    // (no trae SheetJS): solo decodifica este excel_base64 con prepareBinaryData. Es
+    // best-effort: si falla, el reporte se envía igual sin adjunto.
+    // ⚠️ clasificacion-excel arma su PROPIO set (misma ventana + país) e INCLUYE
+    // "Sigue en campaña" (el Excel es revisión interna COMPLETA, igual que TaggedExport),
+    // aunque las secciones del cuerpo del reporte sí lo excluyan.
+    try {
+      const exRes = await fetch(`${SUPABASE_URL}/functions/v1/clasificacion-excel`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-webhook-secret": WEBHOOK_SECRET ?? CRON_TOKEN,
+          "Authorization": `Bearer ${SERVICE_KEY}`,
+          "apikey": SERVICE_KEY,
+        },
+        body: JSON.stringify({ ventana_horas: VENTANA_HORAS, ...(paisFiltro ? { pais: paisFiltro } : {}) }),
+        signal: AbortSignal.timeout(40000),
+      });
+      const ex = await exRes.json().catch(() => ({}));
+      if (exRes.ok && ex?.success && ex?.base64) {
+        (payload as Record<string, unknown>).excel_base64 = ex.base64;
+        (payload as Record<string, unknown>).excel_filename = ex.filename;
+      }
+    } catch (_e) { /* sigue sin Excel */ }
+
     // Secreto de SALIDA: usa N8N_WEBHOOK_SECRET si está seteado; si no (este proyecto
     // es gestionado por Lovable y no se pueden crear secrets), cae al CRON_TOKEN
     // embebido para NUNCA postear sin secreto. n8n valida x-webhook-secret contra su
@@ -308,6 +337,7 @@ Deno.serve(async (req) => {
       total_leads: leads.length,
       total_mensajes: totalMsgs,
       total_etiquetas: etiquetas.length,
+      con_excel: !!(payload as Record<string, unknown>).excel_base64,
       n8n_url: N8N_EXPANSION_URL,
       n8n_status,
       n8n_response,
