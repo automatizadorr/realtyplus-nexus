@@ -157,9 +157,9 @@ function TiltCard({ children, className = "", max = 7 }: {
 // ── SIGNATURE: conversación que se auto-clasifica ─────────────────────────────
 const THREAD = [
   { from: "lead",   text: "Hola, vi el mensaje sobre la franquicia 👀" },
-  { from: "isabel", text: "¡Claro! Te cuento. ¿Buscas empezar tú solo o montar oficina con equipo?" },
+  { from: "sofia", text: "¡Claro! Te cuento. ¿Buscas empezar tú solo o montar oficina con equipo?" },
   { from: "lead",   text: "con equipo, estoy en Madrid" },
-  { from: "isabel", text: "Perfecto, eso encaja con el modelo QUARTZ. ¿Te agendo una reunión el jueves a las 10:00?" },
+  { from: "sofia", text: "Perfecto, eso encaja con el modelo QUARTZ. ¿Te agendo una reunión el jueves a las 10:00?" },
   { from: "lead",   text: "sí, me viene bien" },
 ];
 
@@ -220,10 +220,10 @@ function LiveConversation() {
         <div className="flex items-center gap-3 px-4 py-3" style={{ background: INK2 }}>
           <div className="w-9 h-9 rounded-full grid place-items-center text-white font-bold text-sm shrink-0"
                style={{ background: `linear-gradient(135deg, ${BRAND}, ${INK})` }}>
-            iS
+            So
           </div>
           <div className="min-w-0">
-            <div className="text-white text-sm font-semibold leading-tight">iSabel · Asesora IA</div>
+            <div className="text-white text-sm font-semibold leading-tight">Sofía · Asesora IA</div>
             <div className="flex items-center gap-1.5 text-[11px]" style={{ color: SIGNAL }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: SIGNAL }} />
               en línea
@@ -285,7 +285,7 @@ function LiveConversation() {
         <span className="text-[12px]" style={{ color: agendada ? "#bcd0ff" : "rgba(255,255,255,0.5)" }}>
           {agendada
             ? "Reunión creada en Google Calendar · lead enviado al reporte de jefatura"
-            : "iSabel está calificando al lead…"}
+            : "Sofía está calificando al lead…"}
         </span>
       </div>
     </div>
@@ -294,8 +294,8 @@ function LiveConversation() {
 
 // ── FAQ ────────────────────────────────────────────────────────────────────────
 const FAQS = [
-  { q: "¿Usa mi número de WhatsApp actual?", a: "Sí. iSabel se conecta a tu WhatsApp existente y le agrega respuestas automáticas, agenda y clasificación. Sigues con el mismo número de siempre." },
-  { q: "¿La IA agenda reuniones de verdad?", a: "Sí. Cuando el lead confirma día y hora, iSabel crea el evento en tu Google Calendar (con un mínimo de 18 horas de antelación) y envía la invitación por correo." },
+  { q: "¿Usa mi número de WhatsApp actual?", a: "Sí. Sofía se conecta a tu WhatsApp existente y le agrega respuestas automáticas, agenda y clasificación. Sigues con el mismo número de siempre." },
+  { q: "¿La IA agenda reuniones de verdad?", a: "Sí. Cuando el lead confirma día y hora, Sofía crea el evento en tu Google Calendar (con un mínimo de 18 horas de antelación) y envía la invitación por correo." },
   { q: "¿Cómo clasifica los leads?", a: "Lee la conversación y le asigna un estado por intención: Cita agendada, Solo quiere propiedades, No interesa, Sigue en campaña… Así sabes de un vistazo quién está caliente." },
   { q: "¿Recibo un resumen de los leads?", a: "Cada mañana a las 08:00 (hora de Madrid) recibes un reporte consolidado con los leads del día, agrupados por etiqueta y con sus conversaciones. Sin abrir el panel." },
   { q: "¿Necesito saber de tecnología?", a: "No. Si sabes usar WhatsApp, sabes usar RealtyPlus. El inbox, las campañas y los reportes están pensados para agentes, no para técnicos." },
@@ -343,14 +343,14 @@ function WhatsAppFloat() {
 // ── Datos de secciones ──────────────────────────────────────────────────────────
 const STEPS = [
   { k: "01", title: "Llega el mensaje", desc: "WhatsApp, campaña o web — todo entra a un inbox unificado. Ningún lead se pierde a las 11 de la noche.", icon: MessageSquare },
-  { k: "02", title: "iSabel responde y agenda", desc: "La IA contesta en segundos con tu conocimiento de marca, califica al lead y agenda la reunión en tu calendario.", icon: Sparkles },
+  { k: "02", title: "Sofía responde y agenda", desc: "La IA contesta en segundos con tu conocimiento de marca, califica al lead y agenda la reunión en tu calendario.", icon: Sparkles },
   { k: "03", title: "Se etiqueta por intención", desc: "Cada conversación queda clasificada: cita agendada, solo quiere propiedades, no interesa… Sabes quién está caliente.", icon: Tags },
   { k: "04", title: "Reporte a jefatura · 08:00", desc: "Cada mañana, un informe consolidado de los leads del día agrupados por etiqueta. Automático, sin abrir el panel.", icon: Clock },
 ];
 
 const FEATURES = [
   { title: "Inbox unificado", desc: "Todas tus conversaciones de WhatsApp en un solo panel, con notas, búsqueda y respuestas rápidas.", icon: MessageSquare },
-  { title: "iSabel · Asesora con IA", desc: "Responde 24/7 con memoria de la conversación, tu base de conocimiento y agenda en Google Calendar.", icon: Sparkles },
+  { title: "Sofía · Asesora con IA", desc: "Responde 24/7 con memoria de la conversación, tu base de conocimiento y agenda en Google Calendar.", icon: Sparkles },
   { title: "Etiquetado inteligente", desc: "La IA clasifica cada lead por intención de compra automáticamente. Tú solo trabajas a los calientes.", icon: Tags },
   { title: "Campañas segmentadas", desc: "Envía mensajes personalizados a miles de contactos por país, etiqueta o estado, sin copiar y pegar.", icon: Megaphone },
   { title: "Scanner de leads", desc: "Importa tu base desde Excel o CSV; deduplica y deja todo listo para contactar en minutos.", icon: ScanLine },
@@ -371,7 +371,7 @@ const REPORT_TAGS = [
 const SLIDES = [
   { img: "/landing/data-analytics.jpg", tag: "Datos en vivo",  title: "Cada lead, medido",             desc: "Score, intención y actividad de cada contacto en tiempo real." },
   { img: "/landing/leads-team.jpg",     tag: "Tu equipo",      title: "Todo el equipo, un solo inbox", desc: "Nadie pisa una conversación; cada agente sabe qué le toca." },
-  { img: "/landing/ai-chip.jpg",        tag: "Inteligencia",   title: "IA entrenada en tu negocio",    desc: "iSabel responde con tu conocimiento de marca, no con respuestas genéricas." },
+  { img: "/landing/ai-chip.jpg",        tag: "Inteligencia",   title: "IA entrenada en tu negocio",    desc: "Sofía responde con tu conocimiento de marca, no con respuestas genéricas." },
   { img: "/landing/closing-deal.jpg",   tag: "Resultado",      title: "Del primer «hola» al cierre",   desc: "Menos tareas manuales, más reuniones agendadas cada semana." },
   { img: "/landing/realestate.jpg",     tag: "Inmobiliario",   title: "Pensado para vender propiedades", desc: "Flujos, etiquetas y reportes hechos a la medida del sector." },
 ];
@@ -592,7 +592,7 @@ function VoiceCallLiveInner() {
     if (state !== "idle") return;
     setState("connecting");
     const ok = await startMic();
-    if (!ok) { setState("idle"); alert("Necesitamos permiso de micrófono para hablar con iSabel."); return; }
+    if (!ok) { setState("idle"); alert("Necesitamos permiso de micrófono para hablar con Sofía."); return; }
     try {
       await conversation.startSession({ agentId: VOICE_AGENT_ID, connectionType: "webrtc" } as any);
     } catch (e) {
@@ -610,10 +610,10 @@ function VoiceCallLiveInner() {
   const ss = String(sec % 60).padStart(2, "0");
   const accent = state === "listening" ? BRAND : state === "speaking" ? BLUE_LT : SIGNAL;
   const status =
-    state === "connecting" ? "Conectando con iSabel…" :
+    state === "connecting" ? "Conectando con Sofía…" :
     state === "listening"  ? "Te escucha — habla ahora" :
-    state === "speaking"   ? "iSabel está respondiendo…" :
-                             "Toca llamar y habla con iSabel";
+    state === "speaking"   ? "Sofía está respondiendo…" :
+                             "Toca llamar y habla con Sofía";
 
   return (
     <div className="relative mx-auto max-w-[340px] rounded-[34px] p-3 shadow-2xl border border-white/10"
@@ -638,10 +638,10 @@ function VoiceCallLiveInner() {
             <span className={`absolute inset-0 rounded-full opacity-30 ${active && !reduce ? "animate-ping" : ""}`} style={{ background: accent }} />
             <div className="relative w-20 h-20 rounded-full border-4 overflow-hidden transition-colors duration-300"
                  style={{ borderColor: active ? accent : INK }}>
-              <img src="/landing/voice-headset.jpg" alt="iSabel · Voz IA" className="w-full h-full object-cover" loading="lazy" />
+              <img src="/landing/voice-headset.jpg" alt="Sofía · Voz IA" className="w-full h-full object-cover" loading="lazy" />
             </div>
           </div>
-          <h3 className="mt-3 font-display font-bold text-white text-lg">iSabel · Voz IA</h3>
+          <h3 className="mt-3 font-display font-bold text-white text-lg">Sofía · Voz IA</h3>
           <motion.p key={status} initial={reduce ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                     className="text-white/50 text-xs">{status}</motion.p>
 
@@ -650,7 +650,7 @@ function VoiceCallLiveInner() {
           {/* controles reales */}
           <div className="mt-5 flex items-center justify-center gap-4">
             {state === "idle" ? (
-              <button onClick={startCall} aria-label="Llamar a iSabel"
+              <button onClick={startCall} aria-label="Llamar a Sofía"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={{ background: SIGNAL, boxShadow: `0 10px 26px ${SIGNAL}55` }}>
                 <PhoneCall className="w-4 h-4" aria-hidden="true" /> Llamar
@@ -856,7 +856,7 @@ export default function Index() {
 
                 <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-white/75 max-w-xl"
                           style={{ textShadow: "0 1px 16px rgba(2,27,77,0.55)" }}>
-                  <strong className="text-white">iSabel</strong>, tu asesora con IA, responde en segundos,
+                  <strong className="text-white">Sofía</strong>, tu asesora con IA, responde en segundos,
                   califica cada lead por intención y agenda la reunión en tu calendario.
                   Tú solo cierras.
                 </motion.p>
@@ -994,7 +994,7 @@ export default function Index() {
                 Tu asesora también <Serif>atiende por teléfono</Serif>.
               </h2>
               <p className="mt-5 text-white/60 text-lg leading-relaxed">
-                iSabel no solo escribe: llama y contesta. Cualifica al lead por voz, resuelve dudas y agenda la visita
+                Sofía no solo escribe: llama y contesta. Cualifica al lead por voz, resuelve dudas y agenda la visita
                 — con la misma memoria de la conversación y el mismo criterio que en WhatsApp.
               </p>
               <ul className="mt-7 space-y-3">
@@ -1075,7 +1075,7 @@ export default function Index() {
           <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-6">
             {[
               { icon: Globe, value: 25, suffix: "+", label: "Países en la red RealtyPlus" },
-              { icon: Sparkles, value: 24, suffix: "/7", label: "iSabel atendiendo leads" },
+              { icon: Sparkles, value: 24, suffix: "/7", label: "Sofía atendiendo leads" },
               { icon: Clock, value: 8, suffix: ":00", label: "Reporte diario a jefatura" },
               { icon: Tags, value: 100, suffix: "%", label: "Leads clasificados por IA" },
             ].map((s, i) => (
@@ -1123,7 +1123,7 @@ export default function Index() {
               <div className="relative">
                 <ShieldCheck className="w-10 h-10 mx-auto mb-5" style={{ color: BLUE_LT }} aria-hidden="true" />
                 <h2 id="cta-heading" className="font-display font-extrabold text-3xl sm:text-5xl text-white leading-tight">
-                  Deja que iSabel atienda.
+                  Deja que Sofía atienda.
                   <br />Tú dedícate a <Serif className="font-semibold">cerrar</Serif>.
                 </h2>
                 <p className="mt-5 text-white/60 text-lg max-w-lg mx-auto">
@@ -1150,7 +1150,7 @@ export default function Index() {
               <p className="text-white/40 text-sm leading-relaxed">CRM inmobiliario sobre WhatsApp, con IA que responde, agenda y clasifica.</p>
             </div>
             {[
-              { title: "Plataforma", links: ["Inbox unificado", "iSabel · Asesora IA", "Etiquetado IA", "Campañas", "Scanner", "VoiceCRM"] },
+              { title: "Plataforma", links: ["Inbox unificado", "Sofía · Asesora IA", "Etiquetado IA", "Campañas", "Scanner", "VoiceCRM"] },
               { title: "Recursos", links: ["Reporte diario", "Exportar leads", "Dashboard", "Integraciones"] },
               { title: "RealtyPlus", links: ["Red de franquicias", "Soporte", "Privacidad", "Términos"] },
             ].map((col) => (
