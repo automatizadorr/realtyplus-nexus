@@ -126,6 +126,32 @@ if (p.excel_base64) {
     p.excel_filename || `expansion-leads-${new Date().toISOString().slice(0, 10)}.xlsx`,
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   );
+} else {
+  // Fallback: no llegó excel_base64 desde la Edge Function → armamos un CSV a partir
+  // de los datos REALES del payload (etiquetas[].leads[]), no de las secciones HTML.
+  // Así binary.excel siempre existe y el nodo Gmail no falla por adjunto ausente.
+  const fecha = new Date().toISOString().slice(0, 10);
+  const csvEsc = (s) => `"${String(s ?? "").replace(/"/g, '""')}"`;
+  const filas = ["Etiqueta,Total Leads,Nombre,Email,Telefono,Pais,Ha Respondido,Total Mensajes"];
+  for (const t of etiquetas) {
+    const leads = Array.isArray(t.leads) ? t.leads : [];
+    if (leads.length === 0) {
+      filas.push([csvEsc(t.nombre), 0, "", "", "", "", "", ""].join(","));
+      continue;
+    }
+    for (const l of leads) {
+      filas.push([
+        csvEsc(t.nombre), leads.length, csvEsc(l.nombre), csvEsc(l.email),
+        csvEsc(l.telefono), csvEsc(l.pais), l.ha_respondido ? "Si" : "No", l.total_mensajes ?? 0,
+      ].join(","));
+    }
+  }
+  if (filas.length === 1) filas.push("Sin datos,0,,,,,,");
+  binary.excel = await this.helpers.prepareBinaryData(
+    Buffer.from("﻿" + filas.join("\r\n"), "utf8"),
+    `expansion-leads-${fecha}.csv`,
+    "text/csv"
+  );
 }
 
 return [{
