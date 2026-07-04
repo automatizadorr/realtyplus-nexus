@@ -514,7 +514,7 @@ function VoiceCallLiveInner() {
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { ampRef.current = amp; }, [amp]);
 
-  // SDK oficial de ElevenLabs (WebRTC) — mismo agente que VoiceAgentHero
+  // SDK oficial de ElevenLabs (WebRTC)
   const conversation = useConversation({
     onConnect: () => setState("listening"),
     onDisconnect: () => { setState("idle"); stopMicRef.current?.(); },
