@@ -1,8 +1,9 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut, Mic } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut, Mic, ShieldCheck, User } from "lucide-react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { motion } from "framer-motion";
 import {
   Sidebar,
@@ -75,6 +76,7 @@ export function AppSidebar() {
   const { setOpenMobile, isMobile } = useSidebar();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { isAdmin, loading: roleLoading } = useIsAdmin();
 
   const handleNavClick = () => {
     // En móvil cerramos el drawer; en desktop el rail se colapsa solo al salir el mouse.
@@ -183,18 +185,46 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 ring-1 ring-sidebar-primary/30 flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold shrink-0">
+          {/* Avatar — el anillo cambia de color según el rol (señal también en el rail) */}
+          <div
+            className={`relative w-8 h-8 rounded-full bg-sidebar-primary/20 ring-1 flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold shrink-0 transition-colors ${
+              isAdmin ? "ring-sidebar-primary/70" : "ring-sidebar-border"
+            }`}
+          >
             {displayName.charAt(0).toUpperCase()}
+            {/* Insignia de rol sobre el avatar — visible también con el rail colapsado */}
+            {!roleLoading && (
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full ring-2 ring-sidebar ${
+                  isAdmin ? "bg-sidebar-primary text-white" : "bg-sidebar-accent text-sidebar-foreground"
+                }`}
+              >
+                {isAdmin ? <ShieldCheck className="h-2 w-2" /> : <User className="h-2 w-2" />}
+              </span>
+            )}
           </div>
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-semibold text-sidebar-foreground truncate tracking-tight">
-              {displayName}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-sidebar-foreground truncate tracking-tight">
+                {displayName}
+              </span>
+              {!roleLoading && (
+                <span
+                  className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase leading-none tracking-wider ${
+                    isAdmin
+                      ? "bg-sidebar-primary/25 text-sidebar-primary-foreground ring-1 ring-sidebar-primary/40"
+                      : "bg-sidebar-accent/60 text-sidebar-foreground/70"
+                  }`}
+                >
+                  {isAdmin ? "Admin" : "Agente"}
+                </span>
+              )}
+            </div>
             <motion.button
               whileHover={{ x: 3 }}
               whileTap={{ scale: 0.95 }}
               onClick={signOut}
-              className="flex items-center gap-1 text-[11px] font-mono uppercase tracking-wider text-sidebar-foreground/55 hover:text-destructive transition-colors text-left"
+              className="mt-0.5 flex items-center gap-1 text-[11px] font-mono uppercase tracking-wider text-sidebar-foreground/55 hover:text-destructive transition-colors text-left"
             >
               <LogOut className="h-3 w-3" />
               Cerrar sesión
