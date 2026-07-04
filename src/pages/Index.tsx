@@ -704,7 +704,7 @@ export default function Index() {
   const onHeroMove = useCallback((e: React.MouseEvent) => {
     const dx = e.clientX - heroLastPos.current.x;
     const dy = e.clientY - heroLastPos.current.y;
-    if (dx * dx + dy * dy < 48 * 48) return;
+    if (dx * dx + dy * dy < 38 * 38) return;
     rippleRef.current?.triggerSplash(e.clientX, e.clientY, "trail");
     heroLastPos.current = { x: e.clientX, y: e.clientY };
   }, []);
@@ -816,7 +816,7 @@ export default function Index() {
             <HydroRipple ref={rippleRef} src="/landing/hero-office.jpg" alt="" cover passthrough
                          className="absolute inset-0 w-full h-full" imgClassName="w-full h-full object-cover" />
             <div className="absolute inset-0 pointer-events-none"
-                 style={{ background: `linear-gradient(180deg, ${INK}dd 0%, ${INK}c2 48%, ${INK}ee 100%)` }} />
+                 style={{ background: `linear-gradient(180deg, ${INK}cc 0%, ${INK}a6 48%, ${INK}e0 100%)` }} />
           </div>
           {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
           <motion.div className="absolute inset-0 opacity-[0.06] will-change-transform" aria-hidden="true"
