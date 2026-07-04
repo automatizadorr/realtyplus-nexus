@@ -39,6 +39,13 @@ export default {
           "Menlo",
           "monospace",
         ],
+        serif: [
+          "Fraunces",
+          "ui-serif",
+          "Georgia",
+          "Cambria",
+          "serif",
+        ],
       },
       boxShadow: {
         soft: "0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)",
