@@ -13,7 +13,7 @@ export interface AutomationContactRow {
   ultimo_estado: string | null;
   ultimo_dia: number | null;
   total_mensajes: number | null;
-  tag_ids: string[] | null;
+  tag_ids?: string[] | null;
 }
 
 export type AutomationEstadoFilter = "all" | "enviado" | "respondido" | "fallido";
@@ -28,8 +28,9 @@ interface Params {
   pageSize?: number;
 }
 
-const SELECT_COLS =
-  "telefono, nombre, pais, campaign_name, last_message_at, last_message_text, last_message_dir, unread_count, ultimo_estado, ultimo_dia, total_mensajes, tag_ids";
+// "*" para ser resilientes: si la migración que añade tag_ids aún no se aplicó,
+// no rompe con 400 por columna inexistente (tag_ids llega undefined y ya).
+const SELECT_COLS = "*";
 
 export function useAutomationContacts({
   search,
