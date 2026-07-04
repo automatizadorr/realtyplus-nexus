@@ -728,13 +728,40 @@ export default function Index() {
 
   return (
     <div className="relative bg-white font-sans" style={{ color: INK }}>
-      {/* Loading */}
+      {/* Loading — logo encapsulado en tarjeta con barra de carga de marca */}
       <div
-        className="fixed inset-0 z-50 bg-white grid place-items-center transition-opacity duration-500"
-        style={{ opacity: loaded ? 0 : 1, pointerEvents: loaded ? "none" : "all" }}
+        className="fixed inset-0 z-50 grid place-items-center transition-opacity duration-500"
+        style={{
+          opacity: loaded ? 0 : 1,
+          pointerEvents: loaded ? "none" : "all",
+          background: "radial-gradient(130% 120% at 50% -10%, #eef3fb 0%, #ffffff 58%)",
+        }}
         aria-hidden={loaded}
+        role="status"
+        aria-label="Cargando RealtyPlus"
       >
-        <img src={realtyplusLogo} alt="RealtyPlus" className="w-36 animate-pulse" width="144" height="54" />
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 12, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.55, ease: EASE }}
+          className="flex flex-col items-center gap-6 rounded-[28px] bg-white px-12 py-10 border border-slate-100"
+          style={{ boxShadow: "0 24px 70px -24px rgba(2,27,77,0.28), 0 2px 8px -2px rgba(2,27,77,0.08)" }}
+        >
+          <img src={realtyplusLogo} alt="RealtyPlus" className="w-44 h-auto" width={176} height={68} />
+          {/* barra de carga indeterminada (azul → rojo RE/MAX) */}
+          <div className="w-44 h-1 rounded-full overflow-hidden" style={{ background: "#eef1f6" }}>
+            {reduce ? (
+              <div className="h-full w-1/2 mx-auto rounded-full" style={{ background: `linear-gradient(90deg, ${BLUE}, ${BRAND})` }} />
+            ) : (
+              <motion.div
+                className="h-full w-2/5 rounded-full"
+                style={{ background: `linear-gradient(90deg, ${BLUE}, ${BRAND})` }}
+                animate={{ x: ["-120%", "320%"] }}
+                transition={{ repeat: Infinity, duration: 1.15, ease: "easeInOut" }}
+              />
+            )}
+          </div>
+        </motion.div>
       </div>
 
       <WhatsAppFloat />
