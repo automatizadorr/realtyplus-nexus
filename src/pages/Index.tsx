@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  motion, useInView, useReducedMotion, animate,
+  motion, AnimatePresence, useInView, useReducedMotion, animate,
   useScroll, useTransform, useSpring, useMotionValue,
 } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,7 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   MessageSquare, CalendarCheck, Tags, Megaphone, ScanLine, Mic,
   FileSpreadsheet, LayoutDashboard, ArrowRight, Check, Menu, X,
-  ChevronDown, Phone, Sparkles, Clock, Globe, ShieldCheck,
+  ChevronDown, ChevronLeft, ChevronRight, Phone, PhoneCall, PhoneOff,
+  Volume2, Sparkles, Clock, Globe, ShieldCheck,
 } from "lucide-react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
@@ -364,6 +365,177 @@ const REPORT_TAGS = [
   { name: "No interesa", count: 2, color: "#94a3b8" },
 ];
 
+// ── Carrusel "IA y leads" (imágenes reales · Ken Burns · autoplay · swipe) ──────
+const SLIDES = [
+  { img: "/landing/data-analytics.jpg", tag: "Datos en vivo",  title: "Cada lead, medido",             desc: "Score, intención y actividad de cada contacto en tiempo real." },
+  { img: "/landing/leads-team.jpg",     tag: "Tu equipo",      title: "Todo el equipo, un solo inbox", desc: "Nadie pisa una conversación; cada agente sabe qué le toca." },
+  { img: "/landing/ai-chip.jpg",        tag: "Inteligencia",   title: "IA entrenada en tu negocio",    desc: "iSabel responde con tu conocimiento de marca, no con respuestas genéricas." },
+  { img: "/landing/closing-deal.jpg",   tag: "Resultado",      title: "Del primer «hola» al cierre",   desc: "Menos tareas manuales, más reuniones agendadas cada semana." },
+  { img: "/landing/realestate.jpg",     tag: "Inmobiliario",   title: "Pensado para vender propiedades", desc: "Flujos, etiquetas y reportes hechos a la medida del sector." },
+];
+
+function LeadsCarousel() {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reduce = useReducedMotion();
+  const n = SLIDES.length;
+  const go = (d: number) => setIdx((i) => (i + d + n) % n);
+
+  useEffect(() => {
+    if (paused || reduce) return;
+    const id = setInterval(() => setIdx((i) => (i + 1) % n), 5000);
+    return () => clearInterval(id);
+  }, [paused, reduce, n]);
+
+  const s = SLIDES[idx];
+  return (
+    <div
+      className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-[#0b1730] aspect-[16/10] sm:aspect-[16/9]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <AnimatePresence>
+        <motion.div
+          key={idx}
+          className="absolute inset-0 will-change-transform"
+          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8, ease: EASE }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.15}
+          onDragEnd={(_, info) => { if (info.offset.x < -80) go(1); else if (info.offset.x > 80) go(-1); }}
+        >
+          <img
+            src={s.img}
+            alt={s.title}
+            className={`w-full h-full object-cover select-none pointer-events-none ${reduce ? "" : "animate-kenburns"}`}
+            loading="lazy"
+            draggable={false}
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* overlay para legibilidad del texto */}
+      <div className="absolute inset-0 pointer-events-none"
+           style={{ background: `linear-gradient(180deg, ${INK}22 0%, ${INK}00 32%, ${INK}e6 100%)` }} />
+
+      {/* caption */}
+      <div className="absolute left-0 bottom-0 p-6 sm:p-9 max-w-lg">
+        <AnimatePresence mode="wait">
+          <motion.div key={idx}
+            initial={reduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.5, ease: EASE }}
+          >
+            <span className="inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full mb-3 text-white"
+                  style={{ background: BRAND }}>{s.tag}</span>
+            <h3 className="font-display font-bold text-white text-2xl sm:text-3xl leading-tight">{s.title}</h3>
+            <p className="mt-2 text-white/70 text-sm sm:text-[15px] leading-relaxed">{s.desc}</p>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* flechas */}
+      <button aria-label="Imagen anterior" onClick={() => go(-1)}
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur border border-white/15 text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+        <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+      </button>
+      <button aria-label="Imagen siguiente" onClick={() => go(1)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur border border-white/15 text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+        <ChevronRight className="w-5 h-5" aria-hidden="true" />
+      </button>
+
+      {/* dots */}
+      <div className="absolute right-5 bottom-6 flex items-center gap-2">
+        {SLIDES.map((_, i) => (
+          <button key={i} aria-label={`Ir a la imagen ${i + 1}`} onClick={() => setIdx(i)}
+            className="h-1.5 rounded-full transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            style={{ width: i === idx ? 26 : 8, background: i === idx ? BRAND : "rgba(255,255,255,0.4)" }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Agente de voz (VoiceCRM): mockup de llamada con imagen real animada ─────────
+function Waveform({ active }: { active: boolean }) {
+  const reduce = useReducedMotion();
+  const bars = 30;
+  return (
+    <div className="flex items-center justify-center gap-[3px] h-10">
+      {Array.from({ length: bars }).map((_, i) => (
+        <motion.span key={i}
+          className="w-[3px] h-full rounded-full origin-center will-change-transform"
+          style={{ background: i % 3 === 0 ? BLUE_LT : "rgba(255,255,255,0.55)" }}
+          animate={reduce || !active ? { scaleY: 0.14 } : { scaleY: [0.14, 0.35 + (i % 7) * 0.09, 0.14] }}
+          transition={{ duration: 0.8 + (i % 5) * 0.12, repeat: Infinity, ease: "easeInOut", delay: (i % 7) * 0.05 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function VoiceCallMock() {
+  const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { margin: "-80px" });
+  const [sec, setSec] = useState(8);
+  useEffect(() => {
+    if (reduce || !inView) return;
+    const id = setInterval(() => setSec((x) => x + 1), 1000);
+    return () => clearInterval(id);
+  }, [reduce, inView]);
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+  const ss = String(sec % 60).padStart(2, "0");
+
+  return (
+    <div ref={ref} className="relative mx-auto max-w-[340px] rounded-[34px] p-3 shadow-2xl border border-white/10"
+         style={{ background: "linear-gradient(160deg,#0c1a38,#0a1730)" }}>
+      <div className="rounded-[26px] overflow-hidden" style={{ background: INK }}>
+        {/* cabecera: foto real animada (Ken Burns) */}
+        <div className="relative h-44 overflow-hidden">
+          <img src="/landing/voice-headset.jpg" alt="Asesora de RealtyPlus"
+               className={`w-full h-full object-cover object-center ${reduce ? "" : "animate-kenburns"}`} loading="lazy" />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${INK}11, ${INK})` }} />
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur">
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: SIGNAL }} />
+            <span className="font-mono text-[10px] text-white/80">EN LLAMADA · {mm}:{ss}</span>
+          </div>
+        </div>
+
+        {/* avatar + estado */}
+        <div className="px-6 pb-6 -mt-10 relative text-center">
+          <div className="relative inline-block">
+            <span className={`absolute inset-0 rounded-full opacity-30 ${reduce ? "" : "animate-ping"}`} style={{ background: BLUE_LT }} />
+            <div className="relative w-20 h-20 rounded-full border-4 overflow-hidden" style={{ borderColor: INK }}>
+              <img src="/landing/voice-headset.jpg" alt="iSabel · Voz IA" className="w-full h-full object-cover" loading="lazy" />
+            </div>
+          </div>
+          <h3 className="mt-3 font-display font-bold text-white text-lg">iSabel · Voz IA</h3>
+          <p className="text-white/50 text-xs">Cualificando al lead por llamada…</p>
+
+          <div className="mt-4"><Waveform active={inView} /></div>
+
+          <div className="mt-3 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-left">
+            <p className="text-white/75 text-[12px] leading-snug">
+              <span style={{ color: BLUE_LT }}>iSabel:</span> «Perfecto, te agendo la visita el jueves a las 10:00. Te llega la confirmación por WhatsApp.»
+            </p>
+          </div>
+
+          <div className="mt-5 flex items-center justify-center gap-4">
+            <span className="w-11 h-11 rounded-full grid place-items-center bg-white/10 text-white/80"><Mic className="w-4 h-4" aria-hidden="true" /></span>
+            <span className="w-14 h-14 rounded-full grid place-items-center text-white shadow-lg" style={{ background: BRAND }}><PhoneOff className="w-5 h-5" aria-hidden="true" /></span>
+            <span className="w-11 h-11 rounded-full grid place-items-center bg-white/10 text-white/80"><Volume2 className="w-4 h-4" aria-hidden="true" /></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Página ───────────────────────────────────────────────────────────────────────
 export default function Index() {
   const [loaded, setLoaded] = useState(false);
@@ -395,7 +567,7 @@ export default function Index() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#reporte", "Reporte diario"], ["#faq", "FAQ"]];
+  const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#voz", "Voz IA"], ["#reporte", "Reporte diario"], ["#faq", "FAQ"]];
 
   return (
     <div className="relative bg-white font-sans" style={{ color: INK }}>
@@ -454,6 +626,12 @@ export default function Index() {
       <main>
         {/* ── Hero ── */}
         <section ref={heroRef} className="relative overflow-hidden" style={{ background: INK }} aria-labelledby="hero-heading">
+          {/* fondo: imagen real con Ken Burns + overlay navy (legibilidad) */}
+          <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+            <img src="/landing/hero-office.jpg" alt=""
+                 className={`w-full h-full object-cover ${reduce ? "" : "animate-kenburns"}`} />
+            <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${INK}f2 0%, ${INK}e6 55%, ${INK}fa 100%)` }} />
+          </div>
           {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
           <motion.div className="absolute inset-0 opacity-[0.06] will-change-transform" aria-hidden="true"
                style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
@@ -518,6 +696,20 @@ export default function Index() {
           </div>
         </section>
 
+        {/* ── Carrusel: IA aplicada a tus leads ── */}
+        <section id="carrusel" className="py-24 px-6 bg-white" aria-labelledby="carr-heading">
+          <div className="max-w-6xl mx-auto">
+            <FadeSection className="max-w-2xl mb-10">
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>IA aplicada a tus leads</span>
+              <h2 id="carr-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
+                Inteligencia que <Serif>trabaja tus contactos</Serif>.
+              </h2>
+              <p className="mt-4 text-slate-500 text-lg">De la primera respuesta al cierre, cada paso con datos e IA de por medio.</p>
+            </FadeSection>
+            <FadeSection><LeadsCarousel /></FadeSection>
+          </div>
+        </section>
+
         {/* ── Cómo funciona (secuencia real) ── */}
         <section id="como" className="py-24 px-6 bg-white" aria-labelledby="como-heading">
           <div className="max-w-7xl mx-auto">
@@ -574,6 +766,45 @@ export default function Index() {
                 </FadeSection>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ── Agente de voz (VoiceCRM) ── */}
+        <section id="voz" className="py-24 px-6 relative overflow-hidden" style={{ background: INK }} aria-labelledby="voz-heading">
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: BLUE }} aria-hidden="true" />
+          <div className="relative max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+            <FadeSection>
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BLUE_LT }}>VoiceCRM · agente de voz</span>
+              <h2 id="voz-heading" className="font-display font-bold text-3xl sm:text-4xl text-white mt-3 leading-tight">
+                Tu asesora también <Serif>atiende por teléfono</Serif>.
+              </h2>
+              <p className="mt-5 text-white/60 text-lg leading-relaxed">
+                iSabel no solo escribe: llama y contesta. Cualifica al lead por voz, resuelve dudas y agenda la visita
+                — con la misma memoria de la conversación y el mismo criterio que en WhatsApp.
+              </p>
+              <ul className="mt-7 space-y-3">
+                {[
+                  "Atiende y realiza llamadas de cualificación",
+                  "Voz natural en español, con el tono de tu marca",
+                  "Agenda la visita y la confirma por WhatsApp",
+                  "Cada llamada queda registrada en la ficha del lead",
+                ].map((t) => (
+                  <li key={t} className="flex items-center gap-3 text-white/75 text-sm">
+                    <Check className="w-4 h-4 shrink-0" style={{ color: BLUE_LT }} aria-hidden="true" />{t}
+                  </li>
+                ))}
+              </ul>
+              <Magnetic className="mt-8" strength={0.3}>
+                <Link to="/auth" className="group inline-flex items-center gap-2 px-7 py-3.5 font-bold text-white rounded-xl text-[15px] transition-transform hover:scale-[1.03]" style={{ background: BRAND, boxShadow: `0 12px 30px ${BRAND}40` }}>
+                  <PhoneCall className="w-4 h-4" aria-hidden="true" />
+                  Probar VoiceCRM
+                </Link>
+              </Magnetic>
+            </FadeSection>
+
+            <FadeSection delay={0.1}>
+              <VoiceCallMock />
+            </FadeSection>
           </div>
         </section>
 
