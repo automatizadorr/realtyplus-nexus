@@ -1,9 +1,11 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut, Mic, ShieldCheck, User } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera } from "lucide-react";
+import { useState } from "react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/use-is-admin";
+import { AvatarUploadDialog } from "@/components/AvatarUploadDialog";
 import { motion } from "framer-motion";
 import {
   Sidebar,
@@ -77,6 +79,8 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { isAdmin, loading: roleLoading } = useIsAdmin();
+  const [avatarDialog, setAvatarDialog] = useState(false);
+  const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) || undefined;
 
   const handleNavClick = () => {
     // En móvil cerramos el drawer; en desktop el rail se colapsa solo al salir el mouse.
@@ -185,14 +189,30 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3">
-          {/* Avatar — el anillo cambia de color según el rol (señal también en el rail) */}
-          <div
-            className={`relative w-8 h-8 rounded-full bg-sidebar-primary/20 ring-1 flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold shrink-0 transition-colors ${
-              isAdmin ? "ring-sidebar-primary/70" : "ring-sidebar-border"
-            }`}
+          {/* Avatar — foto de perfil (o inicial); clic para subir/ajustar. El anillo y la
+              insignia cambian según el rol (señal también con el rail colapsado). */}
+          <button
+            type="button"
+            onClick={() => setAvatarDialog(true)}
+            aria-label="Cambiar foto de perfil"
+            className="group/av relative h-8 w-8 shrink-0 rounded-full"
           >
-            {displayName.charAt(0).toUpperCase()}
-            {/* Insignia de rol sobre el avatar — visible también con el rail colapsado */}
+            <span
+              className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-sidebar-primary/20 text-xs font-bold text-sidebar-primary-foreground ring-1 transition-colors ${
+                isAdmin ? "ring-sidebar-primary/70" : "ring-sidebar-border"
+              }`}
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                displayName.charAt(0).toUpperCase()
+              )}
+            </span>
+            {/* overlay de cámara al pasar el mouse */}
+            <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover/av:opacity-100">
+              <Camera className="h-3.5 w-3.5 text-white" />
+            </span>
+            {/* insignia de rol */}
             {!roleLoading && (
               <span
                 className={`absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full ring-2 ring-sidebar ${
@@ -202,7 +222,7 @@ export function AppSidebar() {
                 {isAdmin ? <ShieldCheck className="h-2 w-2" /> : <User className="h-2 w-2" />}
               </span>
             )}
-          </div>
+          </button>
           <div className="flex flex-col flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-sidebar-foreground truncate tracking-tight">
@@ -232,6 +252,10 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarFooter>
+
+      {user && (
+        <AvatarUploadDialog open={avatarDialog} onOpenChange={setAvatarDialog} userId={user.id} />
+      )}
     </Sidebar>
   );
 }
