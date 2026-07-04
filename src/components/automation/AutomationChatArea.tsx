@@ -101,23 +101,10 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
       }
       setLoading(false);
 
-      // Marca leído por phone_key EXACTO: primero resolvemos los ids de los
-      // mensajes inbound sin leer (vía la vista con phone_key normalizado) y
-      // actualizamos por id. Evita el bug de ilike '%telefono%' que contaminaba
-      // teléfonos que eran subcadena de otros, y no depende de ninguna migración.
-      const { data: unreadRows } = await (supabase as any)
-        .from("vista_mensajes_automatizacion")
-        .select("id")
-        .eq("phone_key", phoneKey)
-        .eq("direccion", "inbound")
-        .eq("leido", false);
-      const unreadIds = (unreadRows || []).map((r: { id: string }) => r.id);
-      if (unreadIds.length > 0) {
-        await (supabase as any)
-          .from("mensajes_automatizacion")
-          .update({ leido: true })
-          .in("id", unreadIds);
-      }
+      // Marca leído por phone_key en AMBAS tablas (mensajes_automatizacion +
+      // mensajes_whatsapp), ya que la conversación de Oportunidades unifica las
+      // dos. RPC en la migración 20260704120000.
+      await (supabase as any).rpc("marcar_leidos_conversacion", { p_phone_key: phoneKey });
     };
     fetchMessages();
 
