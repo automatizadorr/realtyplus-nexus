@@ -15,6 +15,8 @@ import { AttachmentButton } from "@/components/inbox/AttachmentButton";
 import { MediaBubble } from "@/components/inbox/MediaBubble";
 import { FormattedText } from "@/lib/whatsappFormat";
 import { countryFlag } from "@/lib/countryFlag";
+import { TagChips } from "@/components/inbox/TagsManager";
+import type { LeadTag } from "@/lib/supabase";
 import type { AutomationContact } from "./AutomationSidebar";
 
 interface MensajeAuto {
@@ -34,6 +36,7 @@ interface MensajeAuto {
 interface Props {
   selectedContact: AutomationContact | null;
   onBack?: () => void;
+  allTags?: LeadTag[];
 }
 
 
@@ -46,7 +49,7 @@ function estadoColor(estado: string | null | undefined) {
   return "bg-amber-500/15 text-amber-600 border-amber-500/30";
 }
 
-export function AutomationChatArea({ selectedContact, onBack }: Props) {
+export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Props) {
   const [messages, setMessages] = useState<MensajeAuto[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [pendingMedia, setPendingMedia] = useState<{ url: string; type: string } | null>(null);
@@ -423,6 +426,7 @@ export function AutomationChatArea({ selectedContact, onBack }: Props) {
                   {ultimoEstado}
                 </Badge>
               )}
+              <TagChips tagIds={selectedContact.tag_ids} allTags={allTags} />
             </div>
           </div>
 

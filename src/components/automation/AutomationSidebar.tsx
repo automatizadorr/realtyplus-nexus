@@ -22,6 +22,8 @@ import { playNotificationSound } from "@/hooks/use-notification-sound";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { countryFlag } from "@/lib/countryFlag";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { TagChips } from "@/components/inbox/TagsManager";
+import type { LeadTag } from "@/lib/supabase";
 import {
   useAutomationContacts,
   type AutomationContactRow,
@@ -34,11 +36,13 @@ export interface AutomationContact {
   nombre: string | null;
   pais: string | null;
   campaign_name: string | null;
+  tag_ids?: string[] | null;
 }
 
 interface Props {
   selectedContact: AutomationContact | null;
   onSelectContact: (c: AutomationContact) => void;
+  allTags: LeadTag[];
 }
 
 function relTime(iso: string | null) {
@@ -60,7 +64,7 @@ function estadoColor(estado: string | null | undefined) {
   return "text-muted-foreground bg-muted border-border";
 }
 
-export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
+export function AutomationSidebar({ selectedContact, onSelectContact, allTags }: Props) {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 400);
   const [campaign, setCampaign] = useState("all");
@@ -189,6 +193,7 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
       nombre: row.nombre,
       pais: row.pais,
       campaign_name: row.campaign_name,
+      tag_ids: row.tag_ids,
     });
   };
 
@@ -442,6 +447,7 @@ export function AutomationSidebar({ selectedContact, onSelectContact }: Props) {
                               {unread}
                             </Badge>
                           )}
+                          <TagChips tagIds={c.tag_ids} allTags={allTags} />
                         </div>
                         {last && (
                           <div className="text-[11px] text-muted-foreground/80 truncate mt-0.5">

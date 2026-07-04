@@ -13,6 +13,7 @@ export interface AutomationContactRow {
   ultimo_estado: string | null;
   ultimo_dia: number | null;
   total_mensajes: number | null;
+  tag_ids: string[] | null;
 }
 
 export type AutomationEstadoFilter = "all" | "enviado" | "respondido" | "fallido";
@@ -28,7 +29,7 @@ interface Params {
 }
 
 const SELECT_COLS =
-  "telefono, nombre, pais, campaign_name, last_message_at, last_message_text, last_message_dir, unread_count, ultimo_estado, ultimo_dia, total_mensajes";
+  "telefono, nombre, pais, campaign_name, last_message_at, last_message_text, last_message_dir, unread_count, ultimo_estado, ultimo_dia, total_mensajes, tag_ids";
 
 export function useAutomationContacts({
   search,
