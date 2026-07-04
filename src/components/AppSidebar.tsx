@@ -17,35 +17,33 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type NavBadgeT = { text: string; variant: "new" | "ai" | "hot" | "pro" | "live" | "beta" };
-
-const groups: { label?: string; items: { title: string; url: string; icon: React.ElementType; badge?: NavBadgeT }[] }[] = [
+const groups: { label?: string; items: { title: string; url: string; icon: React.ElementType }[] }[] = [
   {
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, badge: { text: "Live", variant: "live" } },
-      { title: "Campañas · Leads IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Campañas · Leads IA", url: "/campaigns", icon: Megaphone },
     ],
   },
   {
     label: "Oportunidades",
     items: [
-      { title: "Escáner · Leads Nuevos", url: "/scanner", icon: ScanSearch, badge: { text: "New", variant: "new" } },
-      { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: Zap, badge: { text: "AI", variant: "ai" } },
-      { title: "Panel de Oportunidades", url: "/automation", icon: Bot, badge: { text: "Pro", variant: "pro" } },
+      { title: "Escáner · Leads Nuevos", url: "/scanner", icon: ScanSearch },
+      { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: Zap },
+      { title: "Panel de Oportunidades", url: "/automation", icon: Bot },
     ],
   },
   {
     label: "Reactivación",
     items: [
-      { title: "Mensajes · Reactivación", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
-      { title: "Expansión", url: "/tagged", icon: Tag, badge: { text: "NEXUS", variant: "beta" } },
-      { title: "Etiquetas IA", url: "/etiquetas", icon: Tag, badge: { text: "AI", variant: "ai" } },
+      { title: "Mensajes · Reactivación", url: "/inbox", icon: MessageSquare },
+      { title: "Expansión", url: "/tagged", icon: Tag },
+      { title: "Etiquetas IA", url: "/etiquetas", icon: Tag },
     ],
   },
   {
     label: "CRM Realty Web-AI",
     items: [
-      { title: "CRM Realty Web-AI", url: "/voice-crm", icon: Mic, badge: { text: "New", variant: "new" } },
+      { title: "CRM Realty Web-AI", url: "/voice-crm", icon: Mic },
     ],
   },
   {
@@ -56,46 +54,19 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   },
 ];
 
-const badgeStyles: Record<NavBadgeT["variant"], string> = {
-  new: "bg-gradient-to-r from-emerald-400 to-teal-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.5)]",
-  ai: "bg-gradient-to-r from-[#cc0000] to-[#ff3344] text-white shadow-[0_0_8px_rgba(204,0,0,0.55)]",
-  hot: "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-[0_0_8px_rgba(249,115,22,0.55)]",
-  pro: "bg-gradient-to-r from-amber-400 to-yellow-500 text-[#1a1a1a] shadow-[0_0_8px_rgba(245,158,11,0.5)]",
-  live: "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-[0_0_8px_rgba(34,197,94,0.55)]",
-  beta: "bg-gradient-to-r from-sky-400 to-indigo-500 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)]",
-};
-
-function NavBadge({ badge }: { badge: NavBadgeT }) {
-  const pulseDot = badge.variant === "live" || badge.variant === "hot";
-  return (
-    <motion.span
-      initial={{ opacity: 0, scale: 0.6 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: "spring", stiffness: 400, damping: 18 }}
-      className={`ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider leading-none ${badgeStyles[badge.variant]}`}
-    >
-      {pulseDot && (
-        <motion.span
-          animate={{ opacity: [1, 0.3, 1], scale: [1, 1.3, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity }}
-          className="w-1 h-1 rounded-full bg-white"
-        />
-      )}
-      {badge.text}
-    </motion.span>
-  );
-}
+// Transición compartida del indicador activo (se desliza entre ítems).
+const ACTIVE_SPRING = { type: "spring", stiffness: 380, damping: 32 } as const;
 
 function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
   return (
     <motion.div
-      whileHover={{ scale: 1.2, rotate: 8 }}
+      whileHover={{ scale: 1.15 }}
       whileTap={{ scale: 0.9 }}
-      animate={isActive ? { scale: [1, 1.15, 1] } : {}}
+      animate={isActive ? { scale: [1, 1.12, 1] } : { scale: 1 }}
       transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
-      className="shrink-0"
+      className="relative z-10 shrink-0"
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.4 : 2} />
     </motion.div>
   );
 }
@@ -121,10 +92,10 @@ export function AppSidebar() {
         <div className="p-4 group-data-[collapsible=icon]:p-2">
           {/* Logo completo — modo expandido */}
           <motion.div
-            whileHover={{ scale: 1.05, rotate: -1 }}
+            whileHover={{ scale: 1.04, rotate: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="bg-white rounded-lg p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
+            className="bg-white rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
           >
             <motion.img
               src={realtyplusLogo}
@@ -133,15 +104,15 @@ export function AppSidebar() {
             />
           </motion.div>
           {/* Marca compacta — modo rail de íconos */}
-          <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-lg bg-white shadow-md">
+          <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-xl bg-white shadow-md">
             <span className="text-sm font-extrabold leading-none tracking-tight" style={{ color: "hsl(210 100% 20%)" }}>
               R<span style={{ color: "hsl(0 100% 40%)" }}>P</span>
             </span>
           </div>
           {/* Firma de marca */}
-          <div className="mt-3 flex items-center justify-center gap-2 group-data-[collapsible=icon]:hidden" aria-hidden="true">
+          <div className="mt-3.5 flex items-center justify-center gap-2.5 group-data-[collapsible=icon]:hidden" aria-hidden="true">
             <span className="h-px flex-1 bg-sidebar-border/70" />
-            <span className="font-mono text-[9px] tracking-[0.32em] uppercase text-sidebar-foreground/45">
+            <span className="font-mono text-[9px] font-medium tracking-[0.34em] uppercase text-sidebar-foreground/45">
               Nexus CRM
             </span>
             <span className="h-px flex-1 bg-sidebar-border/70" />
@@ -150,7 +121,11 @@ export function AppSidebar() {
 
         {groups.map((group, gIdx) => (
           <SidebarGroup key={group.label || `g-${gIdx}`}>
-            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+            {group.label && (
+              <SidebarGroupLabel className="px-2 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-sidebar-foreground/40">
+                {group.label}
+              </SidebarGroupLabel>
+            )}
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item, index) => {
@@ -162,22 +137,37 @@ export function AppSidebar() {
                   return (
                     <motion.div
                       key={item.title}
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -16 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05, duration: 0.3 }}
+                      transition={{ delay: index * 0.04, type: "spring", stiffness: 320, damping: 26 }}
                     >
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip={item.title}>
                           <NavLink
                             to={item.url}
                             end={item.url === "/dashboard"}
-                            className="relative rounded-md transition-colors hover:bg-sidebar-accent/40"
-                            activeClassName="bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r-full before:bg-sidebar-primary"
+                            className="group/nav relative rounded-lg tracking-tight transition-colors"
+                            activeClassName="text-sidebar-accent-foreground font-semibold"
                             onClick={handleNavClick}
                           >
+                            {/* Fondo activo que se desliza entre ítems */}
+                            {isActive && (
+                              <motion.span
+                                layoutId="sidebar-active-bg"
+                                transition={ACTIVE_SPRING}
+                                className="absolute inset-0 rounded-lg bg-sidebar-accent/80 shadow-sm"
+                              />
+                            )}
+                            {/* Barra de acento a la izquierda */}
+                            {isActive && (
+                              <motion.span
+                                layoutId="sidebar-active-bar"
+                                transition={ACTIVE_SPRING}
+                                className="absolute left-0 top-1/2 z-10 h-5 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary"
+                              />
+                            )}
                             <AnimatedIcon icon={item.icon} isActive={isActive} />
-                            <span className="ml-2 truncate">{item.title}</span>
-                            {item.badge && <NavBadge badge={item.badge} />}
+                            <span className="relative z-10 ml-2 truncate text-[13px]">{item.title}</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -193,18 +183,18 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold shrink-0">
+          <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 ring-1 ring-sidebar-primary/30 flex items-center justify-center text-sidebar-primary-foreground text-xs font-bold shrink-0">
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-medium text-sidebar-foreground truncate">
+            <span className="text-sm font-semibold text-sidebar-foreground truncate tracking-tight">
               {displayName}
             </span>
             <motion.button
               whileHover={{ x: 3 }}
               whileTap={{ scale: 0.95 }}
               onClick={signOut}
-              className="flex items-center gap-1 text-xs text-sidebar-foreground/60 hover:text-destructive transition-colors text-left"
+              className="flex items-center gap-1 text-[11px] font-mono uppercase tracking-wider text-sidebar-foreground/55 hover:text-destructive transition-colors text-left"
             >
               <LogOut className="h-3 w-3" />
               Cerrar sesión
