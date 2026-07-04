@@ -283,7 +283,7 @@ function LiveConversation() {
                 <img
                   src="/landing/appointment.jpg"
                   alt="Reunión de expansión agendada"
-                  className={`w-full h-32 object-cover object-[center_30%] ${reduce ? "" : "animate-kenburns"}`}
+                  className={`w-full h-32 object-cover object-[center_78%] ${reduce ? "" : "animate-kenburns"}`}
                   loading="lazy"
                 />
                 <div className="absolute inset-0"
