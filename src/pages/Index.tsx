@@ -848,8 +848,9 @@ export default function Index() {
                   </motion.span>
                 </h1>
 
-                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-white/60 max-w-xl">
-                  <strong className="text-white/90">iSabel</strong>, tu asesora con IA, responde en segundos,
+                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-white/75 max-w-xl"
+                          style={{ textShadow: "0 1px 16px rgba(2,27,77,0.55)" }}>
+                  <strong className="text-white">iSabel</strong>, tu asesora con IA, responde en segundos,
                   califica cada lead por intención y agenda la reunión en tu calendario.
                   Tú solo cierras.
                 </motion.p>
@@ -866,9 +867,9 @@ export default function Index() {
                   </a>
                 </motion.div>
 
-                <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] text-white/40">
+                <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-2 font-mono text-[11px]">
                   {["Sobre tu propio WhatsApp", "Agenda en Google Calendar", "Reporte diario 08:00"].map((t) => (
-                    <span key={t} className="flex items-center gap-1.5">
+                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.05] text-white/60 backdrop-blur-sm">
                       <Check className="w-3.5 h-3.5" style={{ color: BLUE_LT }} aria-hidden="true" />{t}
                     </span>
                   ))}
@@ -881,6 +882,27 @@ export default function Index() {
               </motion.div>
             </div>
           </div>
+
+          {/* Scroll cue: invita a bajar (oculto en reduced-motion) */}
+          {!reduce && (
+            <motion.a
+              href="#carrusel"
+              aria-label="Desplázate para ver más"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.4, duration: 0.8, ease: EASE }}
+            >
+              <span className="font-mono text-[10px] tracking-widest uppercase">Scroll</span>
+              <motion.span
+                className="w-5 h-8 rounded-full border border-white/25 grid place-items-start justify-center pt-1.5"
+                animate={{ y: [0, 4, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <span className="w-1 h-1.5 rounded-full" style={{ background: BLUE_LT }} />
+              </motion.span>
+            </motion.a>
+          )}
         </section>
 
         {/* ── Carrusel: IA aplicada a tus leads ── */}
