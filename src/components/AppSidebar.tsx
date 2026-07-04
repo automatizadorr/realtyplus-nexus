@@ -23,21 +23,21 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   {
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, badge: { text: "Live", variant: "live" } },
-      { title: "Campañas - Leads IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
+      { title: "Campañas · Leads IA", url: "/campaigns", icon: Megaphone, badge: { text: "AI", variant: "ai" } },
     ],
   },
   {
     label: "Oportunidades",
     items: [
-      { title: "Escáner- Leads News", url: "/scanner", icon: ScanSearch, badge: { text: "New", variant: "new" } },
-      { title: "​Mensajes - Oportunidades", url: "/automation-inbox", icon: Zap, badge: { text: "AI", variant: "ai" } },
-      { title: "Panel ​Para Oportunidades ", url: "/automation", icon: Bot, badge: { text: "Pro", variant: "pro" } },
+      { title: "Escáner · Leads Nuevos", url: "/scanner", icon: ScanSearch, badge: { text: "New", variant: "new" } },
+      { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: Zap, badge: { text: "AI", variant: "ai" } },
+      { title: "Panel de Oportunidades", url: "/automation", icon: Bot, badge: { text: "Pro", variant: "pro" } },
     ],
   },
   {
     label: "Reactivación",
     items: [
-      { title: "Mensajes - Reactivacion Leads", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
+      { title: "Mensajes · Reactivación", url: "/inbox", icon: MessageSquare, badge: { text: "Hot", variant: "hot" } },
       { title: "Expansión", url: "/tagged", icon: Tag, badge: { text: "NEXUS", variant: "beta" } },
       { title: "Etiquetas IA", url: "/etiquetas", icon: Tag, badge: { text: "AI", variant: "ai" } },
     ],
@@ -134,6 +134,14 @@ export function AppSidebar() {
               className="w-full h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
             />
           </motion.div>
+          {/* Firma de marca */}
+          <div className="mt-3 flex items-center justify-center gap-2" aria-hidden="true">
+            <span className="h-px flex-1 bg-sidebar-border/70" />
+            <span className="font-mono text-[9px] tracking-[0.32em] uppercase text-sidebar-foreground/45">
+              Nexus CRM
+            </span>
+            <span className="h-px flex-1 bg-sidebar-border/70" />
+          </div>
         </div>
 
         {groups.map((group, gIdx) => (
@@ -203,4 +211,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-
