@@ -281,9 +281,9 @@ function LiveConversation() {
             >
               <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl">
                 <img
-                  src="/landing/closing-deal.jpg"
+                  src="/landing/appointment.jpg"
                   alt="Reunión de expansión agendada"
-                  className={`w-full h-32 object-cover ${reduce ? "" : "animate-kenburns"}`}
+                  className={`w-full h-32 object-cover object-[center_30%] ${reduce ? "" : "animate-kenburns"}`}
                   loading="lazy"
                 />
                 <div className="absolute inset-0"
@@ -761,7 +761,7 @@ export default function Index() {
   const onHeroMove = useCallback((e: React.MouseEvent) => {
     const dx = e.clientX - heroLastPos.current.x;
     const dy = e.clientY - heroLastPos.current.y;
-    if (dx * dx + dy * dy < 38 * 38) return;
+    if (dx * dx + dy * dy < 50 * 50) return;
     rippleRef.current?.triggerSplash(e.clientX, e.clientY, "trail");
     heroLastPos.current = { x: e.clientX, y: e.clientY };
   }, []);

@@ -15,15 +15,15 @@ import { useReducedMotion } from 'framer-motion';
     passthrough → pointer-events:none, el padre gestiona los eventos.
 */
 
-// ── Física (intensidad ALTA — más marcada que el preset suave) ──────────────────
-const DAMPING     = 0.982;    // más alto = las ondas persisten más (estela más viva)
+// ── Física (intensidad SUAVE — ondas sutiles, poco intrusivas) ──────────────────
+const DAMPING     = 0.976;    // menor = las ondas se disipan rápido (menos acumulación)
 const SIM_W_MAX   = 460;      // ancho del buffer (CSS escala el canvas)
-const ENTER_R     = 9;
-const ENTER_STR   = 170;      // impacto de entrada fuerte
-const TRAIL_R     = 5;
-const TRAIL_STR   = 58;       // estela marcada al mover el cursor
-const MIN_DIST_SQ = 38 * 38;  // gotas más juntas → ondas más continuas
-const DISPLACE    = 0.95;     // refracción más intensa (más deformación)
+const ENTER_R     = 7;
+const ENTER_STR   = 95;       // impacto de entrada suave
+const TRAIL_R     = 4;
+const TRAIL_STR   = 24;       // estela muy tenue al mover el cursor
+const MIN_DIST_SQ = 50 * 50;  // gotas bien espaciadas → menos "huellas"
+const DISPLACE    = 0.48;     // refracción sutil (poca deformación)
 
 export interface HydroRippleHandle {
   triggerSplash(clientX: number, clientY: number, type: 'enter' | 'trail'): void;
