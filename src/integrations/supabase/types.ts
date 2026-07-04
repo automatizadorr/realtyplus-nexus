@@ -259,6 +259,7 @@ export type Database = {
           origen: string | null
           pais: string | null
           puntuacion: number | null
+          resumen_ia: string | null
           tag_ids: string[] | null
           telefono: string
           timezone: string | null
@@ -284,6 +285,7 @@ export type Database = {
           origen?: string | null
           pais?: string | null
           puntuacion?: number | null
+          resumen_ia?: string | null
           tag_ids?: string[] | null
           telefono: string
           timezone?: string | null
@@ -309,6 +311,7 @@ export type Database = {
           origen?: string | null
           pais?: string | null
           puntuacion?: number | null
+          resumen_ia?: string | null
           tag_ids?: string[] | null
           telefono?: string
           timezone?: string | null

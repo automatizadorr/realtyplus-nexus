@@ -1089,7 +1089,7 @@ export default function Index() {
                 <Serif>Cada mañana</Serif>, los leads del día en tu correo.
               </h2>
               <p className="mt-5 text-white/60 text-lg leading-relaxed">
-                A las 08:00 (hora de Madrid) jefatura recibe un reporte consolidado: todos los leads
+                A las 08:00 (hora de Madrid)&nbsp; recibe un reporte consolidado: todos los leads
                 que se movieron en las últimas 24 horas, agrupados por etiqueta y con su conversación
                 completa. Los que aún no responden quedan fuera — solo lo que importa.
               </p>
