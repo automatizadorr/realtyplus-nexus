@@ -101,16 +101,13 @@ function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isAct
 }
 
 export function AppSidebar() {
-  const { setOpenMobile, isMobile, toggleSidebar } = useSidebar();
+  const { setOpenMobile, isMobile } = useSidebar();
   const location = useLocation();
   const { user, signOut } = useAuth();
 
   const handleNavClick = () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    } else {
-      toggleSidebar();
-    }
+    // En móvil cerramos el drawer; en desktop el rail se colapsa solo al salir el mouse.
+    if (isMobile) setOpenMobile(false);
   };
 
   const displayName =
@@ -119,14 +116,15 @@ export function AppSidebar() {
     "Usuario";
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarContent className="bg-gradient-to-b from-white/[0.03] to-black/10">
-        <div className="p-4">
+        <div className="p-4 group-data-[collapsible=icon]:p-2">
+          {/* Logo completo — modo expandido */}
           <motion.div
             whileHover={{ scale: 1.05, rotate: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="bg-white rounded-lg p-3 shadow-md w-full flex items-center justify-center overflow-hidden group"
+            className="bg-white rounded-lg p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
           >
             <motion.img
               src={realtyplusLogo}
@@ -134,8 +132,14 @@ export function AppSidebar() {
               className="w-full h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
             />
           </motion.div>
+          {/* Marca compacta — modo rail de íconos */}
+          <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-lg bg-white shadow-md">
+            <span className="text-sm font-extrabold leading-none tracking-tight" style={{ color: "hsl(210 100% 20%)" }}>
+              R<span style={{ color: "hsl(0 100% 40%)" }}>P</span>
+            </span>
+          </div>
           {/* Firma de marca */}
-          <div className="mt-3 flex items-center justify-center gap-2" aria-hidden="true">
+          <div className="mt-3 flex items-center justify-center gap-2 group-data-[collapsible=icon]:hidden" aria-hidden="true">
             <span className="h-px flex-1 bg-sidebar-border/70" />
             <span className="font-mono text-[9px] tracking-[0.32em] uppercase text-sidebar-foreground/45">
               Nexus CRM
@@ -163,7 +167,7 @@ export function AppSidebar() {
                       transition={{ delay: index * 0.05, duration: 0.3 }}
                     >
                       <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
+                        <SidebarMenuButton asChild tooltip={item.title}>
                           <NavLink
                             to={item.url}
                             end={item.url === "/dashboard"}

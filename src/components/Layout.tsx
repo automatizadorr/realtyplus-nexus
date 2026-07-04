@@ -9,24 +9,6 @@ interface LayoutProps {
 
 const CLOSE_DELAY_MS = 300;
 
-function HoverEdge({ closeTimerRef }: { closeTimerRef: React.MutableRefObject<number | null> }) {
-  const { setOpen, open, isMobile } = useSidebar();
-  if (isMobile) return null;
-  return (
-    <div
-      onMouseEnter={() => {
-        if (closeTimerRef.current) {
-          window.clearTimeout(closeTimerRef.current);
-          closeTimerRef.current = null;
-        }
-        if (!open) setOpen(true);
-      }}
-      className="fixed left-0 top-0 h-screen w-2 z-40"
-      aria-hidden
-    />
-  );
-}
-
 function SidebarHoverWrapper({ closeTimerRef }: { closeTimerRef: React.MutableRefObject<number | null> }) {
   const { setOpen, isMobile } = useSidebar();
   return (
@@ -36,6 +18,8 @@ function SidebarHoverWrapper({ closeTimerRef }: { closeTimerRef: React.MutableRe
           window.clearTimeout(closeTimerRef.current);
           closeTimerRef.current = null;
         }
+        // El rail de íconos siempre está visible; al pasar el mouse se expande a texto.
+        if (!isMobile) setOpen(true);
       }}
       onMouseLeave={() => {
         if (isMobile) return;
@@ -56,7 +40,6 @@ export function Layout({ children }: LayoutProps) {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
-        <HoverEdge closeTimerRef={closeTimerRef} />
         <SidebarHoverWrapper closeTimerRef={closeTimerRef} />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b bg-card px-4 gap-3">
