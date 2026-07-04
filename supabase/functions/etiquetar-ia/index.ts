@@ -253,6 +253,9 @@ Deno.serve(async (req) => {
         solo_si_grupo_vacio,
         crear_si_no_existe: crearSiNoExiste,
         nombre,
+        // Persiste el resumen IA en el lead (columna resumen_ia) para que el Excel
+        // de expansión lo lea después. tag-lead lo guarda en la misma escritura.
+        resumen,
       }),
       signal: AbortSignal.timeout(30000),
     });

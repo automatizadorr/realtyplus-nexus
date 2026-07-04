@@ -191,7 +191,9 @@ Deno.serve(async (req) => {
         "Estado": l.estado ?? "",
         "Motivo Cierre": l.motivo_cierre ?? "",
         "Etiquetas": etiquetas,
-        "Resumen IA": resumenes[normPhone(l.telefono)] ?? "",
+        // Prioriza el resumen de la corrida (clasificación en vivo); si no vino en el
+        // body (caso expansión), cae a la columna persistida resumen_ia de la BD.
+        "Resumen IA": resumenes[normPhone(l.telefono)] ?? (l.resumen_ia ?? ""),
         "Etiquetas (IDs)": tagIds.join(", "),
         "Bot Activo": yesNo(l.bot_activo),
         "Archivado": yesNo(l.archivado),

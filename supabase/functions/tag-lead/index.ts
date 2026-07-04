@@ -14,6 +14,7 @@
 //                                    grupo_exclusivo, no hace nada (evita re-etiquetar)
 //   crear_si_no_existe?: boolean     (default false) crea el lead si no se encuentra
 //   nombre?, pais?, origen?          datos opcionales para el lead recién creado
+//   resumen?: string                 resumen IA (DeepSeek) → se persiste en resumen_ia
 //
 // El match de nombres es insensible a mayúsculas y tildes (más robusto que el match exacto).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -88,6 +89,9 @@ Deno.serve(async (req) => {
     const grupoExclusivo: string | null = typeof body?.grupo_exclusivo === "string" ? body.grupo_exclusivo : null;
     const soloSiGrupoVacio: boolean = body?.solo_si_grupo_vacio === true;
     const crearSiNoExiste: boolean = body?.crear_si_no_existe === true;
+    // Resumen IA opcional (lo genera etiquetar-ia con DeepSeek). Se persiste en la
+    // columna resumen_ia para que el Excel de expansión lo pueda leer más tarde.
+    const resumen: string = typeof body?.resumen === "string" ? body.resumen.trim() : "";
 
     if (!telefono) return json({ error: "telefono requerido" }, 400);
     if (tag_nombres.length === 0) {
@@ -158,8 +162,12 @@ Deno.serve(async (req) => {
 
     const current: string[] = Array.isArray(lead.tag_ids) ? lead.tag_ids : [];
 
-    // 2c. Si solo debe actuar cuando el grupo está vacío y ya hay un estado → no tocar.
+    // 2c. Si solo debe actuar cuando el grupo está vacío y ya hay un estado → no tocar
+    // las etiquetas. Aun así persistimos el resumen IA fresco (info útil para el Excel).
     if (soloSiGrupoVacio && grupoIds.some((id) => current.includes(id))) {
+      if (resumen) {
+        await supabase.from("leads_campana").update({ resumen_ia: resumen }).eq("id", lead.id);
+      }
       return json({
         success: true,
         skipped: true,
@@ -167,6 +175,7 @@ Deno.serve(async (req) => {
         lead_id: lead.id,
         telefono,
         tag_ids: current,
+        ...(resumen ? { resumen_ia_guardado: true } : {}),
       });
     }
 
@@ -185,9 +194,12 @@ Deno.serve(async (req) => {
 
     const newTagIds = [...next];
 
+    // Persiste tag_ids y, si vino, el resumen IA en la MISMA escritura.
+    const updatePayload: Record<string, unknown> = { tag_ids: newTagIds };
+    if (resumen) updatePayload.resumen_ia = resumen;
     const { error: updateErr } = await supabase
       .from("leads_campana")
-      .update({ tag_ids: newTagIds })
+      .update(updatePayload)
       .eq("id", lead.id);
     if (updateErr) throw updateErr;
 
