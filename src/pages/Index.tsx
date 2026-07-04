@@ -175,7 +175,7 @@ function LiveConversation() {
     setStep(0);
     const id = setInterval(() => {
       setStep((s) => (s >= THREAD.length ? s : s + 1));
-    }, 900);
+    }, 1400);
     return () => clearInterval(id);
   }, [inView, reduce]);
 
