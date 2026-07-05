@@ -16,6 +16,8 @@ import {
   Download,
   Inbox as InboxIcon,
   Megaphone,
+  Database,
+  Clock,
 } from "lucide-react";
 import {
   ChartContainer,
@@ -717,38 +719,37 @@ export default function Dashboard() {
           </DialogHeader>
           {selectedCountry && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Total Sheets</p>
-                  <p className="text-xl font-bold">{selectedCountry.total.toLocaleString()}</p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">En BD</p>
-                  <p className="text-xl font-bold">{allCountryLeads.length.toLocaleString()}</p>
-                </div>
-                <div className="rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/30">
-                  <p className="text-xs text-muted-foreground">Contactados</p>
-                  <p className="text-xl font-bold text-blue-600">
-                    {countryStats.contacted.length.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3 bg-orange-50 dark:bg-orange-950/30">
-                  <p className="text-xs text-muted-foreground">Sin contactar</p>
-                  <p className="text-xl font-bold text-orange-600">
-                    {countryStats.uncontacted.length.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Respondieron</p>
-                  <p className="text-xl font-bold">{(selectedCountry.respondidos ?? 0).toLocaleString()}</p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Tasa resp.</p>
-                  <p className="text-xl font-bold text-emerald-600">
-                    {(selectedCountry.tasa_respuesta ?? 0).toFixed(1)}%
-                  </p>
-                </div>
-              </div>
+              <motion.div
+                variants={kpiGrid}
+                initial="hidden"
+                animate="show"
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
+              >
+                {[
+                  { label: "Total Sheets", value: selectedCountry.total.toLocaleString(), icon: Users, wrap: "from-slate-500/20 to-slate-500/5 text-slate-600 ring-slate-500/20", vc: "text-foreground" },
+                  { label: "En BD", value: allCountryLeads.length.toLocaleString(), icon: Database, wrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/20", vc: "text-foreground" },
+                  { label: "Contactados", value: countryStats.contacted.length.toLocaleString(), icon: MessageSquareText, wrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/20", vc: "text-blue-600" },
+                  { label: "Sin contactar", value: countryStats.uncontacted.length.toLocaleString(), icon: Clock, wrap: "from-orange-500/20 to-orange-500/5 text-orange-600 ring-orange-500/20", vc: "text-orange-600" },
+                  { label: "Respondieron", value: (selectedCountry.respondidos ?? 0).toLocaleString(), icon: UserCheck, wrap: "from-indigo-500/20 to-indigo-500/5 text-indigo-600 ring-indigo-500/20", vc: "text-foreground" },
+                  { label: "Tasa resp.", value: `${(selectedCountry.tasa_respuesta ?? 0).toFixed(1)}%`, icon: TrendingUp, wrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/20", vc: "text-emerald-600" },
+                ].map((s) => (
+                  <motion.div
+                    key={s.label}
+                    variants={kpiItem}
+                    className="rounded-xl border border-border/60 p-3 transition-shadow hover:shadow-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br ring-1 ${s.wrap}`}>
+                        <s.icon className="h-3.5 w-3.5" />
+                      </span>
+                      <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {s.label}
+                      </p>
+                    </div>
+                    <p className={`mt-2 text-xl font-bold tabular-nums ${s.vc}`}>{s.value}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="inline-flex rounded-lg border p-1 bg-muted/30">
