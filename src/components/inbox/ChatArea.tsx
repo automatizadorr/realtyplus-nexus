@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X, ArrowDown } from "lucide-react";
+import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X, ArrowDown, Clock, Check, AlertCircle, RotateCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, MensajeWhatsapp, LeadTag } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -275,6 +275,51 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  // Estado de entrega por id de mensaje. Solo en memoria: mensajes_whatsapp no tiene
+  // columna de estado, y el asesor necesita ver el fallo AL MOMENTO (al recargar, el
+  // mensaje ya está en la BD y se muestra normal). enviando → enviado / fallido.
+  const [sendStatus, setSendStatus] = useState<Record<string | number, "enviando" | "enviado" | "fallido">>({});
+
+  // Reconstruye el payload del webhook desde un mensaje ya insertado (para reintentar).
+  const payloadFromMsg = (msg: MensajeWhatsapp): Record<string, any> => {
+    const p: Record<string, any> = { telefono: msg.telefono, mensaje: msg.contenido, autor: "admin" };
+    if (msg.media_url) { p.media_url = msg.media_url; p.media_type = msg.media_type; }
+    return p;
+  };
+
+  // Llama a send-n8n-webhook y marca el mensaje según el resultado REAL. La función
+  // ahora devuelve 502 + { success:false } cuando WhatsApp/n8n no entrega (antes se
+  // ignoraba con un console.warn → el asesor creía que había respondido al lead).
+  const entregarPorWebhook = async (msgId: string | number, payload: Record<string, any>): Promise<boolean> => {
+    setSendStatus((s) => ({ ...s, [msgId]: "enviando" }));
+    try {
+      const { data, error } = await supabase.functions.invoke("send-n8n-webhook", {
+        body: { target: "crmrp", payload },
+      });
+      const d = data as { success?: boolean; warning?: string; status?: number } | null;
+      const entregado =
+        !error &&
+        d?.success !== false &&
+        !d?.warning &&
+        !(typeof d?.status === "number" && d.status >= 400);
+      setSendStatus((s) => ({ ...s, [msgId]: entregado ? "enviado" : "fallido" }));
+      if (!entregado) {
+        toast({
+          title: "No se entregó al lead",
+          description: "El mensaje se guardó pero WhatsApp no lo entregó. Pulsa Reintentar.",
+          variant: "destructive",
+        });
+      }
+      return entregado;
+    } catch (e: any) {
+      setSendStatus((s) => ({ ...s, [msgId]: "fallido" }));
+      toast({ title: "No se entregó al lead", description: "Error de red. Pulsa Reintentar.", variant: "destructive" });
+      return false;
+    }
+  };
+
+  const reenviar = (msg: MensajeWhatsapp) => entregarPorWebhook(msg.id, payloadFromMsg(msg));
+
   const sendMessage = async () => {
     if ((!newMessage.trim() && !pendingMedia) || !selectedContact?.telefono) return;
     setSending(true);
@@ -305,8 +350,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
       if (insertError) throw insertError;
 
+      let newMsgId: string | number | null = null;
       if (inserted) {
         const newMsg = inserted as MensajeWhatsapp;
+        newMsgId = newMsg.id;
         setMessages((prev) => (prev.find((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
       }
 
@@ -323,10 +370,8 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         payload.media_type = media.type;
       }
 
-      const { data: hookData, error: hookErr } = await supabase.functions.invoke("send-n8n-webhook", {
-        body: { target: "crmrp", payload },
-      });
-      if (hookErr) console.warn("Webhook warning:", hookErr);
+      // Verifica la ENTREGA real: marca enviado/fallido y avisa al asesor si no llegó.
+      if (newMsgId != null) await entregarPorWebhook(newMsgId, payload);
     } catch (err: any) {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
@@ -567,7 +612,24 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                                   minute: "2-digit",
                                 })}
                               </span>
+                              {isOutbound && sendStatus[msg.id] === "enviando" && (
+                                <Clock className="h-3 w-3 opacity-70" aria-label="Enviando" />
+                              )}
+                              {isOutbound && sendStatus[msg.id] === "enviado" && (
+                                <Check className="h-3 w-3 opacity-80" aria-label="Entregado" />
+                              )}
+                              {isOutbound && sendStatus[msg.id] === "fallido" && (
+                                <AlertCircle className="h-3 w-3 text-red-300" aria-label="No entregado" />
+                              )}
                             </div>
+                            {isOutbound && sendStatus[msg.id] === "fallido" && (
+                              <button
+                                onClick={() => reenviar(msg)}
+                                className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-red-200 hover:text-white transition-colors"
+                              >
+                                <RotateCw className="h-3 w-3" /> Reintentar
+                              </button>
+                            )}
                           </div>
                         </motion.div>
                       </div>
