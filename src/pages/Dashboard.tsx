@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, animate, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,34 @@ interface LeadRow {
   ha_respondido: boolean | null;
   bot_activo: boolean | null;
 }
+
+// Número que cuenta hacia arriba al montar (respeta prefers-reduced-motion).
+function AnimatedNumber({ value, decimals = 0, suffix = "" }: { value: number; decimals?: number; suffix?: string }) {
+  const reduce = useReducedMotion();
+  const [display, setDisplay] = useState(reduce ? value : 0);
+  useEffect(() => {
+    if (reduce) { setDisplay(value); return; }
+    const controls = animate(0, value, {
+      duration: 1.1,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => setDisplay(v),
+    });
+    return () => controls.stop();
+  }, [value, reduce]);
+  return (
+    <>
+      {display.toLocaleString("es-ES", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+      {suffix}
+    </>
+  );
+}
+
+// Variantes de entrada escalonada para las tarjetas KPI.
+const kpiGrid = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+const kpiItem = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } },
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -354,48 +383,58 @@ export default function Dashboard() {
     );
   }
 
-  const kpiCards = [
+  const kpiCards: {
+    title: string;
+    value: number;
+    decimals?: number;
+    suffix?: string;
+    icon: React.ElementType;
+    iconWrap: string;
+    bar: string;
+  }[] = [
     {
       title: "Países\u00a0",
-      value: countries.length.toLocaleString(),
+      value: countries.length,
       icon: Globe2,
-      accent: "text-cyan-600",
-      bg: "bg-cyan-50 dark:bg-cyan-950",
+      iconWrap: "from-cyan-500/20 to-cyan-500/5 text-cyan-600 ring-cyan-500/25",
+      bar: "from-cyan-400 to-cyan-600",
     },
     {
       title: "Contactos\u00a0",
-      value: countriesTotal.toLocaleString(),
+      value: countriesTotal,
       icon: Users,
-      accent: "text-rose-600",
-      bg: "bg-rose-50 dark:bg-rose-950",
+      iconWrap: "from-rose-500/20 to-rose-500/5 text-rose-600 ring-rose-500/25",
+      bar: "from-rose-400 to-rose-600",
     },
     {
       title: "Mensajes Totales",
-      value: kpis!.totalMessages.toLocaleString(),
+      value: kpis!.totalMessages,
       icon: MessageSquareText,
-      accent: "text-violet-600",
-      bg: "bg-violet-50 dark:bg-violet-950",
+      iconWrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/25",
+      bar: "from-violet-400 to-violet-600",
     },
     {
       title: "Bot Activo",
-      value: kpis!.botActive.toLocaleString(),
+      value: kpis!.botActive,
       icon: Bot,
-      accent: "text-amber-600",
-      bg: "bg-amber-50 dark:bg-amber-950",
+      iconWrap: "from-amber-500/20 to-amber-500/5 text-amber-600 ring-amber-500/25",
+      bar: "from-amber-400 to-amber-600",
     },
     {
       title: "Leads Respondieron",
-      value: kpis!.leadsResponded.toLocaleString(),
+      value: kpis!.leadsResponded,
       icon: UserCheck,
-      accent: "text-blue-600",
-      bg: "bg-blue-50 dark:bg-blue-950",
+      iconWrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/25",
+      bar: "from-blue-400 to-blue-600",
     },
     {
       title: "Tasa de Respuesta",
-      value: `${kpis!.responseRate.toFixed(1)}%`,
+      value: kpis!.responseRate,
+      decimals: 1,
+      suffix: "%",
       icon: TrendingUp,
-      accent: "text-emerald-600",
-      bg: "bg-emerald-50 dark:bg-emerald-950",
+      iconWrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/25",
+      bar: "from-emerald-400 to-emerald-600",
     },
   ];
 
@@ -414,9 +453,12 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
+            Panorama del CRM
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Resumen general del CRM · Haz clic en un país para ver el detalle
+            Resumen general · haz clic en un país para ver el detalle
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -440,21 +482,35 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <motion.div
+        variants={kpiGrid}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+      >
         {kpiCards.map((card) => (
-          <Card key={card.title} className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{card.title}</CardTitle>
-              <div className={`p-2 rounded-lg ${card.bg}`}>
-                <card.icon className={`h-4 w-4 ${card.accent}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-foreground">{card.value}</p>
-            </CardContent>
-          </Card>
+          <motion.div key={card.title} variants={kpiItem}>
+            <Card className="relative overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${card.bar}`} aria-hidden="true" />
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      {card.title.trim()}
+                    </p>
+                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground">
+                      <AnimatedNumber value={card.value} decimals={card.decimals ?? 0} suffix={card.suffix ?? ""} />
+                    </p>
+                  </div>
+                  <div className={`shrink-0 rounded-xl bg-gradient-to-br p-2.5 ring-1 ${card.iconWrap}`}>
+                    <card.icon className="h-5 w-5" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       <NewStatsSection />
 
