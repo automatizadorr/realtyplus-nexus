@@ -11,6 +11,19 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { AnimatedNumber, kpiGrid, kpiItem } from "@/components/AnimatedNumber";
+
+// Color de avatar determinista (mismo criterio que los inbox).
+const AVATAR_COLORS = [
+  "#0ea5e9", "#6366f1", "#8b5cf6", "#d946ef", "#ec4899",
+  "#f43f5e", "#f59e0b", "#10b981", "#14b8a6", "#3b82f6",
+];
+function avatarColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
 
 interface Stats {
   totalContactos: number;
@@ -140,12 +153,12 @@ export function ResumenTab() {
   if (!stats) return null;
 
   const kpis = [
-    { label: "Total contactos", value: stats.totalContactos, icon: Users,         color: "text-blue-600",   sub: "en automatización" },
-    { label: "Respondieron",    value: stats.respondieron,   icon: CheckCircle2,   color: "text-emerald-600", sub: `${stats.tasaRespuesta}% tasa de respuesta` },
-    { label: "Mensajes enviados", value: stats.mensajesEnviados, icon: MessageSquare, color: "text-indigo-600", sub: "últimos 7 días" },
-    { label: "Mensajes recibidos", value: stats.mensajesRecibidos, icon: ArrowUpRight, color: "text-violet-600", sub: "últimos 7 días" },
-    { label: "Sin responder",   value: stats.sinResponder,   icon: Clock,          color: "text-amber-600",  sub: "pendientes de atención" },
-    { label: "Activos hoy",     value: stats.leadsHoy,       icon: Zap,            color: "text-rose-600",   sub: "con actividad en 24h" },
+    { label: "Total contactos", value: stats.totalContactos, icon: Users, sub: "en automatización", wrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/25", bar: "from-blue-400 to-blue-600" },
+    { label: "Respondieron", value: stats.respondieron, icon: CheckCircle2, sub: `${stats.tasaRespuesta}% tasa de respuesta`, wrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/25", bar: "from-emerald-400 to-emerald-600" },
+    { label: "Mensajes enviados", value: stats.mensajesEnviados, icon: MessageSquare, sub: "últimos 7 días", wrap: "from-indigo-500/20 to-indigo-500/5 text-indigo-600 ring-indigo-500/25", bar: "from-indigo-400 to-indigo-600" },
+    { label: "Mensajes recibidos", value: stats.mensajesRecibidos, icon: ArrowUpRight, sub: "últimos 7 días", wrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/25", bar: "from-violet-400 to-violet-600" },
+    { label: "Sin responder", value: stats.sinResponder, icon: Clock, sub: "pendientes de atención", wrap: "from-amber-500/20 to-amber-500/5 text-amber-600 ring-amber-500/25", bar: "from-amber-400 to-amber-600" },
+    { label: "Activos hoy", value: stats.leadsHoy, icon: Zap, sub: "con actividad en 24h", wrap: "from-rose-500/20 to-rose-500/5 text-rose-600 ring-rose-500/25", bar: "from-rose-400 to-rose-600" },
   ];
 
   return (
@@ -162,20 +175,25 @@ export function ResumenTab() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {kpis.map((k) => (
-          <Card key={k.label} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-medium text-muted-foreground leading-tight">{k.label}</p>
-                <k.icon className={`h-4 w-4 ${k.color} shrink-0`} />
-              </div>
-              <p className="text-2xl font-bold">{k.value.toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</p>
-            </CardContent>
-          </Card>
+          <motion.div key={k.label} variants={kpiItem}>
+            <Card className="relative h-full overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${k.bar}`} aria-hidden="true" />
+              <CardContent className="p-4">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">{k.label}</p>
+                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br ring-1 ${k.wrap}`}>
+                    <k.icon className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <p className="text-2xl font-bold tabular-nums"><AnimatedNumber value={k.value} /></p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{k.sub}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Gráfico mensajes por día */}
@@ -189,16 +207,26 @@ export function ResumenTab() {
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.mensajesPorDia} barSize={14}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <defs>
+                  <linearGradient id="autoEnviados" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={1} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.45} />
+                  </linearGradient>
+                  <linearGradient id="autoRecibidos" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(220 80% 55%)" stopOpacity={1} />
+                    <stop offset="100%" stopColor="hsl(220 80% 55%)" stopOpacity={0.45} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                <XAxis dataKey="dia" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                   labelStyle={{ fontWeight: 600 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="enviados" name="Enviados"  fill="hsl(var(--primary))" radius={[3,3,0,0]} />
-                <Bar dataKey="recibidos" name="Recibidos" fill="hsl(var(--chart-2, 220 80% 55%))" radius={[3,3,0,0]} />
+                <Bar dataKey="enviados" name="Enviados"  fill="url(#autoEnviados)" radius={[3,3,0,0]} />
+                <Bar dataKey="recibidos" name="Recibidos" fill="url(#autoRecibidos)" radius={[3,3,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -256,7 +284,10 @@ export function ResumenTab() {
             <div className="divide-y">
               {stats.recientes.map((r, i) => (
                 <div key={i} className="flex items-start gap-3 py-2.5">
-                  <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                  <div
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
+                    style={{ background: avatarColor(r.nombre || r.telefono) }}
+                  >
                     {(r.nombre?.[0] || r.telefono[0]).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">

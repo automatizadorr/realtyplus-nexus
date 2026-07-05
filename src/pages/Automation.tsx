@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, MessageSquare, Search, Send } from "lucide-react";
+import { Loader2, MessageSquare, Search, Send, BarChart3, FileText, Settings2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { countryFlag } from "@/lib/countryFlag";
@@ -428,18 +428,19 @@ export default function Automation() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Panel de Oportunidades calientes</h1>
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Automatización</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Panel de oportunidades</h1>
         <p className="text-sm text-muted-foreground">
-          Gestión completa de automatización, plantillas y configuración.
+          Resumen, conversaciones, plantillas y configuración del agente.
         </p>
       </div>
 
       <Tabs defaultValue="resumen" className="w-full">
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="resumen">📊 Resumen</TabsTrigger>
-          <TabsTrigger value="conversaciones">💬 Conversaciones</TabsTrigger>
-          <TabsTrigger value="plantillas">📝 Plantillas</TabsTrigger>
-          <TabsTrigger value="configuracion">⚙️ Configuración</TabsTrigger>
+          <TabsTrigger value="resumen" className="gap-1.5"><BarChart3 className="h-4 w-4" />Resumen</TabsTrigger>
+          <TabsTrigger value="conversaciones" className="gap-1.5"><MessageSquare className="h-4 w-4" />Conversaciones</TabsTrigger>
+          <TabsTrigger value="plantillas" className="gap-1.5"><FileText className="h-4 w-4" />Plantillas</TabsTrigger>
+          <TabsTrigger value="configuracion" className="gap-1.5"><Settings2 className="h-4 w-4" />Configuración</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen" className="mt-4">
