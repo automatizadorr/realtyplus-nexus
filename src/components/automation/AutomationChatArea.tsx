@@ -112,37 +112,58 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
     };
     fetchMessages();
 
+    const handleIncomingMsg = (raw: Record<string, unknown>, table: "mensajes_automatizacion" | "mensajes_whatsapp") => {
+      const telefono = (raw.telefono as string) ?? "";
+      if (telefono.replace(/[^0-9]/g, "") !== phoneKey) return;
+      const msg: MensajeAuto = {
+        id: raw.id as string,
+        telefono,
+        contenido: (raw.contenido as string) ?? "",
+        direccion: raw.direccion as "inbound" | "outbound",
+        created_at: raw.created_at as string,
+        leido: raw.leido as boolean | null,
+        campaign_name: (raw.campaign_name as string) ?? null,
+        dia_secuencia: (raw.dia_secuencia as number) ?? null,
+        estado_envio: (raw.estado_envio as string) ?? null,
+        media_url: (raw.media_url as string) ?? null,
+        media_type: (raw.media_type as string) ?? null,
+      };
+
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === msg.id)) return prev;
+        // Dedup: mismo contenido+dirección en <15s ya existe (vista lo une)
+        const isDup = table === "mensajes_whatsapp" && prev.some(
+          (m) =>
+            m.contenido === msg.contenido &&
+            m.direccion === msg.direccion &&
+            Math.abs(new Date(m.created_at).getTime() - new Date(msg.created_at).getTime()) < 15000,
+        );
+        if (isDup) return prev;
+        // Reconcilia mensaje optimista (temp-) con la fila real de n8n
+        if (msg.direccion === "outbound") {
+          const tempIdx = prev.findIndex(
+            (m) => m.id.startsWith("temp-") && m.direccion === "outbound" && m.contenido === msg.contenido,
+          );
+          if (tempIdx !== -1) {
+            const copy = prev.slice();
+            copy[tempIdx] = msg;
+            return copy;
+          }
+        }
+        if (msg.direccion === "inbound" && !isAtBottomRef.current) {
+          setUnreadCount((c) => c + 1);
+          lastInboundIdRef.current = msg.id;
+        }
+        return [...prev, msg];
+      });
+    };
+
     const channel = supabase
       .channel(`auto-messages-${phone}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensajes_automatizacion" },
-        (payload) => {
-          const msg = payload.new as MensajeAuto;
-          if (msg.telefono.replace(/[^0-9]/g, "") === phoneKey) {
-            setMessages((prev) => {
-              if (prev.find((m) => m.id === msg.id)) return prev;
-              // Reconcilia el mensaje optimista (id temp-) con la fila real que
-              // acaba de insertar n8n, para no duplicar el outbound.
-              if (msg.direccion === "outbound") {
-                const tempIdx = prev.findIndex(
-                  (m) => m.id.startsWith("temp-") && m.direccion === "outbound" && m.contenido === msg.contenido,
-                );
-                if (tempIdx !== -1) {
-                  const copy = prev.slice();
-                  copy[tempIdx] = msg;
-                  return copy;
-                }
-              }
-              if (msg.direccion === "inbound" && !isAtBottomRef.current) {
-                setUnreadCount((c) => c + 1);
-                lastInboundIdRef.current = msg.id;
-              }
-              return [...prev, msg];
-            });
-          }
-        },
-      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensajes_automatizacion" },
+        (payload) => handleIncomingMsg(payload.new as Record<string, unknown>, "mensajes_automatizacion"))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensajes_whatsapp" },
+        (payload) => handleIncomingMsg(payload.new as Record<string, unknown>, "mensajes_whatsapp"))
       .subscribe();
 
     return () => {

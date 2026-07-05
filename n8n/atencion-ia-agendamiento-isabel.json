@@ -196,7 +196,7 @@
             { "id": "ed9907d9-0eda-4964-9b7b-707da2d5fb36", "name": "contacts[0].profile.name", "value": "={{ $json.NOMBRES }} {{ $json.APELLIDOS }}", "type": "string" },
             { "id": "fa322b47-1ba3-4f3b-9202-7a88a11e4b8a", "name": "contacts[0].wa_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}", "type": "string" },
             { "id": "e64b39c5-c439-4836-8bcb-c1cc1032dee7", "name": "contacts[0].user_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].user_id }}", "type": "string" },
-            { "id": "8085a877-1b50-4a6f-a81a-e16ed4f6de4a", "name": "messages[0].text.body", "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}", "type": "string" }
+            { "id": "8085a877-1b50-4a6f-a81a-e16ed4f6de4a", "name": "messages[0].text.body", "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].text?.body || $('WhatsApp Trigger1').item.json.messages[0].button?.text || $('WhatsApp Trigger1').item.json.messages[0].interactive?.button_reply?.title || $('WhatsApp Trigger1').item.json.messages[0].interactive?.list_reply?.title || '[Mensaje recibido]' }}", "type": "string" }
           ]
         },
         "options": {}
@@ -367,7 +367,7 @@
         "rules": {
           "values": [
             { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "leftValue": "={{ $json.statuses[0].pricing.type }}", "rightValue": "free_customer_service", "operator": { "type": "string", "operation": "equals" }, "id": "3958d4b8-1033-4233-8fea-3caf213090a1" } ], "combinator": "and" } },
-            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "id": "ba4887a1-b771-427c-8596-1871befc1963", "leftValue": "={{ $json.messages[0].type }}", "rightValue": "text", "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" } } ], "combinator": "and" } },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "ba4887a1-b771-427c-8596-1871befc1963", "leftValue": "={{ $json.messages[0].type }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } } ], "combinator": "and" } },
             { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 }, "conditions": [ { "id": "bb0c23dc-f495-459f-b25e-39f858c3cc1e", "leftValue": "={{ $json.statuses[0].errors[0].error_data.details }}", "rightValue": "Message failed to send because there were one or more errors related to your payment method.", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "pago de tarjeta" }
           ]
         },
@@ -493,7 +493,7 @@
             { "id": "ed9907d9-0eda-4964-9b7b-707da2d5fb36", "name": "contacts[0].profile.name", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}", "type": "string" },
             { "id": "fa322b47-1ba3-4f3b-9202-7a88a11e4b8a", "name": "contacts[0].wa_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}", "type": "string" },
             { "id": "e64b39c5-c439-4836-8bcb-c1cc1032dee7", "name": "contacts[0].user_id", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].user_id }}", "type": "string" },
-            { "id": "8085a877-1b50-4a6f-a81a-e16ed4f6de4a", "name": "messages[0].text.body", "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}", "type": "string" }
+            { "id": "8085a877-1b50-4a6f-a81a-e16ed4f6de4a", "name": "messages[0].text.body", "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].text?.body || $('WhatsApp Trigger1').item.json.messages[0].button?.text || $('WhatsApp Trigger1').item.json.messages[0].interactive?.button_reply?.title || $('WhatsApp Trigger1').item.json.messages[0].interactive?.list_reply?.title || '[Mensaje recibido]' }}", "type": "string" }
           ]
         },
         "options": {}
