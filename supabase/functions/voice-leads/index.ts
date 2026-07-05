@@ -70,14 +70,12 @@ Deno.serve(async (req) => {
     // Auth + admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-    const token = authHeader.replace("Bearer ", "");
-    let userId: string | null = null;
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-      userId = payload?.sub ?? null;
-      if (payload?.exp && payload.exp * 1000 < Date.now()) userId = null;
-    } catch { /* invalid token */ }
-    if (!userId) return json({ error: "Unauthorized" }, 401);
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !user) return json({ error: "Unauthorized" }, 401);
+    const userId = user.id;
     const svc = createClient(SUPABASE_URL, SERVICE_KEY);
     const { data: isAdmin } = await svc.rpc("has_role", {
       _user_id: userId,
