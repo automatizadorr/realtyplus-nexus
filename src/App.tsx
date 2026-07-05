@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -26,6 +26,48 @@ const Auth         = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound     = lazy(() => import("./pages/NotFound"));
 
+// Captura errores de carga de chunks (lazy) y errores de render.
+// Sin esto, un chunk que no carga → React desmonta todo → pantalla blanca.
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[ErrorBoundary]", error, info);
+  }
+
+  render() {
+    if (this.state.error) {
+      const msg = this.state.error.message ?? "";
+      const isChunk = msg.includes("Loading chunk") || msg.includes("Failed to fetch") || msg.includes("dynamically imported");
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+          <div className="text-center max-w-sm">
+            <p className="text-base font-semibold text-slate-800 mb-2">
+              {isChunk ? "Nueva versión disponible" : "Algo salió mal"}
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              {isChunk
+                ? "Se desplegó una actualización. Recarga para continuar."
+                : "Ocurrió un error inesperado en la aplicación."}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#003DA5] hover:opacity-90 transition-opacity"
+            >
+              Recargar página
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function PageSpinner() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -51,6 +93,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <InstallPrompt />
+          <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
             <Routes>
               <Route path="/" element={<Index />} />
@@ -61,6 +104,7 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Layout>
+                      <ErrorBoundary>
                       <Suspense fallback={<PageSpinner />}>
                         <Routes>
                           <Route path="/dashboard" element={<Dashboard />} />
@@ -77,12 +121,14 @@ const App = () => (
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </Suspense>
+                      </ErrorBoundary>
                     </Layout>
                   </ProtectedRoute>
                 }
               />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
