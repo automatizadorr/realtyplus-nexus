@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
       };
       const { data: created, error: createErr } = await supabase
         .from("leads_campana")
-        .insert(insert)
+        .upsert(insert, { onConflict: "telefono", ignoreDuplicates: false })
         .select("id, tag_ids")
         .single();
       if (createErr) throw createErr;

@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     }));
 
     if (onlyUncontacted && phoneSet.size > 0) {
-      leads = leads.filter((l) => phoneSet.has(normPhone(l.telefono)));
+      leads = leads.filter((l) => !phoneSet.has(normPhone(l.telefono)));
     }
 
     return new Response(

@@ -16,10 +16,10 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.sheets-leads]
-verify_jwt = false
+verify_jwt = true
 
 [functions.resync-leads-sheet]
-verify_jwt = false
+verify_jwt = true
 
 [functions.voice-leads]
 verify_jwt = true
