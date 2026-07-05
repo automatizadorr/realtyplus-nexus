@@ -1,9 +1,4 @@
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
-import {
-  Document, Paragraph, TextRun, HeadingLevel,
-  AlignmentType, BorderStyle, Packer,
-} from "docx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -622,6 +617,7 @@ details[open] .arrow{transform:rotate(90deg)}
         };
       });
 
+      const XLSX = await import("xlsx");
       const wb = XLSX.utils.book_new();
 
       const wsResumen = XLSX.utils.json_to_sheet(resumen);
@@ -646,6 +642,7 @@ details[open] .arrow{transform:rotate(90deg)}
     setGeneratingDocx(true);
     try {
       const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle, Packer } = await import("docx");
 
       // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
       const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
