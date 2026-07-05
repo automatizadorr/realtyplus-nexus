@@ -336,16 +336,18 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
   if (!selectedContact) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background">
+      <div className="flex-1 flex items-center justify-center bg-slate-50/50 dark:bg-zinc-950/50">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, type: "spring" }}
-          className="text-center text-muted-foreground"
+          className="text-center"
         >
-          <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Selecciona un contacto</p>
-          <p className="text-sm">para ver la conversación</p>
+          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
+            <MessageSquare className="h-8 w-8 text-primary" />
+          </div>
+          <p className="font-semibold text-foreground">Selecciona un contacto</p>
+          <p className="text-sm text-muted-foreground">para ver la conversación</p>
         </motion.div>
       </div>
     );

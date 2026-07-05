@@ -54,6 +54,17 @@ function formatInboxTime(iso: string | null): string {
   return d.toLocaleDateString([], { day: "2-digit", month: "2-digit", year: "2-digit" });
 }
 
+// Color de avatar determinista a partir del nombre/teléfono (WhatsApp-like).
+const AVATAR_COLORS = [
+  "#0ea5e9", "#6366f1", "#8b5cf6", "#d946ef", "#ec4899",
+  "#f43f5e", "#f59e0b", "#10b981", "#14b8a6", "#3b82f6",
+];
+function avatarColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 interface ContactSidebarProps {
   selectedContact: LeadCampana | null;
   onSelectContact: (contact: LeadCampana) => void;
@@ -237,9 +248,14 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
     <div className="w-full md:w-80 border-r flex flex-col bg-card">
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <h2 className="font-bold text-foreground">Mensajes - Reactivacion Leads</h2>
-          <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20">
+            <MessageSquare className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate font-bold leading-tight text-foreground">Reactivación de leads</h2>
+            <p className="text-[11px] leading-none text-muted-foreground">Bandeja de mensajes</p>
+          </div>
+          <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{totalLabel}</span>
           {isAdmin && (
             <Button
               variant="ghost"
@@ -367,9 +383,9 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
               return (
                 <div
                   key={contact.id}
-                  className={`group relative flex items-stretch border-b transition-colors hover:bg-muted/50 ${
+                  className={`group relative flex items-center gap-2.5 border-b px-3 py-2 transition-colors hover:bg-muted/50 ${
                     isSelected ? "bg-muted border-l-2 border-l-primary" : ""
-                  } ${checked ? "bg-primary/5" : ""}`}
+                  } ${checked ? "bg-primary/5" : ""} ${selectionMode ? "pl-9" : ""}`}
                 >
                   {contact.is_ai_initiated && !selectionMode && !isSelected && <AiAgentStripe />}
                   {selectionMode && (
@@ -381,79 +397,86 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                       />
                     </div>
                   )}
-                  <div className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_3rem] overflow-hidden py-1.5 pr-1 ${selectionMode ? "pl-10" : "pl-2"}`}>
-                    <div className="min-w-0 overflow-hidden">
-                    <div className="flex min-w-0 items-center gap-1">
-                      <button
-                        onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                        className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-left text-sm font-semibold text-foreground"
-                      >
-                        {contact.archivado && <Archive className="h-3 w-3 text-muted-foreground shrink-0" />}
-                        <div className="flex min-w-0 items-center gap-1 flex-1">
-                          <span className="min-w-0 truncate">{contact.nombre || "Sin nombre"}</span>
-                          {contact.pais && (
-                            <Badge variant="outline" className="h-4 max-w-16 shrink-0 px-1 text-[10px] font-medium text-muted-foreground border-muted-foreground/30 inline-flex items-center gap-0.5 overflow-hidden">
-                              <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
-                              <span className="truncate">{contact.pais}</span>
-                            </Badge>
-                          )}
-                        </div>
-                      </button>
-                    </div>
+
+                  {/* Avatar */}
+                  <button
+                    onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
+                    className="relative shrink-0"
+                    aria-label={contact.nombre || "Contacto"}
+                  >
+                    <span
+                      className={`grid h-10 w-10 place-items-center rounded-full text-sm font-bold text-white ring-2 ${isSelected ? "ring-primary/40" : "ring-transparent"}`}
+                      style={{ background: avatarColor(contact.nombre || contact.telefono) }}
+                    >
+                      {(contact.nombre?.trim()?.[0] || "#").toUpperCase()}
+                    </span>
+                    {!selectionMode && unread > 0 && (
+                      <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-card">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Content */}
+                  <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                     <button
                       onClick={() => (selectionMode ? toggleId(contact.id) : handleSelect(contact))}
-                      className="mt-0.5 block w-full truncate text-left text-xs leading-4 text-muted-foreground"
+                      className="flex min-w-0 flex-col overflow-hidden text-left"
                     >
-                      {contact.last_message_text ? (
-                        <>
-                          <span className="opacity-60">
-                            {contact.last_message_dir === "outbound" ? "Tú: " : ""}
-                          </span>
-                          {contact.last_message_text}
-                        </>
-                      ) : (
-                        contact.telefono
-                      )}
+                      <div className="flex min-w-0 items-center gap-1">
+                        {contact.archivado && <Archive className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                        <span className={`min-w-0 truncate text-sm text-foreground ${unread > 0 ? "font-bold" : "font-semibold"}`}>
+                          {contact.nombre || "Sin nombre"}
+                        </span>
+                        {contact.pais && (
+                          <Badge variant="outline" className="inline-flex h-4 max-w-16 shrink-0 items-center gap-0.5 overflow-hidden border-muted-foreground/30 px-1 text-[10px] font-medium text-muted-foreground">
+                            <span aria-hidden className="text-[11px] leading-none">{countryFlag(contact.pais)}</span>
+                            <span className="truncate">{contact.pais}</span>
+                          </Badge>
+                        )}
+                        <span className={`ml-auto shrink-0 whitespace-nowrap pl-1 text-[10px] leading-none ${unread > 0 ? "font-semibold text-primary" : "text-muted-foreground"}`}>
+                          {formatInboxTime(contact.last_message_at)}
+                        </span>
+                      </div>
+                      <span className={`mt-0.5 block w-full truncate text-xs leading-4 ${unread > 0 ? "font-medium text-foreground/80" : "text-muted-foreground"}`}>
+                        {contact.last_message_text ? (
+                          <>
+                            <span className="opacity-60">{contact.last_message_dir === "outbound" ? "Tú: " : ""}</span>
+                            {contact.last_message_text}
+                          </>
+                        ) : (
+                          contact.telefono
+                        )}
+                      </span>
                     </button>
-                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
                       {contact.is_ai_initiated && <AiAgentBadge compact />}
                       <TagChips tagIds={contact.tag_ids} allTags={allTags} />
                     </div>
                   </div>
+
+                  {/* Meta: menú + bot */}
                   {!selectionMode && (
-                    <div className="relative z-10 flex w-12 shrink-0 flex-col items-end justify-start gap-1 pt-0.5 pr-1">
-                      <div className="flex items-center gap-1">
-                        <span className={`text-[10px] leading-none whitespace-nowrap ${unread > 0 ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                          {formatInboxTime(contact.last_message_at)}
-                        </span>
-                        <ContactContextMenu
-                          isAdmin={isAdmin}
-                          contact={{
-                            id: contact.id,
-                            nombre: contact.nombre || "",
-                            telefono: contact.telefono,
-                            archivado: contact.archivado,
-                            tag_ids: contact.tag_ids,
-                          } as LeadCampana}
-                          onChanged={() => refreshPhone(contact.telefono)}
-                          onDeleted={() => removePhone(contact.telefono)}
-                        />
-                      </div>
-                      <div className="flex flex-col items-center gap-0.5">
-                        {unread > 0 && (
-                          <Badge className="h-4 min-w-4 px-1 text-[10px] flex items-center justify-center">
-                            {unread}
-                          </Badge>
-                        )}
-                        {contact.bot_activo ? (
-                          <Bot className="h-3.5 w-3.5 text-primary" />
-                        ) : (
-                          <BotOff className="h-3.5 w-3.5 text-muted-foreground" />
-                        )}
-                      </div>
+                    <div className="relative z-10 flex shrink-0 flex-col items-center gap-1 self-start pt-0.5">
+                      <ContactContextMenu
+                        isAdmin={isAdmin}
+                        contact={{
+                          id: contact.id,
+                          nombre: contact.nombre || "",
+                          telefono: contact.telefono,
+                          archivado: contact.archivado,
+                          tag_ids: contact.tag_ids,
+                        } as LeadCampana}
+                        onChanged={() => refreshPhone(contact.telefono)}
+                        onDeleted={() => removePhone(contact.telefono)}
+                      />
+                      {contact.bot_activo ? (
+                        <Bot className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <BotOff className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
                     </div>
                   )}
-                  </div>
                 </div>
               );
             })
