@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { TagManager } from "@/components/tags/TagManager";
 import { UserAvatar } from "@/components/UserAvatar";
-import { Settings2, Check, LogOut } from "lucide-react";
+import { Settings2, Check, LogOut, Palette, SlidersHorizontal, Eye, UserCircle, Bell, Tag } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,20 +103,21 @@ export default function Settings() {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Settings2 className="h-6 w-6 text-accent" />
-        <div>
-          <h2 className="text-2xl font-bold">Configuración</h2>
-          <p className="text-sm text-muted-foreground">Personaliza la apariencia del CRM</p>
-        </div>
+      <div className="mb-6">
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Ajustes</p>
+        <h2 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight">
+          <Settings2 className="h-6 w-6 text-accent" />
+          Configuración
+        </h2>
+        <p className="text-sm text-muted-foreground">Apariencia, cuenta, notificaciones y etiquetas</p>
       </div>
 
       <Tabs defaultValue="apariencia">
-        <TabsList>
-          <TabsTrigger value="apariencia">Apariencia</TabsTrigger>
-          <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
-          <TabsTrigger value="notificaciones">Notificaciones</TabsTrigger>
-          <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
+        <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="apariencia" className="gap-1.5"><Palette className="h-4 w-4" />Apariencia</TabsTrigger>
+          <TabsTrigger value="cuenta" className="gap-1.5"><UserCircle className="h-4 w-4" />Cuenta</TabsTrigger>
+          <TabsTrigger value="notificaciones" className="gap-1.5"><Bell className="h-4 w-4" />Notificaciones</TabsTrigger>
+          <TabsTrigger value="etiquetas" className="gap-1.5"><Tag className="h-4 w-4" />Etiquetas</TabsTrigger>
         </TabsList>
 
         {/* ───────────── APARIENCIA ───────────── */}
@@ -124,7 +125,12 @@ export default function Settings() {
           {/* SECCIÓN A — Presets */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Presets de tema</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                  <Palette className="h-4 w-4" />
+                </span>
+                Presets de tema
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -186,7 +192,12 @@ export default function Settings() {
           {/* SECCIÓN B — Ajuste avanzado */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Ajuste avanzado</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </span>
+                Ajuste avanzado
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -257,7 +268,12 @@ export default function Settings() {
           {/* SECCIÓN C — Preview en vivo */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Vista previa</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                  <Eye className="h-4 w-4" />
+                </span>
+                Vista previa
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div
@@ -352,7 +368,12 @@ export default function Settings() {
         <TabsContent value="cuenta" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Datos de la cuenta</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                  <UserCircle className="h-4 w-4" />
+                </span>
+                Datos de la cuenta
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
@@ -413,7 +434,12 @@ export default function Settings() {
         <TabsContent value="notificaciones" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Preferencias de notificación</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                  <Bell className="h-4 w-4" />
+                </span>
+                Preferencias de notificación
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               {[
@@ -460,7 +486,12 @@ export default function Settings() {
         <TabsContent value="etiquetas" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Gestión de etiquetas</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                  <Tag className="h-4 w-4" />
+                </span>
+                Gestión de etiquetas
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <TagManager />
