@@ -46,6 +46,7 @@
             { "fieldId": "contenido",     "fieldValue": "={{ $('ENVIAR MENSAJE OPORTUNIDADES').first().json.body.mensaje }}" },
             { "fieldId": "canal",         "fieldValue": "whatsapp" },
             { "fieldId": "estado_envio",  "fieldValue": "enviado" },
+            { "fieldId": "wamid",         "fieldValue": "={{ $('Send message').item.json.messages[0].id }}" },
             { "fieldId": "nombre",        "fieldValue": "={{ $('ENVIAR MENSAJE OPORTUNIDADES').first().json.body.nombre }}" },
             { "fieldId": "pais",          "fieldValue": "={{ $('ENVIAR MENSAJE OPORTUNIDADES').first().json.body.pais }}" },
             { "fieldId": "campaign_name", "fieldValue": "={{ $('ENVIAR MENSAJE OPORTUNIDADES').first().json.body.campaign_name }}" }
