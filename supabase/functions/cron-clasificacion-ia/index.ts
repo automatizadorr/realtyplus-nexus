@@ -11,7 +11,7 @@
 //    respondió) o que tengan "Sigue en campaña" (estado_lead): siguen en campaña a la
 //    espera de que el lead conteste, no se les manda WhatsApp de segmento.
 //
-// Auth: header X-Webhook-Secret (CRON_TOKEN embebido, AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
+// Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
 //
 // Body (todos opcionales):
 //   ventana_horas: number   ventana de actividad (default 24)
@@ -39,10 +39,6 @@ const N8N_CLASIFICACION_URL =
   Deno.env.get("N8N_CLASIFICACION_URL") ??
   "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/etiquetas-leads-nuevos";
 
-// Token de respaldo embebido (mismo que el resto de crons): la cuenta no puede
-// gestionar secretos en este proyecto (gestionado por Lovable). El repo es privado.
-const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
-
 // Etiquetas que NO se envían al webhook: el lead sigue en campaña, pendiente de que
 // conteste. "Sin Respuesta al Bot" lo decide el clasificador; "Sigue en campaña" es el
 // estado de ciclo de vida (estado_lead) heredado del etiquetado de reactivación.
@@ -65,7 +61,6 @@ Deno.serve(async (req) => {
 
     const incoming = req.headers.get("x-webhook-secret") ?? "";
     const authorized =
-      incoming === CRON_TOKEN ||
       (!!CRON_SECRET && incoming === CRON_SECRET) ||
       (!!WEBHOOK_SECRET && incoming === WEBHOOK_SECRET);
     if (!authorized) return json({ error: "Unauthorized" }, 401);
@@ -264,7 +259,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-webhook-secret": WEBHOOK_SECRET ?? CRON_TOKEN,
+            "x-webhook-secret": WEBHOOK_SECRET ?? CRON_SECRET,
             "Authorization": `Bearer ${SERVICE_KEY}`,
             "apikey": SERVICE_KEY,
           },

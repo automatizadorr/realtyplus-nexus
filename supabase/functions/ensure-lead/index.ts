@@ -5,7 +5,7 @@
 //
 // Pensado para llamarse desde n8n al entrar un mensaje inbound (junto al guardado del mensaje).
 //
-// Auth: header X-Webhook-Secret (CRON_TOKEN embebido, AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
+// Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
 //
 // Body:
 //   telefono: string   (requerido) — el wa_id de WhatsApp (dígitos)
@@ -27,9 +27,6 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-// Mismo token embebido que el resto de funciones del cron (la cuenta no gestiona secretos).
-const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
-
 // Núcleo de dígitos del teléfono (descarta sufijo JID @s.whatsapp.net, +, espacios).
 const coreTel = (t: unknown) => (t ?? "").toString().split("@")[0].replace(/\D/g, "");
 
@@ -44,7 +41,6 @@ Deno.serve(async (req) => {
 
     const incoming = req.headers.get("x-webhook-secret") ?? "";
     const authorized =
-      incoming === CRON_TOKEN ||
       (!!CRON_SECRET && incoming === CRON_SECRET) ||
       (!!WEBHOOK_SECRET && incoming === WEBHOOK_SECRET);
     if (!authorized) return json({ error: "Unauthorized" }, 401);

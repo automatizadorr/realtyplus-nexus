@@ -5,7 +5,7 @@
 // etiqueta con conversaciones y métricas (mismo formato que el botón "Enviar a n8n
 // /expansion" de TaggedExport) y lo postea una sola vez. EXCLUYE "Sigue en campaña".
 //
-// Auth: header X-Webhook-Secret (CRON_TOKEN embebido, AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
+// Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
 //
 // Body (todos opcionales):
 //   ventana_horas: number   ventana de actividad a incluir (default 24)
@@ -35,10 +35,6 @@ const json = (body: unknown, status = 200) =>
 const N8N_EXPANSION_URL =
   Deno.env.get("N8N_EXPANSION_URL") ??
   "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/auto-tag-chile";
-
-// Token de respaldo embebido (mismo que cron-etiquetado-ia): la cuenta no puede
-// gestionar secretos en este proyecto (gestionado por Lovable). El repo es privado.
-const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
 
 // Estado que NO va a expansión: el lead aún no contestó, sigue en campaña.
 const ETIQUETA_NO_ENVIAR = "Sigue en campaña";
@@ -70,7 +66,6 @@ Deno.serve(async (req) => {
 
     const incoming = req.headers.get("x-webhook-secret") ?? "";
     const authorized =
-      incoming === CRON_TOKEN ||
       (!!CRON_SECRET && incoming === CRON_SECRET) ||
       (!!WEBHOOK_SECRET && incoming === WEBHOOK_SECRET);
     if (!authorized) return json({ error: "Unauthorized" }, 401);
@@ -292,7 +287,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-webhook-secret": WEBHOOK_SECRET ?? CRON_TOKEN,
+          "x-webhook-secret": WEBHOOK_SECRET ?? CRON_SECRET,
           "Authorization": `Bearer ${SERVICE_KEY}`,
           "apikey": SERVICE_KEY,
         },
@@ -306,11 +301,7 @@ Deno.serve(async (req) => {
       }
     } catch (_e) { /* sigue sin Excel */ }
 
-    // Secreto de SALIDA: usa N8N_WEBHOOK_SECRET si está seteado; si no (este proyecto
-    // es gestionado por Lovable y no se pueden crear secrets), cae al CRON_TOKEN
-    // embebido para NUNCA postear sin secreto. n8n valida x-webhook-secret contra su
-    // env N8N_WEBHOOK_SECRET, que debe valer este mismo token.
-    const outgoingSecret = WEBHOOK_SECRET || CRON_TOKEN;
+    const outgoingSecret = WEBHOOK_SECRET || CRON_SECRET || "";
 
     let n8n_status = 0;
     let n8n_response = "";

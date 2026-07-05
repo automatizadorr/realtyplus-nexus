@@ -37,10 +37,6 @@ const N8N_AUTO_TAG_URL =
   Deno.env.get("N8N_AUTO_TAG_URL") ??
   "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/auto-tag-chile";
 
-// Token de respaldo embebido para autorizar el disparo del cron. Se usa porque
-// la cuenta no puede gestionar secretos en este proyecto (gestionado por Lovable)
-// y N8N_WEBHOOK_SECRET no está disponible en texto plano. El repo es privado.
-const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
 
 // Único estado que NO se envía a expansión: "Sigue en campaña" (el lead aún no ha
 // contestado, sigue trabajándose en campaña). El resto SÍ se envía, incluido
@@ -78,7 +74,6 @@ Deno.serve(async (req) => {
     // o, si se conoce, con el N8N_WEBHOOK_SECRET compartido.
     const incoming = req.headers.get("x-webhook-secret") ?? "";
     const authorized =
-      incoming === CRON_TOKEN ||
       (!!CRON_SECRET && incoming === CRON_SECRET) ||
       (!!WEBHOOK_SECRET && incoming === WEBHOOK_SECRET);
     if (!authorized) {

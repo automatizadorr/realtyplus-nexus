@@ -12,7 +12,7 @@
 // sigue trabajándose en campaña; no va al reporte de expansión), igual que el cuerpo
 // del correo y enviar-expansion.
 //
-// Auth: header X-Webhook-Secret (CRON_TOKEN embebido, AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
+// Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o N8N_WEBHOOK_SECRET).
 // Body: { ventana_horas?: number, pais?: string }
 // Respuesta: { success, filename, base64, total_leads, total_etiquetas }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -29,8 +29,6 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-
-const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
 
 // ── Helpers (réplica de TaggedExport) ───────────────────────
 const normPhone = (t: unknown) => (t ?? "").toString().split("@")[0].replace(/\D/g, "");
@@ -58,7 +56,6 @@ Deno.serve(async (req) => {
 
     const incoming = req.headers.get("x-webhook-secret") ?? "";
     const authorized =
-      incoming === CRON_TOKEN ||
       (!!CRON_SECRET && incoming === CRON_SECRET) ||
       (!!WEBHOOK_SECRET && incoming === WEBHOOK_SECRET);
     if (!authorized) return json({ error: "Unauthorized" }, 401);
