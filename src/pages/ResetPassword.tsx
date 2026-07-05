@@ -54,7 +54,11 @@ export default function ResetPassword() {
     }
   };
 
-  if (!isRecovery && !window.location.hash.includes("type=recovery")) {
+  const _url = new URL(window.location.href);
+  const hasRecoveryToken =
+    _url.hash.includes("type=recovery") ||
+    _url.searchParams.get("type") === "recovery";
+  if (!isRecovery && !hasRecoveryToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <Card className="w-full max-w-md shadow-xl border-t-8" style={{ borderTopColor: BRAND.navy }}>
