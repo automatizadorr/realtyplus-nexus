@@ -6,12 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, CheckCircle } from "lucide-react";
+import { KeyRound, CheckCircle, Lock } from "lucide-react";
+import realtyplusLogo from "@/assets/realtyplus-logo.png";
 
-const BRAND = {
-  navy: "#0f2b5a",
-  red: "#cf142b",
-};
+const NAVY = "#003DA5";
+const RED  = "#DC1C2E";
+
+function GradientCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <Card className={`w-full max-w-md shadow-2xl overflow-hidden border-0 ring-1 ring-black/5 ${className}`}>
+      <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${NAVY}, ${RED})` }} />
+      {children}
+    </Card>
+  );
+}
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -24,9 +32,7 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsRecovery(true);
-      }
+      if (event === "PASSWORD_RECOVERY") setIsRecovery(true);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -41,11 +47,9 @@ export default function ResetPassword() {
       toast({ title: "Error", description: "Las contraseñas no coinciden.", variant: "destructive" });
       return;
     }
-
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -58,89 +62,127 @@ export default function ResetPassword() {
   const hasRecoveryToken =
     _url.hash.includes("type=recovery") ||
     _url.searchParams.get("type") === "recovery";
+
+  const wrapper = "min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4";
+
   if (!isRecovery && !hasRecoveryToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-        <Card className="w-full max-w-md shadow-xl border-t-8" style={{ borderTopColor: BRAND.navy }}>
-          <CardHeader className="text-center">
-            <CardTitle style={{ color: BRAND.navy }}>Enlace inválido</CardTitle>
-            <CardDescription>Este enlace de recuperación no es válido o ha expirado.</CardDescription>
+      <div className={wrapper}>
+        <img src={realtyplusLogo} alt="Realtyplus" className="h-10 object-contain mb-6" />
+        <GradientCard>
+          <CardHeader className="text-center pt-6">
+            <CardTitle className="font-display font-bold text-xl" style={{ color: NAVY }}>
+              Enlace inválido
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Este enlace de recuperación no es válido o ha expirado.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => navigate("/auth")} style={{ backgroundColor: BRAND.navy }} className="text-white">
+          <CardContent className="text-center pb-6">
+            <Button onClick={() => navigate("/auth")} className="text-white" style={{ backgroundColor: NAVY }}>
               Volver al inicio de sesión
             </Button>
           </CardContent>
-        </Card>
+        </GradientCard>
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-        <Card className="w-full max-w-md shadow-xl border-t-8" style={{ borderTopColor: BRAND.navy }}>
-          <CardContent className="pt-8 text-center space-y-4">
-            <CheckCircle className="mx-auto h-16 w-16" style={{ color: BRAND.navy }} />
-            <h2 className="text-xl font-bold" style={{ color: BRAND.navy }}>¡Contraseña actualizada!</h2>
-            <p className="text-slate-600 text-sm">Redirigiendo al portal…</p>
+      <div className={wrapper}>
+        <img src={realtyplusLogo} alt="Realtyplus" className="h-10 object-contain mb-6" />
+        <GradientCard>
+          <CardContent className="pt-8 pb-8 text-center space-y-4">
+            <CheckCircle className="mx-auto h-14 w-14" style={{ color: NAVY }} />
+            <h2 className="font-display font-bold text-xl" style={{ color: NAVY }}>
+              ¡Contraseña actualizada!
+            </h2>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-400">
+              Redirigiendo al portal…
+            </p>
           </CardContent>
-        </Card>
+        </GradientCard>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 p-4">
-      <div className="mb-6">
-        <img src="/logo.png" alt="Realtyplus" className="mx-auto h-20 object-contain" />
-      </div>
-      <Card className="w-full max-w-md shadow-2xl border-t-8" style={{ borderTopColor: BRAND.navy }}>
-        <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-2xl font-extrabold" style={{ color: BRAND.navy }}>
+    <div className={wrapper}>
+      <img src={realtyplusLogo} alt="Realtyplus" className="h-10 object-contain mb-6" />
+      <GradientCard>
+        <CardHeader className="text-center space-y-1 pt-6 pb-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">Portal CRM · IA</p>
+          <CardTitle className="font-display font-extrabold text-2xl tracking-tight" style={{ color: NAVY }}>
             Nueva contraseña
           </CardTitle>
-          <CardDescription>Ingresa tu nueva contraseña para acceder al Portal CRM</CardDescription>
+          <CardDescription>
+            Ingresa tu nueva contraseña para acceder al Portal CRM
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="pb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-700">Nueva contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                disabled={loading}
-                className="focus-visible:ring-[#0f2b5a]"
-              />
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm text-slate-700">Nueva contraseña</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  disabled={loading}
+                  className="pl-9 focus-visible:ring-[#003DA5]"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-slate-700">Confirmar contraseña</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                disabled={loading}
-                className="focus-visible:ring-[#0f2b5a]"
-              />
+
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword" className="text-sm text-slate-700">Confirmar contraseña</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  disabled={loading}
+                  className="pl-9 focus-visible:ring-[#003DA5]"
+                />
+              </div>
             </div>
+
             <Button
               type="submit"
-              className="w-full text-white shadow-md hover:opacity-90"
-              style={{ backgroundColor: BRAND.red }}
+              className="w-full text-white shadow-md transition-all hover:scale-[1.01] hover:shadow-lg active:scale-[0.99]"
+              style={{ backgroundColor: RED }}
               disabled={loading}
             >
               {loading ? "Actualizando…" : (
-                <><KeyRound className="mr-2 h-5 w-5" />Restablecer contraseña</>
+                <><KeyRound className="mr-2 h-4 w-4" />Restablecer contraseña</>
               )}
             </Button>
           </form>
+
+          <div className="mt-5 text-center">
+            <button
+              type="button"
+              onClick={() => navigate("/auth")}
+              className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              Volver al inicio de sesión
+            </button>
+          </div>
         </CardContent>
-      </Card>
+
+        <div className="px-6 py-3 bg-slate-50 border-t text-center font-mono text-[10px] text-slate-500 tracking-wide">
+          <span className="font-semibold" style={{ color: NAVY }}>Soporte</span>
+          {" · "}+34 911 107 727 · contacto@realty-plus.org
+        </div>
+      </GradientCard>
     </div>
   );
 }
