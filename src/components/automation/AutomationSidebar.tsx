@@ -64,6 +64,17 @@ function estadoColor(estado: string | null | undefined) {
   return "text-muted-foreground bg-muted border-border";
 }
 
+// Color de avatar determinista a partir del nombre/teléfono (WhatsApp-like).
+const AVATAR_COLORS = [
+  "#0ea5e9", "#6366f1", "#8b5cf6", "#d946ef", "#ec4899",
+  "#f43f5e", "#f59e0b", "#10b981", "#14b8a6", "#3b82f6",
+];
+function avatarColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 export function AutomationSidebar({ selectedContact, onSelectContact, allTags }: Props) {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 400);
@@ -260,9 +271,14 @@ export function AutomationSidebar({ selectedContact, onSelectContact, allTags }:
     <div className="w-full md:w-80 border-r flex flex-col bg-card">
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-primary" />
-          <h2 className="font-bold text-foreground">Mensajes - Oportunidades</h2>
-          <span className="ml-auto text-xs text-muted-foreground">{totalLabel}</span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20">
+            <Zap className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate font-bold leading-tight text-foreground">Oportunidades</h2>
+            <p className="text-[11px] leading-none text-muted-foreground">Conversaciones del agente</p>
+          </div>
+          <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{totalLabel}</span>
           {isAdmin && (
             <Button
               variant="ghost"
@@ -401,9 +417,19 @@ export function AutomationSidebar({ selectedContact, onSelectContact, allTags }:
                     onClick={() => (selectionMode ? togglePhone(c.telefono) : handleSelect(c))}
                     className={`flex-1 min-w-0 text-left py-2 pr-2 ${selectionMode ? "pl-10" : "pl-2"}`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                        {(c.nombre?.[0] || "?").toUpperCase()}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative shrink-0">
+                        <span
+                          className="grid h-10 w-10 place-items-center rounded-full text-sm font-bold text-white"
+                          style={{ background: avatarColor(c.nombre || c.telefono) }}
+                        >
+                          {(c.nombre?.trim()?.[0] || "#").toUpperCase()}
+                        </span>
+                        {!selectionMode && unread > 0 && (
+                          <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-card">
+                            {unread > 9 ? "9+" : unread}
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
@@ -440,11 +466,6 @@ export function AutomationSidebar({ selectedContact, onSelectContact, allTags }:
                           {c.ultimo_dia != null && c.ultimo_dia > 0 && (
                             <Badge variant="outline" className="h-4 px-1 text-[9px]">
                               Día {c.ultimo_dia}
-                            </Badge>
-                          )}
-                          {unread > 0 && (
-                            <Badge className="h-4 min-w-4 px-1 text-[10px] flex items-center justify-center bg-destructive text-destructive-foreground">
-                              {unread}
                             </Badge>
                           )}
                           <TagChips tagIds={c.tag_ids} allTags={allTags} />
