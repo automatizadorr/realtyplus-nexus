@@ -70,15 +70,17 @@ Deno.serve(async (req) => {
     // Auth + admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: authErr } = await userClient.auth.getClaims(token);
-    if (authErr || !claimsData?.claims?.sub) return json({ error: "Unauthorized" }, 401);
+    let userId: string | null = null;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      userId = payload?.sub ?? null;
+      if (payload?.exp && payload.exp * 1000 < Date.now()) userId = null;
+    } catch { /* invalid token */ }
+    if (!userId) return json({ error: "Unauthorized" }, 401);
     const svc = createClient(SUPABASE_URL, SERVICE_KEY);
     const { data: isAdmin } = await svc.rpc("has_role", {
-      _user_id: claimsData.claims.sub,
+      _user_id: userId,
       _role: "admin",
     });
     if (!isAdmin) return json({ error: "Forbidden: admin role required" }, 403);
