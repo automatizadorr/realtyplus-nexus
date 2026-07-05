@@ -39,7 +39,7 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     label: "Reactivación",
     items: [
       { title: "Mensajes · Reactivación", url: "/inbox", icon: MessageSquare },
-      { title: "Expansión", url: "/tagged", icon: Tag },
+      { title: "Descargas - Expansión", url: "/tagged", icon: Tag },
       { title: "Etiquetas IA", url: "/etiquetas", icon: Tag },
     ],
   },
