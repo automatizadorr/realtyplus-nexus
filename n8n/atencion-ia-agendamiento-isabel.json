@@ -1,5 +1,5 @@
 {
-  "name": "RealtyPlus — Atención IA iSabel (Agendamiento Inteligente) [OFICIAL]",
+  "name": "RealtyPlus — Atención IA Sofía (Agendamiento Inteligente) [OFICIAL]",
   "nodes": [
     {
       "parameters": {
@@ -155,7 +155,7 @@
         "text": "=Nombre del usuario: {{ $json.contacts[0].profile.name }} {{ $json.NOMBRES }} {{ $json.APELLIDOS }}\n\nMensaje del usuario o transcripción de audio:{{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}",
         "needsFallback": true,
         "options": {
-          "systemMessage": "=# iSabel — Asesora Virtual RealtyPlus. (Prompt completo conservado en n8n; ver nodo AI Agent en el editor). Responde SIEMPRE en JSON { \"messages\": [ {\"text\": \"...\"} ] }."
+          "systemMessage": "=# Sofía — Asesora Virtual RealtyPlus. (Prompt completo conservado en n8n; ver nodo AI Agent en el editor). Responde SIEMPRE en JSON { \"messages\": [ {\"text\": \"...\"} ] }.\n\n⚠️ REGLA ANTI-BUCLE Y ESCALACIÓN (OBLIGATORIA):\nSi detectas que la conversación está en bucle — el lead repite la misma pregunta ≥3 veces sin avance real, o lleva más de 8 turnos sin alcanzar una cita o asignación de agente — DEBES escalar. No inventes soluciones nuevas ni repitas el mismo argumento.\n\nCuando escales:\n1. Tu campo \"messages\" debe contener SOLO: \"Entiendo que aún no hemos encontrado lo que necesitas. Voy a comunicarte con uno de nuestros asesores especializados, que se pondrá contigo en breve. 🙏\"\n2. Agrega al JSON: \"escalado\": true, \"motivo_escalacion\": \"<motivo breve en español>\"\n\nFormato completo cuando escalas:\n{\"messages\": [{\"text\": \"Entiendo que aún no hemos encontrado lo que necesitas. Voy a comunicarte con uno de nuestros asesores especializados, que se pondrá contigo en breve. 🙏\"}], \"escalado\": true, \"motivo_escalacion\": \"bucle: N turnos sin avance\"}\n\nNUNCA afirmes que enviaste una invitación de Google Meet sin haber llamado primero a la tool Crea1 y recibido un eventId real. Si la tool falla, informa al lead con honestidad."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -328,9 +328,9 @@
     {
       "parameters": {
         "sendTo": "realtyplus.leads@gmail.com",
-        "subject": "Error del agente ISABEL",
+        "subject": "Error del agente SOFIA",
         "emailType": "text",
-        "message": "=Error Isabel agent\nFecha y hora: {{ $now }}\nnombre: {{ $('Edit Fields1').item.json.contacts[0].profile.name }}\ntelefono:{{ $('Edit Fields1').item.json.contacts[0].user_id }}\n",
+        "message": "=Error Sofia agent\nFecha y hora: {{ $now }}\nnombre: {{ $('Edit Fields1').item.json.contacts[0].profile.name }}\ntelefono:{{ $('Edit Fields1').item.json.contacts[0].user_id }}\n",
         "options": {}
       },
       "type": "n8n-nodes-base.gmail",
@@ -437,7 +437,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// NEXUS PROTOCOL: Parseador + Interceptor de Reservas v2\nconst items = $input.all();\n\nfor (const item of items) {\n  let rawOutput = item.json.output || item.json.text || \"\";\n  let parsedMessages = [];\n  let reservaData = null;\n\n  if (typeof rawOutput === 'string') {\n    rawOutput = rawOutput.replace(/```json/gi, \"\").replace(/```/g, \"\").trim();\n  }\n\n  function extractJsonFromString(str) {\n    const jsonMatch = str.match(/\\{[\\s\\S]*\\}/s);\n    if (jsonMatch) { try { return JSON.parse(jsonMatch[0]); } catch(e) { return null; } }\n    return null;\n  }\n\n  try {\n    let jsonData = typeof rawOutput === 'string' ? JSON.parse(rawOutput) : rawOutput;\n    if (jsonData.messages && Array.isArray(jsonData.messages)) { parsedMessages = jsonData.messages.map(m => m.text || m.mensaje || \"\"); } else { parsedMessages = [rawOutput]; }\n    if (jsonData.reserva && jsonData.reserva.email) { reservaData = jsonData.reserva; }\n  } catch (error) {\n    if (typeof rawOutput === 'string') {\n      const extracted = extractJsonFromString(rawOutput);\n      if (extracted) {\n        if (extracted.messages && Array.isArray(extracted.messages)) { parsedMessages = extracted.messages.map(m => m.text || m.mensaje || \"\"); } else { parsedMessages = [rawOutput]; }\n        if (extracted.reserva && extracted.reserva.email) { reservaData = extracted.reserva; }\n      } else { parsedMessages = [rawOutput]; }\n    } else { parsedMessages = [rawOutput]; }\n  }\n\n  item.json.mensaje_1 = parsedMessages[0] || \"\";\n  item.json.mensaje_2 = parsedMessages[1] || \"\";\n  item.json.mensaje_3 = parsedMessages[2] || \"\";\n  item.json.datos_reserva = reservaData;\n  delete item.json.output;\n}\n\nreturn items;"
+        "jsCode": "// NEXUS PROTOCOL: Parseador + Interceptor de Reservas v2 + Detector de Escalación\nconst items = $input.all();\n\nfor (const item of items) {\n  let rawOutput = item.json.output || item.json.text || \"\";\n  let parsedMessages = [];\n  let reservaData = null;\n  let escalado = false;\n  let motivoEscalacion = \"\";\n\n  if (typeof rawOutput === 'string') {\n    rawOutput = rawOutput.replace(/```json/gi, \"\").replace(/```/g, \"\").trim();\n  }\n\n  function extractJsonFromString(str) {\n    const jsonMatch = str.match(/\\{[\\s\\S]*\\}/s);\n    if (jsonMatch) { try { return JSON.parse(jsonMatch[0]); } catch(e) { return null; } }\n    return null;\n  }\n\n  try {\n    let jsonData = typeof rawOutput === 'string' ? JSON.parse(rawOutput) : rawOutput;\n    if (jsonData.messages && Array.isArray(jsonData.messages)) { parsedMessages = jsonData.messages.map(m => m.text || m.mensaje || \"\"); } else { parsedMessages = [rawOutput]; }\n    if (jsonData.reserva && jsonData.reserva.email) { reservaData = jsonData.reserva; }\n    if (jsonData.escalado === true) { escalado = true; motivoEscalacion = jsonData.motivo_escalacion || \"bucle detectado\"; }\n  } catch (error) {\n    if (typeof rawOutput === 'string') {\n      const extracted = extractJsonFromString(rawOutput);\n      if (extracted) {\n        if (extracted.messages && Array.isArray(extracted.messages)) { parsedMessages = extracted.messages.map(m => m.text || m.mensaje || \"\"); } else { parsedMessages = [rawOutput]; }\n        if (extracted.reserva && extracted.reserva.email) { reservaData = extracted.reserva; }\n        if (extracted.escalado === true) { escalado = true; motivoEscalacion = extracted.motivo_escalacion || \"bucle detectado\"; }\n      } else { parsedMessages = [rawOutput]; }\n    } else { parsedMessages = [rawOutput]; }\n  }\n\n  item.json.mensaje_1 = parsedMessages[0] || \"\";\n  item.json.mensaje_2 = parsedMessages[1] || \"\";\n  item.json.mensaje_3 = parsedMessages[2] || \"\";\n  item.json.datos_reserva = reservaData;\n  item.json._escalado = escalado;\n  item.json._motivo_escalacion = motivoEscalacion;\n  delete item.json.output;\n}\n\nreturn items;"
       },
       "id": "92ea15d8-cac2-4ef6-94d4-dc5b2419f695",
       "name": "🧩 Parseador Nexus",
@@ -535,6 +535,129 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [-1200, 5456]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Genera clave Redis para el contador diario de mensajes del lead.\n// Clave: wa:daily:{tel}:{YYYY-MM-DD UTC}\n// El límite duro evita bucles infinitos incluso si el prompt falla.\nconst tel = $('WhatsApp Trigger1').item.json.contacts[0].wa_id || '';\nconst fecha = new Date().toISOString().split('T')[0];\nconst counterKey = `wa:daily:${tel}:${fecha}`;\nreturn $input.all().map(item => ({ json: { ...item.json, _counter_key: counterKey, _tel: tel } }));"
+      },
+      "id": "aa111111-bb22-cc33-dd44-ee5555555501",
+      "name": "🔢 Code Contador Diario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [168, 5648]
+    },
+    {
+      "parameters": {
+        "operation": "incr",
+        "key": "={{ $json._counter_key }}"
+      },
+      "id": "aa111111-bb22-cc33-dd44-ee5555555502",
+      "name": "📊 Redis INCR",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [344, 5648],
+      "credentials": { "redis": { "id": "EbQ7xCJhHb7eikjC", "name": "Redis account" } }
+    },
+    {
+      "parameters": {
+        "operation": "expire",
+        "key": "={{ $json._counter_key }}",
+        "ttl": 86400
+      },
+      "id": "aa111111-bb22-cc33-dd44-ee5555555503",
+      "name": "⏳ Redis EXPIRE",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [344, 5808],
+      "credentials": { "redis": { "id": "EbQ7xCJhHb7eikjC", "name": "Redis account" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            { "id": "limit-check", "leftValue": "={{ $json.value }}", "rightValue": 10, "operator": { "type": "number", "operation": "gte" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aa111111-bb22-cc33-dd44-ee5555555504",
+      "name": "🚫 IF Límite Diario",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [520, 5648]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            { "id": "escalado-check", "leftValue": "={{ $json._escalado }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aa111111-bb22-cc33-dd44-ee5555555505",
+      "name": "🚦 ¿Escalar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1200, 5744]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1070824479455864",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+        "textBody": "={{ $json.mensaje_1 || 'Entiendo que aún no hemos encontrado lo que necesitas. Voy a comunicarte con uno de nuestros asesores especializados, que se pondrá contigo en breve. 🙏' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [1200, 5936],
+      "id": "aa111111-bb22-cc33-dd44-ee5555555506",
+      "name": "📞 WhatsApp Handoff",
+      "credentials": { "whatsAppApi": { "id": "aahJDBWDqqC6G26B", "name": "RealtyPlus- enviar Mensaje" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/tag-lead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-webhook-secret", "value": "={{ $env.N8N_WEBHOOK_SECRET }}" },
+            { "name": "Authorization", "value": "Bearer <SERVICE_KEY>" },
+            { "name": "apikey", "value": "<SERVICE_KEY>" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ telefono: $('WhatsApp Trigger1').item.json.contacts[0].wa_id, tag_nombres: ['Agente asignado'], grupo_exclusivo: 'estado_lead', resumen: 'Escalado por Sofía: ' + ($json._motivo_escalacion || 'límite diario') }) }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "aa111111-bb22-cc33-dd44-ee5555555507",
+      "name": "🏷️ Marcar Agente Asignado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1424, 5936]
+    },
+    {
+      "parameters": {
+        "sendTo": "expansion@realty-plus.org",
+        "subject": "=⚠️ Escalación Sofía — Lead necesita asesor humano",
+        "emailType": "html",
+        "message": "=<h2>Lead escalado por Sofía</h2><p><b>Teléfono:</b> {{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}</p><p><b>Nombre:</b> {{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}</p><p><b>Motivo:</b> {{ $json._motivo_escalacion || 'Límite diario de mensajes alcanzado' }}</p><p><b>Hora:</b> {{ $now }}</p><p>El lead ya fue marcado como <b>Agente asignado</b> en Supabase. Revisar en el CRM.</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1648, 5936],
+      "id": "aa111111-bb22-cc33-dd44-ee5555555508",
+      "name": "🔔 Alerta Equipo Escalación",
+      "credentials": { "gmailOAuth2": { "id": "QFJyrUfsgznJw9M6", "name": "realtyplusleads@gmail" } }
     }
   ],
   "connections": {
@@ -549,7 +672,7 @@
     "AI Agent": { "main": [[{ "node": "🧩 Parseador Nexus", "type": "main", "index": 0 }, { "node": "🧩 Parseador Nexus3", "type": "main", "index": 0 }], [{ "node": "Send a message", "type": "main", "index": 0 }]] },
     "Supabase Vector Store1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
     "Embeddings OpenAI1": { "ai_embedding": [[{ "node": "Supabase Vector Store1", "type": "ai_embedding", "index": 0 }]] },
-    "Edit Fields1": { "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]] },
+    "Edit Fields1": { "main": [[{ "node": "🔢 Code Contador Diario", "type": "main", "index": 0 }]] },
     "Google Gemini Chat Model1": { "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 1 }]] },
     "📅 Ejecutar Reserva (Standard)1": { "main": [[{ "node": "Send a message2", "type": "main", "index": 0 }]] },
     "🔀 ¿Hay Reserva?": { "main": [[{ "node": "📅 Ejecutar Reserva (Standard)1", "type": "main", "index": 0 }]] },
@@ -567,11 +690,28 @@
     "Switch": { "main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }], [{ "node": "Edit Fields", "type": "main", "index": 0 }], [{ "node": "Send a message1", "type": "main", "index": 0 }]] },
     "Loop Over Items": { "main": [[], [{ "node": "Create a row", "type": "main", "index": 0 }]] },
     "Wait2": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] },
-    "🧩 Parseador Nexus": { "main": [[{ "node": "🔀 ¿Hay Reserva?", "type": "main", "index": 0 }]] },
+    "🧩 Parseador Nexus": { "main": [[{ "node": "🚦 ¿Escalar?", "type": "main", "index": 0 }]] },
     "Get row(s) in sheet": { "main": [[{ "node": "Switch1", "type": "main", "index": 0 }]] },
     "Switch1": { "main": [[{ "node": "Edit Fields1", "type": "main", "index": 0 }], [{ "node": "Edit Fields3", "type": "main", "index": 0 }]] },
-    "Edit Fields3": { "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]] },
-    "Registrar en Supabase1": { "main": [[{ "node": "Wait2", "type": "main", "index": 0 }]] }
+    "Edit Fields3": { "main": [[{ "node": "🔢 Code Contador Diario", "type": "main", "index": 0 }]] },
+    "Registrar en Supabase1": { "main": [[{ "node": "Wait2", "type": "main", "index": 0 }]] },
+    "🔢 Code Contador Diario": { "main": [[{ "node": "📊 Redis INCR", "type": "main", "index": 0 }]] },
+    "📊 Redis INCR": { "main": [[{ "node": "⏳ Redis EXPIRE", "type": "main", "index": 0 }]] },
+    "⏳ Redis EXPIRE": { "main": [[{ "node": "🚫 IF Límite Diario", "type": "main", "index": 0 }]] },
+    "🚫 IF Límite Diario": {
+      "main": [
+        [{ "node": "📞 WhatsApp Handoff", "type": "main", "index": 0 }],
+        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "🚦 ¿Escalar?": {
+      "main": [
+        [{ "node": "📞 WhatsApp Handoff", "type": "main", "index": 0 }],
+        [{ "node": "🔀 ¿Hay Reserva?", "type": "main", "index": 0 }]
+      ]
+    },
+    "📞 WhatsApp Handoff": { "main": [[{ "node": "🏷️ Marcar Agente Asignado", "type": "main", "index": 0 }]] },
+    "🏷️ Marcar Agente Asignado": { "main": [[{ "node": "🔔 Alerta Equipo Escalación", "type": "main", "index": 0 }]] }
   },
   "pinData": {},
   "meta": { "instanceId": "a549832225d9c0406174cec76d918a3746d50e0acf5608a79c6f16721bd3abe6" }
