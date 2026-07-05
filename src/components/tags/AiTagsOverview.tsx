@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Tag, Users } from "lucide-react";
+import { Loader2, Tag, Users, ArrowUpRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { orderTags } from "@/lib/permanentTags";
+import { motion } from "framer-motion";
+import { AnimatedNumber, kpiGrid, kpiItem } from "@/components/AnimatedNumber";
 
 interface TagWithCount {
   id: string;
@@ -74,24 +76,32 @@ export function AiTagsOverview() {
 
   function TagCard({ tag }: { tag: TagWithCount }) {
     return (
-      <button
+      <motion.button
+        variants={kpiItem}
         onClick={() => navigate(`/tagged?tag=${tag.id}`)}
-        className="group text-left rounded-xl border p-4 hover:shadow-md transition-all duration-150"
+        className="group relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         style={{ borderColor: `${tag.color}55`, background: `${tag.color}0d` }}
       >
-        <span
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full mb-3"
-          style={{ background: `${tag.color}22`, color: tag.color, border: `1px solid ${tag.color}55` }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: tag.color }} />
-          {tag.nombre}
-        </span>
-        <div className="flex items-center gap-1.5 text-2xl font-bold" style={{ color: tag.color }}>
-          <Users size={15} />
-          {tag.leadCount}
+        <span className="absolute inset-x-0 top-0 h-1" style={{ background: tag.color }} aria-hidden="true" />
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className="mb-3 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+            style={{ background: `${tag.color}22`, color: tag.color, border: `1px solid ${tag.color}55` }}
+          >
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: tag.color }} />
+            {tag.nombre}
+          </span>
+          <ArrowUpRight
+            className="h-4 w-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-70"
+            style={{ color: tag.color }}
+          />
         </div>
-        <p className="text-[11px] text-muted-foreground mt-0.5">leads</p>
-      </button>
+        <div className="flex items-center gap-1.5 text-2xl font-bold tabular-nums" style={{ color: tag.color }}>
+          <Users size={15} />
+          <AnimatedNumber value={tag.leadCount} />
+        </div>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">leads</p>
+      </motion.button>
     );
   }
 
@@ -100,24 +110,26 @@ export function AiTagsOverview() {
       {/* Etiquetas permanentes */}
       {permanentes.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <h3 className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Tag size={13} /> Etiquetas principales
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground/80">{permanentes.length}</span>
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {permanentes.map((tag) => <TagCard key={tag.id} tag={tag} />)}
-          </div>
+          </motion.div>
         </div>
       )}
 
       {/* Etiquetas IA y custom */}
       {custom.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <h3 className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Tag size={13} /> Etiquetas IA
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground/80">{custom.length}</span>
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {custom.map((tag) => <TagCard key={tag.id} tag={tag} />)}
-          </div>
+          </motion.div>
         </div>
       )}
 
