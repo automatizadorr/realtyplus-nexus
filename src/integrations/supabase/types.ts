@@ -657,7 +657,6 @@ export type Database = {
           last_message_text: string | null
           nombre: string | null
           pais: string | null
-          tag_ids: string[] | null
           telefono: string | null
           total_mensajes: number | null
           ultimo_dia: number | null
