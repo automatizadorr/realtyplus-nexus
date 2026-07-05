@@ -652,7 +652,7 @@ details[open] .arrow{transform:rotate(90deg)}
         spacing: { before: 200, after: 200 },
       });
 
-      const children: Paragraph[] = [];
+      const children: InstanceType<typeof Paragraph>[] = [];
 
       // Título del documento
       children.push(new Paragraph({
