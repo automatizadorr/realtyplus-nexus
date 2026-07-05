@@ -68,6 +68,30 @@ All colors MUST be HSL.
     text-rendering: optimizeLegibility;
   }
 
+  /* Sistema tipográfico: TÍTULOS en la display (Bricolage Grotesque), cuerpo en
+     Inter, etiquetas/números en mono (JetBrains) y acentos en serif (Fraunces).
+     Cuatro familias distintas fusionadas de forma coherente en toda la intranet.
+     Las utilidades font-mono / font-serif / font-sans siguen ganando sobre esto. */
+  h1, h2, h3, h4 {
+    @apply font-display;
+    letter-spacing: -0.02em;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  /* Animación tipográfica de entrada de los títulos de página (solo intranet):
+     el título "asienta" desde un tracking abierto y sube al su sitio.
+     fill-mode backwards → tras la animación manda el estilo propio del elemento. */
+  .app-main h1 {
+    animation: heading-settle 0.65s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  @keyframes heading-settle {
+    from { opacity: 0; transform: translateY(7px); letter-spacing: 0.07em; }
+    to   { opacity: 1; transform: translateY(0);   letter-spacing: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-main h1 { animation: none; }
+  }
+
   /* Foco accesible y consistente para navegación por teclado */
   :focus-visible {
     @apply outline-none ring-2 ring-ring/60 ring-offset-2 ring-offset-background;

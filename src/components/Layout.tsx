@@ -52,7 +52,7 @@ export function Layout({ children }: LayoutProps) {
             />
             <UserAvatar editable className="ml-auto h-9 w-9" textClassName="text-sm" />
           </header>
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="app-main flex-1 overflow-auto">{children}</main>
         </div>
       </div>
     </SidebarProvider>
