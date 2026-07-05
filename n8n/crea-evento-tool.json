@@ -1,0 +1,42 @@
+{
+  "name": "Crea1 — Google Calendar Create Event (importar al workflow de agendamiento)",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "realtyplus.leads@gmail.com",
+          "mode": "id"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Time', `Inicio ISO 8601 con zona horaria, ej 2026-07-07T18:00:00+02:00`, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Time', `Fin ISO 8601 con zona horaria`, 'string') }}",
+        "additionalFields": {
+          "summary": "Reunión RealtyPlus — Equipo de Expansión",
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', `Resumen breve del interés del lead`, 'string') }}",
+          "attendees": [
+            "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Attendee_Email', `Correo del lead ya confirmado`, 'string') }}"
+          ],
+          "conferenceDataUi": {
+            "conferenceDataValues": {
+              "conferenceSolution": "hangoutsMeet"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [0, 0],
+      "id": "crea1-gcal-create-tool",
+      "name": "Crea1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "PaF3Bn4waH44ae20",
+          "name": "calendar realty- plus"
+        }
+      }
+    }
+  ],
+  "connections": {},
+  "settings": { "executionOrder": "v1" }
+}
