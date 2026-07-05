@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2, ArrowLeft, Search, ArrowDown, Zap, Clock, Check, CheckCheck, AlertCircle, X } from "lucide-react";
+import { Send, Loader2, ArrowLeft, Search, ArrowDown, Zap, Clock, Check, CheckCheck, AlertCircle, X, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -64,6 +64,7 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const [idContacto, setIdContacto] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -322,13 +323,26 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
     return entregado;
   };
 
+  // Borra un mensaje de ambas tablas (la vista unifica mensajes_automatizacion +
+  // mensajes_whatsapp; intentamos en las dos porque no sabemos cuál contiene el id).
+  const deleteMessage = async (msg: MensajeAuto) => {
+    if (msg.id.startsWith("temp-")) {
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+      return;
+    }
+    setDeletingId(msg.id);
+    setMessages((prev) => prev.filter((m) => m.id !== msg.id)); // optimistic
+    await Promise.all([
+      supabase.from("mensajes_automatizacion").delete().eq("id", msg.id),
+      (supabase as any).from("mensajes_whatsapp").delete().eq("id", msg.id),
+    ]);
+    setDeletingId(null);
+  };
+
   const sendMessage = async () => {
     const contenido = newMessage.trim();
     if (!contenido || !selectedContact?.telefono) return;
     setSending(true);
-    // Mensaje optimista (id temporal). n8n insertará la fila real y realtime la
-    // reconciliará reemplazando este temp; si realtime no llega, el temp queda
-    // con su estado hasta el próximo fetch (sin duplicar en BD).
     const tempId = `temp-${Date.now()}`;
     const optimista: MensajeAuto = {
       id: tempId,
@@ -342,12 +356,20 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
     setMessages((prev) => [...prev, optimista]);
     setNewMessage("");
     setPendingMedia(null);
+    // Fallback: si realtime no reconcilia el temp en 15s, lo marca como fallido
+    const fallbackTimer = setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId && m.estado_envio === "enviando" ? { ...m, estado_envio: "fallido" } : m)),
+      );
+    }, 15000);
     try {
       const entregado = await enviarPorWebhook(contenido);
+      clearTimeout(fallbackTimer);
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, estado_envio: entregado ? "enviado" : "fallido" } : m)),
       );
     } catch (err: any) {
+      clearTimeout(fallbackTimer);
       setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, estado_envio: "fallido" } : m)));
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     } finally {
@@ -485,7 +507,7 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
                     const showDaySep =
                       !prevMsg || (prevMsg.dia_secuencia || 0) !== (msg.dia_secuencia || 0);
                     return (
-                      <div key={msg.id}>
+                      <div key={msg.id} className="group">
                         {showDaySep && msg.dia_secuencia ? (
                           <div className="flex items-center justify-center my-3">
                             <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
@@ -498,8 +520,24 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
                           initial={{ opacity: 0, y: 20, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
-                          className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                          className={`flex items-end gap-1.5 ${isOutbound ? "justify-end" : "justify-start"}`}
                         >
+                          {/* Botón borrar — visible solo a admins al hacer hover */}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => deleteMessage(msg)}
+                              disabled={deletingId === msg.id}
+                              title="Borrar mensaje"
+                              className={`shrink-0 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:pointer-events-none ${
+                                isOutbound ? "order-first" : "order-last"
+                              }`}
+                            >
+                              {deletingId === msg.id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <Trash2 className="h-3 w-3" />}
+                            </button>
+                          )}
                           <div
                             className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                               isOutbound
