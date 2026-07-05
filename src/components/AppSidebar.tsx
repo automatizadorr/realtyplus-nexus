@@ -111,7 +111,7 @@ export function AppSidebar() {
           </motion.div>
           {/* Marca compacta — modo rail de íconos */}
           <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-xl bg-white shadow-md">
-            <span className="text-sm font-extrabold leading-none tracking-tight" style={{ color: "hsl(210 100% 20%)" }}>
+            <span className="font-display text-sm font-extrabold leading-none tracking-tight" style={{ color: "hsl(210 100% 20%)" }}>
               R<span style={{ color: "hsl(0 100% 40%)" }}>P</span>
             </span>
           </div>
@@ -173,7 +173,14 @@ export function AppSidebar() {
                               />
                             )}
                             <AnimatedIcon icon={item.icon} isActive={isActive} />
-                            <span className="relative z-10 ml-2 truncate text-[13px]">{item.title}</span>
+                            <motion.span
+                              initial={{ opacity: 0, x: -6 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.04 + 0.1, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                              className="relative z-10 ml-2 truncate font-display text-[13px] font-medium tracking-tight transition-[letter-spacing] duration-200 group-hover/nav:tracking-normal"
+                            >
+                              {item.title}
+                            </motion.span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -225,7 +232,7 @@ export function AppSidebar() {
           </button>
           <div className="flex flex-col flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-sidebar-foreground truncate tracking-tight">
+              <span className="truncate font-display text-sm font-semibold tracking-tight text-sidebar-foreground">
                 {displayName}
               </span>
               {!roleLoading && (
