@@ -65,31 +65,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    try {
-      const res = await fetch(WEBHOOKS[target], {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(WEBHOOK_SECRET ? { "X-Webhook-Secret": WEBHOOK_SECRET } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      const text = await res.text();
-      if (!res.ok) {
-        return new Response(JSON.stringify({ success: false, warning: "n8n webhook non-2xx", status: res.status }), {
-          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Envía a n8n con REINTENTOS. Los fallos transitorios (red caída, timeout,
+    // 5xx de n8n) se reintentan hasta 3 veces con backoff (1s, 3s). Los 4xx NO se
+    // reintentan (error del cliente: reintentar no ayuda). Cada intento tiene un
+    // timeout de 10s para que un fetch colgado no bloquee la función indefinidamente.
+    // Prioriza ENTREGAR el mensaje al lead: un mensaje perdido es peor que un
+    // eventual duplicado si n8n procesó pero tardó en responder.
+    const MAX_ATTEMPTS = 3;
+    const BACKOFF_MS = [1000, 3000]; // espera antes del intento 2 y 3
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    let lastStatus = 0;
+    let lastError = "";
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const res = await fetch(WEBHOOKS[target], {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(WEBHOOK_SECRET ? { "X-Webhook-Secret": WEBHOOK_SECRET } : {}),
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(10000),
         });
+        const text = await res.text();
+        if (res.ok) {
+          return new Response(JSON.stringify({ success: true, response: text, attempts: attempt }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // 4xx: error del cliente (payload/ruta mala) → no reintentar, devolver ya.
+        if (res.status < 500) {
+          return new Response(JSON.stringify({ success: false, warning: "n8n webhook 4xx", status: res.status, attempts: attempt }), {
+            status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // 5xx: error transitorio del servidor → reintentar.
+        lastStatus = res.status;
+        lastError = `n8n non-2xx (${res.status})`;
+        console.warn(`n8n webhook intento ${attempt}/${MAX_ATTEMPTS}: status ${res.status}`);
+      } catch (fetchErr) {
+        // Error de red o timeout (el mensaje casi seguro no llegó) → reintentar.
+        lastError = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        console.warn(`n8n webhook intento ${attempt}/${MAX_ATTEMPTS} falló:`, lastError);
       }
-      return new Response(JSON.stringify({ success: true, response: text }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    } catch (fetchErr) {
-      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-      console.warn("n8n webhook unreachable:", msg);
-      return new Response(JSON.stringify({ success: false, warning: "n8n unreachable", error: msg }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (attempt < MAX_ATTEMPTS) await sleep(BACKOFF_MS[attempt - 1]);
     }
+    // Agotados los reintentos: el frontend marca el mensaje como fallido y ofrece reintentar.
+    return new Response(JSON.stringify({ success: false, warning: "n8n unreachable tras reintentos", status: lastStatus, error: lastError, attempts: MAX_ATTEMPTS }), {
+      status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("send-n8n-webhook error:", msg);
