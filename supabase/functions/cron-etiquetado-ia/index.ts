@@ -48,6 +48,14 @@ const CRON_TOKEN = "rpchile_cron_2026_a8K3mZqL";
 // (grupo exclusivo estado_lead) reemplaza ese estado y el lead entra al envío.
 const ETIQUETAS_NO_ENVIAR = ["Sigue en campaña"];
 
+// Estados que blindan al lead de ser re-etiquetado por este cron.
+// Si un lead ya tiene uno de estos estados, se salta por completo (no se llama a
+// DeepSeek, no se toca su estado, no se envía a reactivación).
+// - "Cita agendada": ya tiene reunión pactada — contactarlo de nuevo quema el cierre.
+// - "Agente asignado": ya tiene un humano a cargo — la IA no debe interferir.
+// - "Conversación Activa": está en plena charla con el bot — otro mensaje lo confunde.
+const ESTADOS_PROTEGIDOS = ["Cita agendada", "Agente asignado", "Conversación Activa"];
+
 // Normaliza para comparar nombres de etiqueta (minúsculas, sin tildes, sin espacios).
 const norm = (s: unknown) =>
   (s ?? "")
@@ -144,16 +152,32 @@ Deno.serve(async (req) => {
       id: t.id, nombre: t.nombre, color: t.color, es_permanente: t.es_permanente,
     }));
 
+    // IDs de las etiquetas protegidas resueltos desde el catálogo real.
+    const estadosProtegidosIds = new Set(
+      (tags ?? [])
+        .filter((t) => ESTADOS_PROTEGIDOS.some((e) => norm(e) === norm(t.nombre)))
+        .map((t) => t.id),
+    );
+
     const resultados: Array<Record<string, unknown>> = [];
+    let omitidos_estado_protegido = 0;
 
     for (const telefono of telefonos) {
       // 2a. Lead no archivado para este teléfono (acepta sufijo JID de WhatsApp).
       const { data: lead } = await supabase
         .from("leads_campana")
-        .select("id, id_contacto, nombre, telefono, pais, email, archivado")
+        .select("id, id_contacto, nombre, telefono, pais, email, archivado, tag_ids")
         .or(`telefono.eq.${telefono},telefono.like.${telefono}@%`)
         .maybeSingle();
       if (!lead || lead.archivado === true) continue;
+
+      // Saltar leads que ya tienen un estado protegido (cita, agente asignado, etc.).
+      // Ni se llama a DeepSeek ni se toca su estado; su ciclo de vida queda intacto.
+      const leadTagIds: string[] = Array.isArray(lead.tag_ids) ? lead.tag_ids : [];
+      if (leadTagIds.some((id) => estadosProtegidosIds.has(id))) {
+        omitidos_estado_protegido++;
+        continue;
+      }
 
       // 2b. Conversación del lead (últimos 40 mensajes, en orden cronológico).
       const { data: msgs } = await supabase
@@ -269,6 +293,7 @@ Deno.serve(async (req) => {
       leads_candidatos: telefonos.length,
       leads_procesados: resultados.length,
       leads_enviados: leads_a_enviar.length,
+      omitidos_estado_protegido,
       omitidos_sigue_campana,
       omitidos_sin_etiqueta,
       n8n_status,
