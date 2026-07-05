@@ -139,7 +139,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="relative min-h-screen grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] font-sans overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="relative min-h-screen grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <aside className="hidden lg:block relative">
         <BrandShowcase />
       </aside>
@@ -252,7 +252,7 @@ export default function Auth() {
             <div>
               <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">Red Internacional</p>
               <p className="text-sm font-display font-bold mt-0.5" style={{ color: BRAND.navy }}>
-                Portal CRM · IA
+                Portal CRM · <span className="font-serif italic font-normal" style={{ color: BRAND.red }}>IA</span>
               </p>
             </div>
           </div>
@@ -277,9 +277,13 @@ export default function Auth() {
 
               {!isForgotPassword && (
                 <div className="text-center mb-5">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-400 mb-1">Portal CRM · IA</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400 mb-1">Portal CRM · IA</p>
                   <h1 className="text-2xl font-display font-extrabold tracking-tight" style={{ color: BRAND.navy }}>
-                    {isLogin ? "Bienvenido de vuelta" : "Únete a la red"}
+                    {isLogin ? (
+                      <>Bienvenido de{" "}<span className="font-serif italic font-normal" style={{ color: BRAND.red }}>vuelta</span></>
+                    ) : (
+                      <>Únete a la{" "}<span className="font-serif italic font-normal" style={{ color: BRAND.red }}>red</span></>
+                    )}
                   </h1>
                 </div>
               )}
@@ -461,7 +465,7 @@ export default function Auth() {
                 <>
                   <div className="relative my-5">
                     <Separator />
-                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-mono text-[10px] text-slate-400 uppercase tracking-[0.18em] whitespace-nowrap">
                       o continuar con
                     </span>
                   </div>
@@ -504,9 +508,9 @@ export default function Auth() {
             </div>
 
             {/* Footer */}
-            <div className="px-7 py-3 bg-slate-50 border-t text-center text-[11px] text-slate-500 rounded-b-2xl">
-              <span className="font-semibold" style={{ color: BRAND.navy }}>Soporte:</span>{" "}
-              +34 911 107 727 · contacto@realty-plus.org
+            <div className="px-7 py-3 bg-slate-50 border-t text-center font-mono text-[10px] text-slate-500 rounded-b-2xl tracking-wide">
+              <span className="font-semibold" style={{ color: BRAND.navy }}>Soporte</span>
+              {" · "}+34 911 107 727 · contacto@realty-plus.org
             </div>
           </div>
         </motion.div>

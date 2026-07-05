@@ -163,16 +163,15 @@ export function BrandShowcase() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: EASE }}
         >
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] font-semibold mb-4" style={{ color: NAVY, opacity: 0.6 }}>
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] font-semibold mb-4" style={{ color: NAVY, opacity: 0.6 }}>
             <span className="block h-px w-8" style={{ background: RED }} />
             Red Internacional
           </div>
           <h2 className="text-3xl lg:text-4xl font-display font-extrabold leading-tight" style={{ color: NAVY }}>
-            Tu equipo IA que
-            <br />
-            <span style={{ color: RED }}>nunca duerme.</span>
+            Tu equipo IA que{" "}
+            <span className="font-serif italic font-normal" style={{ color: RED }}>nunca duerme.</span>
           </h2>
-          <p className="mt-3 text-sm text-slate-500 max-w-xs leading-relaxed">
+          <p className="mt-3 text-sm font-sans text-slate-500 max-w-xs leading-relaxed">
             Sofía gestiona tus leads 24/7 por WhatsApp, los clasifica con IA y te avisa cuando están listos para cerrar.
           </p>
         </motion.div>
@@ -200,7 +199,7 @@ export function BrandShowcase() {
             >
               <Icon className="h-4 w-4 mx-auto mb-1.5" style={{ color: RED }} />
               <p className="text-xl font-display font-extrabold tracking-tight" style={{ color: NAVY }}>{value}</p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">{label}</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">{label}</p>
             </motion.div>
           ))}
         </div>
