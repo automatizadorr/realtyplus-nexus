@@ -15,6 +15,8 @@ import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, File
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { orderTags } from "@/lib/permanentTags";
+import { motion } from "framer-motion";
+import { AnimatedNumber, kpiGrid, kpiItem } from "@/components/AnimatedNumber";
 
 interface LeadTag { id: string; nombre: string; color: string; es_permanente?: boolean | null; }
 
@@ -786,21 +788,24 @@ details[open] .arrow{transform:rotate(90deg)}
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Download className="h-6 w-6 text-violet-400" />
-            Exportar Etiquetados
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Expansión</p>
+          <h1 className="mt-0.5 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
+            <Download className="h-6 w-6 text-accent" />
+            Exportar etiquetados
           </h1>
           <p className="text-sm text-muted-foreground">
-            Excel con datos de leads · Word con conversaciones completas
+            Excel con datos · Word con conversaciones · HTML visual · envío a n8n
           </p>
         </div>
       </div>
 
       {/* Filtro */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Tag className="h-4 w-4 text-violet-400" />
+      <Card className="border-border/60">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+              <Tag className="h-4 w-4" />
+            </span>
             Filtrar por etiqueta
           </CardTitle>
           <CardDescription>Exporta todos los leads o filtra por una etiqueta específica</CardDescription>
@@ -826,125 +831,89 @@ details[open] .arrow{transform:rotate(90deg)}
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-5 flex items-center gap-3">
-            <Users className="h-8 w-8 text-violet-400 shrink-0" />
-            <div>
-              <p className="text-xs text-muted-foreground">Leads</p>
-              {loadingStats ? <Loader2 className="h-4 w-4 animate-spin mt-1" />
-                : <p className="text-2xl font-bold">{statsLeads ?? "—"}</p>}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 flex items-center gap-3">
-            <MessageSquare className="h-8 w-8 text-violet-400 shrink-0" />
-            <div>
-              <p className="text-xs text-muted-foreground">Mensajes</p>
-              {loadingStats ? <Loader2 className="h-4 w-4 animate-spin mt-1" />
-                : <p className="text-2xl font-bold">{statsMsgs ?? "—"}</p>}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-2 gap-4">
+        {[
+          { label: "Leads", value: statsLeads, icon: Users, wrap: "from-primary/20 to-primary/5 text-primary ring-primary/25", bar: "from-primary/70 to-primary" },
+          { label: "Mensajes", value: statsMsgs, icon: MessageSquare, wrap: "from-accent/20 to-accent/5 text-accent ring-accent/25", bar: "from-accent/70 to-accent" },
+        ].map((s) => (
+          <motion.div key={s.label} variants={kpiItem}>
+            <Card className="relative overflow-hidden border-border/60">
+              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${s.bar}`} aria-hidden="true" />
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ring-1 ${s.wrap}`}>
+                  <s.icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                  {loadingStats ? (
+                    <Loader2 className="mt-1 h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <p className="text-2xl font-bold tabular-nums">
+                      {s.value == null ? "—" : <AnimatedNumber value={s.value} />}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
       {/* Botones de descarga */}
-      <div className="grid grid-cols-1 gap-3">
-
-        <Card className="border-violet-500/30">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-start gap-3 mb-3">
-              <FileSpreadsheet className="h-5 w-5 text-green-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium text-sm">Leads Etiquetados (.xlsx)</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Un lead por fila — ID, nombre, teléfono, email, país, estado, etiquetas, métricas de conversación y fechas clave.
-                </p>
-              </div>
-            </div>
-            <Button
-              className="w-full bg-green-700 hover:bg-green-800 text-white"
-              onClick={handleExcel}
-              disabled={isLoading || statsLeads === 0}
-            >
-              {generatingXlsx
-                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generando...</>
-                : <><FileSpreadsheet className="h-4 w-4 mr-2" />Descargar Excel</>}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-violet-500/30">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-start gap-3 mb-3">
-              <FileText className="h-5 w-5 text-blue-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium text-sm">Conversaciones (.docx)</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Un documento Word por filtro — cada lead con su ficha y conversación completa en formato chat, ordenada cronológicamente.
-                </p>
-              </div>
-            </div>
-            <Button
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white"
-              onClick={handleDocx}
-              disabled={isLoading || statsLeads === 0}
-            >
-              {generatingDocx
-                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generando...</>
-                : <><FileText className="h-4 w-4 mr-2" />Descargar Word</>}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-violet-500/30">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-start gap-3 mb-3">
-              <ExternalLink className="h-5 w-5 text-orange-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium text-sm">Reporte Visual en Navegador (.html)</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Abre todos los leads etiquetados con sus datos completos y conversaciones en estilo WhatsApp — burbujas, colores, timestamps.
-                </p>
-              </div>
-            </div>
-            <Button
-              className="w-full bg-orange-700 hover:bg-orange-800 text-white"
-              onClick={handleOpenHtml}
-              disabled={isLoading || statsLeads === 0}
-            >
-              {generatingHtml
-                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generando...</>
-                : <><ExternalLink className="h-4 w-4 mr-2" />Ver en Navegador</>}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-violet-500/30">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-start gap-3 mb-3">
-              <Send className="h-5 w-5 text-violet-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium text-sm">Enviar a n8n — <span className="text-violet-400">/expansion</span></p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Envía todos los datos mapeados y depurados al webhook de expansión: leads por etiqueta, conversaciones completas, métricas y fechas.
-                </p>
-              </div>
-            </div>
-            <Button
-              className="w-full bg-violet-700 hover:bg-violet-800 text-white"
-              onClick={handleSendN8n}
-              disabled={isLoading || statsLeads === 0}
-            >
-              {sendingN8n
-                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Enviando...</>
-                : <><Send className="h-4 w-4 mr-2" />Enviar a n8n</>}
-            </Button>
-          </CardContent>
-        </Card>
-
-      </div>
+      <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-1 gap-3">
+        {[
+          {
+            title: "Leads Etiquetados (.xlsx)",
+            desc: "Un lead por fila — ID, nombre, teléfono, email, país, estado, etiquetas, métricas de conversación y fechas clave.",
+            icon: FileSpreadsheet, onClick: handleExcel, busy: generatingXlsx, label: "Descargar Excel",
+            wrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/25", bar: "from-emerald-400 to-emerald-600", btn: "bg-emerald-600 hover:bg-emerald-700",
+          },
+          {
+            title: "Conversaciones (.docx)",
+            desc: "Un documento Word por filtro — cada lead con su ficha y conversación completa en formato chat, ordenada cronológicamente.",
+            icon: FileText, onClick: handleDocx, busy: generatingDocx, label: "Descargar Word",
+            wrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/25", bar: "from-blue-400 to-blue-600", btn: "bg-blue-600 hover:bg-blue-700",
+          },
+          {
+            title: "Reporte Visual en Navegador (.html)",
+            desc: "Abre todos los leads etiquetados con sus datos completos y conversaciones en estilo WhatsApp — burbujas, colores, timestamps.",
+            icon: ExternalLink, onClick: handleOpenHtml, busy: generatingHtml, label: "Ver en Navegador",
+            wrap: "from-orange-500/20 to-orange-500/5 text-orange-600 ring-orange-500/25", bar: "from-orange-400 to-orange-600", btn: "bg-orange-600 hover:bg-orange-700",
+          },
+          {
+            title: "Enviar a n8n · /expansion",
+            desc: "Envía todos los datos mapeados y depurados al webhook de expansión: leads por etiqueta, conversaciones completas, métricas y fechas.",
+            icon: Send, onClick: handleSendN8n, busy: sendingN8n, label: "Enviar a n8n",
+            wrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/25", bar: "from-violet-400 to-violet-600", btn: "bg-violet-600 hover:bg-violet-700",
+          },
+        ].map((f) => (
+          <motion.div key={f.title} variants={kpiItem}>
+            <Card className="relative overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${f.bar}`} aria-hidden="true" />
+              <CardContent className="p-4">
+                <div className="mb-3 flex items-start gap-3">
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br ring-1 ${f.wrap}`}>
+                    <f.icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{f.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{f.desc}</p>
+                  </div>
+                </div>
+                <Button
+                  className={`w-full text-white ${f.btn}`}
+                  onClick={f.onClick}
+                  disabled={isLoading || statsLeads === 0}
+                >
+                  {f.busy
+                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
+                    : <><f.icon className="mr-2 h-4 w-4" />{f.label}</>}
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
       {statsLeads === 0 && !loadingStats && (
         <p className="text-center text-sm text-muted-foreground">
