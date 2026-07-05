@@ -54,6 +54,18 @@ function normalizeStatus(s: string): ColKey {
   return "nuevo";
 }
 
+// Color de avatar determinista (mismo criterio que los inbox).
+const AVATAR_COLORS = [
+  "#0ea5e9", "#6366f1", "#8b5cf6", "#d946ef", "#ec4899",
+  "#f43f5e", "#f59e0b", "#10b981", "#14b8a6", "#3b82f6",
+];
+function avatarColor(seed: string): string {
+  const s = seed || "?";
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 export default function VoiceCrm() {
   const { leads, loading, error, refetch, updateStatus, deleteLead } = useVoiceLeads();
   const [dragging, setDragging] = useState<string | null>(null);
@@ -89,9 +101,10 @@ export default function VoiceCrm() {
             <Mic className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">CRM Realty Web-AI</h1>
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-accent">CRM por voz</p>
+            <h1 className="text-xl font-bold leading-tight tracking-tight">CRM Realty Web-AI</h1>
             <p className="text-xs text-muted-foreground">
-              Leads capturados por Sofia - AI · {leads.length} contactos
+              Leads capturados por Sofía · IA — {leads.length} contactos
             </p>
           </div>
         </div>
@@ -153,7 +166,12 @@ export default function VoiceCrm() {
                         <GripVertical className="h-4 w-4 text-muted-foreground/40 mt-0.5 shrink-0 group-hover:text-muted-foreground" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span
+                              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+                              style={{ background: avatarColor(lead.nombre || lead.telefono) }}
+                            >
+                              {(lead.nombre?.trim()?.[0] || lead.telefono?.[0] || "#").toUpperCase()}
+                            </span>
                             <p className="font-semibold text-sm truncate flex-1">
                               {lead.nombre || "Sin nombre"}
                             </p>
@@ -235,7 +253,8 @@ export default function VoiceCrm() {
                   ))}
                 </AnimatePresence>
                 {grouped[col.key].length === 0 && !loading && (
-                  <div className="text-center text-xs text-muted-foreground py-8">
+                  <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border/60 py-8 text-center text-xs text-muted-foreground">
+                    <User className="h-4 w-4 opacity-40" />
                     Sin leads
                   </div>
                 )}
@@ -248,9 +267,14 @@ export default function VoiceCrm() {
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-[#003366]" />
-              {detail?.nombre}
+            <DialogTitle className="flex items-center gap-2.5">
+              <span
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
+                style={{ background: detail ? avatarColor(detail.nombre || detail.telefono) : "#64748b" }}
+              >
+                {(detail?.nombre?.trim()?.[0] || detail?.telefono?.[0] || "#").toUpperCase()}
+              </span>
+              {detail?.nombre || "Prospecto"}
             </DialogTitle>
           </DialogHeader>
           {detail && (
