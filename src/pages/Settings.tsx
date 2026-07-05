@@ -97,8 +97,12 @@ export default function Settings() {
     setNotif(next);
     try {
       localStorage.setItem(NOTIF_KEY, JSON.stringify(next));
-    } catch {}
-    toast.success("Preferencia guardada");
+      toast.success("Preferencia guardada");
+    } catch {
+      toast.error("No se pudo guardar", {
+        description: "El almacenamiento del navegador puede estar lleno o bloqueado.",
+      });
+    }
   };
 
   return (
