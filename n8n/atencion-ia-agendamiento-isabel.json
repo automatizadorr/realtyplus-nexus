@@ -343,6 +343,21 @@
     },
     {
       "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1070824479455864",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+        "textBody": "Disculpa la demora 🙏. En este momento no puedo procesar tu mensaje, pero ya avisé a un asesor de RealtyPlus que se pondrá en contacto contigo en breve. Gracias por tu paciencia.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [1648, 6120],
+      "id": "bb222222-cc33-dd44-ee55-ff6666666601",
+      "name": "📲 Fallback al Lead",
+      "credentials": { "whatsAppApi": { "id": "aahJDBWDqqC6G26B", "name": "RealtyPlus- enviar Mensaje" } }
+    },
+    {
+      "parameters": {
         "assignments": { "assignments": [ { "id": "58cb1913-4110-4f57-96c2-6ffbf2688680", "name": "buffer", "value": "=wa:buffer:{{ $json.contacts[0].wa_id }}", "type": "string" } ] },
         "options": {}
       },
@@ -669,7 +684,7 @@
     "Modifica1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
     "Disponibilidad1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
     "Postgres Chat Memory1": { "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]] },
-    "AI Agent": { "main": [[{ "node": "🧩 Parseador Nexus", "type": "main", "index": 0 }, { "node": "🧩 Parseador Nexus3", "type": "main", "index": 0 }], [{ "node": "Send a message", "type": "main", "index": 0 }]] },
+    "AI Agent": { "main": [[{ "node": "🧩 Parseador Nexus", "type": "main", "index": 0 }, { "node": "🧩 Parseador Nexus3", "type": "main", "index": 0 }], [{ "node": "Send a message", "type": "main", "index": 0 }, { "node": "📲 Fallback al Lead", "type": "main", "index": 0 }]] },
     "Supabase Vector Store1": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
     "Embeddings OpenAI1": { "ai_embedding": [[{ "node": "Supabase Vector Store1", "type": "ai_embedding", "index": 0 }]] },
     "Edit Fields1": { "main": [[{ "node": "🔢 Code Contador Diario", "type": "main", "index": 0 }]] },
