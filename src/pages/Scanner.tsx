@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { ScanSearch, Rocket, Trash2, Upload, Loader2 } from "lucide-react";
+import { ScanSearch, Rocket, Trash2, Upload, Loader2, Users, Mail, MailX, Globe2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -436,16 +435,25 @@ export default function Scanner() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <ScanSearch className="h-6 w-6 text-accent" />
-        <h2 className="text-2xl font-bold text-foreground">Escánea Tus Oportunidades </h2>
+      <div>
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Captación</p>
+        <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
+          <ScanSearch className="h-6 w-6 text-accent" />
+          Escánea tus oportunidades
+        </h1>
+        <p className="text-sm text-muted-foreground">Pega o sube contactos, elige la plantilla y lanza la campaña</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Datos de Campaña</CardTitle>
-            <CardDescription>Nombra tu campaña y pega los contactos</CardDescription>
+        <Card className="border-border/60">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              Datos de campaña
+            </CardTitle>
+            <CardDescription>Nombra tu campaña, elige la plantilla y pega los contactos</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -525,19 +533,54 @@ export default function Scanner() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Contactos Detectados ({contacts.length})</CardTitle>
+        <Card className="border-border/60">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20">
+                <ScanSearch className="h-4 w-4" />
+              </span>
+              Contactos detectados
+              <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                {contacts.length}
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {contacts.length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-8">Pega texto y presiona "Procesar" para detectar contactos.</p>
+              <div className="flex flex-col items-center gap-3 py-14 text-center">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
+                  <ScanSearch className="h-6 w-6 text-primary" />
+                </div>
+                <p className="max-w-[15rem] text-sm text-muted-foreground">
+                  Pega o sube tus contactos y presiona <span className="font-medium text-foreground">Procesar</span> para detectarlos.
+                </p>
+              </div>
             ) : (
-              <>
-                <div className="max-h-[400px] overflow-auto">
+              <div className="space-y-4">
+                {/* Mini-stats */}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    { label: "Total", value: contacts.length, icon: Users, cls: "text-foreground", wrap: "from-slate-500/20 to-slate-500/5 text-slate-600 ring-slate-500/20" },
+                    { label: "Con email", value: contacts.filter((c) => c.email).length, icon: Mail, cls: "text-emerald-600", wrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/20" },
+                    { label: "Sin email", value: contacts.filter((c) => !c.email).length, icon: MailX, cls: "text-orange-600", wrap: "from-orange-500/20 to-orange-500/5 text-orange-600 ring-orange-500/20" },
+                    { label: "Países", value: new Set(contacts.map((c) => c.pais)).size, icon: Globe2, cls: "text-foreground", wrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/20" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-xl border border-border/60 p-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`grid h-6 w-6 place-items-center rounded-md bg-gradient-to-br ring-1 ${s.wrap}`}>
+                          <s.icon className="h-3 w-3" />
+                        </span>
+                        <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{s.label}</p>
+                      </div>
+                      <p className={`mt-1 text-lg font-bold tabular-nums ${s.cls}`}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="max-h-[400px] overflow-auto rounded-lg border border-border/60">
                   <Table>
-                    <TableHeader>
-                      <TableRow>
+                    <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur supports-[backdrop-filter]:bg-muted/40 [&_th]:h-9 [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide">
+                      <TableRow className="hover:bg-transparent">
                         <TableHead>ID</TableHead>
                         <TableHead>Nombre</TableHead>
                         <TableHead>Teléfono</TableHead>
@@ -548,11 +591,11 @@ export default function Scanner() {
                     </TableHeader>
                     <TableBody>
                       {contacts.map((c, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-mono text-xs">{c.id_contacto || "—"}</TableCell>
+                        <TableRow key={i} className="even:bg-muted/20">
+                          <TableCell className="font-mono text-xs text-muted-foreground">{c.id_contacto || "—"}</TableCell>
                           <TableCell className="font-medium">{c.nombre}</TableCell>
-                          <TableCell>{c.telefono}</TableCell>
-                          <TableCell>{c.email}</TableCell>
+                          <TableCell className="tabular-nums">{c.telefono}</TableCell>
+                          <TableCell className="text-sm">{c.email || <span className="text-muted-foreground">—</span>}</TableCell>
                           <TableCell>
                             <span className="mr-1">{COUNTRY_FLAGS[c.pais] || "🌍"}</span>
                             <span className="text-xs">{c.pais}</span>
@@ -567,13 +610,7 @@ export default function Scanner() {
                     </TableBody>
                   </Table>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <Badge variant="secondary">Total: {contacts.length}</Badge>
-                  <Badge variant="secondary">Con email: {contacts.filter((c) => c.email).length}</Badge>
-                  <Badge variant="secondary">Sin email: {contacts.filter((c) => !c.email).length}</Badge>
-                  <Badge variant="secondary">Países únicos: {new Set(contacts.map((c) => c.pais)).size}</Badge>
-                </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
