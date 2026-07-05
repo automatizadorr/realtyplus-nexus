@@ -128,8 +128,14 @@ export function AppSidebar() {
         {groups.map((group, gIdx) => (
           <SidebarGroup key={group.label || `g-${gIdx}`}>
             {group.label && (
-              <SidebarGroupLabel className="px-2 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-sidebar-foreground/40">
-                {group.label}
+              <SidebarGroupLabel className="flex items-center gap-2 px-2 font-mono text-[10px] font-medium uppercase tracking-[0.2em]">
+                <span
+                  aria-hidden
+                  className="cyber-led inline-block h-1 w-1 shrink-0 rounded-full bg-[#7FA8FF]"
+                  style={{ boxShadow: "0 0 6px #7FA8FF, 0 0 2px #7FA8FF" }}
+                />
+                <span className="cyber-label shrink-0">{group.label}</span>
+                <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-[#7FA8FF]/40 to-transparent" />
               </SidebarGroupLabel>
             )}
             <SidebarGroupContent>

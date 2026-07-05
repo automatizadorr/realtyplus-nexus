@@ -92,6 +92,44 @@ All colors MUST be HSL.
     .app-main h1 { animation: none; }
   }
 
+  /* ── "Cyber real estate": etiquetas de sección del sidebar ──────────────────
+     Barrido de luz (HUD) sobre el texto + LED parpadeante. Azul RE/MAX claro. */
+  .cyber-label {
+    background-image: linear-gradient(
+      100deg,
+      hsl(var(--sidebar-foreground) / 0.38) 0%,
+      hsl(var(--sidebar-foreground) / 0.38) 42%,
+      #b3ccff 50%,
+      hsl(var(--sidebar-foreground) / 0.38) 58%,
+      hsl(var(--sidebar-foreground) / 0.38) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: cyber-sweep 5.5s linear infinite;
+  }
+  @keyframes cyber-sweep {
+    from { background-position: 120% 0; }
+    to   { background-position: -120% 0; }
+  }
+  .cyber-led {
+    animation: cyber-blink 1.8s steps(1, end) infinite;
+  }
+  @keyframes cyber-blink {
+    0%, 68%  { opacity: 1; }
+    69%, 100% { opacity: 0.28; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cyber-label {
+      animation: none;
+      color: hsl(var(--sidebar-foreground) / 0.5);
+      -webkit-text-fill-color: currentColor;
+    }
+    .cyber-led { animation: none; }
+  }
+
   /* Foco accesible y consistente para navegación por teclado */
   :focus-visible {
     @apply outline-none ring-2 ring-ring/60 ring-offset-2 ring-offset-background;
