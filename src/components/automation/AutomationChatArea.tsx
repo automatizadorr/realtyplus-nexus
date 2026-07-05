@@ -332,11 +332,23 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
     }
     setDeletingId(msg.id);
     setMessages((prev) => prev.filter((m) => m.id !== msg.id)); // optimistic
-    await Promise.all([
-      supabase.from("mensajes_automatizacion").delete().eq("id", msg.id),
-      (supabase as any).from("mensajes_whatsapp").delete().eq("id", msg.id),
-    ]);
-    setDeletingId(null);
+    try {
+      await Promise.all([
+        supabase.from("mensajes_automatizacion").delete().eq("id", msg.id),
+        (supabase as any).from("mensajes_whatsapp").delete().eq("id", msg.id),
+      ]);
+    } catch {
+      // Rollback: devolver el mensaje al estado si la BD falla
+      setMessages((prev) => {
+        const sorted = [...prev, msg].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        );
+        return sorted;
+      });
+      toast({ title: "No se pudo borrar", description: "Error de red. El mensaje sigue en la conversación.", variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const sendMessage = async () => {
