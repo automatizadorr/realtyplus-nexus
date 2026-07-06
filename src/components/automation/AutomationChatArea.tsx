@@ -49,6 +49,20 @@ function estadoColor(estado: string | null | undefined) {
   return "bg-amber-500/15 text-amber-600 border-amber-500/30";
 }
 
+// Normaliza el estado del acuse a una de 5 fases. Acepta tanto los valores
+// en español (enviando/enviado/respondido/fallido) como los de WhatsApp Cloud
+// API que llegan por la Capa 2 (sent/delivered/read/failed).
+type TickFase = "enviando" | "enviado" | "entregado" | "leido" | "fallido" | null;
+function tickFase(estado: string | null | undefined): TickFase {
+  const e = (estado || "").toLowerCase();
+  if (e === "enviando") return "enviando";
+  if (e === "fallido" || e === "failed" || e === "error") return "fallido";
+  if (e === "respondido" || e === "read" || e === "leido") return "leido";
+  if (e === "entregado" || e === "delivered") return "entregado";
+  if (e === "enviado" || e === "sent") return "enviado";
+  return null;
+}
+
 export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Props) {
   const [messages, setMessages] = useState<MensajeAuto[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -602,26 +616,35 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
                               <span>
                                 {msgDate.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
                               </span>
-                              {isOutbound && msg.estado_envio === "enviando" && (
-                                <Clock className="h-3 w-3 shrink-0" aria-label="Enviando" />
-                              )}
-                              {isOutbound && msg.estado_envio === "enviado" && (
-                                <Check className="h-3 w-3 shrink-0" aria-label="Enviado" />
-                              )}
-                              {isOutbound && msg.estado_envio === "respondido" && (
-                                <CheckCheck className="h-3 w-3 shrink-0" aria-label="Respondido" />
-                              )}
-                              {isOutbound && msg.estado_envio === "fallido" && (
-                                <button
-                                  type="button"
-                                  onClick={() => reintentar(msg)}
-                                  className="inline-flex items-center gap-0.5 text-rose-200 hover:text-white font-medium"
-                                  title="Reintentar envío"
-                                >
-                                  <AlertCircle className="h-3 w-3 shrink-0" />
-                                  Reintentar
-                                </button>
-                              )}
+                              {isOutbound && (() => {
+                                const fase = tickFase(msg.estado_envio);
+                                if (fase === "enviando")
+                                  return <Clock className="h-3 w-3 shrink-0" aria-label="Enviando" />;
+                                if (fase === "enviado")
+                                  return <Check className="h-3 w-3 shrink-0" aria-label="Enviado" />;
+                                if (fase === "entregado")
+                                  return <CheckCheck className="h-3 w-3 shrink-0" aria-label="Entregado" />;
+                                if (fase === "leido")
+                                  return (
+                                    <CheckCheck
+                                      className="h-3 w-3 shrink-0 text-sky-300"
+                                      aria-label="Leído / Respondido"
+                                    />
+                                  );
+                                if (fase === "fallido")
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => reintentar(msg)}
+                                      className="inline-flex items-center gap-0.5 text-rose-200 hover:text-white font-medium"
+                                      title="Reintentar envío"
+                                    >
+                                      <AlertCircle className="h-3 w-3 shrink-0" />
+                                      Reintentar
+                                    </button>
+                                  );
+                                return null;
+                              })()}
                             </div>
                           </div>
                         </motion.div>

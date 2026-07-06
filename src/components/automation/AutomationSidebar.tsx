@@ -64,6 +64,19 @@ function estadoColor(estado: string | null | undefined) {
   return "text-muted-foreground bg-muted border-border";
 }
 
+// Semáforo comercial por acuses de WhatsApp (read receipts).
+// caliente=respondió/leído reciente, tibio=leído sin responder,
+// frio=entregado no leído, fallido=envío falló.
+const SENAL_META: Record<string, { color: string; label: string }> = {
+  caliente: { color: "#22c55e", label: "Caliente · respondió, llamar" },
+  tibio: { color: "#f59e0b", label: "Tibio · leyó sin responder" },
+  frio: { color: "#94a3b8", label: "Frío · entregado, no leído" },
+  fallido: { color: "#f43f5e", label: "Falló el envío" },
+};
+function senalMeta(senal: string | null | undefined) {
+  return senal ? SENAL_META[senal] : undefined;
+}
+
 // Color de avatar determinista a partir del nombre/teléfono (WhatsApp-like).
 const AVATAR_COLORS = [
   "#0ea5e9", "#6366f1", "#8b5cf6", "#d946ef", "#ec4899",
@@ -430,6 +443,18 @@ export function AutomationSidebar({ selectedContact, onSelectContact, allTags }:
                             {unread > 9 ? "9+" : unread}
                           </span>
                         )}
+                        {(() => {
+                          const meta = senalMeta(c.senal);
+                          if (!meta) return null;
+                          return (
+                            <span
+                              className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-card"
+                              style={{ background: meta.color }}
+                              title={meta.label}
+                              aria-label={meta.label}
+                            />
+                          );
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">

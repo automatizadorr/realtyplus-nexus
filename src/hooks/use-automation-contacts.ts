@@ -13,6 +13,9 @@ export interface AutomationContactRow {
   ultimo_estado: string | null;
   ultimo_dia: number | null;
   total_mensajes: number | null;
+  // Señal comercial (semáforo de read receipts). Llega null si la migración
+  // 20260706120000 aún no se aplicó — el frontend degrada sin mostrar el punto.
+  senal?: "caliente" | "tibio" | "frio" | "fallido" | "sin_datos" | null;
   tag_ids?: string[] | null;
 }
 
