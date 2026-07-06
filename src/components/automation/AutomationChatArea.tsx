@@ -42,12 +42,6 @@ interface Props {
 
 const PAGE_SIZE = 50;
 
-function estadoColor(estado: string | null | undefined) {
-  if (estado === "enviado") return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
-  if (estado === "respondido") return "bg-blue-500/15 text-blue-600 border-blue-500/30";
-  if (estado === "fallido") return "bg-rose-500/15 text-rose-600 border-rose-500/30";
-  return "bg-amber-500/15 text-amber-600 border-amber-500/30";
-}
 
 // Normaliza el estado del acuse a una de 5 fases. Acepta tanto los valores
 // en español (enviando/enviado/respondido/fallido) como los de WhatsApp Cloud
@@ -61,6 +55,26 @@ function tickFase(estado: string | null | undefined): TickFase {
   if (e === "entregado" || e === "delivered") return "entregado";
   if (e === "enviado" || e === "sent") return "enviado";
   return null;
+}
+
+// Traduce el acuse (wamid) del último mensaje saliente a un texto claro que
+// explique en qué punto va el mensaje frente al lead. `corto` para el badge de
+// la cabecera; `largo` para la tira explicativa sobre el compositor.
+function estadoAcuse(estado: string | null | undefined) {
+  switch (tickFase(estado)) {
+    case "enviando":
+      return { fase: "enviando", corto: "Enviando", largo: "Enviando el mensaje…", clase: "text-muted-foreground", badge: "bg-amber-500/15 text-amber-600 border-amber-500/30" };
+    case "enviado":
+      return { fase: "enviado", corto: "Enviado", largo: "Enviado — todavía no le llega al lead", clase: "text-muted-foreground", badge: "bg-muted text-muted-foreground border-border" };
+    case "entregado":
+      return { fase: "entregado", corto: "Entregado", largo: "Entregado — el lead aún no lo ha leído", clase: "text-sky-600", badge: "bg-sky-500/10 text-sky-600 border-sky-500/30" };
+    case "leido":
+      return { fase: "leido", corto: "Leído", largo: "Leído por el lead", clase: "text-sky-600 font-medium", badge: "bg-sky-500/15 text-sky-700 border-sky-500/40" };
+    case "fallido":
+      return { fase: "fallido", corto: "Falló", largo: "No se pudo entregar el mensaje al lead", clase: "text-rose-600 font-medium", badge: "bg-rose-500/15 text-rose-600 border-rose-500/30" };
+    default:
+      return null;
+  }
 }
 
 export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Props) {
@@ -312,10 +326,14 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
     () => messages.reduce((max, m) => Math.max(max, m.dia_secuencia || 0), 0),
     [messages],
   );
-  const ultimoEstado = useMemo(
-    () => (messages.length > 0 ? messages[messages.length - 1].estado_envio : null),
-    [messages],
-  );
+  // Estado de entrega (wamid) del ÚLTIMO mensaje saliente, aunque el lead haya
+  // respondido después. Es lo que alimenta el texto explicativo de la mensajería.
+  const acuse = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].direccion === "outbound") return estadoAcuse(messages[i].estado_envio);
+    }
+    return null;
+  }, [messages]);
 
   // Envía por el flujo n8n `oportunidades` (espejo de crmrp pero guarda en
   // mensajes_automatizacion): Webhook /oportunidades → Send WhatsApp → insert.
@@ -492,9 +510,13 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
                   Día {ultimoDia}
                 </Badge>
               )}
-              {ultimoEstado && (
-                <Badge variant="outline" className={`h-4 px-1 text-[10px] ${estadoColor(ultimoEstado)}`}>
-                  {ultimoEstado}
+              {acuse && (
+                <Badge
+                  variant="outline"
+                  className={`h-4 px-1 text-[10px] ${acuse.badge}`}
+                  title={acuse.largo}
+                >
+                  {acuse.corto}
                 </Badge>
               )}
               <TagChips tagIds={selectedContact.tag_ids} allTags={allTags} />
@@ -710,6 +732,19 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
+            </div>
+          )}
+          {acuse && (
+            <div
+              className={`max-w-3xl mx-auto mb-1.5 flex items-center gap-1.5 text-[11px] leading-none ${acuse.clase}`}
+            >
+              {acuse.fase === "enviando" && <Clock className="h-3 w-3 shrink-0" />}
+              {acuse.fase === "enviado" && <Check className="h-3 w-3 shrink-0" />}
+              {(acuse.fase === "entregado" || acuse.fase === "leido") && (
+                <CheckCheck className="h-3 w-3 shrink-0" />
+              )}
+              {acuse.fase === "fallido" && <AlertCircle className="h-3 w-3 shrink-0" />}
+              <span>Tu último mensaje: {acuse.largo}</span>
             </div>
           )}
           <div className="flex gap-1 max-w-3xl mx-auto items-end">
