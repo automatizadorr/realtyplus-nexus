@@ -291,7 +291,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   // ahora devuelve 502 + { success:false } cuando WhatsApp/n8n no entrega (antes se
   // ignoraba con un console.warn → el asesor creía que había respondido al lead).
   const entregarPorWebhook = async (msgId: string | number, payload: Record<string, any>): Promise<boolean> => {
-    setSendStatus((s) => ({ ...s, [msgId]: "enviando" }));
+    setSendStatus((s) => ({ ...s, [msgId]: "enviando" as const }));
     try {
       const { data, error } = await supabase.functions.invoke("send-n8n-webhook", {
         body: { target: "crmrp", payload },
@@ -302,7 +302,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         d?.success !== false &&
         !d?.warning &&
         !(typeof d?.status === "number" && d.status >= 400);
-      setSendStatus((s) => ({ ...s, [msgId]: entregado ? "enviado" : "fallido" }));
+      setSendStatus((s) => ({ ...s, [msgId]: (entregado ? "enviado" : "fallido") as "enviado" | "fallido" }));
       if (!entregado) {
         toast({
           title: "No se entregó al lead",
@@ -312,7 +312,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       }
       return entregado;
     } catch (e: any) {
-      setSendStatus((s) => ({ ...s, [msgId]: "fallido" }));
+      setSendStatus((s) => ({ ...s, [msgId]: "fallido" as const }));
       toast({ title: "No se entregó al lead", description: "Error de red. Pulsa Reintentar.", variant: "destructive" });
       return false;
     }
