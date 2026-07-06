@@ -43,6 +43,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const [idContacto, setIdContacto] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -320,6 +321,19 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
   const reenviar = (msg: MensajeWhatsapp) => entregarPorWebhook(msg.id, payloadFromMsg(msg));
 
+  // Borra un mensaje individual (solo admins). Optimista con rollback.
+  const deleteMessage = async (msg: MensajeWhatsapp) => {
+    setDeletingId(msg.id);
+    const prev = messages;
+    setMessages((cur) => cur.filter((m) => m.id !== msg.id));
+    const { error } = await supabase.from("mensajes_whatsapp").delete().eq("id", msg.id);
+    setDeletingId(null);
+    if (error) {
+      setMessages(prev);
+      toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" });
+    }
+  };
+
   const sendMessage = async () => {
     if ((!newMessage.trim() && !pendingMedia) || !selectedContact?.telefono) return;
     setSending(true);
@@ -569,8 +583,23 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                           initial={{ opacity: 0, y: 20, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
-                          className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                          className={`flex items-end gap-1.5 group ${isOutbound ? "justify-end" : "justify-start"}`}
                         >
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => deleteMessage(msg)}
+                              disabled={deletingId === msg.id}
+                              title="Borrar mensaje"
+                              className={`shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:pointer-events-none ${
+                                isOutbound ? "order-first" : "order-last"
+                              }`}
+                            >
+                              {deletingId === msg.id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <Trash2 className="h-3 w-3" />}
+                            </button>
+                          )}
                           <div
                             className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                               isOutbound
