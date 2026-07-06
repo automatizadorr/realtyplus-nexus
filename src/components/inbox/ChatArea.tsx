@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X, ArrowDown, Clock, Check, AlertCircle, RotateCw, Trash2 } from "lucide-react";
+import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X, ArrowDown, Clock, Check, CheckCheck, AlertCircle, RotateCw, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, MensajeWhatsapp, LeadTag } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ import { AttachmentButton } from "./AttachmentButton";
 import { MediaBubble } from "./MediaBubble";
 import { NotesPanel } from "./NotesPanel";
 import { TagsButton, TagChips } from "./TagsManager";
+import { estadoAcuse } from "@/lib/acuse";
 import { FormattedText } from "@/lib/whatsappFormat";
 
 interface ChatAreaProps {
@@ -56,6 +57,16 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const { isAdmin } = useIsAdmin();
 
   const PAGE_SIZE = 50;
+
+  // Estado de entrega (wamid) del ÚLTIMO mensaje saliente. Alimenta el texto
+  // breve que explica en qué punto va el mensaje frente al lead. Degrada a null
+  // si la vista aún no expone estado_envio (migración 20260706130000).
+  const acuse = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].direccion === "outbound") return estadoAcuse(messages[i].estado_envio);
+    }
+    return null;
+  }, [messages]);
 
   useEffect(() => {
     if (!selectedContact?.telefono) {
@@ -169,7 +180,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
     const { data } = await (supabase as any)
       .from("vista_mensajes_whatsapp")
-      .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
+      .select("*")
       .eq("phone_key", phoneBase)
       .lt("created_at", cursor)
       .order("created_at", { ascending: false })
@@ -721,6 +732,19 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
         {/* Input */}
         <div className="p-3 bg-card border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+          {acuse && (
+            <div
+              className={`max-w-3xl mx-auto mb-1.5 flex items-center gap-1.5 text-[11px] leading-none ${acuse.clase}`}
+            >
+              {acuse.fase === "enviando" && <Clock className="h-3 w-3 shrink-0" />}
+              {acuse.fase === "enviado" && <Check className="h-3 w-3 shrink-0" />}
+              {(acuse.fase === "entregado" || acuse.fase === "leido") && (
+                <CheckCheck className="h-3 w-3 shrink-0" />
+              )}
+              {acuse.fase === "fallido" && <AlertCircle className="h-3 w-3 shrink-0" />}
+              <span>Tu último mensaje: {acuse.largo}</span>
+            </div>
+          )}
           <div className="flex gap-1 max-w-3xl mx-auto items-end">
             <QuickRepliesPopover isAdmin={isAdmin} onPick={insertText} contactName={selectedContact.nombre} />
             <EmojiPickerButton onPick={insertText} />

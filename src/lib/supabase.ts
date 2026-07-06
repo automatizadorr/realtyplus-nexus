@@ -71,4 +71,8 @@ export interface MensajeWhatsapp {
   created_at: string;
   media_url?: string | null;
   media_type?: string | null;
+  // Acuse de WhatsApp (wamid) para el saliente: sent/delivered/read/failed o
+  // sus equivalentes ES (enviado/entregado/respondido/fallido). Opcional: solo
+  // existe si la vista ya expone estado_envio (migración 20260706130000).
+  estado_envio?: string | null;
 }
