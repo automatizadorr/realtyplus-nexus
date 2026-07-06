@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X, ArrowDown, Clock, Check, AlertCircle, RotateCw } from "lucide-react";
+import { MessageSquare, Send, Loader2, Bot, BotOff, ArrowLeft, Search, StickyNote, X, ArrowDown, Clock, Check, AlertCircle, RotateCw, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, MensajeWhatsapp, LeadTag } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
   const [idContacto, setIdContacto] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -291,7 +292,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   // ahora devuelve 502 + { success:false } cuando WhatsApp/n8n no entrega (antes se
   // ignoraba con un console.warn → el asesor creía que había respondido al lead).
   const entregarPorWebhook = async (msgId: string | number, payload: Record<string, any>): Promise<boolean> => {
-    setSendStatus((s) => ({ ...s, [msgId]: "enviando" }));
+    setSendStatus((s) => ({ ...s, [msgId]: "enviando" as const }));
     try {
       const { data, error } = await supabase.functions.invoke("send-n8n-webhook", {
         body: { target: "crmrp", payload },
@@ -302,7 +303,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         d?.success !== false &&
         !d?.warning &&
         !(typeof d?.status === "number" && d.status >= 400);
-      setSendStatus((s) => ({ ...s, [msgId]: entregado ? "enviado" : "fallido" }));
+      setSendStatus((s) => ({ ...s, [msgId]: (entregado ? "enviado" : "fallido") as "enviado" | "fallido" }));
       if (!entregado) {
         toast({
           title: "No se entregó al lead",
@@ -312,13 +313,26 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       }
       return entregado;
     } catch (e: any) {
-      setSendStatus((s) => ({ ...s, [msgId]: "fallido" }));
+      setSendStatus((s) => ({ ...s, [msgId]: "fallido" as const }));
       toast({ title: "No se entregó al lead", description: "Error de red. Pulsa Reintentar.", variant: "destructive" });
       return false;
     }
   };
 
   const reenviar = (msg: MensajeWhatsapp) => entregarPorWebhook(msg.id, payloadFromMsg(msg));
+
+  // Borra un mensaje individual (solo admins). Optimista con rollback.
+  const deleteMessage = async (msg: MensajeWhatsapp) => {
+    setDeletingId(msg.id);
+    const prev = messages;
+    setMessages((cur) => cur.filter((m) => m.id !== msg.id));
+    const { error } = await supabase.from("mensajes_whatsapp").delete().eq("id", msg.id);
+    setDeletingId(null);
+    if (error) {
+      setMessages(prev);
+      toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" });
+    }
+  };
 
   const sendMessage = async () => {
     if ((!newMessage.trim() && !pendingMedia) || !selectedContact?.telefono) return;
@@ -569,8 +583,23 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                           initial={{ opacity: 0, y: 20, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
-                          className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                          className={`flex items-end gap-1.5 group ${isOutbound ? "justify-end" : "justify-start"}`}
                         >
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => deleteMessage(msg)}
+                              disabled={deletingId === msg.id}
+                              title="Borrar mensaje"
+                              className={`shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:pointer-events-none ${
+                                isOutbound ? "order-first" : "order-last"
+                              }`}
+                            >
+                              {deletingId === msg.id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <Trash2 className="h-3 w-3" />}
+                            </button>
+                          )}
                           <div
                             className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                               isOutbound
