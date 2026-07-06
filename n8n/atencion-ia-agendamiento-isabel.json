@@ -526,7 +526,7 @@
         "sendHeaders": true,
         "headerParameters": { "parameters": [ { "name": "x-webhook-secret", "value": "rpchile_cron_2026_a8K3mZqL" }, { "name": "Authorization", "value": "Bearer <ANON_KEY>" }, { "name": "apikey", "value": "<ANON_KEY>" } ] },
         "sendBody": true,
-        "bodyParameters": { "parameters": [ { "name": "mensaje", "value": "={{ $json.contenido }}" }, { "name": "telefono", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}" }, { "name": "nombre", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}" }, { "name": "campaña", "value": "={{ $workflow.name }}" }, { "name": "mensaje", "value": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}" }, { "name": "tipo", "value": "outbound" } ] },
+        "bodyParameters": { "parameters": [ { "name": "mensaje", "value": "={{ $json.contenido }}" }, { "name": "telefono", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}" }, { "name": "nombre", "value": "={{ $('WhatsApp Trigger1').item.json.contacts[0].profile.name }}" }, { "name": "campaña", "value": "={{ $workflow.name }}" }, { "name": "mensaje", "value": "={{ $('🧩 Parseador Nexus3').item.json.text_to_send }}" }, { "name": "tipo", "value": "outbound" }, { "name": "wamid", "value": "={{ $('Send message').item?.json?.messages?.[0]?.id || '' }}" } ] },
         "options": { "timeout": 15000 }
       },
       "id": "c0c8a5d9-c8d4-4d00-a094-bb9fbc8390bb",
