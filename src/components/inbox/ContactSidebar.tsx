@@ -26,6 +26,7 @@ import { TagChips } from "./TagsManager";
 import { useInboxContacts, type InboxFilter, type DateFilter } from "@/hooks/use-inbox-contacts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { countryFlag } from "@/lib/countryFlag";
+import { senalMeta } from "@/lib/acuse";
 import { AiAgentBadge, AiAgentStripe } from "./AiAgentBadge";
 
 function formatInboxTime(iso: string | null): string {
@@ -415,6 +416,18 @@ export function ContactSidebar({ selectedContact, onSelectContact, allTags }: Co
                         {unread > 9 ? "9+" : unread}
                       </span>
                     )}
+                    {(() => {
+                      const meta = senalMeta(contact.senal);
+                      if (!meta) return null;
+                      return (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-card"
+                          style={{ background: meta.color }}
+                          title={meta.label}
+                          aria-label={meta.label}
+                        />
+                      );
+                    })()}
                   </button>
 
                   {/* Content */}

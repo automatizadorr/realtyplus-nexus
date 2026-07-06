@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from "@/hooks/use-notification-sound";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { countryFlag } from "@/lib/countryFlag";
+import { senalMeta } from "@/lib/acuse";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { TagChips } from "@/components/inbox/TagsManager";
 import type { LeadTag } from "@/lib/supabase";
@@ -64,18 +65,6 @@ function estadoColor(estado: string | null | undefined) {
   return "text-muted-foreground bg-muted border-border";
 }
 
-// Semáforo comercial por acuses de WhatsApp (read receipts).
-// caliente=respondió/leído reciente, tibio=leído sin responder,
-// frio=entregado no leído, fallido=envío falló.
-const SENAL_META: Record<string, { color: string; label: string }> = {
-  caliente: { color: "#22c55e", label: "Caliente · respondió, llamar" },
-  tibio: { color: "#f59e0b", label: "Tibio · leyó sin responder" },
-  frio: { color: "#94a3b8", label: "Frío · entregado, no leído" },
-  fallido: { color: "#f43f5e", label: "Falló el envío" },
-};
-function senalMeta(senal: string | null | undefined) {
-  return senal ? SENAL_META[senal] : undefined;
-}
 
 // Color de avatar determinista a partir del nombre/teléfono (WhatsApp-like).
 const AVATAR_COLORS = [

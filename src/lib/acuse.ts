@@ -19,6 +19,20 @@ export function tickFase(estado: string | null | undefined): TickFase {
   return null;
 }
 
+// Semáforo comercial por lead (columna `senal` de las vistas de inbox), derivado
+// de los acuses: caliente=respondió/leyó reciente, tibio=leyó sin responder,
+// frio=entregado no leído, fallido=envío falló. Mismo círculo en Oportunidades
+// (AutomationSidebar) y en reactivación (ContactSidebar).
+export const SENAL_META: Record<string, { color: string; label: string }> = {
+  caliente: { color: "#22c55e", label: "Caliente · respondió, llamar" },
+  tibio: { color: "#f59e0b", label: "Tibio · leyó sin responder" },
+  frio: { color: "#94a3b8", label: "Frío · entregado, no leído" },
+  fallido: { color: "#f43f5e", label: "Falló el envío" },
+};
+export function senalMeta(senal: string | null | undefined) {
+  return senal ? SENAL_META[senal] : undefined;
+}
+
 export interface AcuseInfo {
   fase: Exclude<TickFase, null>;
   corto: string;

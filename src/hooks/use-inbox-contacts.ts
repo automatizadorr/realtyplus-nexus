@@ -19,6 +19,9 @@ export interface InboxContactRow {
   inbound_count: number | null;
   outbound_count: number | null;
   is_ai_initiated: boolean | null;
+  // Señal comercial (semáforo) derivada de los acuses de WhatsApp. Opcional:
+  // solo llega si la vista ya expone `senal` (migración 20260706140000).
+  senal?: string | null;
 }
 
 export type InboxFilter = "all" | "unread" | "bot_on" | "bot_off" | "archived" | "ai_initiated";
@@ -33,9 +36,9 @@ interface Params {
   pageSize?: number;
 }
 
-const SELECT_COLS =
-  "id, nombre, telefono, pais, estado, bot_activo, archivado, tag_ids, last_message_at, unread_count, last_message_text, last_message_dir, first_message_dir, first_message_at, inbound_count, outbound_count, is_ai_initiated";
-
+// Se usa `*` (en vez de una lista explícita) para ser resiliente: la vista
+// incorporó `senal` en una migración que Mario aplica a mano; con `*` el hook
+// no rompe si aún no se corrió (senal llega undefined y el punto no se pinta).
 export function useInboxContacts({ search, filter, tagId, country = "all", dateRange = "all", pageSize = 50 }: Params) {
   const [rows, setRows] = useState<InboxContactRow[]>([]);
   const [page, setPage] = useState(0);
@@ -60,7 +63,7 @@ export function useInboxContacts({ search, filter, tagId, country = "all", dateR
 
       let q = (supabase as any)
         .from("vista_inbox_contactos")
-        .select(SELECT_COLS, { count: "estimated" });
+        .select("*", { count: "estimated" });
 
       // Archived split
       if (filter === "archived") q = q.eq("archivado", true);
@@ -130,7 +133,7 @@ export function useInboxContacts({ search, filter, tagId, country = "all", dateR
       if (!phoneBase) return;
       const { data } = await (supabase as any)
         .from("vista_inbox_contactos")
-        .select(SELECT_COLS)
+        .select("*")
         .eq("telefono", phoneBase)
         .maybeSingle();
       if (!data) return;
