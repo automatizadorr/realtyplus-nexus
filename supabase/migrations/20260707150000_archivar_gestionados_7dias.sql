@@ -1,0 +1,45 @@
+-- ============================================================
+-- Archivo automático de leads GESTIONADOS tras 7 días sin actividad (2026-07-07)
+--
+-- Protocolo "TRATAMIENTO DE LEADS EN CHAT IA": las situaciones 1–5 (etiqueta
+-- companion "Gestionado") deben desactivar el chat IA y archivar el lead. Para NO
+-- cortar conversaciones activas, se hace con 7 DÍAS de gracia: solo se archiva al
+-- lead gestionado que lleva 7 días SIN ningún mensaje (reactivación u oportunidad).
+-- Si el lead sigue conversando, su clock se reinicia y no se archiva.
+--
+-- Se agenda como job de pg_cron que corre a diario (SQL puro, sin edge function).
+-- Este bloque documenta la lógica; ejecuta el `cron.schedule` de abajo APARTE en el
+-- SQL Editor (requiere pg_cron).
+-- ============================================================
+
+-- La actualización que corre el cron cada día:
+--   Apaga el bot + archiva a los gestionados inactivos 7 días.
+--
+-- select cron.schedule(
+--   'archivar-gestionados-7d',
+--   '0 5 * * *',                        -- 05:00 UTC diario (~06/07:00 Madrid)
+--   $$
+--     UPDATE public.leads_campana l
+--     SET bot_activo = false, archivado = true
+--     WHERE l.archivado IS NOT TRUE
+--       AND EXISTS (
+--         SELECT 1 FROM public.lead_tags t
+--         WHERE t.nombre = 'Gestionado' AND t.id = ANY(l.tag_ids)
+--       )
+--       AND NOT EXISTS (
+--         SELECT 1 FROM public.mensajes_whatsapp m
+--         WHERE regexp_replace(m.telefono,'[^0-9]','','g') = regexp_replace(l.telefono,'[^0-9]','','g')
+--           AND m.created_at > now() - interval '7 days'
+--       )
+--       AND NOT EXISTS (
+--         SELECT 1 FROM public.mensajes_automatizacion m2
+--         WHERE regexp_replace(m2.telefono,'[^0-9]','','g') = regexp_replace(l.telefono,'[^0-9]','','g')
+--           AND m2.created_at > now() - interval '7 days'
+--       );
+--   $$
+-- );
+--
+-- Ver / borrar el cron más tarde:
+--   select * from cron.job;
+--   select cron.unschedule('archivar-gestionados-7d');
+-- ============================================================
