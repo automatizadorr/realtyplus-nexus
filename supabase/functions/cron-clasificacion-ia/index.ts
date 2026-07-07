@@ -42,7 +42,7 @@ const N8N_CLASIFICACION_URL =
 // Etiquetas que NO se envían al webhook: el lead sigue en campaña, pendiente de que
 // conteste. Situación 6 del protocolo = "Sigue en campaña" (el lead no respondió; el
 // chat IA sigue activo reenviando plantillas). Las situaciones 1–5 (gestionadas) sí van.
-const ETIQUETAS_NO_ENVIAR = ["Sigue en campaña", "Sin Respuesta al Bot"];
+const ETIQUETAS_NO_ENVIAR = ["Sigue en campaña"];
 
 const norm = (s: unknown) =>
   (s ?? "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();

@@ -43,14 +43,12 @@ const norm = (s: string) =>
 // Grupos de etiquetas mutuamente excluyentes (un lead tiene UN estado de ciclo de vida).
 // Editable: si dos estados pueden coexistir, sácalos del grupo.
 const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
+  // Reducido tras consolidar en las 6 situaciones (2026-07-06): se borraron los estados
+  // de handoff. Solo quedan los que comparten concepto con las situaciones.
   estado_lead: [
     "Sigue en campaña",
     "No interesa",
-    "Agente asignado",
-    "Pendiente asignar agente",
-    "Solo quiere propiedades",
     "Cita agendada",
-    "Sin respuesta clara",
   ],
   // Situación del lead según el documento "TRATAMIENTO DE LEADS EN CHAT IA"
   // (clasificar-whatsapp-ia). Un lead está en UNA situación a la vez → asignar una

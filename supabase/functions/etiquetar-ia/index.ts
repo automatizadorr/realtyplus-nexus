@@ -33,23 +33,22 @@ const DEEPSEEK_MODEL = "deepseek-chat";
 
 // Grupos de etiquetas mutuamente excluyentes — debe coincidir con tag-lead.
 // Un lead tiene UN solo estado de ciclo de vida a la vez.
+// Consolidado a las 6 situaciones (2026-07-06): se borraron los estados de handoff
+// (Agente asignado / Pendiente asignar agente / Solo quiere propiedades / Sin respuesta
+// clara). Este clasificador queda reducido a los estados que sobreviven y que comparten
+// concepto con las 6 situaciones, para no fallar al asignar etiquetas inexistentes.
 const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
   estado_lead: [
     "Sigue en campaña",
     "No interesa",
-    "Agente asignado",
-    "Pendiente asignar agente",
-    "Solo quiere propiedades",
     "Cita agendada",
   ],
 };
 
-// Etiqueta de respaldo cuando DeepSeek no encuentra señal suficiente: en vez de dejar
-// el lead sin etiqueta, se le asigna este estado para que TODOS queden etiquetados.
-// Es parte del grupo estado_lead en tag-lead (así se reemplaza en cuanto el lead dé
-// una señal real) y SÍ se envía a expansión (no está en la exclusión del cron). NO se
-// muestra a DeepSeek en el prompt: es un fallback aplicado en código, no una opción.
-const FALLBACK_TAG = "Sin respuesta clara";
+// Etiqueta de respaldo cuando DeepSeek no encuentra señal suficiente: en vez de dejar el
+// lead sin etiqueta, se le asigna este estado. Antes era "Sin respuesta clara" (borrada);
+// ahora "Sigue en campaña" (el lead queda pendiente en campaña hasta dar señal real).
+const FALLBACK_TAG = "Sigue en campaña";
 
 // Convierte la conversación (string o array de turnos) a texto plano para el prompt.
 function conversacionATexto(conv: unknown): string {
@@ -149,10 +148,7 @@ Deno.serve(async (req) => {
       `   - "No interesa": el lead SÍ respondió y RECHAZA explícitamente: dice que no le ` +
       `interesa, pide no ser contactado o darse de baja. Requiere un rechazo claro del lead, ` +
       `no el simple hecho de no haber contestado.\n` +
-      `   - "Solo quiere propiedades": pide ver propiedades/catálogo/opciones o quiere comprar/arrendar.\n` +
       `   - "Cita agendada": acordó una reunión, visita o llamada con fecha/hora.\n` +
-      `   - "Agente asignado": ya está en manos de un agente humano.\n` +
-      `   - "Pendiente asignar agente": respondió algo genérico y aún no tiene estado.\n` +
       `4. Puedes añadir además etiquetas temáticas de la lista (zona, tipo de propiedad, etc.) si la conversación lo justifica con claridad.\n` +
       `5. No inventes etiquetas. Si no hay señal suficiente, deja "tag_nombres" vacío.\n` +
       `6. "resumen": un resumen BREVE (1-2 frases, máximo 240 caracteres) en español del estado ` +
