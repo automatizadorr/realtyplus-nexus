@@ -40,9 +40,9 @@ const N8N_CLASIFICACION_URL =
   "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/etiquetas-leads-nuevos";
 
 // Etiquetas que NO se envían al webhook: el lead sigue en campaña, pendiente de que
-// conteste. "Sin Respuesta al Bot" lo decide el clasificador; "Sigue en campaña" es el
-// estado de ciclo de vida (estado_lead) heredado del etiquetado de reactivación.
-const ETIQUETAS_NO_ENVIAR = ["Sin Respuesta al Bot", "Sigue en campaña"];
+// conteste. Situación 6 del protocolo = "Sigue en campaña" (el lead no respondió; el
+// chat IA sigue activo reenviando plantillas). Las situaciones 1–5 (gestionadas) sí van.
+const ETIQUETAS_NO_ENVIAR = ["Sigue en campaña", "Sin Respuesta al Bot"];
 
 const norm = (s: unknown) =>
   (s ?? "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();

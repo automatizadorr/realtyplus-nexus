@@ -52,19 +52,19 @@ const GRUPOS_EXCLUSIVOS: Record<string, string[]> = {
     "Cita agendada",
     "Sin respuesta clara",
   ],
-  // Segmento de clasificación IA - WhatsApp (clasificar-whatsapp-ia). Un lead está en
-  // UN segmento a la vez. OJO: "Cita agendada" y "No interesa" NO se incluyen aquí a
-  // propósito: ya viven en estado_lead (mismo concepto, misma fila), así que el
-  // clasificador los enruta por estado_lead y solo estos 7 se limpian entre sí. Así
-  // asignar un segmento no borra el estado de ciclo de vida del lead, ni al revés.
-  segmento_clasificacion: [
-    "Lead Caliente",
-    "Interesado en Financiamiento",
-    "Listo para Cerrar",
-    "Solo Consultando",
-    "Requiere Seguimiento IA",
-    "Conversación Activa",
-    "Sin Respuesta al Bot",
+  // Situación del lead según el documento "TRATAMIENTO DE LEADS EN CHAT IA"
+  // (clasificar-whatsapp-ia). Un lead está en UNA situación a la vez → asignar una
+  // limpia las otras 5. "Cita agendada", "No interesa" y "Sigue en campaña" también
+  // viven en estado_lead (mismo concepto): al ser el MISMO nombre/fila, quedan
+  // coordinadas. "Gestionado" NO va aquí: es una etiqueta companion que se añade a
+  // las situaciones 1–5 (no es excluyente con la situación).
+  situacion_lead: [
+    "Quiere info, no concreta cita",
+    "Cita agendada",
+    "Pide info, conversación inacabada",
+    "Pide info, no es el momento",
+    "No interesa",
+    "Sigue en campaña",
   ],
 };
 

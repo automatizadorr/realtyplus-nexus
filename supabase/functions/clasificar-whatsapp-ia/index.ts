@@ -2,9 +2,9 @@
 // "Clasificacion IA - WhatsApp Segmentado" (webhook /etiquetas-leads-nuevos).
 //
 // A diferencia de `etiquetar-ia` (que decide el ESTADO de ciclo de vida del lead,
-// grupo estado_lead), esta función decide UN SEGMENTO de la conversación de entre 9
-// opciones, para enrutar un WhatsApp distinto por segmento. Reusa `tag-lead` para
-// aplicar la etiqueta (resuelve nombres, grupos exclusivos y creación).
+// grupo estado_lead), esta función decide UNA de las 6 SITUACIONES del documento
+// "TRATAMIENTO DE LEADS EN CHAT IA" (grupo situacion_lead) y añade "Gestionado" a las
+// situaciones 1–5. Reusa `tag-lead` para aplicar (resuelve nombres, grupos y creación).
 //
 // Auth: header X-Webhook-Secret (mismo secreto que N8N_WEBHOOK_SECRET en n8n).
 //
@@ -33,32 +33,30 @@ const json = (body: unknown, status = 200) =>
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MODEL = "deepseek-chat";
 
-// Los 9 segmentos de clasificación. El modelo elige EXACTAMENTE UNO. Cada uno enruta
-// a un mensaje de WhatsApp distinto en el flujo n8n (nodo Switch Etiqueta).
+// Las 6 SITUACIONES del lead (doc "TRATAMIENTO DE LEADS EN CHAT IA"). El modelo elige
+// EXACTAMENTE UNA (grupo `situacion_lead` en tag-lead). Las situaciones 1–5 llevan
+// además la etiqueta companion "Gestionado"; la 6 (Sigue en campaña) NO.
 const SEGMENTOS = [
-  "Lead Caliente",
-  "Cita agendada",
-  "Interesado en Financiamiento",
-  "Listo para Cerrar",
-  "Solo Consultando",
-  "Requiere Seguimiento IA",
-  "Conversación Activa",
-  "Sin Respuesta al Bot",
-  "No interesa",
+  "Quiere info, no concreta cita",       // 1
+  "Cita agendada",                       // 2
+  "Pide info, conversación inacabada",   // 3
+  "Pide info, no es el momento",         // 4
+  "No interesa",                         // 5
+  "Sigue en campaña",                    // 6 (solo cuando el lead NO respondió)
 ];
+// Situaciones que un lead que SÍ respondió puede tener (1–5). La 6 es exclusiva del
+// atajo "nunca respondió".
+const SEGMENTOS_RESPONDIO = SEGMENTOS.slice(0, 5);
 
-// "Cita agendada" y "No interesa" son el MISMO concepto que en estado_lead (misma fila
-// en lead_tags). Se enrutan por el grupo estado_lead para no descoordinar el ciclo de
-// vida; el resto va por segmento_clasificacion. Debe casar con tag-lead.
 const norm = (s: unknown) =>
   (s ?? "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
-const COMPARTIDAS_ESTADO = new Set(["cita agendada", "no interesa"].map(norm));
 
-// Segmento por defecto cuando el LEAD SÍ respondió pero DeepSeek no halla señal clara.
-const FALLBACK_RESPONDIO = "Requiere Seguimiento IA";
-// Segmento cuando el bot/agente escribió pero el LEAD nunca respondió (no se envía al
-// webhook; sigue en campaña a la espera de que el lead conteste).
-const SEGMENTO_SIN_RESPUESTA = "Sin Respuesta al Bot";
+const GESTIONADO = "Gestionado";
+// Situación por defecto cuando el LEAD SÍ respondió pero DeepSeek no halla señal clara.
+const FALLBACK_RESPONDIO = "Pide info, conversación inacabada";
+// Situación cuando el bot/agente escribió pero el LEAD nunca respondió: sigue en campaña
+// (chat IA activo, se reenvían plantillas 2ª/3ª/4ª). No se envía al webhook de expansión.
+const SEGMENTO_SIN_RESPUESTA = "Sigue en campaña";
 
 function conversacionATexto(conv: unknown): string {
   if (typeof conv === "string") return conv.trim();
@@ -100,12 +98,12 @@ function parseJsonRespuesta(raw: string): Record<string, unknown> {
   return JSON.parse(s);
 }
 
-// Resuelve el nombre del segmento que devolvió DeepSeek a uno de los 9 EXACTOS (tildes
-// y mayúsculas), comparando normalizado. Devuelve null si no casa con ninguno.
-function resolverSegmento(nombre: unknown): string | null {
+// Resuelve el nombre que devolvió DeepSeek a una situación EXACTA (tildes/mayúsculas),
+// comparando normalizado dentro de la lista permitida. Devuelve null si no casa.
+function resolverSegmento(nombre: unknown, permitidos: string[] = SEGMENTOS): string | null {
   const n = norm(nombre);
   if (!n) return null;
-  return SEGMENTOS.find((s) => norm(s) === n) ?? null;
+  return permitidos.find((s) => norm(s) === n) ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -140,31 +138,28 @@ Deno.serve(async (req) => {
     let resumen = "";
     let decision: Record<string, unknown> = {};
 
-    // Atajo: si el LEAD nunca respondió, es "Sin Respuesta al Bot" sin gastar DeepSeek.
+    // Atajo: si el LEAD nunca respondió → "Sigue en campaña" (situación 6) sin DeepSeek.
     if (!respondio) {
       segmento = SEGMENTO_SIN_RESPUESTA;
-      resumen = "El bot/agente escribió pero el lead aún no ha respondido.";
+      resumen = "El bot/agente escribió pero el lead aún no ha respondido; sigue en campaña.";
       decision = { segmento, razon: "no hay turnos del lead en la conversación" };
     } else {
-      // Pedir a DeepSeek el segmento (JSON estructurado).
+      // Pedir a DeepSeek la situación (JSON estructurado). Solo entre las 5 del lead que
+      // SÍ respondió (la 6 "Sigue en campaña" es exclusiva del atajo de arriba).
       const systemPrompt =
         `Eres un clasificador experto de leads inmobiliarios (agencia en Chile/España). ` +
-        `Analizas una conversación de WhatsApp y asignas EXACTAMENTE UN segmento de esta lista ` +
+        `El lead YA respondió al menos una vez. Asigna EXACTAMENTE UNA situación de esta lista ` +
         `(respeta tildes y mayúsculas):\n` +
-        SEGMENTOS.map((s) => `   - ${s}`).join("\n") + `\n\n` +
-        `CRITERIOS:\n` +
-        `   - "Lead Caliente": interés alto y urgencia real de comprar/arrendar pronto.\n` +
-        `   - "Cita agendada": acordó una reunión, visita o llamada con fecha/hora.\n` +
-        `   - "Interesado en Financiamiento": pregunta por crédito hipotecario, pie, dividendos, financiamiento.\n` +
-        `   - "Listo para Cerrar": quiere avanzar YA al cierre, reserva, firma o pago.\n` +
-        `   - "Solo Consultando": pide info general, curiosea, sin intención clara de avanzar.\n` +
-        `   - "Requiere Seguimiento IA": respondió pero la intención no es clara; necesita más nurturing.\n` +
-        `   - "Conversación Activa": intercambio en curso que no encaja en un segmento más específico.\n` +
-        `   - "Sin Respuesta al Bot": el bot/agente escribió pero el lead nunca respondió.\n` +
-        `   - "No interesa": el lead rechaza explícitamente, pide no ser contactado o darse de baja.\n\n` +
+        SEGMENTOS_RESPONDIO.map((s) => `   - ${s}`).join("\n") + `\n\n` +
+        `CRITERIOS (según el protocolo de tratamiento de leads):\n` +
+        `   - "Quiere info, no concreta cita": pidió o mostró interés por la información y sigue interesado, pero NO agendó una cita.\n` +
+        `   - "Cita agendada": acordó/cerró una reunión, visita o llamada con día y hora concretos.\n` +
+        `   - "Pide info, conversación inacabada": pidió información pero dejó la conversación A MEDIAS (sin cerrar cita ni rechazar; quedó inconclusa).\n` +
+        `   - "Pide info, no es el momento": pidió información pero desestima continuar, dice que "no es el momento" o lo posterga.\n` +
+        `   - "No interesa": rechaza explícitamente, dice que NO le interesa o pide no ser contactado.\n\n` +
         `REGLAS:\n` +
-        `1. Elige UN SOLO segmento, el que mejor describa el estado ACTUAL de la conversación.\n` +
-        `2. No inventes segmentos: usa solo los de la lista, idénticos.\n` +
+        `1. Elige UNA SOLA situación, la que mejor describa el estado ACTUAL de la conversación.\n` +
+        `2. No inventes: usa solo las de la lista, idénticas.\n` +
         `3. "resumen": 1-2 frases (máx 240 caracteres) en español con el estado e intención del lead.\n\n` +
         `Responde SOLO con un objeto JSON con esta forma exacta:\n` +
         `{"segmento": string, "resumen": string, "razon": string}`;
@@ -200,8 +195,8 @@ Deno.serve(async (req) => {
       }
 
       resumen = typeof decision.resumen === "string" ? decision.resumen : "";
-      // Resuelve el segmento; si no casa con ninguno de los 9 → fallback de seguimiento.
-      segmento = resolverSegmento(decision.segmento) ?? FALLBACK_RESPONDIO;
+      // Resuelve entre las 5 situaciones del lead que respondió; si no casa → fallback.
+      segmento = resolverSegmento(decision.segmento, SEGMENTOS_RESPONDIO) ?? FALLBACK_RESPONDIO;
       decision.segmento = segmento;
     }
 
@@ -210,9 +205,10 @@ Deno.serve(async (req) => {
       return json({ success: true, dry_run: true, telefono, segmento, respondio, resumen, decision });
     }
 
-    // Aplicar el segmento como etiqueta vía tag-lead. "Cita agendada" / "No interesa" se
-    // enrutan por estado_lead (concepto compartido); el resto por segmento_clasificacion.
-    const grupo_exclusivo = COMPARTIDAS_ESTADO.has(norm(segmento)) ? "estado_lead" : "segmento_clasificacion";
+    // Aplicar la situación vía tag-lead (grupo exclusivo situacion_lead → limpia las
+    // otras 5). Las situaciones 1–5 llevan además "Gestionado"; la 6 (Sigue en campaña)
+    // conserva su estado y se le quita "Gestionado".
+    const esCampana = norm(segmento) === norm(SEGMENTO_SIN_RESPUESTA);
     const tagRes = await fetch(`${SUPABASE_URL}/functions/v1/tag-lead`, {
       method: "POST",
       headers: {
@@ -223,9 +219,10 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         telefono,
-        tag_nombres: [segmento],
+        tag_nombres: esCampana ? [segmento] : [segmento, GESTIONADO],
+        remove_tag_nombres: esCampana ? [GESTIONADO] : [],
         mode: "add",
-        grupo_exclusivo,
+        grupo_exclusivo: "situacion_lead",
         crear_si_no_existe: crearSiNoExiste,
         nombre,
       }),
