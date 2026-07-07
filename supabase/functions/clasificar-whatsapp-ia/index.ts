@@ -151,16 +151,20 @@ Deno.serve(async (req) => {
         `El lead YA respondió al menos una vez. Asigna EXACTAMENTE UNA situación de esta lista ` +
         `(respeta tildes y mayúsculas):\n` +
         SEGMENTOS_RESPONDIO.map((s) => `   - ${s}`).join("\n") + `\n\n` +
-        `CRITERIOS (según el protocolo de tratamiento de leads):\n` +
-        `   - "Quiere info, no concreta cita": pidió o mostró interés por la información y sigue interesado, pero NO agendó una cita.\n` +
-        `   - "Cita agendada": acordó/cerró una reunión, visita o llamada con día y hora concretos.\n` +
-        `   - "Pide info, conversación inacabada": pidió información pero dejó la conversación A MEDIAS (sin cerrar cita ni rechazar; quedó inconclusa).\n` +
-        `   - "Pide info, no es el momento": pidió información pero desestima continuar, dice que "no es el momento" o lo posterga.\n` +
-        `   - "No interesa": rechaza explícitamente, dice que NO le interesa o pide no ser contactado.\n\n` +
+        `CRITERIOS (protocolo de tratamiento de leads). Mira el ESTADO ACTUAL y el ÚLTIMO turno del LEAD:\n` +
+        `   - "Quiere info, no concreta cita": el lead está ACTIVO y receptivo (pregunta, muestra interés) y recibe información, pero aún NO agenda cita ni pone freno. La conversación sigue viva.\n` +
+        `   - "Cita agendada": acordó/cerró una reunión, visita o videollamada con día y hora concretos.\n` +
+        `   - "Pide info, conversación inacabada": pidió información pero la charla quedó COLGADA o inconclusa: el lead dejó de responder, contestó vago ('.', 'ok', un enlace, algo fuera de tema) o se despidió, SIN cerrar cita ni rechazar. Simplemente se apagó.\n` +
+        `   - "Pide info, no es el momento": pospone dejando la puerta ABIERTA. Dice "ahora no", "más adelante", "no es el momento", "no tengo capital por ahora", "cuando cambie te aviso". Hay interés latente, pero no ahora.\n` +
+        `   - "No interesa": rechazo que CIERRA la puerta: "no me interesa", "no gracias", pide no ser contactado/darse de baja, o dice que ya está en otro rubro. Sin intención de retomar.\n\n` +
+        `DESEMPATES:\n` +
+        `   - 1 vs 3: ¿el lead sigue enganchado (1) o dejó la charla colgada / respondió sin sustancia (3)?\n` +
+        `   - 4 vs 5: ¿deja la puerta abierta para más adelante (4) o rechaza cerrándola (5)?\n\n` +
         `REGLAS:\n` +
         `1. Elige UNA SOLA situación, la que mejor describa el estado ACTUAL de la conversación.\n` +
         `2. No inventes: usa solo las de la lista, idénticas.\n` +
-        `3. "resumen": 1-2 frases (máx 240 caracteres) en español con el estado e intención del lead.\n\n` +
+        `3. Si el hilo trae por error texto de OTRO bot o empresa, ignóralo y clasifica por la intención REAL del lead.\n` +
+        `4. "resumen": 1-2 frases (máx 240 caracteres) en español con el estado e intención del lead.\n\n` +
         `Responde SOLO con un objeto JSON con esta forma exacta:\n` +
         `{"segmento": string, "resumen": string, "razon": string}`;
 
