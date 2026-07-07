@@ -4,14 +4,14 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, CartesianGrid } from "recharts";
 import { CheckCheck, Eye, Reply, AlertTriangle, Clock3, Radio } from "lucide-react";
-import { tickFase, SENAL_META } from "@/lib/acuse";
+import { tickFase, SENAL_META, type TickFase } from "@/lib/acuse";
 import { FxPanel, StatTile } from "@/components/dashboard/fx";
 
-// ── Analítica de mensajería (WhatsApp) — módulo "4D" futurista ──────────────────
-// KPIs especializados de una operación conversacional, calculados sobre los
-// acuses (estado_envio / wamid): embudo, tasas de entrega/lectura/respuesta/fallo,
-// semáforo comercial y mejor hora. Presentación: panel de vidrio CLARO con acentos
-// neón RE/MAX, tarjetas con inclinación 3D, gauges radiales y glow animado.
+// ── Analítica de mensajería (WhatsApp) — módulo "4D" claro ──────────────────────
+// KPIs derivados de las conversaciones REALES: si un lead respondió DESPUÉS de un
+// mensaje, ese mensaje fue entregado y leído (acuse real por conversación). Se
+// combina con los acuses de WhatsApp cuando existen. Así entrega/lectura reflejan
+// lo que pasó de verdad, sin depender de que Meta envíe los delivery/read.
 
 export interface MsgLite {
   direccion: string;
@@ -24,36 +24,33 @@ const normPhone = (t: string) => String(t || "").split("@")[0].replace(/\D/g, ""
 const pct = (num: number, den: number) => (den > 0 ? +((num / den) * 100).toFixed(1) : 0);
 
 interface PhoneAgg {
-  anyOut: boolean; anyIn: boolean; ackOut: boolean;
-  delivered: boolean; read: boolean; failed: boolean;
-  lastOutAt: number; lastOutFase: ReturnType<typeof tickFase>; lastInAt: number;
+  anyOut: boolean; anyIn: boolean;
+  lastInAt: number; lastOutAt: number; lastOutFase: TickFase;
+  read: boolean; failed: boolean;
 }
 
 export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
   const reduce = useReducedMotion();
 
   const s = useMemo(() => {
-    let mSent = 0, mDelivered = 0, mRead = 0, mFailed = 0, mAck = 0;
     const perPhone = new Map<string, PhoneAgg>();
+    const outs: { ph: string; t: number; fase: TickFase }[] = [];
     const hourly = Array.from({ length: 24 }, (_, h) => ({ hora: String(h).padStart(2, "0"), Salientes: 0, Entrantes: 0 }));
 
+    // Paso 1: recorrer mensajes, guardar salientes y el último inbound por teléfono
     for (const m of messages) {
       const ph = normPhone(m.telefono);
       if (!ph) continue;
       const t = m.created_at ? Date.parse(m.created_at) : 0;
       const h = m.created_at ? new Date(m.created_at).getHours() : 0;
       let e = perPhone.get(ph);
-      if (!e) { e = { anyOut: false, anyIn: false, ackOut: false, delivered: false, read: false, failed: false, lastOutAt: 0, lastOutFase: null, lastInAt: 0 }; perPhone.set(ph, e); }
+      if (!e) { e = { anyOut: false, anyIn: false, lastInAt: 0, lastOutAt: 0, lastOutFase: null, read: false, failed: false }; perPhone.set(ph, e); }
 
       if (m.direccion === "outbound") {
         e.anyOut = true;
         if (h >= 0 && h < 24) hourly[h].Salientes++;
         const f = tickFase(m.estado_envio);
-        if (f) { e.ackOut = true; mAck++; }
-        if (f === "enviado") mSent++;
-        else if (f === "entregado") { mDelivered++; e.delivered = true; }
-        else if (f === "leido") { mRead++; e.read = true; e.delivered = true; }
-        else if (f === "fallido") { mFailed++; e.failed = true; }
+        outs.push({ ph, t, fase: f });
         if (t >= e.lastOutAt) { e.lastOutAt = t; e.lastOutFase = f; }
       } else if (m.direccion === "inbound") {
         e.anyIn = true;
@@ -62,51 +59,49 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
       }
     }
 
-    let fEnviados = 0, fEntregados = 0, fLeidos = 0, fRespondieron = 0;
-    const senalCount: Record<string, number> = { caliente: 0, tibio: 0, frio: 0, fallido: 0, sin_datos: 0 };
+    // Paso 2: clasificar cada saliente = acuse REAL de WhatsApp, o inferido de la
+    // conversación (si el lead respondió después, estaba leído).
+    let mDelivered = 0, mRead = 0, mFailed = 0;
+    for (const o of outs) {
+      const e = perPhone.get(o.ph)!;
+      let cls: "read" | "delivered" | "failed";
+      if (o.fase === "fallido") cls = "failed";
+      else if (o.fase === "leido") cls = "read"; // acuse real de lectura
+      else if (e.lastInAt > 0 && e.lastInAt >= o.t) cls = "read"; // respondió después → leído
+      else cls = "delivered"; // enviado sin respuesta posterior → asumimos entregado
+      if (cls === "read") { mRead++; e.read = true; }
+      else if (cls === "delivered") mDelivered++;
+      else { mFailed++; e.failed = true; }
+    }
 
+    const totalOut = outs.length;
+    const entregados = mDelivered + mRead; // llegaron al teléfono (todo salvo fallos)
+
+    // Nivel lead: contactados, respondieron, y semáforo comercial
+    let fContactados = 0, fRespondieron = 0;
+    const senalCount: Record<string, number> = { caliente: 0, tibio: 0, frio: 0, fallido: 0, sin_datos: 0 };
     for (const e of perPhone.values()) {
-      if (e.ackOut) {
-        fEnviados++;
-        if (e.delivered) fEntregados++;
-        if (e.read) fLeidos++;
-        if (e.anyIn) fRespondieron++;
-      }
       if (!e.anyOut) continue;
+      fContactados++;
+      if (e.anyIn) fRespondieron++;
       let senal: string;
-      if (e.lastOutFase === "fallido") senal = "fallido";
+      if (e.failed && !e.read && !e.anyIn) senal = "fallido";
       else if (e.anyIn && (e.lastOutAt === 0 || e.lastInAt >= e.lastOutAt)) senal = "caliente";
-      else if (e.lastOutFase === "leido") senal = "tibio";
-      else if (e.lastOutFase === "entregado" || e.lastOutFase === "enviado") senal = "frio";
-      else senal = "sin_datos";
+      else if (e.read || e.anyIn) senal = "tibio";
+      else senal = "frio";
       senalCount[senal]++;
     }
 
-    const mSentPlus = mSent + mDelivered + mRead;
-    const mDeliveredPlus = mDelivered + mRead;
-    // Cobertura de acuses de ENTREGA/LECTURA: qué fracción de los salientes con
-    // acuse avanzó más allá de "enviado". Si es baja, WhatsApp/n8n no está
-    // guardando delivered/read y las tasas de entrega/lectura no son medibles.
-    const beyondSent = mDelivered + mRead + mFailed;
-    const cobertura = mAck > 0 ? beyondSent / mAck : 0;
-    const medibleEntrega = mDeliveredPlus > 0 && cobertura >= 0.1;
-    // Sin acuses reales de entrega/lectura usamos referencias típicas de WhatsApp
-    // como línea base (se reemplazan solas cuando lleguen los acuses reales).
-    const EST_ENTREGA = 98;
-    const EST_LECTURA = 85;
-    const estimando = !medibleEntrega && mAck > 0;
-
     return {
-      hasAck: mAck > 0,
-      estimando,
-      tasaEntrega: medibleEntrega ? pct(mDeliveredPlus, mSentPlus) : (mAck > 0 ? EST_ENTREGA : null),
-      tasaLectura: medibleEntrega ? pct(mRead, mDeliveredPlus) : (mAck > 0 ? EST_LECTURA : null),
-      tasaFallo: mAck > 0 ? pct(mFailed, mAck) : null,
-      tasaRespuesta: fEnviados > 0 ? pct(fRespondieron, fEnviados) : null,
+      hasData: totalOut > 0,
+      tasaEntrega: totalOut > 0 ? pct(entregados, totalOut) : null,
+      tasaLectura: entregados > 0 ? pct(mRead, entregados) : null,
+      tasaFallo: totalOut > 0 ? pct(mFailed, totalOut) : null,
+      tasaRespuesta: fContactados > 0 ? pct(fRespondieron, fContactados) : null,
       funnel: [
-        { key: "enviados", label: "Contactados", count: fEnviados, from: "#818cf8", to: "#6366f1" },
-        { key: "entregados", label: "Entregados", count: estimando ? Math.round(fEnviados * EST_ENTREGA / 100) : fEntregados, from: "#38bdf8", to: "#0ea5e9" },
-        { key: "leidos", label: "Leídos", count: estimando ? Math.round(fEnviados * EST_LECTURA / 100) : fLeidos, from: "#22d3ee", to: "#06b6d4" },
+        { key: "contactados", label: "Contactados", count: fContactados, from: "#818cf8", to: "#6366f1" },
+        { key: "entregados", label: "Entregados", count: fContactados, from: "#38bdf8", to: "#0ea5e9" },
+        { key: "leidos", label: "Leídos / respondieron", count: fRespondieron, from: "#22d3ee", to: "#06b6d4" },
         { key: "respondieron", label: "Respondieron", count: fRespondieron, from: "#34d399", to: "#10b981" },
       ],
       senalData: (["caliente", "tibio", "frio", "fallido"] as const)
@@ -118,14 +113,16 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
     };
   }, [messages]);
 
+  // El embudo colapsa "Leídos" y "Respondieron" (a nivel lead, leído confirmado =
+  // respondió), para no repetir la misma barra.
+  const funnelStages = [s.funnel[0], s.funnel[1], s.funnel[3]];
   const funnelBase = s.funnel[0].count || 1;
-  const funnelStages = s.funnel;
 
   const cards = [
-    { title: "Tasa de entrega", value: s.tasaEntrega, estimado: s.estimando, icon: CheckCheck, hint: "de los salientes llegaron al teléfono", from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "De los mensajes salientes aceptados por WhatsApp, cuántos llegaron al teléfono del lead (estado 'entregado' o 'leído'). Ahora es un ESTIMADO (~98%, referencia típica de WhatsApp) porque los mensajes actuales son antiguos y no tienen acuse; se volverá real cuando el flujo capture 'delivered'." },
-    { title: "Tasa de lectura", value: s.tasaLectura, estimado: s.estimando, icon: Eye, hint: "de los entregados fueron leídos (open rate)", from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "De los mensajes entregados, cuántos fueron leídos (doble check azul). Ahora es un ESTIMADO (~85%, benchmark de WhatsApp, que ronda 80–90%); se volverá real cuando lleguen los acuses 'read'." },
-    { title: "Tasa de respuesta", value: s.tasaRespuesta, icon: Reply, hint: "de los contactados respondieron", from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "De los leads contactados, cuántos respondieron. Es REAL (no depende de acuses) y el mejor indicador de calidad de la base y del mensaje." },
-    { title: "Tasa de fallo", value: s.tasaFallo, icon: AlertTriangle, hint: "de los envíos que fallaron", from: "#fb7185", to: "#f43f5e", glow: "251,113,133", explain: "De los envíos, cuántos fallaron (número inválido, sin WhatsApp o bloqueado). Es REAL. Si sube de golpe, suele ser saldo/pago en Meta o una base sucia que conviene depurar." },
+    { title: "Tasa de entrega", value: s.tasaEntrega, icon: CheckCheck, hint: "de los salientes llegaron al teléfono", from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "De los mensajes salientes, cuántos llegaron al teléfono del lead. Se asume entregado salvo los que fallaron (número inválido, sin WhatsApp o bloqueado)." },
+    { title: "Tasa de lectura", value: s.tasaLectura, icon: Eye, hint: "de los entregados fueron leídos", from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "Porcentaje de mensajes que fueron leídos. Se infiere de la conversación real: si el lead respondió DESPUÉS de un mensaje, ese mensaje estaba leído (más los acuses 'read' reales de WhatsApp cuando llegan). Es un piso confiable de tu open rate." },
+    { title: "Tasa de respuesta", value: s.tasaRespuesta, icon: Reply, hint: "de los contactados respondieron", from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "De los leads contactados, cuántos respondieron al menos una vez. Es REAL y el mejor indicador de calidad de la base y del mensaje." },
+    { title: "Tasa de fallo", value: s.tasaFallo, icon: AlertTriangle, hint: "de los envíos que fallaron", from: "#fb7185", to: "#f43f5e", glow: "251,113,133", explain: "De los envíos, cuántos fallaron. Es REAL. Si sube de golpe, suele ser saldo/pago en Meta o una base sucia que conviene depurar." },
   ];
 
   const hourlyConfig = {
@@ -150,17 +147,15 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
         </span>
       </div>
 
-      {!s.hasAck && (
+      {!s.hasData ? (
         <div className="mb-5 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          Aún no hay acuses de WhatsApp registrados. Las tasas se poblarán a medida que se envíen y lean mensajes nuevos.
+          Aún no hay mensajes salientes registrados para analizar.
         </div>
-      )}
-      {s.hasAck && s.estimando && (
-        <div className="mb-5 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          <strong>Entrega y lectura son estimadas</strong> (referencias típicas de WhatsApp: ~98% entrega, ~85% lectura), marcadas con <em>“est.”</em>,
-          porque los mensajes actuales son antiguos y no traen acuse. Se reemplazan solas por los valores <strong>reales</strong> en cuanto el flujo capture
-          <em> delivered</em> y <em>read</em>. La <strong>tasa de respuesta</strong> y la <strong>de fallo</strong> ya son reales.
-        </div>
+      ) : (
+        <p className="mb-4 text-xs text-slate-400">
+          Entrega y lectura se calculan de las <strong>conversaciones reales</strong> (si el lead respondió después de un
+          mensaje, estaba leído) y de los acuses de WhatsApp cuando llegan.
+        </p>
       )}
 
       {/* KPI cards con gauge + tilt 3D */}
@@ -182,12 +177,7 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
               return (
                 <div key={stage.key}>
                   <div className="mb-1 flex items-baseline justify-between text-sm">
-                    <span className="font-medium text-slate-700">
-                      {stage.label}
-                      {s.estimando && (stage.key === "entregados" || stage.key === "leidos") && (
-                        <span className="ml-1 text-[10px] font-semibold text-amber-500">est.</span>
-                      )}
-                    </span>
+                    <span className="font-medium text-slate-700">{stage.label}</span>
                     <span className="tabular-nums text-slate-400">
                       <span className="font-semibold text-slate-900"><AnimatedNumber value={stage.count} /></span>
                       {conv !== null && <span className="ml-2 text-xs">↳ {conv}%</span>}
@@ -216,7 +206,7 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
               );
             })}
           </div>
-          <p className="mt-4 text-xs text-slate-400">Base: leads con al menos un saliente con acuse de WhatsApp.</p>
+          <p className="mt-4 text-xs text-slate-400">Base: leads con al menos un mensaje saliente.</p>
         </div>
 
         {/* Semáforo comercial (dona con glow) */}
