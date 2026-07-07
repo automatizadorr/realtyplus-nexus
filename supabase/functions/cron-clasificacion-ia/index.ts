@@ -67,6 +67,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const dryRun = body?.dry_run === true;
+    // Aplica etiquetas PERO sin postear el lote al webhook (útil para re-etiquetar en
+    // masa sin spamear el reporte de expansión). Default true = comportamiento normal.
+    const postearLote = body?.postear_lote !== false;
     const paisFiltro = (body?.pais ?? "").toString().trim();
     const VENTANA_HORAS = Number(body?.ventana_horas) > 0 ? Number(body.ventana_horas) : 24;
     const cutoff = new Date(Date.now() - VENTANA_HORAS * 3600 * 1000).toISOString();
@@ -246,6 +249,8 @@ Deno.serve(async (req) => {
 
     if (dryRun) {
       n8n_response = "dry_run: no se aplicaron etiquetas ni se posteó a n8n";
+    } else if (!postearLote) {
+      n8n_response = "postear_lote=false: etiquetas aplicadas, NO se posteó el lote al webhook";
     } else if (leads_a_enviar.length > 0) {
       // Adjunta el Excel (misma lógica que TaggedExport) generado por
       // clasificacion-excel. Best-effort: si falla, el reporte se envía igual sin él.
