@@ -454,10 +454,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {[
             { title: "Contactos", value: countriesTotal, icon: Users, from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "Total de contactos cargados desde Google Sheets. Es tu universo de leads disponibles para lanzar campañas de reactivación." },
-            { title: "Leads en BD", value: leads.length, icon: Database, from: "#818cf8", to: "#6366f1", glow: "129,140,248", explain: "Leads efectivamente guardados en la base del CRM (tabla leads_campana). Sobre estos se envían y registran las conversaciones." },
             { title: "Mensajes", value: kpis!.totalMessages, icon: MessageSquareText, from: "#a78bfa", to: "#8b5cf6", glow: "167,139,250", explain: "Total de mensajes de WhatsApp intercambiados (entrantes + salientes) en el canal de reactivación. Mide el volumen de actividad." },
             { title: "Respondieron", value: kpis!.leadsResponded, icon: Reply, from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "Leads que respondieron al menos un mensaje. Refleja interés real y la calidad de la base contactada." },
             { title: "Tasa de respuesta", value: kpis!.responseRate, decimals: 1, suffix: "%", gauge: true, icon: TrendingUp, from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "Porcentaje de leads que respondieron sobre el total. Es el termómetro de efectividad de tu mensajería: si sube, tu copy y segmentación funcionan." },
