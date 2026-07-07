@@ -407,60 +407,6 @@ export default function Dashboard() {
     );
   }
 
-  const kpiCards: {
-    title: string;
-    value: number;
-    decimals?: number;
-    suffix?: string;
-    icon: React.ElementType;
-    iconWrap: string;
-    bar: string;
-  }[] = [
-    {
-      title: "Países\u00a0",
-      value: countries.length,
-      icon: Globe2,
-      iconWrap: "from-cyan-500/20 to-cyan-500/5 text-cyan-600 ring-cyan-500/25",
-      bar: "from-cyan-400 to-cyan-600",
-    },
-    {
-      title: "Contactos\u00a0",
-      value: countriesTotal,
-      icon: Users,
-      iconWrap: "from-rose-500/20 to-rose-500/5 text-rose-600 ring-rose-500/25",
-      bar: "from-rose-400 to-rose-600",
-    },
-    {
-      title: "Mensajes Totales",
-      value: kpis!.totalMessages,
-      icon: MessageSquareText,
-      iconWrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/25",
-      bar: "from-violet-400 to-violet-600",
-    },
-    {
-      title: "Bot Activo",
-      value: kpis!.botActive,
-      icon: Bot,
-      iconWrap: "from-amber-500/20 to-amber-500/5 text-amber-600 ring-amber-500/25",
-      bar: "from-amber-400 to-amber-600",
-    },
-    {
-      title: "Leads Respondieron",
-      value: kpis!.leadsResponded,
-      icon: UserCheck,
-      iconWrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/25",
-      bar: "from-blue-400 to-blue-600",
-    },
-    {
-      title: "Tasa de Respuesta",
-      value: kpis!.responseRate,
-      decimals: 1,
-      suffix: "%",
-      icon: TrendingUp,
-      iconWrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/25",
-      bar: "from-emerald-400 to-emerald-600",
-    },
-  ];
 
   const countryChartConfig = {
     total: { label: "Contactos", color: "hsl(var(--primary))" },
@@ -475,19 +421,19 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* ── Centro de mando (panel oscuro futurista) ─────────────────────── */}
+      {/* ── Centro de mando (panel claro futurista) ──────────────────────── */}
       <FxPanel className="p-5 sm:p-6">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
             <div>
-              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-sky-300/80">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-sky-600">
                 Centro de mando · RealtyPlus
               </p>
-              <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -497,18 +443,12 @@ export default function Dashboard() {
               { label: "Exportar", icon: Download, onClick: handleExport, disabled: !countries.length },
               { label: "Inbox", icon: InboxIcon, onClick: () => navigate("/inbox") },
             ].map((b) => (
-              <Button
-                key={b.label}
-                size="sm"
-                onClick={b.onClick}
-                disabled={b.disabled}
-                className="border border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-              >
+              <Button key={b.label} variant="outline" size="sm" onClick={b.onClick} disabled={b.disabled} className="bg-white/70 backdrop-blur">
                 <b.icon className={`mr-2 h-4 w-4 ${b.spin ? "animate-spin" : ""}`} />
                 {b.label}
               </Button>
             ))}
-            <Button size="sm" onClick={() => navigate("/campaigns")} className="bg-[#DC1C2E] text-white hover:bg-[#DC1C2E]/90 shadow-[0_0_20px_-4px_rgba(220,28,46,0.7)]">
+            <Button size="sm" onClick={() => navigate("/campaigns")} className="bg-[#DC1C2E] text-white hover:bg-[#DC1C2E]/90 shadow-[0_8px_20px_-8px_rgba(220,28,46,0.6)]">
               <Megaphone className="mr-2 h-4 w-4" /> Campañas
             </Button>
           </div>
@@ -528,34 +468,34 @@ export default function Dashboard() {
         </div>
 
         {/* Acción inmediata: leads calientes por atender */}
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md">
+        <div className="mt-4 rounded-xl border border-slate-200/70 bg-white/60 p-4 shadow-sm backdrop-blur-md">
           <div className="flex items-center gap-2">
-            <Flame className="h-4 w-4 text-orange-400" />
+            <Flame className="h-4 w-4 text-orange-500" />
             <div>
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-white/40">Acción inmediata</p>
-              <h3 className="text-sm font-semibold text-white">
-                Leads calientes por atender <span className="text-emerald-300">({hot.count})</span>
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-slate-400">Acción inmediata</p>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Leads calientes por atender <span className="text-emerald-600">({hot.count})</span>
               </h3>
             </div>
           </div>
           {hot.list.length === 0 ? (
-            <p className="py-4 text-center text-sm text-white/40">Nada pendiente ahora mismo. Todos los que respondieron ya recibieron réplica. 🎯</p>
+            <p className="py-4 text-center text-sm text-slate-400">Nada pendiente ahora mismo. Todos los que respondieron ya recibieron réplica. 🎯</p>
           ) : (
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {hot.list.map((l) => (
                 <button
                   key={l.telefono}
                   onClick={() => navigate(`/inbox?phone=${encodeURIComponent(l.telefono)}`)}
-                  className="group flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition-colors hover:bg-white/[0.07]"
+                  className="group flex items-center gap-3 rounded-lg border border-slate-200 bg-white/70 px-3 py-2 text-left transition-colors hover:bg-slate-50"
                 >
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 8px #22c55e" }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" style={{ boxShadow: "0 0 8px #22c55e88" }} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">
+                    <p className="truncate text-sm font-medium text-slate-900">
                       {l.pais ? `${countryFlag(l.pais)} ` : ""}{l.nombre}
                     </p>
-                    <p className="truncate text-[11px] text-white/45">{l.telefono} · respondió {timeAgo(l.at)}</p>
+                    <p className="truncate text-[11px] text-slate-400">{l.telefono} · respondió {timeAgo(l.at)}</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-300" />
+                  <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" />
                 </button>
               ))}
             </div>

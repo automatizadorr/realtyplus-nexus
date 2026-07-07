@@ -2,18 +2,17 @@ import { useRef } from "react";
 import { motion, useMotionValue, useSpring, useReducedMotion, type MotionValue } from "framer-motion";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
-// ── Kit visual "4D" futurista ──────────────────────────────────────────────────
-// Piezas compartidas para los paneles oscuros neón del Dashboard (command center
-// y analítica de mensajería). El resto de secciones del Dashboard va en blanco.
+// ── Kit visual "4D" futurista — versión CLARA ──────────────────────────────────
+// Glassmorphism sobre blanco con glows de color RE/MAX, gauges radiales e
+// inclinación 3D. Mismo lenguaje futurista que antes pero en claro.
 
 export const FX_EASE = [0.16, 1, 0.3, 1] as const;
 
-// Fondo de panel: rejilla + glows RE/MAX que laten. Se coloca dentro de un
-// contenedor `relative overflow-hidden` oscuro.
+// Fondo de panel: rejilla sutil + glows RE/MAX que laten (suaves para claro).
 export function FxBackground() {
   const reduce = useReducedMotion();
   const gridBg =
-    "linear-gradient(rgba(120,160,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(120,160,255,0.08) 1px, transparent 1px)";
+    "linear-gradient(rgba(30,64,140,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(30,64,140,0.05) 1px, transparent 1px)";
   return (
     <>
       <div
@@ -22,14 +21,14 @@ export function FxBackground() {
         aria-hidden
       />
       <motion.div
-        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-[#003DA5]/40 blur-[90px]"
-        animate={reduce ? undefined : { opacity: [0.35, 0.6, 0.35], scale: [1, 1.12, 1] }}
+        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-[#003DA5]/12 blur-[90px]"
+        animate={reduce ? undefined : { opacity: [0.5, 0.8, 0.5], scale: [1, 1.12, 1] }}
         transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
         aria-hidden
       />
       <motion.div
-        className="pointer-events-none absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#DC1C2E]/25 blur-[90px]"
-        animate={reduce ? undefined : { opacity: [0.25, 0.5, 0.25], scale: [1.1, 1, 1.1] }}
+        className="pointer-events-none absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#DC1C2E]/10 blur-[90px]"
+        animate={reduce ? undefined : { opacity: [0.4, 0.65, 0.4], scale: [1.1, 1, 1.1] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         aria-hidden
       />
@@ -37,11 +36,11 @@ export function FxBackground() {
   );
 }
 
-// Contenedor de panel oscuro con vidrio + glow (borde de la sección).
+// Contenedor de panel claro con vidrio + glow (borde de la sección).
 export function FxPanel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <section
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#070b1e] via-[#0a1430] to-[#0a0f26] text-white ring-1 ring-white/10 shadow-[0_20px_60px_-20px_rgba(0,20,80,0.6)] ${className}`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-white via-slate-50 to-sky-50/50 text-slate-800 ring-1 ring-slate-200/70 shadow-[0_20px_60px_-28px_rgba(20,50,110,0.35)] ${className}`}
     >
       <FxBackground />
       <div className="relative">{children}</div>
@@ -78,14 +77,14 @@ export function Gauge({ value, from, to, id }: { value: number; from: string; to
   const r = 30;
   const c = 2 * Math.PI * r;
   return (
-    <svg viewBox="0 0 76 76" className="h-[68px] w-[68px] shrink-0 -rotate-90" style={{ filter: `drop-shadow(0 0 6px ${to}66)` }}>
+    <svg viewBox="0 0 76 76" className="h-[68px] w-[68px] shrink-0 -rotate-90" style={{ filter: `drop-shadow(0 0 6px ${to}55)` }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor={from} />
           <stop offset="100%" stopColor={to} />
         </linearGradient>
       </defs>
-      <circle cx="38" cy="38" r={r} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="6.5" />
+      <circle cx="38" cy="38" r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="6.5" />
       <motion.circle
         cx="38" cy="38" r={r} fill="none" stroke={`url(#${id})`} strokeWidth="6.5" strokeLinecap="round"
         strokeDasharray={c}
@@ -125,11 +124,10 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
       <Tilt3D disabled={!!reduce}>
         <div
           onClick={onClick}
-          className={`group relative h-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-md transition-shadow duration-300 ${onClick ? "cursor-pointer" : ""}`}
-          style={{ boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.06)" }}
+          className={`group relative h-full overflow-hidden rounded-xl border border-slate-200/70 bg-white/70 p-4 shadow-sm ring-1 ring-white/60 backdrop-blur-md transition-shadow duration-300 ${onClick ? "cursor-pointer" : ""}`}
         >
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-px opacity-70" style={{ background: `linear-gradient(90deg, transparent, ${to}, transparent)` }} />
-          <div className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ boxShadow: `0 0 30px -6px rgba(${glow},0.5)` }} />
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-[2px] opacity-80" style={{ background: `linear-gradient(90deg, transparent, ${to}, transparent)` }} />
+          <div className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ boxShadow: `0 0 28px -8px rgba(${glow},0.55)` }} />
           <div className="flex items-center gap-3" style={{ transform: "translateZ(30px)" }}>
             {gauge ? (
               <div className="relative grid place-items-center">
@@ -137,18 +135,18 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
                 <Icon className="absolute h-5 w-5" style={{ color: to }} />
               </div>
             ) : (
-              <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${from}33, ${to}12)`, boxShadow: `inset 0 0 0 1px ${to}44` }}>
+              <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${from}26, ${to}0d)`, boxShadow: `inset 0 0 0 1px ${to}33` }}>
                 <Icon className="h-5 w-5" style={{ color: to }} />
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-white/55">{title}</p>
-              <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight" style={{ color: to, textShadow: `0 0 18px rgba(${glow},0.45)` }}>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{title}</p>
+              <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight" style={{ color: to, textShadow: `0 0 20px rgba(${glow},0.28)` }}>
                 <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
               </p>
             </div>
           </div>
-          {hint && <p className="mt-2 text-[11px] leading-tight text-white/45">{hint}</p>}
+          {hint && <p className="mt-2 text-[11px] leading-tight text-slate-400">{hint}</p>}
         </div>
       </Tilt3D>
     </motion.div>
