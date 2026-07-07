@@ -51,6 +51,7 @@ import {
 import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
 import NewStatsSection from "@/components/dashboard/NewStatsSection";
+import MessagingAnalytics from "@/components/dashboard/MessagingAnalytics";
 import { EditablePhoneCell } from "@/components/EditablePhoneCell";
 
 
@@ -102,16 +103,19 @@ export default function Dashboard() {
   const [inboundSet, setInboundSet] = useState<Set<string>>(new Set());
   const [contactFilter, setContactFilter] = useState<"all" | "contacted" | "uncontacted">("all");
   const [creatingCampaign, setCreatingCampaign] = useState(false);
+  const [rawMessages, setRawMessages] = useState<
+    { direccion: string; created_at: string; telefono: string; estado_envio?: string | null }[]
+  >([]);
 
   async function fetchData() {
     // Fetch messages in pages (Supabase default cap is 1000)
     async function fetchAllMessages() {
-      const all: { direccion: string; created_at: string; telefono: string }[] = [];
+      const all: { direccion: string; created_at: string; telefono: string; estado_envio?: string | null }[] = [];
       const pageSize = 1000;
       for (let from = 0; ; from += pageSize) {
         const { data, error } = await supabase
           .from("mensajes_whatsapp")
-          .select("direccion, created_at, telefono")
+          .select("direccion, created_at, telefono, estado_envio")
           .order("created_at", { ascending: false })
           .range(from, from + pageSize - 1);
         if (error || !data || data.length === 0) break;
@@ -146,6 +150,7 @@ export default function Dashboard() {
     });
     setInboundSet(inboundPhones);
     setContactedSet(outboundPhones);
+    setRawMessages(messages);
 
     const leadsResponded = leadsData.filter((l) =>
       inboundPhones.has(String(l.telefono).split("@")[0]),
@@ -485,6 +490,8 @@ export default function Dashboard() {
           </motion.div>
         ))}
       </motion.div>
+
+      <MessagingAnalytics messages={rawMessages} />
 
       <NewStatsSection />
 
