@@ -90,18 +90,23 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
     const beyondSent = mDelivered + mRead + mFailed;
     const cobertura = mAck > 0 ? beyondSent / mAck : 0;
     const medibleEntrega = mDeliveredPlus > 0 && cobertura >= 0.1;
+    // Sin acuses reales de entrega/lectura usamos referencias típicas de WhatsApp
+    // como línea base (se reemplazan solas cuando lleguen los acuses reales).
+    const EST_ENTREGA = 98;
+    const EST_LECTURA = 85;
+    const estimando = !medibleEntrega && mAck > 0;
 
     return {
       hasAck: mAck > 0,
-      bajaCobertura: mAck > 0 && cobertura < 0.1,
-      tasaEntrega: medibleEntrega ? pct(mDeliveredPlus, mSentPlus) : null,
-      tasaLectura: medibleEntrega ? pct(mRead, mDeliveredPlus) : null,
+      estimando,
+      tasaEntrega: medibleEntrega ? pct(mDeliveredPlus, mSentPlus) : (mAck > 0 ? EST_ENTREGA : null),
+      tasaLectura: medibleEntrega ? pct(mRead, mDeliveredPlus) : (mAck > 0 ? EST_LECTURA : null),
       tasaFallo: mAck > 0 ? pct(mFailed, mAck) : null,
       tasaRespuesta: fEnviados > 0 ? pct(fRespondieron, fEnviados) : null,
       funnel: [
         { key: "enviados", label: "Contactados", count: fEnviados, from: "#818cf8", to: "#6366f1" },
-        { key: "entregados", label: "Entregados", count: fEntregados, from: "#38bdf8", to: "#0ea5e9" },
-        { key: "leidos", label: "Leídos", count: fLeidos, from: "#22d3ee", to: "#06b6d4" },
+        { key: "entregados", label: "Entregados", count: estimando ? Math.round(fEnviados * EST_ENTREGA / 100) : fEntregados, from: "#38bdf8", to: "#0ea5e9" },
+        { key: "leidos", label: "Leídos", count: estimando ? Math.round(fEnviados * EST_LECTURA / 100) : fLeidos, from: "#22d3ee", to: "#06b6d4" },
         { key: "respondieron", label: "Respondieron", count: fRespondieron, from: "#34d399", to: "#10b981" },
       ],
       senalData: (["caliente", "tibio", "frio", "fallido"] as const)
@@ -114,15 +119,13 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
   }, [messages]);
 
   const funnelBase = s.funnel[0].count || 1;
-  // Sin acuses de entrega/lectura fiables, ocultamos esos pasos intermedios
-  // (si no, saldría "Respondieron" > "Leídos", que es imposible).
-  const funnelStages = s.bajaCobertura ? [s.funnel[0], s.funnel[3]] : s.funnel;
+  const funnelStages = s.funnel;
 
   const cards = [
-    { title: "Tasa de entrega", value: s.tasaEntrega, icon: CheckCheck, hint: "de los salientes llegaron al teléfono", from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "De los mensajes salientes aceptados por WhatsApp, cuántos llegaron al teléfono del lead (estado 'entregado' o 'leído'). Una tasa baja indica números inválidos, bloqueos o saldo agotado en Meta." },
-    { title: "Tasa de lectura", value: s.tasaLectura, icon: Eye, hint: "de los entregados fueron leídos (open rate)", from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "De los mensajes entregados, cuántos fueron leídos (doble check azul). Es el 'open rate': mide cuánta atención capta tu primer mensaje. Si es alta pero la respuesta es baja, el problema está en el copy o el CTA." },
-    { title: "Tasa de respuesta", value: s.tasaRespuesta, icon: Reply, hint: "de los contactados respondieron", from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "De los leads contactados (con acuse), cuántos respondieron. Es la conversión real de la conversación y el mejor indicador de calidad de la base y del mensaje." },
-    { title: "Tasa de fallo", value: s.tasaFallo, icon: AlertTriangle, hint: "de los envíos con acuse fallaron", from: "#fb7185", to: "#f43f5e", glow: "251,113,133", explain: "De los envíos con acuse, cuántos fallaron (número inválido, sin WhatsApp o bloqueado). Vigílala: si sube de golpe, suele ser saldo/pago en Meta o una base sucia que conviene depurar." },
+    { title: "Tasa de entrega", value: s.tasaEntrega, estimado: s.estimando, icon: CheckCheck, hint: "de los salientes llegaron al teléfono", from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "De los mensajes salientes aceptados por WhatsApp, cuántos llegaron al teléfono del lead (estado 'entregado' o 'leído'). Ahora es un ESTIMADO (~98%, referencia típica de WhatsApp) porque los mensajes actuales son antiguos y no tienen acuse; se volverá real cuando el flujo capture 'delivered'." },
+    { title: "Tasa de lectura", value: s.tasaLectura, estimado: s.estimando, icon: Eye, hint: "de los entregados fueron leídos (open rate)", from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "De los mensajes entregados, cuántos fueron leídos (doble check azul). Ahora es un ESTIMADO (~85%, benchmark de WhatsApp, que ronda 80–90%); se volverá real cuando lleguen los acuses 'read'." },
+    { title: "Tasa de respuesta", value: s.tasaRespuesta, icon: Reply, hint: "de los contactados respondieron", from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "De los leads contactados, cuántos respondieron. Es REAL (no depende de acuses) y el mejor indicador de calidad de la base y del mensaje." },
+    { title: "Tasa de fallo", value: s.tasaFallo, icon: AlertTriangle, hint: "de los envíos que fallaron", from: "#fb7185", to: "#f43f5e", glow: "251,113,133", explain: "De los envíos, cuántos fallaron (número inválido, sin WhatsApp o bloqueado). Es REAL. Si sube de golpe, suele ser saldo/pago en Meta o una base sucia que conviene depurar." },
   ];
 
   const hourlyConfig = {
@@ -152,11 +155,11 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
           Aún no hay acuses de WhatsApp registrados. Las tasas se poblarán a medida que se envíen y lean mensajes nuevos.
         </div>
       )}
-      {s.hasAck && s.bajaCobertura && (
+      {s.hasAck && s.estimando && (
         <div className="mb-5 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          WhatsApp aún no reporta los acuses de <strong>entrega/lectura</strong> para la mayoría de tus mensajes (se quedan en “enviado”),
-          por eso esas dos tasas aparecen como “—”. Se activarán cuando el flujo de n8n capture los estados <em>delivered</em> y <em>read</em>.
-          La <strong>tasa de respuesta</strong> y la <strong>de fallo</strong> sí son fiables.
+          <strong>Entrega y lectura son estimadas</strong> (referencias típicas de WhatsApp: ~98% entrega, ~85% lectura), marcadas con <em>“est.”</em>,
+          porque los mensajes actuales son antiguos y no traen acuse. Se reemplazan solas por los valores <strong>reales</strong> en cuanto el flujo capture
+          <em> delivered</em> y <em>read</em>. La <strong>tasa de respuesta</strong> y la <strong>de fallo</strong> ya son reales.
         </div>
       )}
 
@@ -179,7 +182,12 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
               return (
                 <div key={stage.key}>
                   <div className="mb-1 flex items-baseline justify-between text-sm">
-                    <span className="font-medium text-slate-700">{stage.label}</span>
+                    <span className="font-medium text-slate-700">
+                      {stage.label}
+                      {s.estimando && (stage.key === "entregados" || stage.key === "leidos") && (
+                        <span className="ml-1 text-[10px] font-semibold text-amber-500">est.</span>
+                      )}
+                    </span>
                     <span className="tabular-nums text-slate-400">
                       <span className="font-semibold text-slate-900"><AnimatedNumber value={stage.count} /></span>
                       {conv !== null && <span className="ml-2 text-xs">↳ {conv}%</span>}

@@ -111,11 +111,12 @@ export interface StatTileProps {
   gauge?: boolean; // si true, `value` es un porcentaje 0–100 y se muestra el anillo
   hint?: string;
   explain?: string; // resumen que se muestra al hacer clic (qué es y para qué sirve)
+  estimado?: boolean; // marca el valor como estimado (aún no medido con datos reales)
   onClick?: () => void;
   index?: number;
 }
 
-export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, from, to, glow, gauge, hint, explain, onClick, index = 0 }: StatTileProps) {
+export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, from, to, glow, gauge, hint, explain, estimado, onClick, index = 0 }: StatTileProps) {
   const reduce = useReducedMotion();
   const clickable = !!(explain || onClick);
 
@@ -144,6 +145,7 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
           ) : (
             <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight" style={{ color: to, textShadow: `0 0 20px rgba(${glow},0.28)` }}>
               <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
+              {estimado && <span className="ml-1 align-top text-[11px] font-semibold text-amber-500">est.</span>}
             </p>
           )}
         </div>
@@ -168,6 +170,7 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
             <p className="text-[10px] font-mono font-medium uppercase tracking-[0.18em] text-slate-400">{title}</p>
             <p className="text-xl font-bold tabular-nums leading-none" style={{ color: value === null ? "#94a3b8" : to }}>
               {value === null ? "— sin datos" : `${gauge || suffix === "%" ? value.toFixed(decimals) : value.toLocaleString()}${suffix}`}
+              {estimado && value !== null && <span className="ml-1 text-xs font-semibold text-amber-500">estimado</span>}
             </p>
           </div>
         </div>
