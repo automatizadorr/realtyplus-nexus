@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
         SEGMENTOS_RESPONDIO.map((s) => `   - ${s}`).join("\n") + `\n\n` +
         `CRITERIOS (protocolo de tratamiento de leads). Mira el ESTADO ACTUAL y el ÚLTIMO turno del LEAD:\n` +
         `   - "Quiere info, no concreta cita": el lead está ACTIVO y receptivo (pregunta, muestra interés) y recibe información, pero aún NO agenda cita ni pone freno. La conversación sigue viva.\n` +
-        `   - "Cita agendada": acordó/cerró una reunión, visita o videollamada con día y hora concretos.\n` +
+        `   - "Cita agendada": cerró una reunión/visita/videollamada con día y hora concretos Y la cita SIGUE EN PIE. Si después la cancela o dice que "no podrá asistir" (sin rechazar la franquicia), NO es esta: pasa a "Pide info, no es el momento" para reprogramar.\n` +
         `   - "Pide info, conversación inacabada": pidió información pero la charla quedó COLGADA o inconclusa: el lead dejó de responder, contestó vago ('.', 'ok', un enlace, algo fuera de tema) o se despidió, SIN cerrar cita ni rechazar. Simplemente se apagó.\n` +
         `   - "Pide info, no es el momento": pospone dejando la puerta ABIERTA. Dice "ahora no", "más adelante", "no es el momento", "no tengo capital por ahora", "cuando cambie te aviso". Hay interés latente, pero no ahora.\n` +
         `   - "No interesa": rechazo que CIERRA la puerta: "no me interesa", "no gracias", pide no ser contactado/darse de baja, o dice que ya está en otro rubro. Sin intención de retomar.\n\n` +
