@@ -179,6 +179,7 @@ Deno.serve(async (req) => {
             conversacion,
             crear_si_no_existe: false,
             aplicar: !dryRun,
+            enviar_webhook: false, // el cron manda su propio LOTE al final (evita duplicar)
           }),
           signal: AbortSignal.timeout(35000),
         });
@@ -223,6 +224,8 @@ Deno.serve(async (req) => {
         nombre: r.nombre,
         telefono: r.telefono,
         etiqueta: r.etiqueta,
+        situacion: r.etiqueta,        // alias explícito (una de las situaciones 1–5)
+        apartado: "Gestionado",       // los enviados son gestionados; la 6 (campaña) se excluye
         resumen: r.resumen,
         mensajes: r.mensajes,
       }));

@@ -33,6 +33,11 @@ const json = (body: unknown, status = 200) =>
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MODEL = "deepseek-chat";
 
+// Webhook n8n al que se notifica la situación de cada lead (para disparar los
+// comportamientos del protocolo). Configurable por env; fallback al de etiquetas.
+const N8N_SITUACION_URL = Deno.env.get("N8N_SITUACION_URL") ??
+  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/etiquetas-leads-nuevos";
+
 // Las 6 SITUACIONES del lead (doc "TRATAMIENTO DE LEADS EN CHAT IA"). El modelo elige
 // EXACTAMENTE UNA (grupo `situacion_lead` en tag-lead). Las situaciones 1–5 llevan
 // además la etiqueta companion "Gestionado"; la 6 (Sigue en campaña) NO.
@@ -126,6 +131,9 @@ Deno.serve(async (req) => {
     const nombre = (body?.nombre ?? "").toString().trim();
     const crearSiNoExiste = body?.crear_si_no_existe === true; // default false
     const aplicar = body?.aplicar !== false; // default true; false = dry-run
+    // Enviar webhook a n8n con la situación (para disparar comportamientos por lead).
+    // El cron lo pasa en false porque manda su propio LOTE (evita miles de webhooks).
+    const enviarWebhook = body?.enviar_webhook !== false; // default true
     const conversacion = conversacionATexto(body?.conversacion);
     const respondio = leadHaRespondido(body?.conversacion);
 
@@ -238,7 +246,40 @@ Deno.serve(async (req) => {
       return json({ error: "tag-lead falló", status: tagRes.status, detail: tagResult, segmento, decision }, 502);
     }
 
-    return json({ success: true, ...tagResult, segmento, respondio, resumen, decision });
+    // Notificar la situación a n8n (best-effort). El cron lo desactiva (enviar_webhook:false)
+    // porque manda su propio lote. `apartado` = Gestionado (1–5) o Sigue en campaña (6).
+    let webhook_status = 0;
+    let webhook_response = "";
+    if (enviarWebhook) {
+      const apartado = esCampana ? "Sigue en campaña" : "Gestionado";
+      try {
+        const wh = await fetch(N8N_SITUACION_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-webhook-secret": WEBHOOK_SECRET },
+          body: JSON.stringify({
+            evento: "clasificacion_situacion",
+            timestamp: new Date().toISOString(),
+            telefono,
+            nombre,
+            situacion: segmento,
+            apartado,
+            gestionado: !esCampana,
+            sigue_en_campana: esCampana,
+            respondio,
+            resumen,
+            lead_id: (tagResult as Record<string, unknown>)?.lead_id ?? null,
+            tag_ids: (tagResult as Record<string, unknown>)?.tag_ids ?? [],
+          }),
+          signal: AbortSignal.timeout(15000),
+        });
+        webhook_status = wh.status;
+        webhook_response = await wh.text();
+      } catch (e) {
+        webhook_response = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    return json({ success: true, ...tagResult, segmento, respondio, resumen, decision, webhook_status, webhook_response });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("clasificar-whatsapp-ia error:", msg);
