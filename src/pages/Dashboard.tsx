@@ -19,6 +19,9 @@ import {
   Megaphone,
   Database,
   Clock,
+  Flame,
+  ArrowRight,
+  Reply,
 } from "lucide-react";
 import {
   ChartContainer,
@@ -52,7 +55,20 @@ import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
 import NewStatsSection from "@/components/dashboard/NewStatsSection";
 import MessagingAnalytics from "@/components/dashboard/MessagingAnalytics";
+import { FxPanel, StatTile } from "@/components/dashboard/fx";
+import { tickFase } from "@/lib/acuse";
 import { EditablePhoneCell } from "@/components/EditablePhoneCell";
+
+function timeAgo(ms: number): string {
+  const diff = Date.now() - ms;
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "ahora";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d} d`;
+}
 
 
 interface KPIs {
@@ -279,6 +295,35 @@ export default function Dashboard() {
     toast.success("CSV descargado");
   };
 
+  // Leads calientes: respondieron y la pelota está en nuestro lado (su último
+  // mensaje ≥ el nuestro) y no falló el envío. El corazón del command center.
+  const hot = useMemo(() => {
+    const digits = (t: string) => String(t || "").split("@")[0].replace(/\D/g, "");
+    const byPhone = new Map<string, { lastIn: number; lastOut: number; failed: boolean }>();
+    for (const m of rawMessages) {
+      const p = digits(m.telefono);
+      if (!p) continue;
+      const t = m.created_at ? Date.parse(m.created_at) : 0;
+      const e = byPhone.get(p) || { lastIn: 0, lastOut: 0, failed: false };
+      if (m.direccion === "inbound") e.lastIn = Math.max(e.lastIn, t);
+      else {
+        e.lastOut = Math.max(e.lastOut, t);
+        if (tickFase(m.estado_envio) === "fallido") e.failed = true;
+      }
+      byPhone.set(p, e);
+    }
+    const leadByPhone = new Map(leads.map((l) => [digits(l.telefono), l]));
+    const list: { telefono: string; nombre: string; pais: string | null; at: number }[] = [];
+    for (const [p, e] of byPhone) {
+      if (e.lastIn > 0 && e.lastIn >= e.lastOut && !e.failed) {
+        const lead = leadByPhone.get(p);
+        list.push({ telefono: lead?.telefono || p, nombre: lead?.nombre || "Sin nombre", pais: lead?.pais ?? null, at: e.lastIn });
+      }
+    }
+    list.sort((a, b) => b.at - a.at);
+    return { count: list.length, list: list.slice(0, 8) };
+  }, [rawMessages, leads]);
+
   const topCountries = useMemo(() => countries.slice(0, 10), [countries]);
   const topResponseCountries = useMemo(
     () =>
@@ -430,66 +475,93 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
-            Panorama del CRM
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Resumen general · haz clic en un país para ver el detalle
-          </p>
+      {/* ── Centro de mando (panel oscuro futurista) ─────────────────────── */}
+      <FxPanel className="p-5 sm:p-6">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            </span>
+            <div>
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-sky-300/80">
+                Centro de mando · RealtyPlus
+              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard</h1>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "Actualizar", icon: RefreshCw, onClick: handleRefresh, disabled: refreshing, spin: refreshing },
+              { label: "Sincronizar", icon: RefreshCw, onClick: handleSync, disabled: syncing, spin: syncing },
+              { label: "Exportar", icon: Download, onClick: handleExport, disabled: !countries.length },
+              { label: "Inbox", icon: InboxIcon, onClick: () => navigate("/inbox") },
+            ].map((b) => (
+              <Button
+                key={b.label}
+                size="sm"
+                onClick={b.onClick}
+                disabled={b.disabled}
+                className="border border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              >
+                <b.icon className={`mr-2 h-4 w-4 ${b.spin ? "animate-spin" : ""}`} />
+                {b.label}
+              </Button>
+            ))}
+            <Button size="sm" onClick={() => navigate("/campaigns")} className="bg-[#DC1C2E] text-white hover:bg-[#DC1C2E]/90 shadow-[0_0_20px_-4px_rgba(220,28,46,0.7)]">
+              <Megaphone className="mr-2 h-4 w-4" /> Campañas
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            Actualizar
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-            Sincronizar Sheets
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={!countries.length}>
-            <Download className="mr-2 h-4 w-4" /> Exportar CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate("/inbox")}>
-            <InboxIcon className="mr-2 h-4 w-4" /> Inbox
-          </Button>
-          <Button size="sm" onClick={() => navigate("/campaigns")} className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <Megaphone className="mr-2 h-4 w-4" /> Campañas
-          </Button>
-        </div>
-      </div>
 
-      <motion.div
-        variants={kpiGrid}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-      >
-        {kpiCards.map((card) => (
-          <motion.div key={card.title} variants={kpiItem}>
-            <Card className="relative overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
-              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${card.bar}`} aria-hidden="true" />
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      {card.title.trim()}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            { title: "Contactos", value: countriesTotal, icon: Users, from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248" },
+            { title: "Leads en BD", value: leads.length, icon: Database, from: "#818cf8", to: "#6366f1", glow: "129,140,248" },
+            { title: "Mensajes", value: kpis!.totalMessages, icon: MessageSquareText, from: "#a78bfa", to: "#8b5cf6", glow: "167,139,250" },
+            { title: "Respondieron", value: kpis!.leadsResponded, icon: Reply, from: "#22d3ee", to: "#06b6d4", glow: "34,211,238" },
+            { title: "Tasa de respuesta", value: kpis!.responseRate, decimals: 1, suffix: "%", gauge: true, icon: TrendingUp, from: "#34d399", to: "#10b981", glow: "52,211,153" },
+            { title: "Leads calientes", value: hot.count, icon: Flame, from: "#fb923c", to: "#f97316", glow: "251,146,60" },
+          ].map((t, i) => (
+            <StatTile key={t.title} index={i} {...t} />
+          ))}
+        </div>
+
+        {/* Acción inmediata: leads calientes por atender */}
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <Flame className="h-4 w-4 text-orange-400" />
+            <div>
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-white/40">Acción inmediata</p>
+              <h3 className="text-sm font-semibold text-white">
+                Leads calientes por atender <span className="text-emerald-300">({hot.count})</span>
+              </h3>
+            </div>
+          </div>
+          {hot.list.length === 0 ? (
+            <p className="py-4 text-center text-sm text-white/40">Nada pendiente ahora mismo. Todos los que respondieron ya recibieron réplica. 🎯</p>
+          ) : (
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {hot.list.map((l) => (
+                <button
+                  key={l.telefono}
+                  onClick={() => navigate(`/inbox?phone=${encodeURIComponent(l.telefono)}`)}
+                  className="group flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition-colors hover:bg-white/[0.07]"
+                >
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 8px #22c55e" }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">
+                      {l.pais ? `${countryFlag(l.pais)} ` : ""}{l.nombre}
                     </p>
-                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                      <AnimatedNumber value={card.value} decimals={card.decimals ?? 0} suffix={card.suffix ?? ""} />
-                    </p>
+                    <p className="truncate text-[11px] text-white/45">{l.telefono} · respondió {timeAgo(l.at)}</p>
                   </div>
-                  <div className={`shrink-0 rounded-xl bg-gradient-to-br p-2.5 ring-1 ${card.iconWrap}`}>
-                    <card.icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </motion.div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-300" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </FxPanel>
 
       <MessagingAnalytics messages={rawMessages} />
 

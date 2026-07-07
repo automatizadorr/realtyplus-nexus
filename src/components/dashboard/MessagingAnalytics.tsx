@@ -1,10 +1,11 @@
-import { useMemo, useRef } from "react";
-import { motion, useMotionValue, useSpring, useReducedMotion, type MotionValue } from "framer-motion";
+import { useMemo } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, CartesianGrid } from "recharts";
 import { CheckCheck, Eye, Reply, AlertTriangle, Clock3, Radio } from "lucide-react";
 import { tickFase, SENAL_META } from "@/lib/acuse";
+import { FxBackground, Gauge, Tilt3D } from "@/components/dashboard/fx";
 
 // ── Analítica de mensajería (WhatsApp) — módulo "4D" futurista ──────────────────
 // KPIs especializados de una operación conversacional, calculados sobre los
@@ -26,57 +27,6 @@ interface PhoneAgg {
   anyOut: boolean; anyIn: boolean; ackOut: boolean;
   delivered: boolean; read: boolean; failed: boolean;
   lastOutAt: number; lastOutFase: ReturnType<typeof tickFase>; lastInAt: number;
-}
-
-// ── Tarjeta con inclinación 3D (perspectiva real) ──────────────────────────────
-function Tilt3D({ children, disabled }: { children: React.ReactNode; disabled?: boolean }) {
-  const rx = useSpring(useMotionValue(0), { stiffness: 220, damping: 18 });
-  const ry = useSpring(useMotionValue(0), { stiffness: 220, damping: 18 });
-  const ref = useRef<HTMLDivElement>(null);
-  const onMove = (e: React.MouseEvent) => {
-    if (disabled || !ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    ry.set(px * 12);
-    rx.set(-py * 12);
-  };
-  return (
-    <motion.div
-      ref={ref}
-      onMouseMove={onMove}
-      onMouseLeave={() => { rx.set(0); ry.set(0); }}
-      style={{ rotateX: rx as MotionValue<number>, rotateY: ry as MotionValue<number>, transformPerspective: 900, transformStyle: "preserve-3d" }}
-      className="relative h-full"
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-// ── Anillo radial (gauge) animado con gradiente + glow ─────────────────────────
-function Gauge({ value, from, to, id }: { value: number; from: string; to: string; id: string }) {
-  const r = 30;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox="0 0 76 76" className="h-[68px] w-[68px] shrink-0 -rotate-90" style={{ filter: `drop-shadow(0 0 6px ${to}66)` }}>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={from} />
-          <stop offset="100%" stopColor={to} />
-        </linearGradient>
-      </defs>
-      <circle cx="38" cy="38" r={r} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="6.5" />
-      <motion.circle
-        cx="38" cy="38" r={r} fill="none" stroke={`url(#${id})`} strokeWidth="6.5" strokeLinecap="round"
-        strokeDasharray={c}
-        initial={{ strokeDashoffset: c }}
-        whileInView={{ strokeDashoffset: c * (1 - Math.min(value, 100) / 100) }}
-        viewport={{ once: true }}
-        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-      />
-    </svg>
-  );
 }
 
 export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
@@ -170,25 +120,9 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
     Entrantes: { label: "Entrantes", color: "#34d399" },
   } as const;
 
-  const gridBg =
-    "linear-gradient(rgba(120,160,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(120,160,255,0.08) 1px, transparent 1px)";
-
   return (
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#070b1e] via-[#0a1430] to-[#0a0f26] p-5 text-white ring-1 ring-white/10 shadow-[0_20px_60px_-20px_rgba(0,20,80,0.6)] sm:p-6">
-      {/* Rejilla + glows de fondo */}
-      <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: gridBg, backgroundSize: "34px 34px", maskImage: "radial-gradient(120% 90% at 50% 0%, #000 55%, transparent 100%)" }} aria-hidden />
-      <motion.div
-        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-[#003DA5]/40 blur-[90px]"
-        animate={reduce ? undefined : { opacity: [0.35, 0.6, 0.35], scale: [1, 1.12, 1] }}
-        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-        aria-hidden
-      />
-      <motion.div
-        className="pointer-events-none absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#DC1C2E]/25 blur-[90px]"
-        animate={reduce ? undefined : { opacity: [0.25, 0.5, 0.25], scale: [1.1, 1, 1.1] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        aria-hidden
-      />
+      <FxBackground />
 
       <div className="relative">
         {/* Encabezado */}
