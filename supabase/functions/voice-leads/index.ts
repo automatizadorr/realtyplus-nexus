@@ -34,6 +34,39 @@ function colLetter(n: number): string {
 
 const normPhone = (p: string) => (p || "").replace(/\D/g, "");
 
+// Resuelve un valor por encabezado tolerando acentos, mayúsculas, espacios y
+// guiones bajos. Así los leads se ven aunque la hoja use "Nombre"/"Celular"/…
+const normKey = (s: string) =>
+  (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[\s_-]+/g, "");
+function pick(row: Record<string, string>, candidates: string[]): string {
+  const wanted = candidates.map(normKey);
+  for (const key of Object.keys(row)) {
+    if (key === "__row") continue;
+    if (wanted.includes(normKey(key))) {
+      const v = (row[key] ?? "").toString().trim();
+      if (v) return v;
+    }
+  }
+  return "";
+}
+const F = {
+  nombre: ["nombre_completo", "full_name", "nombre", "nombres", "name", "cliente", "contacto"],
+  telefono: ["telefono", "teléfono", "phone", "phone_number", "celular", "numero", "número", "whatsapp", "wa_id", "movil", "móvil", "num"],
+  email: ["email", "correo", "e-mail", "mail", "correo_electronico"],
+  tipo_interes: ["tipo_interes", "interest_type", "interes", "interés"],
+  modelo_franquicia: ["modelo_franquicia", "franchise_model", "modelo", "franquicia"],
+  ubicacion: ["ubicacion_interes", "location", "ubicacion", "ubicación", "ciudad", "pais", "país"],
+  presupuesto: ["presupuesto", "budget"],
+  proposito: ["proposito_compra", "purchase_purpose", "proposito", "propósito"],
+  horario: ["horario_contacto", "preferred_contact_time", "horario"],
+  resumen: ["resumen_conversacion", "conversation_summary", "resumen", "summary"],
+  informe: ["report", "informe"],
+  status: ["status", "estado", "etapa"],
+  source: ["source", "origen", "fuente"],
+  created_at: ["created_at", "fecha", "timestamp", "fecha_creacion"],
+  tags: ["tags", "etiquetas"],
+};
+
 // In-memory cache (per isolate) to avoid hitting Sheets quota on every request
 type SheetCache = { headers: string[]; data: Record<string, string>[]; ts: number };
 type SheetRead = { headers: string[]; data: Record<string, string>[]; fallback?: boolean; error?: string };
@@ -130,24 +163,29 @@ Deno.serve(async (req) => {
     if (req.method === "GET") {
       const { headers, data, fallback, error } = await readSheet();
       const leads = data
-        .filter((r) => (r["nombre_completo"] || r["full_name"] || r["telefono"] || "").trim() !== "")
+        .filter((r) => {
+          // Mantener la fila si tiene nombre/teléfono/email (tolerante a variantes)
+          if (pick(r, F.nombre) || pick(r, F.telefono) || pick(r, F.email)) return true;
+          // Salvaguarda: nunca ocultar una fila que SÍ tiene datos bajo otro encabezado
+          return Object.entries(r).some(([k, v]) => k !== "__row" && String(v).trim() !== "");
+        })
         .map((r) => ({
           row: Number(r.__row),
-          nombre: r["nombre_completo"] || r["full_name"] || "",
-          telefono: r["telefono"] || r["phone"] || "",
-          email: r["email"] || "",
-          tipo_interes: r["tipo_interes"] || r["interest_type"] || "",
-          modelo_franquicia: r["modelo_franquicia"] || r["franchise_model"] || "",
-          ubicacion: r["ubicacion_interes"] || r["location"] || "",
-          presupuesto: r["presupuesto"] || r["budget"] || "",
-          proposito: r["proposito_compra"] || r["purchase_purpose"] || "",
-          horario: r["horario_contacto"] || r["preferred_contact_time"] || "",
-          resumen: r["resumen_conversacion"] || r["conversation_summary"] || "",
-          informe: r["report"] || r["informe"] || "",
-          status: (r["status"] || "new").toLowerCase().trim(),
-          source: r["source"] || "",
-          created_at: r["created_at"] || "",
-          tags: r["tags"] || "",
+          nombre: pick(r, F.nombre),
+          telefono: pick(r, F.telefono),
+          email: pick(r, F.email),
+          tipo_interes: pick(r, F.tipo_interes),
+          modelo_franquicia: pick(r, F.modelo_franquicia),
+          ubicacion: pick(r, F.ubicacion),
+          presupuesto: pick(r, F.presupuesto),
+          proposito: pick(r, F.proposito),
+          horario: pick(r, F.horario),
+          resumen: pick(r, F.resumen),
+          informe: pick(r, F.informe),
+          status: (pick(r, F.status) || "new").toLowerCase().trim(),
+          source: pick(r, F.source),
+          created_at: pick(r, F.created_at),
+          tags: pick(r, F.tags),
         }))
         .reverse();
       return json({ success: true, total: leads.length, headers, leads, fallback, error });
@@ -172,8 +210,8 @@ Deno.serve(async (req) => {
 
         const { headers, data, fallback, error } = await readSheet();
         if (fallback) return json({ success: false, fallback: true, error: error || "Sheets unavailable" });
-        // Asegurar columna status
-        let statusIdx = headers.indexOf("status");
+        // Asegurar columna de estado (tolerante: status/estado/etapa)
+        let statusIdx = headers.findIndex((h) => F.status.map(normKey).includes(normKey(h)));
         if (statusIdx === -1) {
           statusIdx = headers.length;
           const cell = `${SHEET_NAME}!${colLetter(statusIdx)}1`;
@@ -188,10 +226,9 @@ Deno.serve(async (req) => {
           if (!r.ok) throw new Error(`add status header failed: ${await r.text()}`);
         }
 
-        // Buscar fila por teléfono (normalizado)
+        // Buscar fila por teléfono (normalizado, tolerante a variantes)
         const target = data.find(
-          (row) =>
-            normPhone(row["telefono"] || row["phone"] || "") === normPhone(phone),
+          (row) => normPhone(pick(row, F.telefono)) === normPhone(phone),
         );
         if (!target) return json({ error: "lead not found" }, 404);
 
@@ -220,7 +257,7 @@ Deno.serve(async (req) => {
         const { data, fallback, error } = await readSheet(false);
         if (fallback) return json({ success: false, fallback: true, error: error || "Sheets unavailable" });
         const target = data.find(
-          (row) => normPhone(row["telefono"] || row["phone"] || "") === normalized,
+          (row) => normPhone(pick(row, F.telefono)) === normalized,
         );
         if (!target) {
           // Idempotent: already deleted or never existed — treat as success
