@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import { motion, useMotionValue, useSpring, useReducedMotion, type MotionValue } from "framer-motion";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Info } from "lucide-react";
 
 // ── Kit visual "4D" futurista — versión CLARA ──────────────────────────────────
 // Glassmorphism sobre blanco con glows de color RE/MAX, gauges radiales e
@@ -108,12 +110,70 @@ export interface StatTileProps {
   glow: string; // "r,g,b"
   gauge?: boolean; // si true, `value` es un porcentaje 0–100 y se muestra el anillo
   hint?: string;
+  explain?: string; // resumen que se muestra al hacer clic (qué es y para qué sirve)
   onClick?: () => void;
   index?: number;
 }
 
-export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, from, to, glow, gauge, hint, onClick, index = 0 }: StatTileProps) {
+export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, from, to, glow, gauge, hint, explain, onClick, index = 0 }: StatTileProps) {
   const reduce = useReducedMotion();
+  const clickable = !!(explain || onClick);
+
+  const inner = (
+    <>
+      <span className="pointer-events-none absolute inset-x-0 top-0 h-[2px] opacity-80" style={{ background: `linear-gradient(90deg, transparent, ${to}, transparent)` }} />
+      <div className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ boxShadow: `0 0 28px -8px rgba(${glow},0.55)` }} />
+      {explain && (
+        <Info className="pointer-events-none absolute right-2.5 top-2.5 h-3.5 w-3.5 text-slate-300 transition-colors group-hover:text-slate-500" />
+      )}
+      <div className="flex items-center gap-3" style={{ transform: "translateZ(30px)" }}>
+        {gauge ? (
+          <div className="relative grid place-items-center">
+            <Gauge value={value} from={from} to={to} id={`gauge-${title.replace(/\s+/g, "")}-${index}`} />
+            <Icon className="absolute h-5 w-5" style={{ color: to }} />
+          </div>
+        ) : (
+          <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${from}26, ${to}0d)`, boxShadow: `inset 0 0 0 1px ${to}33` }}>
+            <Icon className="h-5 w-5" style={{ color: to }} />
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{title}</p>
+          <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight" style={{ color: to, textShadow: `0 0 20px rgba(${glow},0.28)` }}>
+            <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
+          </p>
+        </div>
+      </div>
+      {hint && <p className="mt-2 text-[11px] leading-tight text-slate-400">{hint}</p>}
+    </>
+  );
+
+  const tileClass = `group relative h-full w-full overflow-hidden rounded-xl border border-slate-200/70 bg-white/70 p-4 text-left shadow-sm ring-1 ring-white/60 backdrop-blur-md transition-shadow duration-300 ${clickable ? "cursor-pointer" : ""}`;
+
+  const body = explain ? (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className={tileClass}>{inner}</button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72">
+        <div className="flex items-center gap-2">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ background: `linear-gradient(135deg, ${from}26, ${to}0d)`, boxShadow: `inset 0 0 0 1px ${to}33` }}>
+            <Icon className="h-4 w-4" style={{ color: to }} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono font-medium uppercase tracking-[0.18em] text-slate-400">{title}</p>
+            <p className="text-xl font-bold tabular-nums leading-none" style={{ color: to }}>
+              {(gauge || suffix === "%" ? value.toFixed(decimals) : value.toLocaleString())}{suffix}
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">{explain}</p>
+      </PopoverContent>
+    </Popover>
+  ) : (
+    <div onClick={onClick} className={tileClass}>{inner}</div>
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
@@ -121,34 +181,7 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.07, ease: FX_EASE }}
     >
-      <Tilt3D disabled={!!reduce}>
-        <div
-          onClick={onClick}
-          className={`group relative h-full overflow-hidden rounded-xl border border-slate-200/70 bg-white/70 p-4 shadow-sm ring-1 ring-white/60 backdrop-blur-md transition-shadow duration-300 ${onClick ? "cursor-pointer" : ""}`}
-        >
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-[2px] opacity-80" style={{ background: `linear-gradient(90deg, transparent, ${to}, transparent)` }} />
-          <div className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ boxShadow: `0 0 28px -8px rgba(${glow},0.55)` }} />
-          <div className="flex items-center gap-3" style={{ transform: "translateZ(30px)" }}>
-            {gauge ? (
-              <div className="relative grid place-items-center">
-                <Gauge value={value} from={from} to={to} id={`gauge-${title.replace(/\s+/g, "")}-${index}`} />
-                <Icon className="absolute h-5 w-5" style={{ color: to }} />
-              </div>
-            ) : (
-              <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${from}26, ${to}0d)`, boxShadow: `inset 0 0 0 1px ${to}33` }}>
-                <Icon className="h-5 w-5" style={{ color: to }} />
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{title}</p>
-              <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight" style={{ color: to, textShadow: `0 0 20px rgba(${glow},0.28)` }}>
-                <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
-              </p>
-            </div>
-          </div>
-          {hint && <p className="mt-2 text-[11px] leading-tight text-slate-400">{hint}</p>}
-        </div>
-      </Tilt3D>
+      <Tilt3D disabled={!!reduce}>{body}</Tilt3D>
     </motion.div>
   );
 }

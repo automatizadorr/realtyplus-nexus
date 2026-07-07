@@ -109,10 +109,10 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
   const funnelBase = s.funnel[0].count || 1;
 
   const cards = [
-    { title: "Tasa de entrega", value: s.tasaEntrega, icon: CheckCheck, hint: "de los salientes llegaron al teléfono", from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248" },
-    { title: "Tasa de lectura", value: s.tasaLectura, icon: Eye, hint: "de los entregados fueron leídos (open rate)", from: "#22d3ee", to: "#06b6d4", glow: "34,211,238" },
-    { title: "Tasa de respuesta", value: s.tasaRespuesta, icon: Reply, hint: "de los contactados respondieron", from: "#34d399", to: "#10b981", glow: "52,211,153" },
-    { title: "Tasa de fallo", value: s.tasaFallo, icon: AlertTriangle, hint: "de los envíos con acuse fallaron", from: "#fb7185", to: "#f43f5e", glow: "251,113,133" },
+    { title: "Tasa de entrega", value: s.tasaEntrega, icon: CheckCheck, hint: "de los salientes llegaron al teléfono", from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "De los mensajes salientes aceptados por WhatsApp, cuántos llegaron al teléfono del lead (estado 'entregado' o 'leído'). Una tasa baja indica números inválidos, bloqueos o saldo agotado en Meta." },
+    { title: "Tasa de lectura", value: s.tasaLectura, icon: Eye, hint: "de los entregados fueron leídos (open rate)", from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "De los mensajes entregados, cuántos fueron leídos (doble check azul). Es el 'open rate': mide cuánta atención capta tu primer mensaje. Si es alta pero la respuesta es baja, el problema está en el copy o el CTA." },
+    { title: "Tasa de respuesta", value: s.tasaRespuesta, icon: Reply, hint: "de los contactados respondieron", from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "De los leads contactados (con acuse), cuántos respondieron. Es la conversión real de la conversación y el mejor indicador de calidad de la base y del mensaje." },
+    { title: "Tasa de fallo", value: s.tasaFallo, icon: AlertTriangle, hint: "de los envíos con acuse fallaron", from: "#fb7185", to: "#f43f5e", glow: "251,113,133", explain: "De los envíos con acuse, cuántos fallaron (número inválido, sin WhatsApp o bloqueado). Vigílala: si sube de golpe, suele ser saldo/pago en Meta o una base sucia que conviene depurar." },
   ];
 
   const hourlyConfig = {
