@@ -56,6 +56,7 @@ import { toast } from "sonner";
 import NewStatsSection from "@/components/dashboard/NewStatsSection";
 import MessagingAnalytics from "@/components/dashboard/MessagingAnalytics";
 import { FxPanel, StatTile } from "@/components/dashboard/fx";
+import { HotLeadDialog, type HotLead } from "@/components/dashboard/HotLeadDialog";
 import { tickFase } from "@/lib/acuse";
 import { EditablePhoneCell } from "@/components/EditablePhoneCell";
 
@@ -122,6 +123,7 @@ export default function Dashboard() {
   const [rawMessages, setRawMessages] = useState<
     { direccion: string; created_at: string; telefono: string; estado_envio?: string | null }[]
   >([]);
+  const [hotLead, setHotLead] = useState<HotLead | null>(null);
 
   async function fetchData() {
     // Fetch messages in pages (Supabase default cap is 1000)
@@ -484,7 +486,7 @@ export default function Dashboard() {
               {hot.list.map((l) => (
                 <button
                   key={l.telefono}
-                  onClick={() => navigate(`/inbox?phone=${encodeURIComponent(l.telefono)}`)}
+                  onClick={() => setHotLead({ telefono: l.telefono, nombre: l.nombre, pais: l.pais })}
                   className="group flex items-center gap-3 rounded-lg border border-slate-200 bg-white/70 px-3 py-2 text-left transition-colors hover:bg-slate-50"
                 >
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" style={{ boxShadow: "0 0 8px #22c55e88" }} />
@@ -836,6 +838,14 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      <HotLeadDialog
+        lead={hotLead}
+        onOpenChange={(o) => !o && setHotLead(null)}
+        onGoToLead={(tel) => {
+          setHotLead(null);
+          navigate(`/inbox?phone=${encodeURIComponent(tel)}`);
+        }}
+      />
     </div>
   );
 }
