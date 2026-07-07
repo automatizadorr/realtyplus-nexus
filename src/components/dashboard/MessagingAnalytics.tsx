@@ -84,13 +84,20 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
 
     const mSentPlus = mSent + mDelivered + mRead;
     const mDeliveredPlus = mDelivered + mRead;
+    // Cobertura de acuses de ENTREGA/LECTURA: qué fracción de los salientes con
+    // acuse avanzó más allá de "enviado". Si es baja, WhatsApp/n8n no está
+    // guardando delivered/read y las tasas de entrega/lectura no son medibles.
+    const beyondSent = mDelivered + mRead + mFailed;
+    const cobertura = mAck > 0 ? beyondSent / mAck : 0;
+    const medibleEntrega = mDeliveredPlus > 0 && cobertura >= 0.1;
 
     return {
       hasAck: mAck > 0,
-      tasaEntrega: pct(mDeliveredPlus, mSentPlus),
-      tasaLectura: pct(mRead, mDeliveredPlus),
-      tasaFallo: pct(mFailed, mAck),
-      tasaRespuesta: pct(fRespondieron, fEnviados),
+      bajaCobertura: mAck > 0 && cobertura < 0.1,
+      tasaEntrega: medibleEntrega ? pct(mDeliveredPlus, mSentPlus) : null,
+      tasaLectura: medibleEntrega ? pct(mRead, mDeliveredPlus) : null,
+      tasaFallo: mAck > 0 ? pct(mFailed, mAck) : null,
+      tasaRespuesta: fEnviados > 0 ? pct(fRespondieron, fEnviados) : null,
       funnel: [
         { key: "enviados", label: "Contactados", count: fEnviados, from: "#818cf8", to: "#6366f1" },
         { key: "entregados", label: "Entregados", count: fEntregados, from: "#38bdf8", to: "#0ea5e9" },
@@ -107,6 +114,9 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
   }, [messages]);
 
   const funnelBase = s.funnel[0].count || 1;
+  // Sin acuses de entrega/lectura fiables, ocultamos esos pasos intermedios
+  // (si no, saldría "Respondieron" > "Leídos", que es imposible).
+  const funnelStages = s.bajaCobertura ? [s.funnel[0], s.funnel[3]] : s.funnel;
 
   const cards = [
     { title: "Tasa de entrega", value: s.tasaEntrega, icon: CheckCheck, hint: "de los salientes llegaron al teléfono", from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "De los mensajes salientes aceptados por WhatsApp, cuántos llegaron al teléfono del lead (estado 'entregado' o 'leído'). Una tasa baja indica números inválidos, bloqueos o saldo agotado en Meta." },
@@ -142,6 +152,13 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
           Aún no hay acuses de WhatsApp registrados. Las tasas se poblarán a medida que se envíen y lean mensajes nuevos.
         </div>
       )}
+      {s.hasAck && s.bajaCobertura && (
+        <div className="mb-5 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          WhatsApp aún no reporta los acuses de <strong>entrega/lectura</strong> para la mayoría de tus mensajes (se quedan en “enviado”),
+          por eso esas dos tasas aparecen como “—”. Se activarán cuando el flujo de n8n capture los estados <em>delivered</em> y <em>read</em>.
+          La <strong>tasa de respuesta</strong> y la <strong>de fallo</strong> sí son fiables.
+        </div>
+      )}
 
       {/* KPI cards con gauge + tilt 3D */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -156,9 +173,9 @@ export function MessagingAnalytics({ messages }: { messages: MsgLite[] }) {
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-slate-400">Recorrido del lead</p>
           <h3 className="mt-1 text-base font-semibold text-slate-900">Embudo de conversación</h3>
           <div className="mt-4 space-y-4">
-            {s.funnel.map((stage, i) => {
+            {funnelStages.map((stage, i) => {
               const rel = pct(stage.count, funnelBase);
-              const conv = i === 0 ? null : pct(stage.count, s.funnel[i - 1].count);
+              const conv = i === 0 ? null : pct(stage.count, funnelStages[i - 1].count);
               return (
                 <div key={stage.key}>
                   <div className="mb-1 flex items-baseline justify-between text-sm">

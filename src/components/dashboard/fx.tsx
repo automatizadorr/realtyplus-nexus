@@ -101,7 +101,7 @@ export function Gauge({ value, from, to, id }: { value: number; from: string; to
 
 export interface StatTileProps {
   title: string;
-  value: number;
+  value: number | null; // null → "—" (sin datos suficientes)
   decimals?: number;
   suffix?: string;
   icon: React.ElementType;
@@ -129,8 +129,8 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
       <div className="flex items-center gap-3" style={{ transform: "translateZ(30px)" }}>
         {gauge ? (
           <div className="relative grid place-items-center">
-            <Gauge value={value} from={from} to={to} id={`gauge-${title.replace(/\s+/g, "")}-${index}`} />
-            <Icon className="absolute h-5 w-5" style={{ color: to }} />
+            <Gauge value={value ?? 0} from={from} to={to} id={`gauge-${title.replace(/\s+/g, "")}-${index}`} />
+            <Icon className="absolute h-5 w-5" style={{ color: value === null ? "#cbd5e1" : to }} />
           </div>
         ) : (
           <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${from}26, ${to}0d)`, boxShadow: `inset 0 0 0 1px ${to}33` }}>
@@ -139,9 +139,13 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
         )}
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{title}</p>
-          <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight" style={{ color: to, textShadow: `0 0 20px rgba(${glow},0.28)` }}>
-            <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
-          </p>
+          {value === null ? (
+            <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight text-slate-300">—</p>
+          ) : (
+            <p className="mt-0.5 text-3xl font-bold tabular-nums tracking-tight" style={{ color: to, textShadow: `0 0 20px rgba(${glow},0.28)` }}>
+              <AnimatedNumber value={value} decimals={decimals} suffix={suffix} />
+            </p>
+          )}
         </div>
       </div>
       {hint && <p className="mt-2 text-[11px] leading-tight text-slate-400">{hint}</p>}
@@ -162,8 +166,8 @@ export function StatTile({ title, value, decimals = 0, suffix = "", icon: Icon, 
           </span>
           <div className="min-w-0">
             <p className="text-[10px] font-mono font-medium uppercase tracking-[0.18em] text-slate-400">{title}</p>
-            <p className="text-xl font-bold tabular-nums leading-none" style={{ color: to }}>
-              {(gauge || suffix === "%" ? value.toFixed(decimals) : value.toLocaleString())}{suffix}
+            <p className="text-xl font-bold tabular-nums leading-none" style={{ color: value === null ? "#94a3b8" : to }}>
+              {value === null ? "— sin datos" : `${gauge || suffix === "%" ? value.toFixed(decimals) : value.toLocaleString()}${suffix}`}
             </p>
           </div>
         </div>
