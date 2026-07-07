@@ -5,11 +5,13 @@
 // (Excel, Word, HTML y webhook n8n). Así cada descarga tiene la misma estructura.
 
 export const PERMANENT_TAG_ORDER = [
-  "No interesa",
-  "Agente asignado",
-  "Pendiente asignar agente",
-  "Solo quiere propiedades",
   "Cita agendada",
+  "Quiere info, no concreta cita",
+  "Pide info, conversación inacabada",
+  "Pide info, no es el momento",
+  "No interesa",
+  "Sigue en campaña",
+  "Gestionado",
 ] as const;
 
 /** Posición canónica de una etiqueta permanente (las no listadas van al final). */
