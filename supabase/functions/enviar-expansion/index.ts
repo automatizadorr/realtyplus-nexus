@@ -155,7 +155,35 @@ Deno.serve(async (req) => {
       .slice(0, MAX_LEADS);
 
     if (leads.length === 0) {
-      return json({ success: true, ventana_horas: VENTANA_HORAS, ...(paisFiltro ? { pais: paisFiltro } : {}), total_leads: 0, total_mensajes: 0, total_etiquetas: 0, n8n_status: 0, n8n_response: "sin leads enviables en la ventana (todos sin etiqueta, archivados o en 'Sigue en campaña')" });
+      if (dryRun) {
+        return json({ success: true, dry_run: true, ventana_horas: VENTANA_HORAS, total_leads: 0, total_mensajes: 0, total_etiquetas: 0, n8n_status: 0, n8n_response: "dry_run: sin actividad en la ventana" });
+      }
+      // Sin leads: igual notificamos a n8n con aviso de sin actividad.
+      const sinActividadPayload = {
+        timestamp: new Date().toISOString(),
+        evento: "auto_expansion_24h",
+        ventana_horas: VENTANA_HORAS,
+        filtro: paisFiltro || "todas",
+        sin_actividad: true,
+        total_leads: 0,
+        total_mensajes: 0,
+        total_etiquetas: 0,
+        etiquetas: [],
+        mensaje: `Sin leads gestionados con actividad en las últimas ${VENTANA_HORAS}h. Todos los leads activos siguen en campaña o sin clasificar.`,
+      };
+      const outSecret = Deno.env.get("N8N_WEBHOOK_SECRET") || Deno.env.get("AUTO_TAG_CRON_SECRET") || "";
+      let n8n_status = 0; let n8n_response = "";
+      try {
+        const wh = await fetch(N8N_EXPANSION_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-webhook-secret": outSecret },
+          body: JSON.stringify(sinActividadPayload),
+          signal: AbortSignal.timeout(30000),
+        });
+        n8n_status = wh.status;
+        n8n_response = await wh.text();
+      } catch (e) { n8n_response = e instanceof Error ? e.message : String(e); }
+      return json({ success: true, sin_actividad: true, ventana_horas: VENTANA_HORAS, total_leads: 0, n8n_status, n8n_response });
     }
 
     // 4. Conversaciones de esos leads (WhatsApp + automatización), por lotes para no
