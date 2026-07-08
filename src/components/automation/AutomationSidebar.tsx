@@ -466,7 +466,7 @@ export function AutomationSidebar({ selectedContact, onSelectContact, allTags }:
                               variant="outline"
                               className="h-4 px-1 text-[9px] font-medium text-accent-foreground bg-accent/40 border-accent/40"
                             >
-                              {c.campaign_name === "Verificar Disponibilidad antes de Reservar (importar entre '¿Hay Reserva?1' y 'Ejecutar Reserva')" ? "SUPER ADMIN" : c.campaign_name}
+                              {c.campaign_name === "Verificar Disponibilidad antes de Reservar (importar entre '¿Hay Reserva?1' y 'Ejecutar Reserva')" || c.campaign_name === "Atención IA Sofía (Agendamiento ) [DEFINITIVO]" ? "SUPER Ad" : c.campaign_name}
                             </Badge>
                           )}
                           {c.ultimo_estado && (
