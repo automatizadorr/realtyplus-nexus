@@ -10,6 +10,7 @@ import { ScanSearch, Rocket, Trash2, Upload, Loader2, Users, Mail, MailX, Globe2
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/hooks/use-is-admin";
 import CampaignExecuteWarning from "@/components/campaigns/CampaignExecuteWarning";
 
 interface ParsedContact {
@@ -129,6 +130,7 @@ export default function Scanner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { canWrite } = useRole();
 
   const parseContacts = () => {
     const fuente = fileName
@@ -523,8 +525,9 @@ export default function Scanner() {
                   }
                   setWarningOpen(true);
                 }}
-                disabled={contacts.length === 0 || loading}
-                className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
+                disabled={contacts.length === 0 || loading || !canWrite}
+                title={!canWrite ? "Sin permiso para lanzar campañas" : undefined}
+                className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}
                 {launchLabel}

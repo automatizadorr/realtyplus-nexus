@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { orderTags } from "@/lib/permanentTags";
 import { motion } from "framer-motion";
 import { AnimatedNumber, kpiGrid, kpiItem } from "@/components/AnimatedNumber";
+import { useRole } from "@/hooks/use-is-admin";
 
 interface LeadTag { id: string; nombre: string; color: string; es_permanente?: boolean | null; }
 
@@ -139,6 +140,7 @@ function filterArchivados(leads: any[], sigueId: string | null): any[] {
 export default function TaggedExport() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { canWrite } = useRole();
 
   // ── Tab activo ────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"expansion" | "archivados">("expansion");
@@ -944,12 +946,12 @@ details[open] .arrow{transform:rotate(90deg)}
                 icon: ExternalLink, onClick: handleOpenHtml, busy: generatingHtml, label: "Ver en Navegador",
                 wrap: "from-orange-500/20 to-orange-500/5 text-orange-600 ring-orange-500/25", bar: "from-orange-400 to-orange-600", btn: "bg-orange-600 hover:bg-orange-700",
               },
-              {
+              ...(canWrite ? [{
                 title: "Enviar a n8n · /expansion",
                 desc: "Envía todos los datos mapeados y depurados al webhook de expansión: leads por etiqueta, conversaciones completas, métricas y fechas.",
                 icon: Send, onClick: handleSendN8n, busy: sendingN8n, label: "Enviar a n8n",
                 wrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/25", bar: "from-violet-400 to-violet-600", btn: "bg-violet-600 hover:bg-violet-700",
-              },
+              }] : []),
             ].map((f) => (
               <motion.div key={f.title} variants={kpiItem}>
                 <Card className="relative overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">

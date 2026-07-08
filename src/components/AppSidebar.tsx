@@ -4,7 +4,7 @@ import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsAdmin } from "@/hooks/use-is-admin";
+import { useRole } from "@/hooks/use-is-admin";
 import { AvatarUploadDialog } from "@/components/AvatarUploadDialog";
 import { motion } from "framer-motion";
 import {
@@ -78,7 +78,7 @@ export function AppSidebar() {
   const { setOpenMobile, isMobile } = useSidebar();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { isAdmin, loading: roleLoading } = useIsAdmin();
+  const { isAdmin, isSubAdmin, loading: roleLoading } = useRole();
   const [avatarDialog, setAvatarDialog] = useState(false);
   const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) || undefined;
 
@@ -212,7 +212,7 @@ export function AppSidebar() {
           >
             <span
               className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-sidebar-primary/20 text-xs font-bold text-sidebar-primary-foreground ring-1 transition-colors ${
-                isAdmin ? "ring-sidebar-primary/70" : "ring-sidebar-border"
+                isAdmin ? "ring-sidebar-primary/70" : isSubAdmin ? "ring-blue-500/70" : "ring-sidebar-border"
               }`}
             >
               {avatarUrl ? (
@@ -229,10 +229,10 @@ export function AppSidebar() {
             {!roleLoading && (
               <span
                 className={`absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full ring-2 ring-sidebar ${
-                  isAdmin ? "bg-sidebar-primary text-white" : "bg-sidebar-accent text-sidebar-foreground"
+                  isAdmin ? "bg-sidebar-primary text-white" : isSubAdmin ? "bg-blue-500 text-white" : "bg-sidebar-accent text-sidebar-foreground"
                 }`}
               >
-                {isAdmin ? <ShieldCheck className="h-2 w-2" /> : <User className="h-2 w-2" />}
+                {isAdmin ? <ShieldCheck className="h-2 w-2" /> : isSubAdmin ? <ShieldCheck className="h-2 w-2" /> : <User className="h-2 w-2" />}
               </span>
             )}
           </button>
@@ -246,10 +246,12 @@ export function AppSidebar() {
                   className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase leading-none tracking-wider ${
                     isAdmin
                       ? "bg-sidebar-primary/25 text-sidebar-primary-foreground ring-1 ring-sidebar-primary/40"
+                      : isSubAdmin
+                      ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/40"
                       : "bg-sidebar-accent/60 text-sidebar-foreground/70"
                   }`}
                 >
-                  {isAdmin ? "Admin" : "Agente"}
+                  {isAdmin ? "Admin" : isSubAdmin ? "Sub-admin" : "Agente"}
                 </span>
               )}
             </div>

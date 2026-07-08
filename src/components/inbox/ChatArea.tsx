@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { LeadCampana, MensajeWhatsapp, LeadTag } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { useIsAdmin } from "@/hooks/use-is-admin";
+import { useRole } from "@/hooks/use-is-admin";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { QuickRepliesPopover } from "./QuickRepliesPopover";
 import { EmojiPickerButton } from "./EmojiPickerButton";
@@ -54,7 +54,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const hasMoreOlderRef = useRef(true);
   const phoneBaseRef = useRef<string>("");
   const { toast } = useToast();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin, canWrite } = useRole();
 
   const PAGE_SIZE = 50;
 
@@ -596,7 +596,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
                           transition={{ duration: 0.4, type: "spring", bounce: 0.4, damping: 20 }}
                           className={`flex items-end gap-1.5 group ${isOutbound ? "justify-end" : "justify-start"}`}
                         >
-                          {isAdmin && (
+                          {canWrite && (
                             <button
                               type="button"
                               onClick={() => deleteMessage(msg)}
@@ -746,23 +746,25 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
             </div>
           )}
           <div className="flex gap-1 max-w-3xl mx-auto items-end">
-            <QuickRepliesPopover isAdmin={isAdmin} onPick={insertText} contactName={selectedContact.nombre} />
+            <QuickRepliesPopover isAdmin={canWrite} onPick={insertText} contactName={selectedContact.nombre} />
             <EmojiPickerButton onPick={insertText} />
-            <AttachmentButton isAdmin={isAdmin} onUploaded={(url, type) => setPendingMedia({ url, type })} />
+            <AttachmentButton isAdmin={canWrite} onUploaded={(url, type) => setPendingMedia({ url, type })} />
             <Input
               ref={inputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-              placeholder="Escribe un mensaje... (*negrita* _cursiva_ ~tachado~)"
-              className="flex-1 rounded-xl bg-muted/50 focus-visible:ring-primary focus-visible:bg-background transition-all border-transparent focus-visible:border-primary"
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && canWrite && sendMessage()}
+              placeholder={canWrite ? "Escribe un mensaje... (*negrita* _cursiva_ ~tachado~)" : "Solo lectura"}
+              disabled={!canWrite}
+              className="flex-1 rounded-xl bg-muted/50 focus-visible:ring-primary focus-visible:bg-background transition-all border-transparent focus-visible:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <motion.div whileHover={{ scale: canWrite ? 1.05 : 1 }} whileTap={{ scale: canWrite ? 0.95 : 1 }}>
               <Button
                 onClick={sendMessage}
-                disabled={(!newMessage.trim() && !pendingMedia) || sending}
+                disabled={(!newMessage.trim() && !pendingMedia) || sending || !canWrite}
                 size="icon"
                 className="rounded-xl h-10 w-10 shadow-md"
+                title={!canWrite ? "Sin permiso de envío" : undefined}
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
@@ -771,7 +773,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         </div>
       </div>
 
-      <NotesPanel isAdmin={isAdmin} leadId={selectedContact.id} open={notesOpen} onClose={() => setNotesOpen(false)} />
+      <NotesPanel isAdmin={canWrite} leadId={selectedContact.id} open={notesOpen} onClose={() => setNotesOpen(false)} />
     </div>
   );
 }

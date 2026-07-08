@@ -11,12 +11,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/hooks/use-is-admin";
 import CreateCampaignDialog from "@/components/campaigns/CreateCampaignDialog";
 import CampaignDetailsDialog, { CampaignRow } from "@/components/campaigns/CampaignDetailsDialog";
 import EditCampaignDialog from "@/components/campaigns/EditCampaignDialog";
 
 export default function Campaigns() {
   const { toast } = useToast();
+  const { canWrite } = useRole();
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -98,19 +100,23 @@ export default function Campaigns() {
           <p className="text-sm text-muted-foreground">Reactivación y expansión de leads por WhatsApp e IA</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setN8nConfirmOpen(true)}
-          >
-            <Zap className="mr-2 h-4 w-4" /> Re-Activar vía Whatsapp Meta AI
-          </Button>
+          {canWrite && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setN8nConfirmOpen(true)}
+            >
+              <Zap className="mr-2 h-4 w-4" /> Re-Activar vía Whatsapp Meta AI
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={fetchCampaigns} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
           </Button>
-          <Button size="sm" onClick={() => setDialogOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <Plus className="mr-2 h-4 w-4" /> Nueva Campaña
-          </Button>
+          {canWrite && (
+            <Button size="sm" onClick={() => setDialogOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Plus className="mr-2 h-4 w-4" /> Nueva Campaña
+            </Button>
+          )}
         </div>
       </div>
 
@@ -157,9 +163,11 @@ export default function Campaigns() {
                 <Megaphone className="h-6 w-6 text-accent" />
               </div>
               <p className="text-sm text-muted-foreground">No hay campañas registradas.</p>
-              <Button size="sm" onClick={() => setDialogOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                <Plus className="mr-2 h-4 w-4" /> Crear la primera
-              </Button>
+              {canWrite && (
+                <Button size="sm" onClick={() => setDialogOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Plus className="mr-2 h-4 w-4" /> Crear la primera
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border/60">
@@ -197,25 +205,27 @@ export default function Campaigns() {
                         <TableCell className="text-sm text-muted-foreground">
                           {c.created_at ? new Date(c.created_at).toLocaleDateString("es-ES") : "—"}
                         </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-end gap-1">
-                            <Button size="sm" variant="outline" onClick={() => openDetails(c)}>
-                              <Send className="mr-1 h-3 w-3" /> Ejecutar
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditTarget(c)} title="Editar">
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => setDeleteTarget(c)}
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {canWrite && (
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="outline" onClick={() => openDetails(c)}>
+                                <Send className="mr-1 h-3 w-3" /> Ejecutar
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditTarget(c)} title="Editar">
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteTarget(c)}
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
