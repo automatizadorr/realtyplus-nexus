@@ -173,11 +173,17 @@ export default function TaggedExport() {
         let q = supabase.from("leads_campana")
           .select("id, telefono", { count: "exact" })
           .not("tag_ids", "is", null).neq("tag_ids", "{}" as any);
-        if (tagFilter !== "all") q = q.contains("tag_ids", [tagFilter]);
-        const { data: leads, count } = await q;
-        setStatsLeads(count ?? 0);
-        if (leads && leads.length > 0) {
-          const phones = leads.map((l) => l.telefono);
+        if (tagFilter !== "all" && tagFilter !== "all-excl-sigue") q = q.contains("tag_ids", [tagFilter]);
+        const { data: rawLeadsStats } = await q;
+        let leadsStats = rawLeadsStats ?? [];
+        if (tagFilter === "all-excl-sigue") {
+          const { data: tgs } = await supabase.from("lead_tags").select("id, nombre");
+          const sId = getSigueId((tgs ?? []) as TagFull[]);
+          leadsStats = filterArchivados(leadsStats, sId);
+        }
+        setStatsLeads(leadsStats.length);
+        if (leadsStats.length > 0) {
+          const phones = leadsStats.map((l: any) => l.telefono);
           const [{ count: c1 }, { count: c2 }] = await Promise.all([
             supabase.from("mensajes_whatsapp").select("id", { count: "exact", head: true }).in("telefono", phones),
             supabase.from("mensajes_automatizacion").select("id", { count: "exact", head: true }).in("telefono", phones),
@@ -224,9 +230,12 @@ export default function TaggedExport() {
     setGeneratingHtml(true);
     try {
       const isArch = activeTab === "archivados";
-      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(isArch ? tagFilterA : tagFilter);
+      const rawFilter = isArch ? tagFilterA : tagFilter;
+      const fetchFilter = rawFilter === "all-excl-sigue" ? "all" : rawFilter;
+      const exclSigue = isArch || rawFilter === "all-excl-sigue";
+      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(fetchFilter);
       const sigueId = getSigueId(tagsFull);
-      const leads = isArch ? filterArchivados(rawLeads, sigueId) : rawLeads;
+      const leads = exclSigue ? filterArchivados(rawLeads, sigueId) : rawLeads;
       if (!leads.length) throw new Error("Sin leads con el filtro seleccionado.");
 
       const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
@@ -326,9 +335,8 @@ export default function TaggedExport() {
         }
       }
 
-      const activeFilter = isArch ? tagFilterA : tagFilter;
-      const orderedTags = orderedOutputTags(tagsFull, byTag, activeFilter)
-        .filter((t) => !isArch || t.id !== sigueId);
+      const orderedTags = orderedOutputTags(tagsFull, byTag, fetchFilter)
+        .filter((t) => !exclSigue || t.id !== sigueId);
 
       const tagSections = orderedTags.map((tag) => {
         const tLeads = byTag.get(tag.id) ?? [];
@@ -352,7 +360,7 @@ export default function TaggedExport() {
         </details>`;
       }).join("");
 
-      const pageTitle = isArch ? "📦 Leads Archivados" : "📋 Leads Etiquetados";
+      const pageTitle = isArch ? "📦 Leads Archivados" : exclSigue ? "📋 Leads Etiquetados (excl. Sigue en campaña)" : "📋 Leads Etiquetados";
       const html = `<!DOCTYPE html>
 <html lang="es"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -446,7 +454,8 @@ details[open] .arrow{transform:rotate(90deg)}
   const handleSendN8n = async () => {
     setSendingN8n(true);
     try {
-      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const fetchFilterN8n = tagFilter === "all-excl-sigue" ? "all" : tagFilter;
+      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(fetchFilterN8n);
 
       const normTag = (s: string) =>
         (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -470,7 +479,7 @@ details[open] .arrow{transform:rotate(90deg)}
         }
       }
 
-      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter).filter((t) => t.id !== sigueId);
+      const orderedTags = orderedOutputTags(tagsFull, byTag, fetchFilterN8n).filter((t) => t.id !== sigueId);
       const etiquetas = orderedTags.map((tag) => {
         const tLeads    = byTag.get(tag.id) ?? [];
         const tResp     = tLeads.filter((l: any) => l.ha_respondido).length;
@@ -552,9 +561,12 @@ details[open] .arrow{transform:rotate(90deg)}
     setGeneratingXlsx(true);
     try {
       const isArch = activeTab === "archivados";
-      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(isArch ? tagFilterA : tagFilter);
+      const rawFilter = isArch ? tagFilterA : tagFilter;
+      const fetchFilter = rawFilter === "all-excl-sigue" ? "all" : rawFilter;
+      const exclSigue = isArch || rawFilter === "all-excl-sigue";
+      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(fetchFilter);
       const sigueId = getSigueId(tagsFull);
-      const leads = isArch ? filterArchivados(rawLeads, sigueId) : rawLeads;
+      const leads = exclSigue ? filterArchivados(rawLeads, sigueId) : rawLeads;
       if (!leads.length) throw new Error("Sin leads con el filtro seleccionado.");
 
       const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
@@ -620,9 +632,8 @@ details[open] .arrow{transform:rotate(90deg)}
           byTag.get(tid)!.push(l);
         }
       }
-      const activeFilter = isArch ? tagFilterA : tagFilter;
-      const tagsForResumen = orderedOutputTags(tagsFull, byTag, activeFilter)
-        .filter((t) => !isArch || t.id !== sigueId);
+      const tagsForResumen = orderedOutputTags(tagsFull, byTag, fetchFilter)
+        .filter((t) => !exclSigue || t.id !== sigueId);
       const resumen = tagsForResumen.map((tag) => {
         const tLeads = byTag.get(tag.id) ?? [];
         const tResp  = tLeads.filter((l: any) => l.ha_respondido).length;
@@ -652,9 +663,9 @@ details[open] .arrow{transform:rotate(90deg)}
       XLSX.utils.book_append_sheet(wb, ws, isArch ? "Leads Archivados" : "Leads Etiquetados");
 
       const today = new Date().toISOString().slice(0, 10);
-      const label = (isArch ? tagFilterA : tagFilter) === "all"
-        ? (isArch ? "archivados" : "todos")
-        : (tagMap.get(isArch ? tagFilterA : tagFilter)?.nombre ?? "filtro");
+      const label = rawFilter === "all" ? (isArch ? "archivados" : "todos")
+        : rawFilter === "all-excl-sigue" ? "excl-sigue"
+        : (tagMap.get(rawFilter)?.nombre ?? "filtro");
       XLSX.writeFile(wb, `leads-${label}-${today}.xlsx`);
       toast({ title: "Excel descargado", description: `${leads.length} leads exportados.` });
     } catch (err: any) {
@@ -667,9 +678,12 @@ details[open] .arrow{transform:rotate(90deg)}
     setGeneratingDocx(true);
     try {
       const isArch = activeTab === "archivados";
-      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(isArch ? tagFilterA : tagFilter);
+      const rawFilter = isArch ? tagFilterA : tagFilter;
+      const fetchFilter = rawFilter === "all-excl-sigue" ? "all" : rawFilter;
+      const exclSigue = isArch || rawFilter === "all-excl-sigue";
+      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(fetchFilter);
       const sigueId = getSigueId(tagsFull);
-      const leads = isArch ? filterArchivados(rawLeads, sigueId) : rawLeads;
+      const leads = exclSigue ? filterArchivados(rawLeads, sigueId) : rawLeads;
       if (!leads.length) throw new Error("Sin leads con el filtro seleccionado.");
 
       const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle, Packer } = await import("docx");
@@ -766,9 +780,8 @@ details[open] .arrow{transform:rotate(90deg)}
         children.push(divider);
       };
 
-      const activeFilter = isArch ? tagFilterA : tagFilter;
-      const orderedTags = orderedOutputTags(tagsFull, byTag, activeFilter)
-        .filter((t) => !isArch || t.id !== sigueId);
+      const orderedTags = orderedOutputTags(tagsFull, byTag, fetchFilter)
+        .filter((t) => !exclSigue || t.id !== sigueId);
 
       for (const tag of orderedTags) {
         children.push(new Paragraph({
@@ -790,10 +803,9 @@ details[open] .arrow{transform:rotate(90deg)}
 
       const doc = new Document({ sections: [{ children }] });
       const blob = await Packer.toBlob(doc);
-      const activeFilter2 = isArch ? tagFilterA : tagFilter;
-      const label = activeFilter2 === "all"
-        ? (isArch ? "archivados" : "todos")
-        : (tagMap.get(activeFilter2)?.nombre ?? activeFilter2);
+      const label = rawFilter === "all" ? (isArch ? "archivados" : "todos")
+        : rawFilter === "all-excl-sigue" ? "excl-sigue"
+        : (tagMap.get(rawFilter)?.nombre ?? rawFilter);
       const dateStr = new Date().toISOString().slice(0, 10);
       downloadBlob(blob, `conversaciones-${label}-${dateStr}.docx`);
 
@@ -863,6 +875,12 @@ details[open] .arrow{transform:rotate(90deg)}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las etiquetas</SelectItem>
+                  <SelectItem value="all-excl-sigue">
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-400" />
+                      Todas excl. Sigue en campaña
+                    </span>
+                  </SelectItem>
                   {allTags.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       <span className="flex items-center gap-2">
