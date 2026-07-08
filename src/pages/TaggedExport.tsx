@@ -876,8 +876,8 @@ details[open] .arrow{transform:rotate(90deg)}
                 <SelectContent>
                   <SelectItem value="all-excl-sigue">
                     <span className="flex items-center gap-2">
-                      <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-400" />
-                      Todas excl. Sigue en campaña
+                      <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      ARCHIVADOS
                     </span>
                   </SelectItem>
                   <SelectItem value="all">Todas las etiquetas</SelectItem>

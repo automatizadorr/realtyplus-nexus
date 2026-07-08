@@ -179,8 +179,8 @@ export default function TaggedMessages() {
           <SelectContent>
             <SelectItem value="all-excl-sigue">
               <span className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-                Todas excl. Sigue en campaña
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                ARCHIVADOS
               </span>
             </SelectItem>
             <SelectItem value="all">Todas las etiquetas</SelectItem>
