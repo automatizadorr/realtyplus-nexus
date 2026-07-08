@@ -145,7 +145,7 @@ export default function TaggedExport() {
 
   // ── Estado Expansión ──────────────────────────────────────────────────────
   const [allTags, setAllTags] = useState<LeadTag[]>([]);
-  const [tagFilter, setTagFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<string>("all-excl-sigue");
   const [loadingStats, setLoadingStats] = useState(false);
   const [generatingXlsx, setGeneratingXlsx] = useState(false);
   const [generatingDocx, setGeneratingDocx] = useState(false);
@@ -874,13 +874,13 @@ details[open] .arrow{transform:rotate(90deg)}
                   <SelectValue placeholder="Seleccionar etiqueta..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas las etiquetas</SelectItem>
                   <SelectItem value="all-excl-sigue">
                     <span className="flex items-center gap-2">
                       <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-400" />
                       Todas excl. Sigue en campaña
                     </span>
                   </SelectItem>
+                  <SelectItem value="all">Todas las etiquetas</SelectItem>
                   {allTags.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       <span className="flex items-center gap-2">

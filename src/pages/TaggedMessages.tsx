@@ -38,7 +38,7 @@ const PAGE_SIZE = 50;
 export default function TaggedMessages() {
   const navigate = useNavigate();
   const [allTags, setAllTags] = useState<LeadTag[]>([]);
-  const [tagFilter, setTagFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<string>("all-excl-sigue");
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 400);
 
@@ -177,13 +177,13 @@ export default function TaggedMessages() {
             <SelectValue placeholder="Etiqueta" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas las etiquetas</SelectItem>
             <SelectItem value="all-excl-sigue">
               <span className="flex items-center gap-2">
                 <span className="inline-block w-2 h-2 rounded-full bg-slate-400 shrink-0" />
                 Todas excl. Sigue en campaña
               </span>
             </SelectItem>
+            <SelectItem value="all">Todas las etiquetas</SelectItem>
             {allTags.map((t) => (
               <SelectItem key={t.id} value={t.id}>
                 {t.nombre}
