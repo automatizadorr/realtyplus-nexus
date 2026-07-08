@@ -78,6 +78,10 @@ export default function TaggedMessages() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Si el filtro ARCHIVADOS está activo pero aún no se cargaron las etiquetas,
+      // esperar — el efecto volverá a correr cuando sigueTagId cambie a su valor real.
+      if (tagFilter === "all-excl-sigue" && sigueTagId === null) return;
+
       setLoading(true);
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
@@ -124,7 +128,7 @@ export default function TaggedMessages() {
     return () => {
       cancelled = true;
     };
-  }, [page, search, tagFilter]); // sigueTagId omitido: se lee del closure correcto al cambiar tagFilter
+  }, [page, search, tagFilter, sigueTagId]);
 
   const tagMap = useMemo(() => {
     const m = new Map<string, LeadTag>();
