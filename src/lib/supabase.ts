@@ -69,6 +69,7 @@ export interface MensajeWhatsapp {
   autor?: string | null;
   leido?: boolean | null;
   created_at: string;
+  seq?: number | null;
   media_url?: string | null;
   media_type?: string | null;
   // Acuse de WhatsApp (wamid) para el saliente: sent/delivered/read/failed o

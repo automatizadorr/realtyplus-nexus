@@ -50,6 +50,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const isAtBottomRef = useRef(true);
   const lastInboundIdRef = useRef<string | number | null>(null);
   const oldestCreatedAtRef = useRef<string | null>(null);
+  const oldestSeqRef = useRef<number | null>(null);
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
   const phoneBaseRef = useRef<string>("");
@@ -87,16 +88,21 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       hasMoreOlderRef.current = true;
       setHasMoreOlder(true);
       oldestCreatedAtRef.current = null;
+      oldestSeqRef.current = null;
       // Load latest PAGE_SIZE messages, descending then reverse for ASC display
       const { data } = await (supabase as any)
         .from("vista_mensajes_whatsapp")
-        .select("id, telefono, contenido, direccion, autor, leido, created_at, media_url, media_type")
+        .select("id, telefono, contenido, direccion, autor, leido, created_at, seq, media_url, media_type")
         .eq("phone_key", phoneBase)
         .order("created_at", { ascending: false })
+        .order("seq", { ascending: false })
         .limit(PAGE_SIZE);
       const ordered = (data || []).slice().reverse() as MensajeWhatsapp[];
       setMessages(ordered);
-      if (ordered.length > 0) oldestCreatedAtRef.current = ordered[0].created_at as any;
+      if (ordered.length > 0) {
+        oldestCreatedAtRef.current = ordered[0].created_at as any;
+        oldestSeqRef.current = ordered[0].seq ?? null;
+      }
       if ((data || []).length < PAGE_SIZE) {
         hasMoreOlderRef.current = false;
         setHasMoreOlder(false);
@@ -184,11 +190,13 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       .eq("phone_key", phoneBase)
       .lt("created_at", cursor)
       .order("created_at", { ascending: false })
+      .order("seq", { ascending: false })
       .limit(PAGE_SIZE);
 
     const older = (data || []).slice().reverse() as MensajeWhatsapp[];
     if (older.length > 0) {
       oldestCreatedAtRef.current = older[0].created_at as any;
+      oldestSeqRef.current = older[0].seq ?? null;
       setMessages((prev) => {
         const existing = new Set(prev.map((m) => m.id));
         const merged = [...older.filter((m) => !existing.has(m.id)), ...prev];
