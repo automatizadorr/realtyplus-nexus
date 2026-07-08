@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, FileSpreadsheet, ExternalLink, Send } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Download, Tag, Users, MessageSquare, ArrowLeft, FileText, FileSpreadsheet, ExternalLink, Send, Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { orderTags } from "@/lib/permanentTags";
@@ -17,11 +18,6 @@ interface LeadTag { id: string; nombre: string; color: string; es_permanente?: b
 
 type TagFull = { id: string; nombre: string; color: string; es_permanente?: boolean | null };
 
-// Lista de etiquetas en ORDEN FIJO para cualquier método de extracción:
-//  - filtro "all": todas las permanentes (orden canónico, incluso con 0 leads)
-//    + las no permanentes que tengan leads (alfabético).
-//  - filtro por una etiqueta: solo esa.
-// Garantiza que Excel, Word, HTML y webhook compartan la misma estructura.
 function orderedOutputTags(tagsFull: TagFull[], byTag: Map<string, any[]>, tagFilter: string): TagFull[] {
   if (tagFilter !== "all") {
     const t = tagsFull.find((x) => x.id === tagFilter);
@@ -54,22 +50,13 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-// ── Helpers de mensajes (cruce robusto lead ↔ mensajes) ───────────────────────
-// Normaliza un teléfono para cruzarlo: quita el sufijo JID de WhatsApp
-// (ej. "59176606339@s.whatsapp.net") y deja solo los dígitos. Los mensajes
-// ENTRANTES del usuario suelen guardarse con ese sufijo; por eso antes "no se veían".
 const normPhone = (t?: string | null) => (t ?? "").split("@")[0].replace(/\D/g, "");
 
-// Timestamp numérico para ordenar por fecha REAL (no por texto). Los mensajes
-// sin fecha válida van al FINAL del hilo, no al principio.
 const msgTime = (m: any) => {
   const t = m?.created_at ? new Date(m.created_at).getTime() : NaN;
   return Number.isNaN(t) ? Infinity : t;
 };
 
-// Trae mensajes de una tabla para una lista de teléfonos, incluyendo las
-// variantes con sufijo JID de WhatsApp ("<numero>@..."). Pagina en lotes para
-// no romper la URL cuando hay muchos leads.
 async function fetchMsgs(table: "mensajes_whatsapp" | "mensajes_automatizacion", phones: string[]) {
   const clean = [...new Set(phones.map((p) => normPhone(p)).filter(Boolean))];
   if (clean.length === 0) return [];
@@ -87,16 +74,12 @@ async function fetchMsgs(table: "mensajes_whatsapp" | "mensajes_automatizacion",
   return out;
 }
 
-// Agrupa los mensajes por teléfono normalizado: deduplica (un mismo envío puede
-// estar en mensajes_whatsapp Y en mensajes_automatizacion) y ordena cronológicamente
-// por fecha real. Devuelve un Map cuya clave es el teléfono normalizado.
 function buildMsgsByPhone(leads: any[], msgsWA: any[], msgsAuto: any[]) {
   const all = [
     ...msgsWA.map((m: any)  => ({ ...m, _canal: "WhatsApp" })),
     ...msgsAuto.map((m: any) => ({ ...m, _canal: m.canal ?? "Auto" })),
   ];
 
-  // Dedup #1: mismo teléfono + dirección + fecha + contenido = el mismo mensaje.
   const seen = new Set<string>();
   const deduped = all.filter((m: any) => {
     const key = `${normPhone(m.telefono)}|${m.direccion}|${m.created_at ?? ""}|${(m.contenido ?? "").trim()}`;
@@ -105,7 +88,6 @@ function buildMsgsByPhone(leads: any[], msgsWA: any[], msgsAuto: any[]) {
     return true;
   });
 
-  // Orden #2/#3: cronológico por fecha real; los sin fecha quedan al final.
   deduped.sort((a, b) => msgTime(a) - msgTime(b));
 
   const byPhone = new Map<string, any[]>();
@@ -117,7 +99,6 @@ function buildMsgsByPhone(leads: any[], msgsWA: any[], msgsAuto: any[]) {
   return byPhone;
 }
 
-// ── Fetch datos comunes (leads + tags + mensajes) ─────────────────────────────
 async function fetchData(tagFilter: string) {
   const { data: tags } = await supabase.from("lead_tags").select("id, nombre, color, es_permanente");
   const tagsFull = (tags ?? []) as TagFull[];
@@ -134,9 +115,6 @@ async function fetchData(tagFilter: string) {
   if (!leads || leads.length === 0) throw new Error("Sin leads etiquetados con el filtro seleccionado.");
 
   const phones = leads.map((l) => l.telefono);
-
-  // Trae WhatsApp + automatización incluyendo las variantes con sufijo "@..."
-  // (donde viven muchos mensajes ENTRANTES del usuario que antes se perdían).
   const [msgsWA, msgsAuto] = await Promise.all([
     fetchMsgs("mensajes_whatsapp", phones),
     fetchMsgs("mensajes_automatizacion", phones),
@@ -145,10 +123,27 @@ async function fetchData(tagFilter: string) {
   return { tagMap, tagsFull, leads, phones, msgsWA, msgsAuto };
 }
 
+// ── Helpers archivados ────────────────────────────────────────────────────────
+const normTagName = (s: string) =>
+  (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+
+function getSigueId(tagsFull: TagFull[]): string | null {
+  return tagsFull.find((t) => normTagName(t.nombre) === "sigue en campana")?.id ?? null;
+}
+
+function filterArchivados(leads: any[], sigueId: string | null): any[] {
+  if (!sigueId) return leads;
+  return leads.filter((l: any) => !(l.tag_ids ?? []).includes(sigueId));
+}
+
 export default function TaggedExport() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // ── Tab activo ────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<"expansion" | "archivados">("expansion");
+
+  // ── Estado Expansión ──────────────────────────────────────────────────────
   const [allTags, setAllTags] = useState<LeadTag[]>([]);
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [loadingStats, setLoadingStats] = useState(false);
@@ -159,11 +154,18 @@ export default function TaggedExport() {
   const [statsLeads, setStatsLeads] = useState<number | null>(null);
   const [statsMsgs, setStatsMsgs] = useState<number | null>(null);
 
+  // ── Estado Archivados ─────────────────────────────────────────────────────
+  const [tagFilterA, setTagFilterA] = useState<string>("all");
+  const [loadingStatsA, setLoadingStatsA] = useState(false);
+  const [statsLeadsA, setStatsLeadsA] = useState<number | null>(null);
+  const [statsMsgsA, setStatsMsgsA] = useState<number | null>(null);
+
   useEffect(() => {
     supabase.from("lead_tags").select("id, nombre, color, es_permanente").order("nombre")
       .then(({ data }) => { if (data) setAllTags(orderTags(data as LeadTag[])); });
   }, []);
 
+  // Stats Expansión
   useEffect(() => {
     const fetchStats = async () => {
       setLoadingStats(true);
@@ -187,14 +189,46 @@ export default function TaggedExport() {
     fetchStats();
   }, [tagFilter]);
 
-  // ── HTML VISUAL: agrupa por etiqueta, acordeón, conversaciones WhatsApp ──
+  // Stats Archivados
+  useEffect(() => {
+    const fetchStatsA = async () => {
+      setLoadingStatsA(true);
+      try {
+        const { data: tags } = await supabase.from("lead_tags").select("id, nombre");
+        const sigueId = getSigueId((tags ?? []) as TagFull[]);
+
+        let q = supabase.from("leads_campana")
+          .select("id, telefono, tag_ids")
+          .not("tag_ids", "is", null).neq("tag_ids", "{}" as any);
+        if (tagFilterA !== "all") q = q.contains("tag_ids", [tagFilterA]);
+        const { data: leads } = await q;
+
+        const archivados = filterArchivados(leads ?? [], sigueId);
+        setStatsLeadsA(archivados.length);
+
+        if (archivados.length > 0) {
+          const phones = archivados.map((l: any) => l.telefono);
+          const [{ count: c1 }, { count: c2 }] = await Promise.all([
+            supabase.from("mensajes_whatsapp").select("id", { count: "exact", head: true }).in("telefono", phones),
+            supabase.from("mensajes_automatizacion").select("id", { count: "exact", head: true }).in("telefono", phones),
+          ]);
+          setStatsMsgsA((c1 ?? 0) + (c2 ?? 0));
+        } else setStatsMsgsA(0);
+      } finally { setLoadingStatsA(false); }
+    };
+    fetchStatsA();
+  }, [tagFilterA]);
+
+  // ── HTML VISUAL ────────────────────────────────────────────────────────────
   const handleOpenHtml = async () => {
     setGeneratingHtml(true);
     try {
-      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const isArch = activeTab === "archivados";
+      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(isArch ? tagFilterA : tagFilter);
+      const sigueId = getSigueId(tagsFull);
+      const leads = isArch ? filterArchivados(rawLeads, sigueId) : rawLeads;
+      if (!leads.length) throw new Error("Sin leads con el filtro seleccionado.");
 
-      // Mensajes por teléfono: deduplicados, ordenados por fecha real y cruzados
-      // por teléfono normalizado (incluye los entrantes con sufijo "@...").
       const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
       const totalMsgs = [...msgsByPhone.values()].reduce((a, arr) => a + arr.length, 0);
 
@@ -213,16 +247,12 @@ export default function TaggedExport() {
 
       const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
 
-      // KPIs globales
       const totalLeads   = leads.length;
       const respondieron = leads.filter((l: any) => l.ha_respondido).length;
       const sinResp      = leads.filter((l: any) => !l.ha_respondido && !l.archivado).length;
       const tasa         = totalLeads > 0 ? Math.round(respondieron / totalLeads * 100) : 0;
-      // Leads con más de una etiqueta: por eso las secciones se solapan y la
-      // suma de píldoras por etiqueta supera el total de leads únicos.
       const multiTag     = leads.filter((l: any) => (l.tag_ids ?? []).length > 1).length;
 
-      // ── Helper: tarjeta de un lead ────────────────────────────────────────
       const buildLeadCard = (l: any, currentTag?: { nombre: string; color: string }) => {
         const msgs      = msgsByPhone.get(normPhone(l.telefono)) ?? [];
         const enviados  = msgs.filter((m: any) => m.direccion === "outbound").length;
@@ -288,7 +318,6 @@ export default function TaggedExport() {
         </details>`;
       };
 
-      // ── Agrupar leads por etiqueta ────────────────────────────────────────
       const byTag = new Map<string, any[]>();
       for (const l of leads) {
         for (const tid of (l.tag_ids ?? [])) {
@@ -297,8 +326,10 @@ export default function TaggedExport() {
         }
       }
 
-      // Orden fijo: permanentes primero (aunque tengan 0 leads), luego extras con leads
-      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter);
+      const activeFilter = isArch ? tagFilterA : tagFilter;
+      const orderedTags = orderedOutputTags(tagsFull, byTag, activeFilter)
+        .filter((t) => !isArch || t.id !== sigueId);
+
       const tagSections = orderedTags.map((tag) => {
         const tLeads = byTag.get(tag.id) ?? [];
         const tResp  = tLeads.filter((l: any) => l.ha_respondido).length;
@@ -321,22 +352,19 @@ export default function TaggedExport() {
         </details>`;
       }).join("");
 
-      // ── HTML final ────────────────────────────────────────────────────────
+      const pageTitle = isArch ? "📦 Leads Archivados" : "📋 Leads Etiquetados";
       const html = `<!DOCTYPE html>
 <html lang="es"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Etiquetados — ${today}</title>
+<title>${isArch ? "Archivados" : "Etiquetados"} — ${today}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;font-size:13px;line-height:1.5}
-/* PAGE HEADER */
 .ph{background:linear-gradient(135deg,#1a0e3a,#0f1117);border-bottom:1px solid #7c3aed;padding:20px 28px}
 .ph h1{font-size:20px;font-weight:700;color:#a78bfa}.ph p{color:#94a3b8;font-size:11px;margin-top:3px}
-/* KPIS */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 28px}
 .kpi{background:#1a1d27;border:1px solid #2e3250;border-radius:8px;padding:14px;text-align:center}
 .kpi b{display:block;font-size:24px;color:#a78bfa}.kpi small{font-size:10px;color:#94a3b8}
-/* TAG SECTION */
 .main{padding:0 28px 40px}
 .tag-section{background:#1a1d27;border:1px solid #2e3250;border-radius:12px;margin-bottom:16px;overflow:hidden}
 .tag-summary{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;user-select:none;list-style:none;background:#1e2235}
@@ -350,7 +378,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f
 details[open] .tag-arrow{transform:rotate(90deg)}
 details[open] .arrow{transform:rotate(90deg)}
 .tag-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-/* LEAD CARD */
 .lead-block{background:#13162a;border:1px solid #2e3250;border-radius:10px;overflow:hidden}
 .lead-summary{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;user-select:none;list-style:none}
 .lead-summary::-webkit-details-marker{display:none}
@@ -366,14 +393,12 @@ details[open] .arrow{transform:rotate(90deg)}
 .lstats{display:flex;gap:12px;flex-shrink:0;text-align:center}
 .stat b{display:block;font-size:16px;font-weight:700}.stat small{font-size:10px;color:#64748b}
 .arrow{font-size:16px;color:#4b5563;transition:transform .2s}
-/* LEAD BODY */
 .lead-body{border-top:1px solid #2e3250}
 .etqs-row{display:flex;flex-wrap:wrap;gap:5px;padding:8px 14px;border-bottom:1px solid #2e3250}
 .tag-chip{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600}
 .dates-row{padding:7px 14px;font-size:11px;color:#4b5563;border-bottom:1px solid #2e3250}
 .dates-row b{color:#94a3b8}
 .no-msgs{padding:12px 14px;color:#374151;font-style:italic;font-size:12px}
-/* CHAT */
 .chat-hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#128C7E;color:#fff;font-size:11px;font-weight:600}
 .chat-area{background:#0b1a12;padding:12px 14px;max-height:420px;overflow-y:auto}
 .brow{display:flex;margin-bottom:7px}
@@ -391,9 +416,9 @@ details[open] .arrow{transform:rotate(90deg)}
 }
 </style></head><body>
 <div class="ph">
-  <h1>📋 Leads Etiquetados</h1>
+  <h1>${pageTitle}</h1>
   <p>Generado el ${today} &nbsp;·&nbsp; ${totalLeads} leads únicos &nbsp;·&nbsp; ${totalMsgs} mensajes &nbsp;·&nbsp; ${byTag.size} etiquetas</p>
-  ${multiTag > 0 ? `<p style="margin-top:5px;color:#64748b;font-size:10px">ℹ️ ${multiTag} ${multiTag === 1 ? "lead está" : "leads están"} en varias etiquetas: aparecen en cada sección, por eso la suma de leads por etiqueta supera el total de leads únicos.</p>` : ""}
+  ${multiTag > 0 ? `<p style="margin-top:5px;color:#64748b;font-size:10px">ℹ️ ${multiTag} ${multiTag === 1 ? "lead está" : "leads están"} en varias etiquetas: aparecen en cada sección.</p>` : ""}
 </div>
 <div class="kpis">
   <div class="kpi"><b>${totalLeads}</b><small>Total leads</small></div>
@@ -417,16 +442,12 @@ details[open] .arrow{transform:rotate(90deg)}
     }
   };
 
-  // ── ENVÍO A N8N: payload estructurado al webhook /expansion ─────────────
-
+  // ── ENVÍO A N8N ───────────────────────────────────────────────────────────
   const handleSendN8n = async () => {
     setSendingN8n(true);
     try {
       const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
 
-      // Excluir del envío a /expansion los leads en "Sigue en campaña": nunca
-      // respondieron y por regla de negocio NO van a expansión/jefatura. (Excel,
-      // Word y HTML sí los siguen mostrando, son para revisión interna.)
       const normTag = (s: string) =>
         (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
       const sigueId = tagsFull.find((t) => normTag(t.nombre) === "sigue en campana")?.id ?? null;
@@ -438,11 +459,9 @@ details[open] .arrow{transform:rotate(90deg)}
         return;
       }
 
-      // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
       const msgsByPhone = buildMsgsByPhone(leadsEnviar, msgsWA, msgsAuto);
       const totalMsgs = [...msgsByPhone.values()].reduce((a, arr) => a + arr.length, 0);
 
-      // Agrupar leads por etiqueta
       const byTag = new Map<string, any[]>();
       for (const l of leadsEnviar) {
         for (const tid of (l.tag_ids ?? [])) {
@@ -451,7 +470,6 @@ details[open] .arrow{transform:rotate(90deg)}
         }
       }
 
-      // Excluye también la sección "Sigue en campaña" (queda vacía tras el filtro).
       const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter).filter((t) => t.id !== sigueId);
       const etiquetas = orderedTags.map((tag) => {
         const tLeads    = byTag.get(tag.id) ?? [];
@@ -529,13 +547,16 @@ details[open] .arrow{transform:rotate(90deg)}
     }
   };
 
-  // ── EXCEL: solo hoja de leads con métricas ────────────────────────────────
+  // ── EXCEL ─────────────────────────────────────────────────────────────────
   const handleExcel = async () => {
     setGeneratingXlsx(true);
     try {
-      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const isArch = activeTab === "archivados";
+      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(isArch ? tagFilterA : tagFilter);
+      const sigueId = getSigueId(tagsFull);
+      const leads = isArch ? filterArchivados(rawLeads, sigueId) : rawLeads;
+      if (!leads.length) throw new Error("Sin leads con el filtro seleccionado.");
 
-      // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
       const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
       const msgStats = new Map<string, { enviados: number; recibidos: number; ultimoMsg: string; ultimaFecha: string }>();
       for (const [phone, msgs] of msgsByPhone) {
@@ -592,7 +613,6 @@ details[open] .arrow{transform:rotate(90deg)}
         };
       });
 
-      // Hoja resumen: todas las etiquetas en orden fijo (permanentes incluidas con 0)
       const byTag = new Map<string, any[]>();
       for (const l of leads) {
         for (const tid of (l.tag_ids ?? [])) {
@@ -600,7 +620,10 @@ details[open] .arrow{transform:rotate(90deg)}
           byTag.get(tid)!.push(l);
         }
       }
-      const resumen = orderedOutputTags(tagsFull, byTag, tagFilter).map((tag) => {
+      const activeFilter = isArch ? tagFilterA : tagFilter;
+      const tagsForResumen = orderedOutputTags(tagsFull, byTag, activeFilter)
+        .filter((t) => !isArch || t.id !== sigueId);
+      const resumen = tagsForResumen.map((tag) => {
         const tLeads = byTag.get(tag.id) ?? [];
         const tResp  = tLeads.filter((l: any) => l.ha_respondido).length;
         const tMsgs  = tLeads.reduce((acc: number, l: any) => {
@@ -626,25 +649,31 @@ details[open] .arrow{transform:rotate(90deg)}
 
       const ws = XLSX.utils.json_to_sheet(rows);
       ws["!cols"] = [36,14,28,16,18,16,28,32,14,10,14,18,30,30,11,11,14,11,11,11,14,36,18,18,18,18,18,12,12,12,40,20].map((wch) => ({ wch }));
-      XLSX.utils.book_append_sheet(wb, ws, "Leads Etiquetados");
+      XLSX.utils.book_append_sheet(wb, ws, isArch ? "Leads Archivados" : "Leads Etiquetados");
 
       const today = new Date().toISOString().slice(0, 10);
-      const label = tagFilter === "all" ? "todos" : (tagMap.get(tagFilter)?.nombre ?? tagFilter);
-      XLSX.writeFile(wb, `leads-etiquetados-${label}-${today}.xlsx`);
+      const label = (isArch ? tagFilterA : tagFilter) === "all"
+        ? (isArch ? "archivados" : "todos")
+        : (tagMap.get(isArch ? tagFilterA : tagFilter)?.nombre ?? "filtro");
+      XLSX.writeFile(wb, `leads-${label}-${today}.xlsx`);
       toast({ title: "Excel descargado", description: `${leads.length} leads exportados.` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally { setGeneratingXlsx(false); }
   };
 
-  // ── WORD: conversaciones agrupadas por lead ───────────────────────────────
+  // ── WORD ──────────────────────────────────────────────────────────────────
   const handleDocx = async () => {
     setGeneratingDocx(true);
     try {
-      const { tagMap, tagsFull, leads, msgsWA, msgsAuto } = await fetchData(tagFilter);
+      const isArch = activeTab === "archivados";
+      const { tagMap, tagsFull, leads: rawLeads, msgsWA, msgsAuto } = await fetchData(isArch ? tagFilterA : tagFilter);
+      const sigueId = getSigueId(tagsFull);
+      const leads = isArch ? filterArchivados(rawLeads, sigueId) : rawLeads;
+      if (!leads.length) throw new Error("Sin leads con el filtro seleccionado.");
+
       const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle, Packer } = await import("docx");
 
-      // Mensajes por teléfono: deduplicados, ordenados por fecha y normalizados.
       const msgsByPhone = buildMsgsByPhone(leads, msgsWA, msgsAuto);
 
       const divider = new Paragraph({
@@ -654,9 +683,8 @@ details[open] .arrow{transform:rotate(90deg)}
 
       const children: InstanceType<typeof Paragraph>[] = [];
 
-      // Título del documento
       children.push(new Paragraph({
-        text: "Conversaciones — Leads Etiquetados",
+        text: isArch ? "Conversaciones — Leads Archivados" : "Conversaciones — Leads Etiquetados",
         heading: HeadingLevel.TITLE,
         alignment: AlignmentType.CENTER,
         spacing: { after: 400 },
@@ -669,7 +697,6 @@ details[open] .arrow{transform:rotate(90deg)}
         spacing: { after: 600 },
       }));
 
-      // Agrupar por etiqueta (un lead puede aparecer bajo varias)
       const byTag = new Map<string, any[]>();
       for (const l of leads) {
         for (const tid of (l.tag_ids ?? [])) {
@@ -678,7 +705,6 @@ details[open] .arrow{transform:rotate(90deg)}
         }
       }
 
-      // Renderiza la ficha + conversación de un lead
       const renderLead = (lead: any) => {
         const etiquetas = (lead.tag_ids ?? []).map((id: string) => tagMap.get(id)?.nombre ?? id).join("  ·  ");
         const msgs = msgsByPhone.get(normPhone(lead.telefono)) ?? [];
@@ -726,7 +752,6 @@ details[open] .arrow{transform:rotate(90deg)}
               spacing: { before: 120, after: 40 },
             }));
 
-            // Dividir mensajes largos en párrafos de 120 chars para legibilidad
             const lineas = contenido.match(/.{1,120}(\s|$)/g) ?? [contenido];
             for (const linea of lineas) {
               children.push(new Paragraph({
@@ -741,8 +766,10 @@ details[open] .arrow{transform:rotate(90deg)}
         children.push(divider);
       };
 
-      // Recorrer las etiquetas en orden fijo; cada una es una sección con título
-      const orderedTags = orderedOutputTags(tagsFull, byTag, tagFilter);
+      const activeFilter = isArch ? tagFilterA : tagFilter;
+      const orderedTags = orderedOutputTags(tagsFull, byTag, activeFilter)
+        .filter((t) => !isArch || t.id !== sigueId);
+
       for (const tag of orderedTags) {
         children.push(new Paragraph({
           children: [new TextRun({ text: tag.nombre.toUpperCase(), bold: true, size: 30, color: tag.color.replace("#", "") })],
@@ -763,7 +790,10 @@ details[open] .arrow{transform:rotate(90deg)}
 
       const doc = new Document({ sections: [{ children }] });
       const blob = await Packer.toBlob(doc);
-      const label = tagFilter === "all" ? "todos" : (tagMap.get(tagFilter)?.nombre ?? tagFilter);
+      const activeFilter2 = isArch ? tagFilterA : tagFilter;
+      const label = activeFilter2 === "all"
+        ? (isArch ? "archivados" : "todos")
+        : (tagMap.get(activeFilter2)?.nombre ?? activeFilter2);
       const dateStr = new Date().toISOString().slice(0, 10);
       downloadBlob(blob, `conversaciones-${label}-${dateStr}.docx`);
 
@@ -776,6 +806,10 @@ details[open] .arrow{transform:rotate(90deg)}
 
   const isLoading = generatingXlsx || generatingDocx || generatingHtml || sendingN8n;
 
+  // Tags sin "Sigue en campaña" para el select de Archivados
+  const sigueTagId = allTags.find((t) => normTagName(t.nombre) === "sigue en campana")?.id;
+  const archivadosTags = sigueTagId ? allTags.filter((t) => t.id !== sigueTagId) : allTags;
+
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
 
@@ -785,138 +819,281 @@ details[open] .arrow{transform:rotate(90deg)}
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Expansión</p>
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Reactivación</p>
           <h1 className="mt-0.5 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
             <Download className="h-6 w-6 text-accent" />
             Exportar etiquetados
           </h1>
           <p className="text-sm text-muted-foreground">
-            Excel con datos · Word con conversaciones · HTML visual · envío a n8n
+            Expansión · Archivados · Excel · Word · HTML · n8n
           </p>
         </div>
       </div>
 
-      {/* Filtro */}
-      <Card className="border-border/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
-              <Tag className="h-4 w-4" />
-            </span>
-            Filtrar por etiqueta
-          </CardTitle>
-          <CardDescription>Exporta todos los leads o filtra por una etiqueta específica</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select value={tagFilter} onValueChange={setTagFilter}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar etiqueta..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las etiquetas</SelectItem>
-              {allTags.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  <span className="flex items-center gap-2">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-                    {t.nombre}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "expansion" | "archivados")}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="expansion" className="flex items-center gap-1.5">
+            <Send className="h-4 w-4" />
+            Expansión
+          </TabsTrigger>
+          <TabsTrigger value="archivados" className="flex items-center gap-1.5">
+            <Archive className="h-4 w-4" />
+            Archivados
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Stats */}
-      <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-2 gap-4">
-        {[
-          { label: "Leads", value: statsLeads, icon: Users, wrap: "from-primary/20 to-primary/5 text-primary ring-primary/25", bar: "from-primary/70 to-primary" },
-          { label: "Mensajes", value: statsMsgs, icon: MessageSquare, wrap: "from-accent/20 to-accent/5 text-accent ring-accent/25", bar: "from-accent/70 to-accent" },
-        ].map((s) => (
-          <motion.div key={s.label} variants={kpiItem}>
-            <Card className="relative overflow-hidden border-border/60">
-              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${s.bar}`} aria-hidden="true" />
-              <CardContent className="flex items-center gap-3 p-4">
-                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ring-1 ${s.wrap}`}>
-                  <s.icon className="h-5 w-5" />
+        {/* ── TAB EXPANSIÓN ── */}
+        <TabsContent value="expansion" className="mt-4 space-y-6">
+          {/* Filtro */}
+          <Card className="border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 text-accent ring-1 ring-accent/20">
+                  <Tag className="h-4 w-4" />
                 </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                  {loadingStats ? (
-                    <Loader2 className="mt-1 h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : (
-                    <p className="text-2xl font-bold tabular-nums">
-                      {s.value == null ? "—" : <AnimatedNumber value={s.value} />}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </motion.div>
+                Filtrar por etiqueta
+              </CardTitle>
+              <CardDescription>Exporta todos los leads o filtra por una etiqueta específica</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={tagFilter} onValueChange={setTagFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar etiqueta..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las etiquetas</SelectItem>
+                  {allTags.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                        {t.nombre}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
 
-      {/* Botones de descarga */}
-      <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-1 gap-3">
-        {[
-          {
-            title: "Leads Etiquetados (.xlsx)",
-            desc: "Un lead por fila — ID, nombre, teléfono, email, país, estado, etiquetas, métricas de conversación y fechas clave.",
-            icon: FileSpreadsheet, onClick: handleExcel, busy: generatingXlsx, label: "Descargar Excel",
-            wrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/25", bar: "from-emerald-400 to-emerald-600", btn: "bg-emerald-600 hover:bg-emerald-700",
-          },
-          {
-            title: "Conversaciones (.docx)",
-            desc: "Un documento Word por filtro — cada lead con su ficha y conversación completa en formato chat, ordenada cronológicamente.",
-            icon: FileText, onClick: handleDocx, busy: generatingDocx, label: "Descargar Word",
-            wrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/25", bar: "from-blue-400 to-blue-600", btn: "bg-blue-600 hover:bg-blue-700",
-          },
-          {
-            title: "Reporte Visual en Navegador (.html)",
-            desc: "Abre todos los leads etiquetados con sus datos completos y conversaciones en estilo WhatsApp — burbujas, colores, timestamps.",
-            icon: ExternalLink, onClick: handleOpenHtml, busy: generatingHtml, label: "Ver en Navegador",
-            wrap: "from-orange-500/20 to-orange-500/5 text-orange-600 ring-orange-500/25", bar: "from-orange-400 to-orange-600", btn: "bg-orange-600 hover:bg-orange-700",
-          },
-          {
-            title: "Enviar a n8n · /expansion",
-            desc: "Envía todos los datos mapeados y depurados al webhook de expansión: leads por etiqueta, conversaciones completas, métricas y fechas.",
-            icon: Send, onClick: handleSendN8n, busy: sendingN8n, label: "Enviar a n8n",
-            wrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/25", bar: "from-violet-400 to-violet-600", btn: "bg-violet-600 hover:bg-violet-700",
-          },
-        ].map((f) => (
-          <motion.div key={f.title} variants={kpiItem}>
-            <Card className="relative overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${f.bar}`} aria-hidden="true" />
-              <CardContent className="p-4">
-                <div className="mb-3 flex items-start gap-3">
-                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br ring-1 ${f.wrap}`}>
-                    <f.icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">{f.title}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{f.desc}</p>
-                  </div>
-                </div>
-                <Button
-                  className={`w-full text-white ${f.btn}`}
-                  onClick={f.onClick}
-                  disabled={isLoading || statsLeads === 0}
-                >
-                  {f.busy
-                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
-                    : <><f.icon className="mr-2 h-4 w-4" />{f.label}</>}
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Stats */}
+          <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-2 gap-4">
+            {[
+              { label: "Leads", value: statsLeads, icon: Users, wrap: "from-primary/20 to-primary/5 text-primary ring-primary/25", bar: "from-primary/70 to-primary" },
+              { label: "Mensajes", value: statsMsgs, icon: MessageSquare, wrap: "from-accent/20 to-accent/5 text-accent ring-accent/25", bar: "from-accent/70 to-accent" },
+            ].map((s) => (
+              <motion.div key={s.label} variants={kpiItem}>
+                <Card className="relative overflow-hidden border-border/60">
+                  <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${s.bar}`} aria-hidden="true" />
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ring-1 ${s.wrap}`}>
+                      <s.icon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                      {loadingStats ? (
+                        <Loader2 className="mt-1 h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <p className="text-2xl font-bold tabular-nums">
+                          {s.value == null ? "—" : <AnimatedNumber value={s.value} />}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </motion.div>
-        ))}
-      </motion.div>
 
-      {statsLeads === 0 && !loadingStats && (
-        <p className="text-center text-sm text-muted-foreground">
-          No hay leads etiquetados con el filtro seleccionado.
-        </p>
-      )}
+          {/* Botones */}
+          <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-1 gap-3">
+            {[
+              {
+                title: "Leads Etiquetados (.xlsx)",
+                desc: "Un lead por fila — ID, nombre, teléfono, email, país, estado, etiquetas, métricas de conversación y fechas clave.",
+                icon: FileSpreadsheet, onClick: handleExcel, busy: generatingXlsx, label: "Descargar Excel",
+                wrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/25", bar: "from-emerald-400 to-emerald-600", btn: "bg-emerald-600 hover:bg-emerald-700",
+              },
+              {
+                title: "Conversaciones (.docx)",
+                desc: "Un documento Word por filtro — cada lead con su ficha y conversación completa en formato chat, ordenada cronológicamente.",
+                icon: FileText, onClick: handleDocx, busy: generatingDocx, label: "Descargar Word",
+                wrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/25", bar: "from-blue-400 to-blue-600", btn: "bg-blue-600 hover:bg-blue-700",
+              },
+              {
+                title: "Reporte Visual en Navegador (.html)",
+                desc: "Abre todos los leads etiquetados con sus datos completos y conversaciones en estilo WhatsApp — burbujas, colores, timestamps.",
+                icon: ExternalLink, onClick: handleOpenHtml, busy: generatingHtml, label: "Ver en Navegador",
+                wrap: "from-orange-500/20 to-orange-500/5 text-orange-600 ring-orange-500/25", bar: "from-orange-400 to-orange-600", btn: "bg-orange-600 hover:bg-orange-700",
+              },
+              {
+                title: "Enviar a n8n · /expansion",
+                desc: "Envía todos los datos mapeados y depurados al webhook de expansión: leads por etiqueta, conversaciones completas, métricas y fechas.",
+                icon: Send, onClick: handleSendN8n, busy: sendingN8n, label: "Enviar a n8n",
+                wrap: "from-violet-500/20 to-violet-500/5 text-violet-600 ring-violet-500/25", bar: "from-violet-400 to-violet-600", btn: "bg-violet-600 hover:bg-violet-700",
+              },
+            ].map((f) => (
+              <motion.div key={f.title} variants={kpiItem}>
+                <Card className="relative overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                  <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${f.bar}`} aria-hidden="true" />
+                  <CardContent className="p-4">
+                    <div className="mb-3 flex items-start gap-3">
+                      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br ring-1 ${f.wrap}`}>
+                        <f.icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{f.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{f.desc}</p>
+                      </div>
+                    </div>
+                    <Button
+                      className={`w-full text-white ${f.btn}`}
+                      onClick={f.onClick}
+                      disabled={isLoading || statsLeads === 0}
+                    >
+                      {f.busy
+                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
+                        : <><f.icon className="mr-2 h-4 w-4" />{f.label}</>}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {statsLeads === 0 && !loadingStats && (
+            <p className="text-center text-sm text-muted-foreground">
+              No hay leads etiquetados con el filtro seleccionado.
+            </p>
+          )}
+        </TabsContent>
+
+        {/* ── TAB ARCHIVADOS ── */}
+        <TabsContent value="archivados" className="mt-4 space-y-6">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              Leads clasificados con situaciones 1–5 — todos los gestionados excepto{" "}
+              <em>Sigue en campaña</em>. Usa las descargas para revisión interna o archivo.
+            </p>
+          </div>
+
+          {/* Filtro Archivados */}
+          <Card className="border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-600 ring-1 ring-amber-500/20">
+                  <Tag className="h-4 w-4" />
+                </span>
+                Filtrar archivados
+              </CardTitle>
+              <CardDescription>Exporta todos los archivados o filtra por situación</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={tagFilterA} onValueChange={setTagFilterA}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar situación..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas (excl. Sigue en campaña)</SelectItem>
+                  {archivadosTags.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                        {t.nombre}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {/* Stats Archivados */}
+          <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-2 gap-4">
+            {[
+              { label: "Archivados", value: statsLeadsA, icon: Archive, wrap: "from-amber-500/20 to-amber-500/5 text-amber-600 ring-amber-500/25", bar: "from-amber-400 to-amber-600" },
+              { label: "Mensajes", value: statsMsgsA, icon: MessageSquare, wrap: "from-accent/20 to-accent/5 text-accent ring-accent/25", bar: "from-accent/70 to-accent" },
+            ].map((s) => (
+              <motion.div key={s.label} variants={kpiItem}>
+                <Card className="relative overflow-hidden border-border/60">
+                  <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${s.bar}`} aria-hidden="true" />
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ring-1 ${s.wrap}`}>
+                      <s.icon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                      {loadingStatsA ? (
+                        <Loader2 className="mt-1 h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <p className="text-2xl font-bold tabular-nums">
+                          {s.value == null ? "—" : <AnimatedNumber value={s.value} />}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Botones Archivados */}
+          <motion.div variants={kpiGrid} initial="hidden" animate="show" className="grid grid-cols-1 gap-3">
+            {[
+              {
+                title: "Archivados (.xlsx)",
+                desc: "Un lead por fila con situación, estado, métricas de conversación y fechas — sin los que siguen en campaña.",
+                icon: FileSpreadsheet, onClick: handleExcel, busy: generatingXlsx, label: "Descargar Excel",
+                wrap: "from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-emerald-500/25", bar: "from-emerald-400 to-emerald-600", btn: "bg-emerald-600 hover:bg-emerald-700",
+              },
+              {
+                title: "Conversaciones archivadas (.docx)",
+                desc: "Word con la ficha y conversación completa de cada lead archivado, agrupado por situación.",
+                icon: FileText, onClick: handleDocx, busy: generatingDocx, label: "Descargar Word",
+                wrap: "from-blue-500/20 to-blue-500/5 text-blue-600 ring-blue-500/25", bar: "from-blue-400 to-blue-600", btn: "bg-blue-600 hover:bg-blue-700",
+              },
+              {
+                title: "Reporte Visual Archivados (.html)",
+                desc: "Vista en navegador con todos los archivados agrupados por situación, conversaciones en estilo WhatsApp.",
+                icon: ExternalLink, onClick: handleOpenHtml, busy: generatingHtml, label: "Ver en Navegador",
+                wrap: "from-orange-500/20 to-orange-500/5 text-orange-600 ring-orange-500/25", bar: "from-orange-400 to-orange-600", btn: "bg-orange-600 hover:bg-orange-700",
+              },
+            ].map((f) => (
+              <motion.div key={f.title} variants={kpiItem}>
+                <Card className="relative overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                  <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${f.bar}`} aria-hidden="true" />
+                  <CardContent className="p-4">
+                    <div className="mb-3 flex items-start gap-3">
+                      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br ring-1 ${f.wrap}`}>
+                        <f.icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{f.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{f.desc}</p>
+                      </div>
+                    </div>
+                    <Button
+                      className={`w-full text-white ${f.btn}`}
+                      onClick={f.onClick}
+                      disabled={isLoading || statsLeadsA === 0}
+                    >
+                      {f.busy
+                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
+                        : <><f.icon className="mr-2 h-4 w-4" />{f.label}</>}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {statsLeadsA === 0 && !loadingStatsA && (
+            <p className="text-center text-sm text-muted-foreground">
+              No hay leads archivados con el filtro seleccionado.
+            </p>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
