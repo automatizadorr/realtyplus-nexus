@@ -1,0 +1,456 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        20384
+      ],
+      "id": "650d21e2-6d2f-4d45-bdb1-9e17aa02c5ed",
+      "name": "WhatsApp Trigger1",
+      "webhookId": "c9deb83c-de73-420c-9c61-218379c13ce6",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "DdQNo1ShRoTcebkk",
+          "name": "RealtyPLus-AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "alberto.murcia@realty-plus.es",
+        "subject": "Aviso de Saldo- Whatsapp  Meta  Marketing",
+        "emailType": "text",
+        "message": "=Hablar con +56971806730 - mario valdes. \n{{ $json.statuses[0].errors[0].message }}\n\n{{ $json.statuses[0].errors[0].error_data.details }}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        20864
+      ],
+      "id": "89641437-1def-4f9b-a89d-713753a330de",
+      "name": "Send a message4",
+      "webhookId": "01c435e1-a5d2-4fd2-bcb2-e67a33c39d8a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QFJyrUfsgznJw9M6",
+          "name": "realtyplusleads@gmail"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        224,
+        20480
+      ],
+      "id": "11a2c52c-ecd2-4927-9b09-19ee88d934bc",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.statuses?.[0]?.pricing?.type }}",
+                    "rightValue": "free_customer_service",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3958d4b8-1033-4233-8fea-3caf213090a1"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ba4887a1-b771-427c-8596-1871befc1963",
+                    "leftValue": "={{ $json.messages?.[0]?.type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "bb0c23dc-f495-459f-b25e-39f858c3cc1e",
+                    "leftValue": "={{ $json.statuses?.[0]?.errors?.[0]?.error_data?.details }}",
+                    "rightValue": "payment method",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pago de tarjeta"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        20656
+      ],
+      "id": "6cd14fd0-bca8-4f0f-94f2-e3f19d78488b",
+      "name": "Switch2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef4-buffer-key",
+              "name": "buffer_key",
+              "value": "=wa:buffer:{{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "ef4-last-key",
+              "name": "last_key",
+              "value": "=wa:last:{{ $('WhatsApp Trigger1').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "ef4-msg-id",
+              "name": "msg_id",
+              "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "ef4-msg-text",
+              "name": "msg_text",
+              "value": "={{ $('WhatsApp Trigger1').item.json.messages[0].text.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        20672
+      ],
+      "id": "b6243ef1-98c3-4392-bfcc-68c6f6d5918c",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "acuse-has-status",
+              "leftValue": "={{ $json.statuses?.[0]?.id || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        20192
+      ],
+      "id": "84191d28-a993-4936-8ddd-8c35584230e2",
+      "name": "🔔 ¿Es acuse de WhatsApp?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "mensajes_automatizacion",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "wamid",
+              "condition": "eq",
+              "keyValue": "={{ $json.statuses[0].id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado_envio",
+              "fieldValue": "={{ $json.statuses[0].status }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        224,
+        20096
+      ],
+      "id": "6a6a9345-393e-42df-9c88-a24b16cf1fc0",
+      "name": "📩 Actualizar Estado (Acuse)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "URfIkTGt4gkOkJX8",
+          "name": "RealtyPlus AI"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "mensajes_whatsapp",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "wamid",
+              "condition": "eq",
+              "keyValue": "={{ $json.statuses[0].id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado_envio",
+              "fieldValue": "={{ $json.statuses[0].status }}"
+            }
+          ]
+        }
+      },
+      "id": "1329a9e7-a572-4310-b55b-297a039c5f48",
+      "name": "📩 Actualizar Estado (Reactivación)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        224,
+        20288
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "URfIkTGt4gkOkJX8",
+          "name": "RealtyPlus AI"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bot-texto",
+              "leftValue": "={{ ($json.messages?.[0]?.text?.body ?? $json.messages?.[0]?.button?.text ?? '').toLowerCase() }}",
+              "rightValue": "respuesta automática|auto.?reply|autorespuesta|mensaje automático|automated message|estoy fuera|out of office|ausente|no puedo atender|no respond(a|as|er) (a )?este mensaje|do not reply|noreply|no-reply|mensaje generado|generado automáticamente|asistente virtual|chatbot|soy un bot|this is an automated",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "bot-tipo",
+              "leftValue": "={{ $json.messages?.[0]?.type ?? '' }}",
+              "rightValue": "interactive|order|system|unsupported",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        160,
+        20656
+      ],
+      "id": "534579bc-4c83-410d-b7e0-f5d98dda129e",
+      "name": "🤖 ¿Responde un Bot?"
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔔 ¿Es acuse de WhatsApp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🤖 ¿Responde un Bot?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        []
+      ]
+    },
+    "🔔 ¿Es acuse de WhatsApp?": {
+      "main": [
+        [
+          {
+            "node": "📩 Actualizar Estado (Acuse)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📩 Actualizar Estado (Reactivación)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 ¿Responde un Bot?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "WhatsApp Trigger1": [
+      {
+        "messaging_product": "whatsapp",
+        "metadata": {
+          "display_phone_number": "56937145921",
+          "phone_number_id": "1070824479455864"
+        },
+        "contacts": [
+          {
+            "profile": {
+              "name": "Mario Valdes"
+            },
+            "wa_id": "56971806730",
+            "user_id": "CL.2397160444109534"
+          }
+        ],
+        "messages": [
+          {
+            "from": "56971806730",
+            "from_user_id": "CL.2397160444109534",
+            "id": "wamid.HBgLNTY5NzE4MDY3MzAVAgASGBYzRUIwODNFQzM3QjNENTE2MDEwM0M4AA==",
+            "timestamp": "1783473467",
+            "text": {
+              "body": "AHORA CREA UNA REUNION PAEA EL JUEVES A LAS 12"
+            },
+            "type": "text"
+          }
+        ],
+        "field": "messages"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a549832225d9c0406174cec76d918a3746d50e0acf5608a79c6f16721bd3abe6"
+  }
+}
