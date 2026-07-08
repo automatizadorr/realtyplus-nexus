@@ -84,7 +84,10 @@ export default function TaggedMessages() {
         )
         .not("tag_ids", "is", null);
 
-      if (tagFilter !== "all") {
+      if (tagFilter === "all-excl-sigue") {
+        q = q.not("tag_ids", "eq", "{}");
+        if (sigueTagId) q = q.not("tag_ids", "cs", `{${sigueTagId}}`);
+      } else if (tagFilter !== "all") {
         q = q.contains("tag_ids", [tagFilter]);
       } else {
         q = q.not("tag_ids", "eq", "{}");
@@ -115,12 +118,18 @@ export default function TaggedMessages() {
     return () => {
       cancelled = true;
     };
-  }, [page, search, tagFilter]);
+  }, [page, search, tagFilter, sigueTagId]);
 
   const tagMap = useMemo(() => {
     const m = new Map<string, LeadTag>();
     allTags.forEach((t) => m.set(t.id, t));
     return m;
+  }, [allTags]);
+
+  const sigueTagId = useMemo(() => {
+    return allTags.find((t) =>
+      (t.nombre ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim() === "sigue en campana"
+    )?.id ?? null;
   }, [allTags]);
 
   const openContact = async (row: TaggedRow) => {
@@ -169,6 +178,12 @@ export default function TaggedMessages() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas las etiquetas</SelectItem>
+            <SelectItem value="all-excl-sigue">
+              <span className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                Todas excl. Sigue en campaña
+              </span>
+            </SelectItem>
             {allTags.map((t) => (
               <SelectItem key={t.id} value={t.id}>
                 {t.nombre}
