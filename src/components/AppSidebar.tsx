@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageSquare, Bot, Zap, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown } from "lucide-react";
 import { useState } from "react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -38,8 +38,8 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   {
     label: "Reactivación",
     items: [
+      { title: "Descargas - Expansión", url: "/tagged", icon: FolderDown },
       { title: "Mensajes · Reactivación", url: "/inbox", icon: MessageSquare },
-      { title: "Descargas - Expansión", url: "/tagged", icon: Tag },
       { title: "Etiquetas IA", url: "/etiquetas", icon: Tag },
     ],
   },

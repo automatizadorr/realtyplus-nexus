@@ -481,33 +481,39 @@ export type Database = {
           contenido: string
           created_at: string | null
           direccion: string
+          estado_envio: string | null
           id: string
           leido: boolean | null
           media_type: string | null
           media_url: string | null
           telefono: string
+          wamid: string | null
         }
         Insert: {
           autor?: string | null
           contenido: string
           created_at?: string | null
           direccion: string
+          estado_envio?: string | null
           id?: string
           leido?: boolean | null
           media_type?: string | null
           media_url?: string | null
           telefono: string
+          wamid?: string | null
         }
         Update: {
           autor?: string | null
           contenido?: string
           created_at?: string | null
           direccion?: string
+          estado_envio?: string | null
           id?: string
           leido?: boolean | null
           media_type?: string | null
           media_url?: string | null
           telefono?: string
+          wamid?: string | null
         }
         Relationships: []
       }
@@ -657,6 +663,7 @@ export type Database = {
           last_message_text: string | null
           nombre: string | null
           pais: string | null
+          senal: string | null
           telefono: string | null
           total_mensajes: number | null
           ultimo_dia: number | null
@@ -681,6 +688,7 @@ export type Database = {
           nombre: string | null
           outbound_count: number | null
           pais: string | null
+          senal: string | null
           tag_ids: string[] | null
           telefono: string | null
           unread_count: number | null
@@ -710,36 +718,42 @@ export type Database = {
           contenido: string | null
           created_at: string | null
           direccion: string | null
+          estado_envio: string | null
           id: string | null
           leido: boolean | null
           media_type: string | null
           media_url: string | null
           phone_key: string | null
           telefono: string | null
+          wamid: string | null
         }
         Insert: {
           autor?: string | null
           contenido?: string | null
           created_at?: string | null
           direccion?: string | null
+          estado_envio?: string | null
           id?: string | null
           leido?: boolean | null
           media_type?: string | null
           media_url?: string | null
           phone_key?: never
           telefono?: string | null
+          wamid?: string | null
         }
         Update: {
           autor?: string | null
           contenido?: string | null
           created_at?: string | null
           direccion?: string | null
+          estado_envio?: string | null
           id?: string | null
           leido?: boolean | null
           media_type?: string | null
           media_url?: string | null
           phone_key?: never
           telefono?: string | null
+          wamid?: string | null
         }
         Relationships: []
       }
