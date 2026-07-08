@@ -54,11 +54,19 @@ CREATE POLICY "Sub-admins read notes"
   FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'sub_admin'));
 
--- logs_expansion
-CREATE POLICY "Sub-admins read logs expansion"
-  ON public.logs_expansion
-  FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'sub_admin'));
+-- logs_expansion (condicional: la tabla puede no existir en todos los entornos)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'logs_expansion') THEN
+    EXECUTE $p$
+      CREATE POLICY "Sub-admins read logs expansion"
+        ON public.logs_expansion
+        FOR SELECT TO authenticated
+        USING (public.has_role(auth.uid(), 'sub_admin'))
+    $p$;
+  END IF;
+END;
+$$;
 
 -- leads_sheet
 CREATE POLICY "Sub-admins read leads_sheet"
