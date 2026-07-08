@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, Zap, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown } from "lucide-react";
 import { useState } from "react";
 import realtyplusLogo from "@/assets/realtyplus-logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -31,7 +31,7 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     label: "Oportunidades",
     items: [
       { title: "Escáner · Leads Nuevos", url: "/scanner", icon: ScanSearch },
-      { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: Zap },
+      { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: MessagesSquare },
       { title: "Panel de Oportunidades", url: "/automation", icon: Bot },
     ],
   },
