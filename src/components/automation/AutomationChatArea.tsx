@@ -93,13 +93,11 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
         .from("vista_mensajes_automatizacion")
         .select("*")
         .eq("phone_key", phoneKey)
-        .order("created_at", { ascending: false })
         .order("seq", { ascending: false })
         .limit(PAGE_SIZE);
       const ordered = (data || []).slice().reverse() as MensajeAuto[];
       setMessages(ordered);
       if (ordered.length > 0) {
-        oldestCreatedAtRef.current = ordered[0].created_at;
         oldestSeqRef.current = ordered[0].seq ?? null;
       }
       if ((data || []).length < PAGE_SIZE) {
@@ -203,8 +201,8 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
   const loadOlder = async () => {
     if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
     const phone = phoneRef.current;
-    const cursor = oldestCreatedAtRef.current;
-    if (!phone || !cursor) return;
+    const cursor = oldestSeqRef.current;
+    if (!phone || cursor === null) return;
     loadingOlderRef.current = true;
     setLoadingOlder(true);
     const viewport = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
@@ -216,14 +214,12 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
       .from("vista_mensajes_automatizacion")
       .select("id, telefono, contenido, direccion, created_at, seq, leido, campaign_name, dia_secuencia, estado_envio")
       .eq("phone_key", phoneKey)
-      .lt("created_at", cursor)
-      .order("created_at", { ascending: false })
+      .lt("seq", cursor)
       .order("seq", { ascending: false })
       .limit(PAGE_SIZE);
 
     const older = (data || []).slice().reverse() as MensajeAuto[];
     if (older.length > 0) {
-      oldestCreatedAtRef.current = older[0].created_at;
       oldestSeqRef.current = older[0].seq ?? null;
       setMessages((prev) => {
         const ex = new Set(prev.map((m) => m.id));

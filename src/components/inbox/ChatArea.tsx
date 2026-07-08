@@ -94,13 +94,11 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
         .from("vista_mensajes_whatsapp")
         .select("id, telefono, contenido, direccion, autor, leido, created_at, seq, media_url, media_type")
         .eq("phone_key", phoneBase)
-        .order("created_at", { ascending: false })
         .order("seq", { ascending: false })
         .limit(PAGE_SIZE);
       const ordered = (data || []).slice().reverse() as MensajeWhatsapp[];
       setMessages(ordered);
       if (ordered.length > 0) {
-        oldestCreatedAtRef.current = ordered[0].created_at as any;
         oldestSeqRef.current = ordered[0].seq ?? null;
       }
       if ((data || []).length < PAGE_SIZE) {
@@ -176,8 +174,8 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const loadOlder = async () => {
     if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
     const phoneBase = phoneBaseRef.current;
-    const cursor = oldestCreatedAtRef.current;
-    if (!phoneBase || !cursor) return;
+    const cursor = oldestSeqRef.current;
+    if (!phoneBase || cursor === null) return;
     loadingOlderRef.current = true;
     setLoadingOlder(true);
     const viewport = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
@@ -188,14 +186,12 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
       .from("vista_mensajes_whatsapp")
       .select("*")
       .eq("phone_key", phoneBase)
-      .lt("created_at", cursor)
-      .order("created_at", { ascending: false })
+      .lt("seq", cursor)
       .order("seq", { ascending: false })
       .limit(PAGE_SIZE);
 
     const older = (data || []).slice().reverse() as MensajeWhatsapp[];
     if (older.length > 0) {
-      oldestCreatedAtRef.current = older[0].created_at as any;
       oldestSeqRef.current = older[0].seq ?? null;
       setMessages((prev) => {
         const existing = new Set(prev.map((m) => m.id));
