@@ -26,6 +26,7 @@ interface MensajeAuto {
   contenido: string;
   direccion: "inbound" | "outbound";
   created_at: string;
+  seq?: number | null;
   leido?: boolean | null;
   campaign_name?: string | null;
   dia_secuencia?: number | null;
@@ -66,6 +67,7 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
   const isAtBottomRef = useRef(true);
   const lastInboundIdRef = useRef<string | null>(null);
   const oldestCreatedAtRef = useRef<string | null>(null);
+  const oldestSeqRef = useRef<number | null>(null);
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
   const phoneRef = useRef<string>("");
@@ -86,15 +88,20 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
       hasMoreOlderRef.current = true;
       setHasMoreOlder(true);
       oldestCreatedAtRef.current = null;
+      oldestSeqRef.current = null;
       const { data } = await (supabase as any)
         .from("vista_mensajes_automatizacion")
         .select("*")
         .eq("phone_key", phoneKey)
         .order("created_at", { ascending: false })
+        .order("seq", { ascending: false })
         .limit(PAGE_SIZE);
       const ordered = (data || []).slice().reverse() as MensajeAuto[];
       setMessages(ordered);
-      if (ordered.length > 0) oldestCreatedAtRef.current = ordered[0].created_at;
+      if (ordered.length > 0) {
+        oldestCreatedAtRef.current = ordered[0].created_at;
+        oldestSeqRef.current = ordered[0].seq ?? null;
+      }
       if ((data || []).length < PAGE_SIZE) {
         hasMoreOlderRef.current = false;
         setHasMoreOlder(false);
@@ -207,15 +214,17 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
     const phoneKey = phone.replace(/[^0-9]/g, "");
     const { data } = await (supabase as any)
       .from("vista_mensajes_automatizacion")
-      .select("id, telefono, contenido, direccion, created_at, leido, campaign_name, dia_secuencia, estado_envio")
+      .select("id, telefono, contenido, direccion, created_at, seq, leido, campaign_name, dia_secuencia, estado_envio")
       .eq("phone_key", phoneKey)
       .lt("created_at", cursor)
       .order("created_at", { ascending: false })
+      .order("seq", { ascending: false })
       .limit(PAGE_SIZE);
 
     const older = (data || []).slice().reverse() as MensajeAuto[];
     if (older.length > 0) {
       oldestCreatedAtRef.current = older[0].created_at;
+      oldestSeqRef.current = older[0].seq ?? null;
       setMessages((prev) => {
         const ex = new Set(prev.map((m) => m.id));
         return [...older.filter((m) => !ex.has(m.id)), ...prev];
@@ -362,7 +371,11 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
       // Rollback: devolver el mensaje al estado si la BD falla
       setMessages((prev) => {
         const sorted = [...prev, msg].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+          (a, b) => {
+            const dt = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            if (dt !== 0) return dt;
+            return (a.seq ?? 0) - (b.seq ?? 0);
+          },
         );
         return sorted;
       });
