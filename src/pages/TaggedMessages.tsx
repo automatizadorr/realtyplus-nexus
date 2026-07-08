@@ -69,6 +69,12 @@ export default function TaggedMessages() {
     setHasMore(true);
   }, [search, tagFilter]);
 
+  const sigueTagId = useMemo(() => {
+    return allTags.find((t) =>
+      (t.nombre ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim() === "sigue en campana"
+    )?.id ?? null;
+  }, [allTags]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -118,18 +124,12 @@ export default function TaggedMessages() {
     return () => {
       cancelled = true;
     };
-  }, [page, search, tagFilter, sigueTagId]);
+  }, [page, search, tagFilter]); // sigueTagId omitido: se lee del closure correcto al cambiar tagFilter
 
   const tagMap = useMemo(() => {
     const m = new Map<string, LeadTag>();
     allTags.forEach((t) => m.set(t.id, t));
     return m;
-  }, [allTags]);
-
-  const sigueTagId = useMemo(() => {
-    return allTags.find((t) =>
-      (t.nombre ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim() === "sigue en campana"
-    )?.id ?? null;
   }, [allTags]);
 
   const openContact = async (row: TaggedRow) => {
