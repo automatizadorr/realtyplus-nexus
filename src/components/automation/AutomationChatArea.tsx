@@ -73,6 +73,7 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
   const phoneRef = useRef<string>("");
+  const realtimeRefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
   const { isAdmin, canWrite } = useRole();
 
@@ -160,6 +161,26 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
         }
         return [...prev, msg];
       });
+
+      // n8n guarda outbound antes que inbound → llegan invertidos por realtime.
+      // Refetch de la vista (con sort_ts) 1.5s después del último INSERT para
+      // reordenar correctamente sin hacer una query por cada evento.
+      if (realtimeRefetchTimerRef.current) clearTimeout(realtimeRefetchTimerRef.current);
+      realtimeRefetchTimerRef.current = setTimeout(async () => {
+        const { data } = await (supabase as any)
+          .from("vista_mensajes_automatizacion")
+          .select("*")
+          .eq("phone_key", phoneKey)
+          .order("sort_ts", { ascending: false })
+          .limit(PAGE_SIZE);
+        if (!data) return;
+        const ordered = (data as MensajeAuto[]).slice().reverse();
+        setMessages((prev) => {
+          const temps = prev.filter((m) => m.id.startsWith("temp-"));
+          if (temps.length > 0) return prev;
+          return ordered;
+        });
+      }, 1500);
     };
 
     const channel = supabase
@@ -172,6 +193,7 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
 
     return () => {
       supabase.removeChannel(channel);
+      if (realtimeRefetchTimerRef.current) clearTimeout(realtimeRefetchTimerRef.current);
     };
   }, [selectedContact?.telefono]);
 
