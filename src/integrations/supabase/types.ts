@@ -89,6 +89,54 @@ export type Database = {
         }
         Relationships: []
       }
+      escalaciones: {
+        Row: {
+          asignado_a: string | null
+          atendido_at: string | null
+          created_at: string | null
+          estado: string | null
+          execution_id: string | null
+          id: number
+          motivo: string
+          nombre_lead: string | null
+          notas_asesor: string | null
+          telefono: string
+          ultima_respuesta_sofia: string | null
+          ultimo_mensaje_usuario: string | null
+          workflow_name: string | null
+        }
+        Insert: {
+          asignado_a?: string | null
+          atendido_at?: string | null
+          created_at?: string | null
+          estado?: string | null
+          execution_id?: string | null
+          id?: number
+          motivo: string
+          nombre_lead?: string | null
+          notas_asesor?: string | null
+          telefono: string
+          ultima_respuesta_sofia?: string | null
+          ultimo_mensaje_usuario?: string | null
+          workflow_name?: string | null
+        }
+        Update: {
+          asignado_a?: string | null
+          atendido_at?: string | null
+          created_at?: string | null
+          estado?: string | null
+          execution_id?: string | null
+          id?: number
+          motivo?: string
+          nombre_lead?: string | null
+          notas_asesor?: string | null
+          telefono?: string
+          ultima_respuesta_sofia?: string | null
+          ultimo_mensaje_usuario?: string | null
+          workflow_name?: string | null
+        }
+        Relationships: []
+      }
       franquiciados: {
         Row: {
           calendar_id: string | null
@@ -429,6 +477,7 @@ export type Database = {
           nombre: string | null
           pais: string | null
           plantilla_usada: string | null
+          seq: number
           telefono: string
           user_id: string | null
           wamid: string | null
@@ -449,6 +498,7 @@ export type Database = {
           nombre?: string | null
           pais?: string | null
           plantilla_usada?: string | null
+          seq?: number
           telefono: string
           user_id?: string | null
           wamid?: string | null
@@ -469,6 +519,7 @@ export type Database = {
           nombre?: string | null
           pais?: string | null
           plantilla_usada?: string | null
+          seq?: number
           telefono?: string
           user_id?: string | null
           wamid?: string | null
@@ -486,6 +537,7 @@ export type Database = {
           leido: boolean | null
           media_type: string | null
           media_url: string | null
+          seq: number
           telefono: string
           wamid: string | null
         }
@@ -499,6 +551,7 @@ export type Database = {
           leido?: boolean | null
           media_type?: string | null
           media_url?: string | null
+          seq?: number
           telefono: string
           wamid?: string | null
         }
@@ -512,6 +565,7 @@ export type Database = {
           leido?: boolean | null
           media_type?: string | null
           media_url?: string | null
+          seq?: number
           telefono?: string
           wamid?: string | null
         }
@@ -708,6 +762,8 @@ export type Database = {
           media_type: string | null
           media_url: string | null
           phone_key: string | null
+          seq: number | null
+          sort_ts: string | null
           telefono: string | null
         }
         Relationships: []
@@ -724,42 +780,16 @@ export type Database = {
           media_type: string | null
           media_url: string | null
           phone_key: string | null
+          seq: number | null
           telefono: string | null
           wamid: string | null
-        }
-        Insert: {
-          autor?: string | null
-          contenido?: string | null
-          created_at?: string | null
-          direccion?: string | null
-          estado_envio?: string | null
-          id?: string | null
-          leido?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          phone_key?: never
-          telefono?: string | null
-          wamid?: string | null
-        }
-        Update: {
-          autor?: string | null
-          contenido?: string | null
-          created_at?: string | null
-          direccion?: string | null
-          estado_envio?: string | null
-          id?: string | null
-          leido?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          phone_key?: never
-          telefono?: string | null
-          wamid?: string | null
         }
         Relationships: []
       }
     }
     Functions: {
       complete_onboarding: { Args: never; Returns: undefined }
+      has_crm_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -793,7 +823,7 @@ export type Database = {
       sync_id_contacto_from_sheet: { Args: never; Returns: Json }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "sub_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -921,7 +951,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "sub_admin"],
     },
   },
 } as const
