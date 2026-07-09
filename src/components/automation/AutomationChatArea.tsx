@@ -26,6 +26,7 @@ interface MensajeAuto {
   contenido: string;
   direccion: "inbound" | "outbound";
   created_at: string;
+  sort_ts?: string | null;
   seq?: number | null;
   leido?: boolean | null;
   campaign_name?: string | null;
@@ -68,6 +69,7 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
   const lastInboundIdRef = useRef<string | null>(null);
   const oldestCreatedAtRef = useRef<string | null>(null);
   const oldestSeqRef = useRef<number | null>(null);
+  const oldestSortTsRef = useRef<string | null>(null);
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
   const phoneRef = useRef<string>("");
@@ -89,16 +91,17 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
       setHasMoreOlder(true);
       oldestCreatedAtRef.current = null;
       oldestSeqRef.current = null;
+      oldestSortTsRef.current = null;
       const { data } = await (supabase as any)
         .from("vista_mensajes_automatizacion")
         .select("*")
         .eq("phone_key", phoneKey)
-        .order("seq", { ascending: false })
+        .order("sort_ts", { ascending: false })
         .limit(PAGE_SIZE);
       const ordered = (data || []).slice().reverse() as MensajeAuto[];
       setMessages(ordered);
       if (ordered.length > 0) {
-        oldestSeqRef.current = ordered[0].seq ?? null;
+        oldestSortTsRef.current = ordered[0].sort_ts ?? null;
       }
       if ((data || []).length < PAGE_SIZE) {
         hasMoreOlderRef.current = false;
@@ -201,8 +204,8 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
   const loadOlder = async () => {
     if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
     const phone = phoneRef.current;
-    const cursor = oldestSeqRef.current;
-    if (!phone || cursor === null) return;
+    const cursor = oldestSortTsRef.current;
+    if (!phone || !cursor) return;
     loadingOlderRef.current = true;
     setLoadingOlder(true);
     const viewport = messagesEndRef.current?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null;
@@ -214,13 +217,13 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
       .from("vista_mensajes_automatizacion")
       .select("id, telefono, contenido, direccion, created_at, seq, leido, campaign_name, dia_secuencia, estado_envio")
       .eq("phone_key", phoneKey)
-      .lt("seq", cursor)
-      .order("seq", { ascending: false })
+      .lt("sort_ts", cursor)
+      .order("sort_ts", { ascending: false })
       .limit(PAGE_SIZE);
 
     const older = (data || []).slice().reverse() as MensajeAuto[];
     if (older.length > 0) {
-      oldestSeqRef.current = older[0].seq ?? null;
+      oldestSortTsRef.current = older[0].sort_ts ?? null;
       setMessages((prev) => {
         const ex = new Set(prev.map((m) => m.id));
         return [...older.filter((m) => !ex.has(m.id)), ...prev];
