@@ -110,11 +110,10 @@ Deno.serve(async (req) => {
     if (authErr || !user) return json({ error: "Unauthorized" }, 401);
     const userId = user.id;
     const svc = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: isAdmin } = await svc.rpc("has_role", {
+    const { data: hasAccess } = await svc.rpc("has_crm_access", {
       _user_id: userId,
-      _role: "admin",
     });
-    if (!isAdmin) return json({ error: "Forbidden: admin role required" }, 403);
+    if (!hasAccess) return json({ error: "Forbidden: admin role required" }, 403);
 
     const gwHeaders = {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
