@@ -141,27 +141,28 @@ export function AutomationSidebar({ selectedContact, onSelectContact, allTags }:
   const pendingPhonesRef = useRef<Set<string>>(new Set());
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    const handlePayload = (payload: any, isInbound: boolean) => {
+      const tel = payload.new?.telefono ?? payload.old?.telefono;
+      if (tel) {
+        pendingPhonesRef.current.add(tel);
+        if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = setTimeout(() => {
+          const phones = Array.from(pendingPhonesRef.current);
+          pendingPhonesRef.current.clear();
+          phones.forEach((p) => refreshPhone(p));
+        }, 400);
+      }
+      if (isInbound && payload.eventType === "INSERT" && payload.new?.direccion === "inbound") {
+        playNotificationSound();
+      }
+    };
+
     const channel = supabase
       .channel("automation-row-updates")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "mensajes_automatizacion" },
-        (payload) => {
-          const tel = (payload.new as any)?.telefono ?? (payload.old as any)?.telefono;
-          if (tel) {
-            pendingPhonesRef.current.add(tel);
-            if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
-            flushTimerRef.current = setTimeout(() => {
-              const phones = Array.from(pendingPhonesRef.current);
-              pendingPhonesRef.current.clear();
-              phones.forEach((p) => refreshPhone(p));
-            }, 400);
-          }
-          if (payload.eventType === "INSERT" && (payload.new as any)?.direccion === "inbound") {
-            playNotificationSound();
-          }
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "mensajes_automatizacion" },
+        (payload) => handlePayload(payload, true))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensajes_whatsapp" },
+        (payload) => handlePayload(payload, true))
       .subscribe();
     return () => {
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
