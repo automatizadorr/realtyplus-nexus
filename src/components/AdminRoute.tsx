@@ -1,9 +1,8 @@
-import { useIsAdmin } from "@/hooks/use-is-admin";
-import { Navigate } from "react-router-dom";
+import { useRole } from "@/hooks/use-is-admin";
 import { Lock } from "lucide-react";
 
 export function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin, loading } = useIsAdmin();
+  const { hasCrmAccess, loading } = useRole();
 
   if (loading) {
     return (
@@ -13,7 +12,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAdmin) {
+  if (!hasCrmAccess) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-center px-6">
         <Lock className="h-10 w-10 text-muted-foreground" />
