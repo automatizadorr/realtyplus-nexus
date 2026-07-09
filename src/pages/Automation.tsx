@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,14 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, MessageSquare, Search, Send, BarChart3, FileText, Settings2 } from "lucide-react";
+import { Loader2, MessageSquare, Search, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { countryFlag } from "@/lib/countryFlag";
 import { useToast } from "@/hooks/use-toast";
-import { ResumenTab } from "@/components/automation/ResumenTab";
-import { PlantillasTab } from "@/components/automation/PlantillasTab";
-import { ConfiguracionTab } from "@/components/automation/ConfiguracionTab";
 
 
 interface InboxRow {
@@ -431,31 +427,10 @@ export default function Automation() {
         <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Automatización</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Panel de oportunidades</h1>
         <p className="text-sm text-muted-foreground">
-          Resumen, conversaciones, plantillas y configuración del agente.
+          Conversaciones del agente IA.
         </p>
       </div>
-
-      <Tabs defaultValue="resumen" className="w-full">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="resumen" className="gap-1.5"><BarChart3 className="h-4 w-4" />Resumen</TabsTrigger>
-          <TabsTrigger value="conversaciones" className="gap-1.5"><MessageSquare className="h-4 w-4" />Conversaciones</TabsTrigger>
-          <TabsTrigger value="plantillas" className="gap-1.5"><FileText className="h-4 w-4" />Plantillas</TabsTrigger>
-          <TabsTrigger value="configuracion" className="gap-1.5"><Settings2 className="h-4 w-4" />Configuración</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="resumen" className="mt-4">
-          <ResumenTab />
-        </TabsContent>
-        <TabsContent value="conversaciones" className="mt-4">
-          <ConversationsTab />
-        </TabsContent>
-        <TabsContent value="plantillas" className="mt-4">
-          <PlantillasTab />
-        </TabsContent>
-        <TabsContent value="configuracion" className="mt-4">
-          <ConfiguracionTab />
-        </TabsContent>
-      </Tabs>
+      <ConversationsTab />
     </div>
   );
 }
