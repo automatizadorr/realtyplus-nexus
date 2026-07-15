@@ -67,7 +67,7 @@ export default function Settings() {
   const handleRestore = () => {
     saveTheme(DEFAULT_THEME);
     setDraft(DEFAULT_THEME);
-    toast.success("Tema restaurado a Clásico Realtyplus");
+    toast.success("Tema restaurado a Clásico NexusPlus-AI");
   };
 
   // ── Account
@@ -354,9 +354,9 @@ export default function Settings() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>¿Restaurar el tema original de Realtyplus?</AlertDialogTitle>
+                  <AlertDialogTitle>¿Restaurar el tema original de NexusPlus-AI?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Se aplicará el preset "Clásico Realtyplus" y se descartarán tus personalizaciones.
+                    Se aplicará el preset "Clásico NexusPlus-AI" y se descartarán tus personalizaciones.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

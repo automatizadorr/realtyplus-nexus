@@ -68,7 +68,7 @@ export default function ResetPassword() {
   if (!isRecovery && !hasRecoveryToken) {
     return (
       <div className={wrapper}>
-        <img src={realtyplusLogo} alt="Realtyplus" className="h-10 object-contain mb-6" />
+        <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain mb-6" />
         <GradientCard>
           <CardHeader className="text-center pt-6">
             <CardTitle className="font-display font-bold text-xl" style={{ color: NAVY }}>
@@ -91,7 +91,7 @@ export default function ResetPassword() {
   if (success) {
     return (
       <div className={wrapper}>
-        <img src={realtyplusLogo} alt="Realtyplus" className="h-10 object-contain mb-6" />
+        <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain mb-6" />
         <GradientCard>
           <CardContent className="pt-8 pb-8 text-center space-y-4">
             <CheckCircle className="mx-auto h-14 w-14" style={{ color: NAVY }} />
@@ -109,7 +109,7 @@ export default function ResetPassword() {
 
   return (
     <div className={wrapper}>
-      <img src={realtyplusLogo} alt="Realtyplus" className="h-10 object-contain mb-6" />
+      <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain mb-6" />
       <GradientCard>
         <CardHeader className="text-center space-y-1 pt-6 pb-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">Portal CRM · IA</p>

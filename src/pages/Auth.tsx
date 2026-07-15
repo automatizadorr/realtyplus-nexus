@@ -202,7 +202,7 @@ export default function Auth() {
                 transition={{ type: "spring", stiffness: 320, damping: 28 }}
               >
                 <div className="flex justify-between items-center p-5 border-b">
-                  <img src={realtyplusLogo} alt="Realtyplus" className="h-8 object-contain" />
+                  <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-8 object-contain" />
                   <button
                     onClick={() => setIsModalOpen(false)}
                     className="text-slate-400 hover:text-slate-700 transition-colors rounded-full p-1 hover:bg-slate-100"
@@ -215,7 +215,7 @@ export default function Auth() {
                     Información de la Red y Acceso
                   </h3>
                   <p className="text-sm leading-relaxed">
-                    El Portal CRM es la herramienta centralizada para todos los miembros de la red internacional Realtyplus.
+                    NexusPlus-AI es la herramienta centralizada para todos los miembros de la red inmobiliaria. Parte de la familia LexHouse AI.
                   </p>
                   <ul className="space-y-3 text-sm">
                     {[
@@ -248,11 +248,11 @@ export default function Auth() {
           transition={{ duration: 0.5, ease: EASE }}
         >
           <div className="inline-flex flex-col items-center gap-2 bg-white/80 backdrop-blur-md rounded-2xl px-6 py-4 shadow-lg ring-1 ring-white/60">
-            <img src={realtyplusLogo} alt="Realtyplus" className="h-10 object-contain" />
+            <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain" />
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">Red Internacional</p>
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">Parte de LexHouse AI</p>
               <p className="text-sm font-display font-bold mt-0.5" style={{ color: BRAND.navy }}>
-                Portal CRM · <span className="font-serif italic font-normal" style={{ color: BRAND.red }}>IA</span>
+                NexusPlus-<span className="font-serif italic font-normal" style={{ color: BRAND.red }}>AI</span>
               </p>
             </div>
           </div>
@@ -272,12 +272,12 @@ export default function Auth() {
             <div className="px-7 pt-6 pb-5">
               {/* Logo desktop */}
               <div className="hidden lg:flex justify-center mb-5">
-                <img src={realtyplusLogo} alt="Realtyplus" className="h-12 object-contain" />
+                <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-12 object-contain" />
               </div>
 
               {!isForgotPassword && (
                 <div className="text-center mb-5">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400 mb-1">Portal CRM · IA</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400 mb-1">NexusPlus-AI · Portal CRM</p>
                   <h1 className="text-2xl font-display font-extrabold tracking-tight" style={{ color: BRAND.navy }}>
                     {isLogin ? (
                       <>Bienvenido de{" "}<span className="font-serif italic font-normal" style={{ color: BRAND.red }}>vuelta</span></>
@@ -508,9 +508,23 @@ export default function Auth() {
             </div>
 
             {/* Footer */}
-            <div className="px-7 py-3 bg-slate-50 border-t text-center font-mono text-[10px] text-slate-500 rounded-b-2xl tracking-wide">
-              <span className="font-semibold" style={{ color: BRAND.navy }}>Soporte</span>
-              {" · "}+34 911 107 727 · contacto@realty-plus.org
+            <div className="px-7 py-3 bg-slate-50 border-t text-center font-mono text-[10px] text-slate-500 rounded-b-2xl tracking-wide space-y-1.5">
+              <div>
+                <span className="font-semibold" style={{ color: BRAND.navy }}>Soporte</span>
+                {" · "}+34 911 107 727 · contacto@realty-plus.org
+              </div>
+              <div>
+                Parte de la familia{" "}
+                <a
+                  href="https://www.lexhouse-ai.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold hover:underline"
+                  style={{ color: BRAND.red }}
+                >
+                  LexHouse AI
+                </a>
+              </div>
             </div>
           </div>
         </motion.div>

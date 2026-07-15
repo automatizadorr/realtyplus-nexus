@@ -145,7 +145,7 @@ function VoiceCallLiveInner() {
          style={{ background: "linear-gradient(160deg,#0c1a38,#0a1730)" }}>
       <div className="rounded-[26px] overflow-hidden" style={{ background: INK }}>
         <div className="relative h-44 overflow-hidden">
-          <img src="/landing/voice-headset.jpg" alt="Asesora de RealtyPlus"
+          <img src="/landing/voice-headset.jpg" alt="Asesora de NexusPlus-AI"
                className={`w-full h-full object-cover object-center ${reduce ? "" : "animate-kenburns"}`} loading="lazy" />
           <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${INK}11, ${INK})` }} />
           <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur">

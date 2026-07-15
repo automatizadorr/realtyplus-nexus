@@ -355,7 +355,7 @@ const FAQS = [
   { q: "¿La IA agenda reuniones de verdad?", a: "Sí. Cuando el lead confirma día y hora, Sofía crea el evento en tu Google Calendar (con un mínimo de 18 horas de antelación) y envía la invitación por correo." },
   { q: "¿Cómo clasifica los leads?", a: "Lee la conversación y le asigna un estado por intención: Cita agendada, Solo quiere propiedades, No interesa, Sigue en campaña… Así sabes de un vistazo quién está caliente." },
   { q: "¿Recibo un resumen de los leads?", a: "Cada mañana a las 08:00 (hora de Madrid) recibes un reporte consolidado con los leads del día, agrupados por etiqueta y con sus conversaciones. Sin abrir el panel." },
-  { q: "¿Necesito saber de tecnología?", a: "No. Si sabes usar WhatsApp, sabes usar RealtyPlus. El inbox, las campañas y los reportes están pensados para agentes, no para técnicos." },
+  { q: "¿Necesito saber de tecnología?", a: "No. Si sabes usar WhatsApp, sabes usar NexusPlus-AI. El inbox, las campañas y los reportes están pensados para agentes, no para técnicos." },
   { q: "¿Mis datos están seguros?", a: "Tus conversaciones y leads viven en tu propia base con control de acceso por roles (RLS). No vendemos ni compartimos datos de tus clientes." },
 ];
 
@@ -590,7 +590,7 @@ export default function Index() {
         }}
         aria-hidden={loaded}
         role="status"
-        aria-label="Cargando RealtyPlus"
+        aria-label="Cargando NexusPlus-AI"
       >
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 12, scale: 0.96 }}
@@ -599,7 +599,7 @@ export default function Index() {
           className="flex flex-col items-center gap-6 rounded-[28px] bg-white px-12 py-10 border border-slate-100"
           style={{ boxShadow: "0 24px 70px -24px rgba(2,27,77,0.28), 0 2px 8px -2px rgba(2,27,77,0.08)" }}
         >
-          <img src={realtyplusLogo} alt="RealtyPlus" className="w-44 h-auto" width={176} height={68} />
+          <img src={realtyplusLogo} alt="NexusPlus-AI" className="w-44 h-auto" width={176} height={68} />
           {/* barra de carga indeterminada (azul → rojo RE/MAX) */}
           <div className="w-44 h-1 rounded-full overflow-hidden" style={{ background: "#eef1f6" }}>
             {reduce ? (
@@ -626,7 +626,7 @@ export default function Index() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <img src={realtyplusLogo} alt="RealtyPlus Nexus" className="h-8 w-auto" width="120" height="32" />
+          <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-8 w-auto" width="120" height="32" />
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
             {navLinks.map(([href, label]) => (
               <a key={href} href={href} className="hover:text-[#E11D34] transition-colors">{label}</a>
@@ -930,7 +930,7 @@ export default function Index() {
         <section className="py-20 px-6 bg-white" aria-label="Datos">
           <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-6">
             {[
-              { icon: Globe, value: 25, suffix: "+", label: "Países en la red RealtyPlus" },
+              { icon: Globe, value: 25, suffix: "+", label: "Países en la red NexusPlus-AI" },
               { icon: Sparkles, value: 24, suffix: "/7", label: "Sofía atendiendo leads" },
               { icon: Clock, value: 8, suffix: ":00", label: "Reporte diario a jefatura" },
               { icon: Tags, value: 100, suffix: "%", label: "Leads clasificados por IA" },
@@ -1002,13 +1002,13 @@ export default function Index() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-10 mb-10">
             <div>
-              <img src={realtyplusLogo} alt="RealtyPlus" className="h-9 w-auto mb-4 brightness-0 invert" width="120" height="36" />
+              <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-9 w-auto mb-4 brightness-0 invert" width="120" height="36" />
               <p className="text-white/40 text-sm leading-relaxed">CRM inmobiliario sobre WhatsApp, con IA que responde, agenda y clasifica.</p>
             </div>
             {[
               { title: "Plataforma", links: ["Inbox unificado", "Sofía · Asesora IA", "Etiquetado IA", "Campañas", "Scanner", "VoiceCRM"] },
               { title: "Recursos", links: ["Reporte diario", "Exportar leads", "Dashboard", "Integraciones"] },
-              { title: "RealtyPlus", links: ["Red de franquicias", "Soporte", "Privacidad", "Términos"] },
+              { title: "NexusPlus-AI", links: ["Red de franquicias", "Soporte", "Privacidad", "Términos"] },
             ].map((col) => (
               <div key={col.title}>
                 <h3 className="font-mono text-white/70 text-xs uppercase tracking-widest mb-4">{col.title}</h3>
@@ -1021,8 +1021,18 @@ export default function Index() {
             ))}
           </div>
           <div className="border-t border-white/10 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/30 text-xs">
-            <span>© {new Date().getFullYear()} RealtyPlus · Servicios Inmobiliarios Plus Sur SL</span>
-            <span className="font-mono">Hecho por AI-MaX Intelligence</span>
+            <span>© {new Date().getFullYear()} NexusPlus-AI · Servicios Inmobiliarios Plus Sur SL</span>
+            <span className="font-mono flex items-center gap-1.5">
+              Parte de la familia{" "}
+              <a
+                href="https://www.lexhouse-ai.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/60 hover:text-white transition-colors underline underline-offset-2"
+              >
+                LexHouse AI
+              </a>
+            </span>
           </div>
         </div>
       </footer>

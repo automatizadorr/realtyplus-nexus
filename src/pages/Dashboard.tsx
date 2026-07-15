@@ -433,7 +433,7 @@ export default function Dashboard() {
             </span>
             <div>
               <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-sky-600">
-                Centro de mando · RealtyPlus
+                Centro de mando · NexusPlus-AI
               </p>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
             </div>

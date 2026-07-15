@@ -81,7 +81,7 @@ const N8N_STEPS = [
   {
     icon: Zap,
     title: "Recepción del webhook",
-    desc: "RealtyPlus envía un HTTP POST al endpoint configurado en n8n con el payload completo: ID de campaña, lista de leads, plantilla del mensaje y filtros de segmentación.",
+    desc: "NexusPlus-AI envía un HTTP POST al endpoint configurado en n8n con el payload completo: ID de campaña, lista de leads, plantilla del mensaje y filtros de segmentación.",
     color: "text-blue-600",
   },
   {
@@ -280,7 +280,7 @@ export default function CampaignExecuteWarning({
                 <strong>Nota:</strong> Este es el costo máximo estimado asumiendo que todos los leads
                 abren una conversación nueva. El costo real puede ser menor si algunos leads ya
                 tienen una conversación activa en las últimas 24 horas. El cargo se aplica directamente
-                en tu cuenta de WhatsApp Business de Meta, no en RealtyPlus.
+                en tu cuenta de WhatsApp Business de Meta, no en NexusPlus-AI.
               </p>
             </div>
 

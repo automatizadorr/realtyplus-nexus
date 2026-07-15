@@ -105,7 +105,7 @@ export function AppSidebar() {
           >
             <motion.img
               src={realtyplusLogo}
-              alt="Realtyplus - Servicios Inmobiliarios"
+              alt="NexusPlus-AI - Servicios Inmobiliarios"
               className="w-full h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
             />
           </motion.div>
@@ -119,7 +119,7 @@ export function AppSidebar() {
           <div className="mt-3.5 flex items-center justify-center gap-2.5 group-data-[collapsible=icon]:hidden" aria-hidden="true">
             <span className="h-px flex-1 bg-sidebar-border/70" />
             <span className="font-mono text-[9px] font-medium tracking-[0.34em] uppercase text-sidebar-foreground/45">
-              Nexus CRM
+              NexusPlus-AI
             </span>
             <span className="h-px flex-1 bg-sidebar-border/70" />
           </div>

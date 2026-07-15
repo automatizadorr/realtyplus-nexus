@@ -10,7 +10,7 @@ export interface ThemeConfig {
 
 export const THEME_PRESETS: ThemeConfig[] = [
   {
-    themeName: "Clásico Realtyplus",
+    themeName: "Clásico NexusPlus-AI",
     primary: "210 100% 20%",
     accent: "0 100% 40%",
     background: "210 20% 98%",

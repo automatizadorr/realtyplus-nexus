@@ -18,7 +18,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
         <Lock className="h-10 w-10 text-muted-foreground" />
         <h2 className="text-xl font-semibold">Acceso restringido</h2>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Esta sección está disponible únicamente para administradores de Realtyplus.
+          Esta sección está disponible únicamente para administradores de NexusPlus-AI.
         </p>
       </div>
     );

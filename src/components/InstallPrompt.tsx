@@ -147,15 +147,15 @@ export function InstallPrompt() {
   const isHandheld = device === "mobile";
   const Icon = isHandheld ? Smartphone : Monitor;
   const title = isHandheld
-    ? "Instala Realtyplus en tu móvil"
+    ? "Instala NexusPlus-AI en tu móvil"
     : device === "tablet"
-    ? "Instala Realtyplus en tu tablet"
-    : "Instala Realtyplus en tu PC";
+    ? "Instala NexusPlus-AI en tu tablet"
+    : "Instala NexusPlus-AI en tu PC";
 
   const manualHint = ios
     ? null
     : device === "desktop"
-    ? 'En Chrome/Edge: icono "Instalar" (⊕) en la barra de direcciones, o menú ⋮ → "Instalar Realtyplus".'
+    ? 'En Chrome/Edge: icono "Instalar" (⊕) en la barra de direcciones, o menú ⋮ → "Instalar NexusPlus-AI".'
     : 'En Chrome: menú ⋮ → "Instalar app" o "Añadir a pantalla de inicio".';
 
   return (

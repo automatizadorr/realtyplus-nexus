@@ -1,7 +1,7 @@
 {
-  "name": "RealtyPlus CRM",
-  "short_name": "RealtyPlus",
-  "description": "CRM inmobiliario con captación automática de leads, campañas WhatsApp y analytics en tiempo real.",
+  "name": "NexusPlus-AI",
+  "short_name": "NexusPlus-AI",
+  "description": "CRM inmobiliario con captación automática de leads, campañas WhatsApp y analytics en tiempo real. Parte de la familia LexHouse AI.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

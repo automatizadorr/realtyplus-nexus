@@ -47,7 +47,7 @@ export function Layout({ children }: LayoutProps) {
             <SidebarTrigger />
             <img
               src={realtyplusLogo}
-              alt="Realtyplus - Servicios Inmobiliarios"
+              alt="NexusPlus-AI - Servicios Inmobiliarios"
               className="h-10 w-auto object-contain"
             />
             <UserAvatar editable className="ml-auto h-9 w-9" textClassName="text-sm" />

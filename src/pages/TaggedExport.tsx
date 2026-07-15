@@ -437,7 +437,7 @@ details[open] .arrow{transform:rotate(90deg)}
   <div class="kpi"><b>${tasa}%</b><small>Tasa respuesta</small></div>
 </div>
 <div class="main">${tagSections}</div>
-<div style="text-align:center;padding:16px;color:#374151;font-size:10px">RealtyPlus Nexus · AI-MaX Intelligence · ${today}</div>
+<div style="text-align:center;padding:16px;color:#374151;font-size:10px">NexusPlus-AI · LexHouse AI · ${today}</div>
 </body></html>`;
 
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
