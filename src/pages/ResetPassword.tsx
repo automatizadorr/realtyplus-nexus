@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { KeyRound, CheckCircle, Lock } from "lucide-react";
-import realtyplusLogo from "@/assets/realtyplus-logo.png";
+import nexusLogo from "@/assets/nexusplus-logo.png";
 
 const NAVY = "#003DA5";
 const RED  = "#DC1C2E";
@@ -68,7 +68,7 @@ export default function ResetPassword() {
   if (!isRecovery && !hasRecoveryToken) {
     return (
       <div className={wrapper}>
-        <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain mb-6" />
+        <span className="inline-flex items-center justify-center rounded-xl bg-[#0e1c3a] px-4 py-2.5 mb-6"><img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" /></span>
         <GradientCard>
           <CardHeader className="text-center pt-6">
             <CardTitle className="font-display font-bold text-xl" style={{ color: NAVY }}>
@@ -91,7 +91,7 @@ export default function ResetPassword() {
   if (success) {
     return (
       <div className={wrapper}>
-        <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain mb-6" />
+        <span className="inline-flex items-center justify-center rounded-xl bg-[#0e1c3a] px-4 py-2.5 mb-6"><img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" /></span>
         <GradientCard>
           <CardContent className="pt-8 pb-8 text-center space-y-4">
             <CheckCircle className="mx-auto h-14 w-14" style={{ color: NAVY }} />
@@ -109,7 +109,7 @@ export default function ResetPassword() {
 
   return (
     <div className={wrapper}>
-      <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain mb-6" />
+      <span className="inline-flex items-center justify-center rounded-xl bg-[#0e1c3a] px-4 py-2.5 mb-6"><img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" /></span>
       <GradientCard>
         <CardHeader className="text-center space-y-1 pt-6 pb-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">Portal CRM · IA</p>

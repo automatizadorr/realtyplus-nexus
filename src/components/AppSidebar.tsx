@@ -1,6 +1,6 @@
 import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown } from "lucide-react";
 import { useState } from "react";
-import realtyplusLogo from "@/assets/realtyplus-logo.png";
+import nexusLogo from "@/assets/nexusplus-logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,10 +101,10 @@ export function AppSidebar() {
             whileHover={{ scale: 1.04, rotate: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="bg-white rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
+            className="bg-[#0e1c3a] ring-1 ring-white/10 rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
           >
             <motion.img
-              src={realtyplusLogo}
+              src={nexusLogo}
               alt="NexusPlus-AI - Servicios Inmobiliarios"
               className="w-full h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
             />
@@ -112,7 +112,7 @@ export function AppSidebar() {
           {/* Marca compacta — modo rail de íconos */}
           <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-xl bg-white shadow-md">
             <span className="font-display text-sm font-extrabold leading-none tracking-tight" style={{ color: "hsl(210 100% 20%)" }}>
-              R<span style={{ color: "hsl(0 100% 40%)" }}>P</span>
+              N<span style={{ color: "hsl(0 100% 40%)" }}>P</span>
             </span>
           </div>
           {/* Firma de marca */}

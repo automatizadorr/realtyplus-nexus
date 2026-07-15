@@ -12,7 +12,7 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, Phone, PhoneCall, PhoneOff,
   Volume2, Sparkles, Clock, Globe, ShieldCheck,
 } from "lucide-react";
-import realtyplusLogo from "@/assets/realtyplus-logo.png";
+import nexusLogo from "@/assets/nexusplus-logo.png";
 import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
 
 // ── Paleta de marca RE/MAX (azul · rojo · blanco) ─────────────────────────────
@@ -599,7 +599,9 @@ export default function Index() {
           className="flex flex-col items-center gap-6 rounded-[28px] bg-white px-12 py-10 border border-slate-100"
           style={{ boxShadow: "0 24px 70px -24px rgba(2,27,77,0.28), 0 2px 8px -2px rgba(2,27,77,0.08)" }}
         >
-          <img src={realtyplusLogo} alt="NexusPlus-AI" className="w-44 h-auto" width={176} height={68} />
+          <span className="inline-flex items-center justify-center rounded-2xl bg-[#0e1c3a] px-8 py-6">
+            <img src={nexusLogo} alt="NexusPlus-AI" className="w-40 h-auto" width={160} height={59} />
+          </span>
           {/* barra de carga indeterminada (azul → rojo RE/MAX) */}
           <div className="w-44 h-1 rounded-full overflow-hidden" style={{ background: "#eef1f6" }}>
             {reduce ? (
@@ -626,7 +628,9 @@ export default function Index() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-8 w-auto" width="120" height="32" />
+          <span className="inline-flex items-center justify-center rounded-lg bg-[#0e1c3a] px-3 py-1.5">
+            <img src={nexusLogo} alt="NexusPlus-AI" className="h-7 w-auto" width="105" height="28" />
+          </span>
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
             {navLinks.map(([href, label]) => (
               <a key={href} href={href} className="hover:text-[#E11D34] transition-colors">{label}</a>
@@ -1002,7 +1006,7 @@ export default function Index() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-10 mb-10">
             <div>
-              <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-9 w-auto mb-4 brightness-0 invert" width="120" height="36" />
+              <img src={nexusLogo} alt="NexusPlus-AI" className="h-12 w-auto mb-4" width="160" height="48" />
               <p className="text-white/40 text-sm leading-relaxed">CRM inmobiliario sobre WhatsApp, con IA que responde, agenda y clasifica.</p>
             </div>
             {[

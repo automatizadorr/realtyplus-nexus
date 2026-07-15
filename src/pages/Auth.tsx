@@ -10,7 +10,7 @@ import { LogIn, UserPlus, Info, X, ArrowLeft, Mail, Lock, User, Eye, EyeOff } fr
 import { Separator } from "@/components/ui/separator";
 import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
 import { BrandShowcase } from "@/components/auth/BrandShowcase";
-import realtyplusLogo from "@/assets/realtyplus-logo.png";
+import nexusLogo from "@/assets/nexusplus-logo.png";
 
 const BRAND = { navy: "#003DA5", red: "#DC1C2E" };
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -202,7 +202,9 @@ export default function Auth() {
                 transition={{ type: "spring", stiffness: 320, damping: 28 }}
               >
                 <div className="flex justify-between items-center p-5 border-b">
-                  <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-8 object-contain" />
+                  <span className="inline-flex items-center justify-center rounded-lg bg-[#0e1c3a] px-3 py-2">
+                    <img src={nexusLogo} alt="NexusPlus-AI" className="h-7 object-contain" />
+                  </span>
                   <button
                     onClick={() => setIsModalOpen(false)}
                     className="text-slate-400 hover:text-slate-700 transition-colors rounded-full p-1 hover:bg-slate-100"
@@ -248,7 +250,9 @@ export default function Auth() {
           transition={{ duration: 0.5, ease: EASE }}
         >
           <div className="inline-flex flex-col items-center gap-2 bg-white/80 backdrop-blur-md rounded-2xl px-6 py-4 shadow-lg ring-1 ring-white/60">
-            <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-10 object-contain" />
+            <span className="inline-flex items-center justify-center rounded-xl bg-[#0e1c3a] px-4 py-2.5 shadow-md">
+              <img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" />
+            </span>
             <div>
               <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">Parte de LexHouse AI</p>
               <p className="text-sm font-display font-bold mt-0.5" style={{ color: BRAND.navy }}>
@@ -272,7 +276,9 @@ export default function Auth() {
             <div className="px-7 pt-6 pb-5">
               {/* Logo desktop */}
               <div className="hidden lg:flex justify-center mb-5">
-                <img src={realtyplusLogo} alt="NexusPlus-AI" className="h-12 object-contain" />
+                <span className="inline-flex items-center justify-center rounded-xl bg-[#0e1c3a] px-5 py-3 shadow-md">
+                  <img src={nexusLogo} alt="NexusPlus-AI" className="h-11 object-contain" />
+                </span>
               </div>
 
               {!isForgotPassword && (

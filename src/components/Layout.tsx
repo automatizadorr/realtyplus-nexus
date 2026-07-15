@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { UserAvatar } from "@/components/UserAvatar";
-import realtyplusLogo from "@/assets/realtyplus-logo.png";
+import nexusLogo from "@/assets/nexusplus-logo.png";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -45,11 +45,13 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b bg-card px-4 gap-3">
             <SidebarTrigger />
-            <img
-              src={realtyplusLogo}
-              alt="NexusPlus-AI - Servicios Inmobiliarios"
-              className="h-10 w-auto object-contain"
-            />
+            <span className="inline-flex items-center justify-center rounded-lg bg-[#0e1c3a] px-3 py-1.5">
+              <img
+                src={nexusLogo}
+                alt="NexusPlus-AI - Servicios Inmobiliarios"
+                className="h-8 w-auto object-contain"
+              />
+            </span>
             <UserAvatar editable className="ml-auto h-9 w-9" textClassName="text-sm" />
           </header>
           <main className="app-main flex-1 overflow-auto">{children}</main>
