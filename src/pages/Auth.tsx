@@ -202,7 +202,7 @@ export default function Auth() {
                 transition={{ type: "spring", stiffness: 320, damping: 28 }}
               >
                 <div className="flex justify-between items-center p-5 border-b">
-                  <span className="inline-flex items-center justify-center rounded-lg bg-[#0e1c3a] px-3 py-2">
+                  <span className="inline-flex items-center justify-center rounded-lg bg-[#001E43] px-3 py-2">
                     <img src={nexusLogo} alt="NexusPlus-AI" className="h-7 object-contain" />
                   </span>
                   <button
@@ -250,7 +250,7 @@ export default function Auth() {
           transition={{ duration: 0.5, ease: EASE }}
         >
           <div className="inline-flex flex-col items-center gap-2 bg-white/80 backdrop-blur-md rounded-2xl px-6 py-4 shadow-lg ring-1 ring-white/60">
-            <span className="inline-flex items-center justify-center rounded-xl bg-[#0e1c3a] px-4 py-2.5 shadow-md">
+            <span className="inline-flex items-center justify-center rounded-xl bg-[#001E43] px-4 py-2.5 shadow-md">
               <img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" />
             </span>
             <div>
@@ -276,7 +276,7 @@ export default function Auth() {
             <div className="px-7 pt-6 pb-5">
               {/* Logo desktop */}
               <div className="hidden lg:flex justify-center mb-5">
-                <span className="inline-flex items-center justify-center rounded-xl bg-[#0e1c3a] px-5 py-3 shadow-md">
+                <span className="inline-flex items-center justify-center rounded-xl bg-[#001E43] px-5 py-3 shadow-md">
                   <img src={nexusLogo} alt="NexusPlus-AI" className="h-11 object-contain" />
                 </span>
               </div>

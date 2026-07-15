@@ -45,7 +45,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b bg-card px-4 gap-3">
             <SidebarTrigger />
-            <span className="inline-flex items-center justify-center rounded-lg bg-[#0e1c3a] px-3 py-1.5">
+            <span className="inline-flex items-center justify-center rounded-lg bg-[#001E43] px-3 py-1.5">
               <img
                 src={nexusLogo}
                 alt="NexusPlus-AI - Servicios Inmobiliarios"

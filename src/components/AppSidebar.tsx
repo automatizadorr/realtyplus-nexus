@@ -101,7 +101,7 @@ export function AppSidebar() {
             whileHover={{ scale: 1.04, rotate: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="bg-[#0e1c3a] ring-1 ring-white/10 rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
+            className="bg-[#001E43] ring-1 ring-white/10 rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
           >
             <motion.img
               src={nexusLogo}

@@ -599,7 +599,7 @@ export default function Index() {
           className="flex flex-col items-center gap-6 rounded-[28px] bg-white px-12 py-10 border border-slate-100"
           style={{ boxShadow: "0 24px 70px -24px rgba(2,27,77,0.28), 0 2px 8px -2px rgba(2,27,77,0.08)" }}
         >
-          <span className="inline-flex items-center justify-center rounded-2xl bg-[#0e1c3a] px-8 py-6">
+          <span className="inline-flex items-center justify-center rounded-2xl bg-[#001E43] px-8 py-6">
             <img src={nexusLogo} alt="NexusPlus-AI" className="w-40 h-auto" width={160} height={59} />
           </span>
           {/* barra de carga indeterminada (azul → rojo RE/MAX) */}
@@ -628,7 +628,7 @@ export default function Index() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="inline-flex items-center justify-center rounded-lg bg-[#0e1c3a] px-3 py-1.5">
+          <span className="inline-flex items-center justify-center rounded-lg bg-[#001E43] px-3 py-1.5">
             <img src={nexusLogo} alt="NexusPlus-AI" className="h-7 w-auto" width="105" height="28" />
           </span>
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
@@ -665,20 +665,20 @@ export default function Index() {
 
       <main>
         {/* ── Hero ── */}
-        <section ref={heroRef} className="relative overflow-hidden" style={{ background: INK }}
+        <section ref={heroRef} className="relative overflow-hidden" style={{ background: "linear-gradient(180deg,#FFFFFF 0%,#EEF3FB 100%)" }}
                  aria-labelledby="hero-heading" onMouseEnter={onHeroEnter} onMouseMove={onHeroMove}>
-          {/* fondo: imagen real con efecto HIDRO (agua) + overlay navy (legibilidad) */}
+          {/* fondo: imagen real con efecto HIDRO (agua) + overlay BLANCO (hero claro) */}
           <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
             <HydroRipple ref={rippleRef} src="/landing/hero-office.jpg" alt="" cover passthrough
                          className="absolute inset-0 w-full h-full" imgClassName="w-full h-full object-cover" />
             <div className="absolute inset-0 pointer-events-none"
-                 style={{ background: `linear-gradient(180deg, ${INK}cc 0%, ${INK}a6 48%, ${INK}e0 100%)` }} />
+                 style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.955) 0%, rgba(238,243,251,0.975) 50%, #FFFFFF 100%)" }} />
           </div>
           {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
-          <motion.div className="absolute inset-0 opacity-[0.06] will-change-transform" aria-hidden="true"
-               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
-          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-25 will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
-          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-25 will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
+          <motion.div className="absolute inset-0 opacity-[0.05] will-change-transform" aria-hidden="true"
+               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#021B4D 1px,transparent 1px),linear-gradient(90deg,#021B4D 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
+          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.14] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
+          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-[0.14] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
             <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
@@ -688,13 +688,13 @@ export default function Index() {
                 initial={reduce ? false : "hidden"}
                 animate={reduce ? false : (loaded ? "show" : "hidden")}
               >
-                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 mb-7">
+                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-white shadow-sm mb-7">
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BRAND }} />
-                  <span className="font-mono text-[11px] tracking-wide text-white/70">CRM inmobiliario · sobre WhatsApp</span>
+                  <span className="font-mono text-[11px] tracking-wide text-slate-600">CRM inmobiliario · sobre WhatsApp</span>
                 </motion.div>
 
-                <h1 id="hero-heading" className="font-display font-extrabold text-white leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl"
-                    style={{ textShadow: "0 2px 30px rgba(2,27,77,0.6)" }}>
+                <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl"
+                    style={{ color: INK }}>
                   <motion.span variants={heroItem} className="block">
                     De un{" "}
                     <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: SIGNAL }}>
@@ -710,9 +710,8 @@ export default function Index() {
                   </motion.span>
                 </h1>
 
-                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-white/75 max-w-xl"
-                          style={{ textShadow: "0 1px 16px rgba(2,27,77,0.55)" }}>
-                  <strong className="text-white">Sofía</strong>, tu asesora con IA, responde en segundos,
+                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-slate-600 max-w-xl">
+                  <strong className="text-slate-900">Sofía</strong>, tu asesora con IA, responde en segundos,
                   califica cada lead por intención y agenda la reunión en tu calendario.
                   Tú solo cierras.
                 </motion.p>
@@ -724,15 +723,15 @@ export default function Index() {
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                     </Link>
                   </Magnetic>
-                  <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-white rounded-xl text-[15px] border border-white/15 hover:bg-white/5 transition-colors">
+                  <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-slate-700 rounded-xl text-[15px] border border-slate-300 hover:bg-slate-50 transition-colors">
                     Ver cómo funciona
                   </a>
                 </motion.div>
 
                 <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-2 font-mono text-[11px]">
                   {["Sobre tu propio WhatsApp", "Agenda en Google Calendar", "Reporte diario 08:00"].map((t) => (
-                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.05] text-white/60 backdrop-blur-sm">
-                      <Check className="w-3.5 h-3.5" style={{ color: BLUE_LT }} aria-hidden="true" />{t}
+                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm">
+                      <Check className="w-3.5 h-3.5" style={{ color: BLUE }} aria-hidden="true" />{t}
                     </span>
                   ))}
                 </motion.div>
@@ -750,18 +749,18 @@ export default function Index() {
             <motion.a
               href="#carrusel"
               aria-label="Desplázate para ver más"
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.4, duration: 0.8, ease: EASE }}
             >
               <span className="font-mono text-[10px] tracking-widest uppercase">Scroll</span>
               <motion.span
-                className="w-5 h-8 rounded-full border border-white/25 grid place-items-start justify-center pt-1.5"
+                className="w-5 h-8 rounded-full border border-slate-300 grid place-items-start justify-center pt-1.5"
                 animate={{ y: [0, 4, 0] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
               >
-                <span className="w-1 h-1.5 rounded-full" style={{ background: BLUE_LT }} />
+                <span className="w-1 h-1.5 rounded-full" style={{ background: BLUE }} />
               </motion.span>
             </motion.a>
           )}
