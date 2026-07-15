@@ -1024,7 +1024,7 @@ export default function Index() {
             ))}
           </div>
           <div className="border-t border-white/10 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/30 text-xs">
-            <span>© {new Date().getFullYear()} NexusPlus-AI · Servicios Inmobiliarios Plus Sur SL</span>
+            <span>© {new Date().getFullYear()} NexusPlus-AI · Servicios Inmobiliarios LExHouse-AI</span>
             <span className="font-mono flex items-center gap-1.5">
               Parte de la familia{" "}
               <a
