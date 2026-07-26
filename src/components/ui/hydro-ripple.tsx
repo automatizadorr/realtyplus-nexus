@@ -1,5 +1,18 @@
 import { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { useReducedMotion } from 'framer-motion';
+
+// Preferencia de movimiento reducido (matchMedia) — sin depender de framer-motion.
+function usePrefersReducedMotion() {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const upd = () => setReduce(mq.matches);
+    upd();
+    mq.addEventListener?.('change', upd);
+    return () => mq.removeEventListener?.('change', upd);
+  }, []);
+  return reduce;
+}
 
 /*
   HydroRipple — simulación de superficie de agua en Canvas 2D (height-field).
@@ -60,7 +73,7 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef    = useRef<HTMLCanvasElement>(null);
     const videoRef     = useRef<HTMLVideoElement>(null);
-    const reduceMotion = useReducedMotion();
+    const reduceMotion = usePrefersReducedMotion();
 
     // En punteros gruesos (táctil) el ripple va con el mouse → no aporta y es
     // costoso (getImageData por frame). Se desactiva: muestra el medio plano.

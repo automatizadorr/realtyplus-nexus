@@ -238,3 +238,55 @@ All colors MUST be HSL.
   0% { background-position: 0 0; }
   100% { background-position: 0 220%; }
 }
+
+/* ══ Landing (Index): animaciones en CSS puro — reemplazan a framer-motion ══════ */
+/* Reveal al entrar en viewport (un IntersectionObserver añade .is-visible). */
+.lh-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1);
+  transition-delay: var(--lh-d, 0s);
+  will-change: opacity, transform;
+}
+.lh-reveal.is-visible { opacity: 1; transform: none; }
+
+/* Entrada orquestada del hero (stagger vía --lh-d). Arranca al añadir .is-on al contenedor. */
+.lh-hero-item {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1);
+  transition-delay: var(--lh-d, 0s);
+}
+.lh-hero.is-on .lh-hero-item { opacity: 1; transform: none; }
+
+/* Fade-in genérico (slides del carrusel, captions). */
+@keyframes lh-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.lh-fade { animation: lh-fade-in 0.55s cubic-bezier(0.16,1,0.3,1); }
+
+/* Mensajes del hilo de WhatsApp (aparecen de a uno). */
+@keyframes lh-msg-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.lh-msg { animation: lh-msg-in 0.3s ease-out backwards; }
+
+/* Tarjeta de cita agendada (pop + check + anillo + detalle). */
+@keyframes lh-pop-in { from { opacity: 0; transform: translateY(16px) scale(0.92); } to { opacity: 1; transform: none; } }
+.lh-appt { animation: lh-pop-in 0.5s cubic-bezier(0.16,1,0.3,1) 0.2s backwards; }
+@keyframes lh-check-in { from { opacity: 0; transform: scale(0) rotate(-30deg); } to { opacity: 1; transform: none; } }
+.lh-check { animation: lh-check-in 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.5s backwards; }
+@keyframes lh-ring { from { transform: scale(1); opacity: 0.7; } to { transform: scale(1.9); opacity: 0; } }
+.lh-ring { animation: lh-ring 1.2s ease-out 0.7s infinite; }
+@keyframes lh-detail-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.lh-detail { animation: lh-detail-in 0.4s cubic-bezier(0.16,1,0.3,1) 0.45s backwards; }
+
+/* Barra de carga indeterminada del splash. */
+@keyframes lh-loadbar { from { transform: translateX(-120%); } to { transform: translateX(320%); } }
+.lh-loadbar { animation: lh-loadbar 1.15s ease-in-out infinite; }
+
+/* Scroll cue: fade-in + puntito que baja. */
+.lh-scrollcue { animation: lh-fade-in 0.8s ease 1.4s backwards; }
+@keyframes lh-scroll-dot { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+.lh-scroll-dot { animation: lh-scroll-dot 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lh-reveal, .lh-hero-item { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .lh-fade, .lh-msg, .lh-appt, .lh-check, .lh-ring, .lh-detail, .lh-loadbar, .lh-scrollcue, .lh-scroll-dot { animation: none !important; }
+}

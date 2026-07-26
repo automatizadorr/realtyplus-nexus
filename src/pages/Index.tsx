@@ -1,16 +1,12 @@
-import { useCallback, useEffect, useRef, useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react";
-import {
-  motion, AnimatePresence, useInView, useReducedMotion, animate,
-  useScroll, useTransform, useSpring, useMotionValue,
-} from "framer-motion";
+import { useCallback, useEffect, useRef, useState, lazy, Suspense, Component, type CSSProperties, type ElementType, type ErrorInfo, type ReactNode } from "react";
 
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   MessageSquare, CalendarCheck, Tags, Megaphone, ScanLine, Mic,
   FileSpreadsheet, LayoutDashboard, ArrowRight, Check, Menu, X,
-  ChevronDown, ChevronLeft, ChevronRight, Phone, PhoneCall, PhoneOff,
-  Volume2, Sparkles, Clock, Globe, ShieldCheck,
+  ChevronDown, ChevronLeft, ChevronRight, Phone, PhoneCall,
+  Sparkles, Clock, Globe, ShieldCheck,
 } from "lucide-react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
@@ -25,9 +21,7 @@ const GOLD = "#D4AF37";      // DORADO LexHouse (acento premium editorial)
 const SIGNAL = "#25D366";    // verde WhatsApp — SOLO dentro del canal WhatsApp
 const HOT = "#F59E0B";       // lead caliente
 
-// easeOutExpo — se siente "caro" (skill diseno-web-lujo)
-const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
-
+// ── Hooks utilitarios (sin dependencias de animación) ─────────────────────────
 // ¿el puntero es fino (mouse/trackpad)? — para desactivar tilt/magnético en touch
 function useFinePointer() {
   const [fine, setFine] = useState(false);
@@ -42,117 +36,157 @@ function useFinePointer() {
   return fine;
 }
 
-// Secuencia de entrada orquestada del hero (stagger)
-const heroContainer = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.11, delayChildren: 0.08 } },
-};
-const heroItem = {
-  hidden: { opacity: 0, y: 22 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.75, ease: EASE } },
-};
+function usePrefersReducedMotion() {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const upd = () => setReduce(mq.matches);
+    upd();
+    mq.addEventListener?.("change", upd);
+    return () => mq.removeEventListener?.("change", upd);
+  }, []);
+  return reduce;
+}
 
-// ── Helpers de animación ──────────────────────────────────────────────────────
-function FadeSection({ children, className = "", delay = 0 }: {
-  children: React.ReactNode; className?: string; delay?: number;
+// ── Reveal: fade+slide al entrar en viewport (IntersectionObserver + CSS) ──────
+// Reemplaza al viejo <FadeSection> (framer whileInView) sin arrastrar framer-motion.
+function Reveal({ children, className = "", delay = 0, as: Tag = "div" }: {
+  children: ReactNode; className?: string; delay?: number; as?: ElementType;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-  const reduce = useReducedMotion();
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      el.classList.add("is-visible");
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) { (e.target as HTMLElement).classList.add("is-visible"); io.unobserve(e.target); }
+        }
+      },
+      { rootMargin: "0px 0px -60px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   return (
-    <motion.div
-      ref={ref}
-      initial={reduce ? false : { opacity: 0, y: 28 }}
-      animate={inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
-      transition={{ duration: 0.65, delay, ease: EASE }}
-      className={className}
-    >
+    <Tag ref={ref} className={`lh-reveal ${className}`} style={{ "--lh-d": `${delay}s` } as CSSProperties}>
       {children}
-    </motion.div>
+    </Tag>
   );
 }
 
+// ── Contador con cuenta ascendente (rAF + IntersectionObserver) ────────────────
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  const reduce = useReducedMotion();
   const [value, setValue] = useState(0);
   useEffect(() => {
-    if (!inView) return;
-    if (reduce) { setValue(target); return; }
-    const ctrl = animate(0, target, { duration: 1.6, ease: "easeOut", onUpdate: (v) => setValue(Math.round(v)) });
-    return () => ctrl.stop();
-  }, [inView, target, reduce]);
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setValue(target); return; }
+    let raf = 0;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          io.unobserve(e.target);
+          const start = performance.now();
+          const dur = 1600;
+          const tick = (now: number) => {
+            const p = Math.min(1, (now - start) / dur);
+            const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+            setValue(Math.round(target * eased));
+            if (p < 1) raf = requestAnimationFrame(tick);
+          };
+          raf = requestAnimationFrame(tick);
+        }
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+  }, [target]);
   return <span ref={ref}>{value.toLocaleString("es")}{suffix}</span>;
 }
 
 // Acento editorial: Fraunces itálica dentro de un titular sans (eco del hero)
-function Serif({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Serif({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <span className={`font-serif italic font-medium tracking-normal ${className}`}>{children}</span>;
 }
 
-// Botón/CTA magnético — el elemento sigue sutilmente al cursor (solo puntero fino)
+// Botón/CTA magnético — el elemento sigue sutilmente al cursor (solo puntero fino, CSS transform)
 function Magnetic({ children, strength = 0.35, className = "" }: {
-  children: React.ReactNode; strength?: number; className?: string;
+  children: ReactNode; strength?: number; className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const reduce = useReducedMotion();
   const fine = useFinePointer();
-  const on = fine && !reduce;
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 170, damping: 15, mass: 0.1 });
-  const sy = useSpring(y, { stiffness: 170, damping: 15, mass: 0.1 });
   return (
-    <motion.span
+    <span
       ref={ref}
       className={`inline-flex ${className}`}
-      style={{ x: on ? sx : 0, y: on ? sy : 0 }}
+      style={{ transition: "transform 0.15s ease-out", willChange: "transform" }}
       onMouseMove={(e) => {
-        if (!on || !ref.current) return;
+        if (!fine || !ref.current) return;
         const r = ref.current.getBoundingClientRect();
-        x.set((e.clientX - (r.left + r.width / 2)) * strength);
-        y.set((e.clientY - (r.top + r.height / 2)) * strength);
+        const x = (e.clientX - (r.left + r.width / 2)) * strength;
+        const y = (e.clientY - (r.top + r.height / 2)) * strength;
+        ref.current.style.transform = `translate(${x}px, ${y}px)`;
       }}
-      onMouseLeave={() => { x.set(0); y.set(0); }}
+      onMouseLeave={() => { if (ref.current) ref.current.style.transform = ""; }}
     >
       {children}
-    </motion.span>
+    </span>
   );
 }
 
-// Card con tilt 3D al hover (solo puntero fino) — reacciona a la posición del cursor
+// Card con tilt 3D al hover (solo puntero fino, CSS transform)
 function TiltCard({ children, className = "", max = 7 }: {
-  children: React.ReactNode; className?: string; max?: number;
+  children: ReactNode; className?: string; max?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
   const fine = useFinePointer();
-  const on = fine && !reduce;
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
-  const srx = useSpring(rx, { stiffness: 200, damping: 18 });
-  const sry = useSpring(ry, { stiffness: 200, damping: 18 });
   return (
     <div style={{ perspective: 900 }} className={className}>
-      <motion.div
+      <div
         ref={ref}
         className="h-full [transform-style:preserve-3d]"
-        style={{ rotateX: on ? srx : 0, rotateY: on ? sry : 0 }}
+        style={{ transition: "transform 0.2s ease-out", willChange: "transform" }}
         onMouseMove={(e) => {
-          if (!on || !ref.current) return;
+          if (!fine || !ref.current) return;
           const r = ref.current.getBoundingClientRect();
           const px = (e.clientX - r.left) / r.width - 0.5;
           const py = (e.clientY - r.top) / r.height - 0.5;
-          ry.set(px * max);
-          rx.set(-py * max);
+          ref.current.style.transform = `rotateY(${px * max}deg) rotateX(${-py * max}deg)`;
         }}
-        onMouseLeave={() => { rx.set(0); ry.set(0); }}
+        onMouseLeave={() => { if (ref.current) ref.current.style.transform = ""; }}
       >
         {children}
-      </motion.div>
+      </div>
     </div>
   );
+}
+
+// Monta a los hijos solo al acercarse al viewport (difiere chunks pesados, p.ej. VoiceCallLive).
+function DeferMount({ children, fallback }: { children: ReactNode; fallback: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) { setShow(true); io.unobserve(e.target); }
+      },
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <div ref={ref}>{show ? children : fallback}</div>;
 }
 
 // ── SIGNATURE: conversación que se auto-clasifica ─────────────────────────────
@@ -166,19 +200,32 @@ const THREAD = [
 
 function LiveConversation() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const reduce = useReducedMotion();
+  const reduce = usePrefersReducedMotion();
   const [step, setStep] = useState(0);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
-    if (!inView) return;
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) { setStarted(true); io.unobserve(e.target); }
+      },
+      { rootMargin: "0px 0px -80px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!started) return;
     if (reduce) { setStep(THREAD.length); return; }
     setStep(0);
     const id = setInterval(() => {
       setStep((s) => (s >= THREAD.length ? s : s + 1));
     }, 1400);
     return () => clearInterval(id);
-  }, [inView, reduce]);
+  }, [started, reduce]);
 
   const agendada = step >= THREAD.length;
 
@@ -239,13 +286,7 @@ function LiveConversation() {
           {THREAD.slice(0, step).map((m, i) => {
             const lead = m.from === "lead";
             return (
-              <motion.div
-                key={i}
-                initial={reduce ? false : { opacity: 0, y: 8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className={`flex ${lead ? "justify-end" : "justify-start"}`}
-              >
+              <div key={i} className={`lh-msg flex ${lead ? "justify-end" : "justify-start"}`}>
                 <div
                   className="max-w-[80%] px-3.5 py-2 text-[13px] leading-snug rounded-2xl"
                   style={
@@ -256,7 +297,7 @@ function LiveConversation() {
                 >
                   {m.text}
                 </div>
-              </motion.div>
+              </div>
             );
           })}
           {!agendada && step > 0 && (
@@ -272,14 +313,9 @@ function LiveConversation() {
             </div>
           )}
 
-          {/* Tarjeta de cita agendada: imagen real + animaciones al confirmar */}
+          {/* Tarjeta de cita agendada: logo de marca + animaciones al confirmar */}
           {agendada && (
-            <motion.div
-              initial={reduce ? false : { opacity: 0, y: 16, scale: 0.92 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={reduce ? undefined : { type: "spring", stiffness: 210, damping: 20, delay: 0.2 }}
-              className="pt-1.5"
-            >
+            <div className="lh-appt pt-1.5">
               <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-xl">
                 <div className="w-full h-32 grid place-items-center p-4"
                      style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #EEF3FB 100%)" }}>
@@ -294,32 +330,16 @@ function LiveConversation() {
                      style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.96) 100%)" }} />
 
                 {/* check de confirmación con anillo pulsante */}
-                <motion.div
-                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full grid place-items-center shadow-lg"
-                  style={{ background: BLUE }}
-                  initial={reduce ? false : { scale: 0, rotate: -30 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={reduce ? undefined : { type: "spring", stiffness: 400, damping: 13, delay: 0.5 }}
-                >
+                <div className="lh-check absolute top-2.5 right-2.5 w-7 h-7 rounded-full grid place-items-center shadow-lg"
+                     style={{ background: BLUE }}>
                   <Check className="w-4 h-4 text-white" strokeWidth={3} />
                   {!reduce && (
-                    <motion.span
-                      className="absolute inset-0 rounded-full"
-                      style={{ border: `2px solid ${BLUE_LT}` }}
-                      initial={{ scale: 1, opacity: 0.7 }}
-                      animate={{ scale: 1.9, opacity: 0 }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut", delay: 0.7 }}
-                    />
+                    <span className="lh-ring absolute inset-0 rounded-full" style={{ border: `2px solid ${BLUE_LT}` }} />
                   )}
-                </motion.div>
+                </div>
 
                 {/* detalle de la cita */}
-                <motion.div
-                  className="absolute bottom-0 left-0 right-0 p-3 flex items-center gap-2.5"
-                  initial={reduce ? false : { opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={reduce ? undefined : { duration: 0.4, delay: 0.45, ease: EASE }}
-                >
+                <div className="lh-detail absolute bottom-0 left-0 right-0 p-3 flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl grid place-items-center shrink-0" style={{ background: `${BLUE}e6` }}>
                     <CalendarCheck className="w-4 h-4 text-white" />
                   </div>
@@ -327,9 +347,9 @@ function LiveConversation() {
                     <div className="text-[13px] font-semibold leading-tight" style={{ color: INK }}>Reunión confirmada</div>
                     <div className="font-mono text-[10px] text-slate-500">jueves · 10:00 · Google Calendar</div>
                   </div>
-                </motion.div>
+                </div>
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
@@ -442,9 +462,10 @@ const SLIDES: Slide[] = [
 function LeadsCarousel() {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
-  const reduce = useReducedMotion();
+  const reduce = usePrefersReducedMotion();
   const n = SLIDES.length;
   const go = (d: number) => setIdx((i) => (i + d + n) % n);
+  const touchX = useRef<number | null>(null);
 
   useEffect(() => {
     // No auto-avanzar mientras se ve el video (ni en pausa/reduced-motion).
@@ -460,17 +481,17 @@ function LeadsCarousel() {
       style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #EEF3FB 100%)" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        if (touchX.current == null) return;
+        const dx = e.changedTouches[0].clientX - touchX.current;
+        touchX.current = null;
+        if (dx < -60) go(1); else if (dx > 60) go(-1);
+      }}
     >
       {s.youtube ? (
         /* ── Slide de VIDEO (YouTube embed) ── */
-        <motion.div
-          key={`v-${idx}`}
-          className="absolute inset-0 bg-black"
-          initial={reduce ? { opacity: 0 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.6, ease: EASE }}
-        >
+        <div key={`v-${idx}`} className="lh-fade absolute inset-0 bg-black">
           <iframe
             className="absolute inset-0 w-full h-full"
             src={`https://www.youtube-nocookie.com/embed/${s.youtube}?rel=0&modestbranding=1&playsinline=1`}
@@ -481,52 +502,30 @@ function LeadsCarousel() {
           />
           <span className="absolute top-4 left-4 z-10 inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full text-white pointer-events-none"
                 style={{ background: BRAND }}>{s.tag}</span>
-        </motion.div>
+        </div>
       ) : (
         <>
           {/* logo de marca centrado (sin recorte) */}
-          <AnimatePresence>
-            <motion.div
-              key={idx}
-              className="absolute inset-0 grid place-items-center p-10 sm:p-14 will-change-transform"
-              initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.8, ease: EASE }}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.15}
-              onDragEnd={(_, info) => { if (info.offset.x < -80) go(1); else if (info.offset.x > 80) go(-1); }}
-            >
-              <img
-                src={s.img}
-                alt="LexHouse AI"
-                className="max-h-[62%] w-auto object-contain select-none pointer-events-none drop-shadow-[0_18px_40px_rgba(2,27,77,0.18)]"
-                loading="lazy"
-                draggable={false}
-              />
-            </motion.div>
-          </AnimatePresence>
+          <div key={idx} className="lh-fade absolute inset-0 grid place-items-center p-10 sm:p-14">
+            <img
+              src={s.img}
+              alt="LexHouse AI"
+              className="max-h-[62%] w-auto object-contain select-none pointer-events-none drop-shadow-[0_18px_40px_rgba(2,27,77,0.18)]"
+              loading="lazy"
+              draggable={false}
+            />
+          </div>
 
           {/* overlay claro para legibilidad del texto inferior */}
           <div className="absolute inset-0 pointer-events-none"
                style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 55%, rgba(255,255,255,0.94) 100%)" }} />
 
           {/* caption */}
-          <div className="absolute left-0 bottom-0 p-6 sm:p-9 max-w-lg">
-            <AnimatePresence mode="wait">
-              <motion.div key={idx}
-                initial={reduce ? false : { opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.5, ease: EASE }}
-              >
-                <span className="inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full mb-3 text-white"
-                      style={{ background: BRAND }}>{s.tag}</span>
-                <h3 className="font-display font-bold text-2xl sm:text-3xl leading-tight" style={{ color: INK }}>{s.title}</h3>
-                <p className="mt-2 text-slate-600 text-sm sm:text-[15px] leading-relaxed">{s.desc}</p>
-              </motion.div>
-            </AnimatePresence>
+          <div key={`c-${idx}`} className="lh-fade absolute left-0 bottom-0 p-6 sm:p-9 max-w-lg">
+            <span className="inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full mb-3 text-white"
+                  style={{ background: BRAND }}>{s.tag}</span>
+            <h3 className="font-display font-bold text-2xl sm:text-3xl leading-tight" style={{ color: INK }}>{s.title}</h3>
+            <p className="mt-2 text-slate-600 text-sm sm:text-[15px] leading-relaxed">{s.desc}</p>
           </div>
         </>
       )}
@@ -553,7 +552,7 @@ function LeadsCarousel() {
   );
 }
 
-// ── Agente de voz (lazy — ElevenLabs SDK se carga solo cuando este componente monta) ──
+// ── Agente de voz (lazy — ElevenLabs SDK + framer-motion se cargan al acercarse) ──
 const VoiceCallLive = lazy(() => import("@/components/VoiceCallLive"));
 
 class VoiceErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -571,12 +570,7 @@ export default function Index() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const { session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const reduce = useReducedMotion();
-
-  // Parallax sutil del hero (solo transform · rAF interno de framer)
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const glowY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+  const reduce = usePrefersReducedMotion();
 
   // Efecto "hidro" (agua): el hero captura el mouse y lo pasa al canvas del ripple (que ondula el vídeo)
   const rippleRef = useRef<HydroRippleHandle>(null);
@@ -611,6 +605,9 @@ export default function Index() {
 
   const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#voz", "Voz IA"], ["#reporte", "Reporte diario"], ["#faq", "FAQ"]];
 
+  // Retrasos escalonados de la entrada del hero (equivalente al stagger de antes).
+  const heroDelays = ["0.08s", "0.19s", "0.30s", "0.41s", "0.52s", "0.63s"];
+
   return (
     <div className="relative bg-white font-sans" style={{ color: INK }}>
       {/* Loading — logo encapsulado en tarjeta con barra de carga de marca */}
@@ -625,30 +622,22 @@ export default function Index() {
         role="status"
         aria-label="Cargando LexHouse AI"
       >
-        <motion.div
-          initial={reduce ? false : { opacity: 0, y: 12, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.55, ease: EASE }}
+        <div
           className="flex flex-col items-center gap-6 rounded-[28px] bg-white px-12 py-10 border border-slate-100"
           style={{ boxShadow: "0 24px 70px -24px rgba(2,27,77,0.28), 0 2px 8px -2px rgba(2,27,77,0.08)" }}
         >
           <span className="inline-flex items-center justify-center rounded-2xl bg-white px-8 py-6 ring-1 ring-slate-100">
             <img src={lexLogo} alt="LexHouse AI" className="w-36 h-auto" width={144} height={144} />
           </span>
-          {/* barra de carga indeterminada (azul → rojo RE/MAX) */}
+          {/* barra de carga indeterminada (azul → rojo) */}
           <div className="w-44 h-1 rounded-full overflow-hidden" style={{ background: "#eef1f6" }}>
             {reduce ? (
               <div className="h-full w-1/2 mx-auto rounded-full" style={{ background: `linear-gradient(90deg, ${BLUE}, ${BRAND})` }} />
             ) : (
-              <motion.div
-                className="h-full w-2/5 rounded-full"
-                style={{ background: `linear-gradient(90deg, ${BLUE}, ${BRAND})` }}
-                animate={{ x: ["-120%", "320%"] }}
-                transition={{ repeat: Infinity, duration: 1.15, ease: "easeInOut" }}
-              />
+              <div className="lh-loadbar h-full w-2/5 rounded-full" style={{ background: `linear-gradient(90deg, ${BLUE}, ${BRAND})` }} />
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
 
       <WhatsAppFloat />
@@ -698,7 +687,7 @@ export default function Index() {
 
       <main>
         {/* ── Hero ── */}
-        <section ref={heroRef} className="relative overflow-hidden" style={{ background: "#FFFFFF" }}
+        <section className="relative overflow-hidden" style={{ background: "#FFFFFF" }}
                  aria-labelledby="hero-heading" onMouseEnter={onHeroEnter} onMouseMove={onHeroMove}>
           {/* fondo: VÍDEO del logo con efecto HIDRO (agua) — el canvas ondula el vídeo en vivo */}
           <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -711,52 +700,47 @@ export default function Index() {
               className="absolute inset-0 w-full h-full"
               imgClassName="w-full h-full object-cover"
             />
-            {/* velo para el mejor CONTRASTE del vídeo: sólo un scrim a la izquierda (donde va el texto);
-                la derecha queda casi limpia para que el vídeo se aprecie a pleno contraste */}
+            {/* velo para el mejor CONTRASTE del vídeo: sólo un scrim a la izquierda (donde va el texto) */}
             <div className="absolute inset-0 pointer-events-none lg:hidden"
                  style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.80) 100%)" }} />
             <div className="absolute inset-0 pointer-events-none hidden lg:block"
                  style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.72) 34%, rgba(255,255,255,0.12) 60%, rgba(255,255,255,0) 100%)" }} />
           </div>
-          {/* glow de marca único y muy sutil (parallax al hacer scroll) — sin saturar el video */}
-          <motion.div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-3xl opacity-[0.07] will-change-transform pointer-events-none" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
+          {/* glow de marca único y muy sutil — sin saturar el video */}
+          <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-3xl opacity-[0.07] pointer-events-none" style={{ background: BRAND }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
             <div className="max-w-2xl">
-              {/* Texto del hero: secuencia de entrada orquestada (el video queda de fondo) */}
-              <motion.div
-                variants={heroContainer}
-                initial={reduce ? false : "hidden"}
-                animate={reduce ? false : (loaded ? "show" : "hidden")}
-              >
-                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-white/90 backdrop-blur-sm shadow-sm mb-7">
+              {/* Texto del hero: entrada orquestada por CSS (el video queda de fondo) */}
+              <div className={`lh-hero ${loaded ? "is-on" : ""}`}>
+                <div className="lh-hero-item inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-white/90 backdrop-blur-sm shadow-sm mb-7" style={{ "--lh-d": heroDelays[0] } as CSSProperties}>
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BRAND }} />
                   <span className="font-mono text-[11px] tracking-wide text-slate-600">CRM inmobiliario · sobre WhatsApp</span>
-                </motion.div>
+                </div>
 
                 <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl" style={{ color: INK }}>
-                  <motion.span variants={heroItem} className="block">
+                  <span className="lh-hero-item block" style={{ "--lh-d": heroDelays[1] } as CSSProperties}>
                     De un{" "}
                     <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: SIGNAL }}>
                       “hola”
                     </span>{" "}
                     en WhatsApp
-                  </motion.span>
-                  <motion.span variants={heroItem} className="block">
+                  </span>
+                  <span className="lh-hero-item block" style={{ "--lh-d": heroDelays[2] } as CSSProperties}>
                     a una{" "}
                     <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: BRAND }}>
                       cita agendada
                     </span>.
-                  </motion.span>
+                  </span>
                 </h1>
 
-                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-slate-600 max-w-xl">
+                <p className="lh-hero-item mt-6 text-lg leading-relaxed text-slate-600 max-w-xl" style={{ "--lh-d": heroDelays[3] } as CSSProperties}>
                   <strong className="text-slate-900">Sofía</strong>, tu asesora con IA, responde en segundos,
                   califica cada lead por intención y agenda la reunión en tu calendario.
                   Tú solo cierras.
-                </motion.p>
+                </p>
 
-                <motion.div variants={heroItem} className="mt-8 flex flex-col sm:flex-row gap-3">
+                <div className="lh-hero-item mt-8 flex flex-col sm:flex-row gap-3" style={{ "--lh-d": heroDelays[4] } as CSSProperties}>
                   <Magnetic>
                     <Link to="/auth" className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 font-bold text-white rounded-xl text-[15px] transition-transform hover:scale-[1.03]" style={{ background: BRAND, boxShadow: `0 12px 30px ${BRAND}40` }}>
                       Comenzar gratis
@@ -766,55 +750,48 @@ export default function Index() {
                   <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-slate-700 rounded-xl text-[15px] border border-slate-300 bg-white/70 hover:bg-slate-50 transition-colors">
                     Ver cómo funciona
                   </a>
-                </motion.div>
+                </div>
 
-                <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-2 font-mono text-[11px]">
+                <div className="lh-hero-item mt-8 flex flex-wrap gap-2 font-mono text-[11px]" style={{ "--lh-d": heroDelays[5] } as CSSProperties}>
                   {["Sobre tu propio WhatsApp", "Agenda en Google Calendar", "Reporte diario 08:00"].map((t) => (
                     <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-white/90 backdrop-blur-sm text-slate-500 shadow-sm">
                       <Check className="w-3.5 h-3.5" style={{ color: BLUE }} aria-hidden="true" />{t}
                     </span>
                   ))}
-                </motion.div>
-              </motion.div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Scroll cue: invita a bajar (oculto en reduced-motion) */}
           {!reduce && (
-            <motion.a
+            <a
               href="#carrusel"
               aria-label="Desplázate para ver más"
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.4, duration: 0.8, ease: EASE }}
+              className="lh-scrollcue absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <span className="font-mono text-[10px] tracking-widest uppercase">Scroll</span>
-              <motion.span
-                className="w-5 h-8 rounded-full border border-slate-300 grid place-items-start justify-center pt-1.5"
-                animate={{ y: [0, 4, 0] }}
-                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <span className="w-1 h-1.5 rounded-full" style={{ background: BLUE }} />
-              </motion.span>
-            </motion.a>
+              <span className="w-5 h-8 rounded-full border border-slate-300 grid place-items-start justify-center pt-1.5">
+                <span className="lh-scroll-dot w-1 h-1.5 rounded-full" style={{ background: BLUE }} />
+              </span>
+            </a>
           )}
         </section>
 
         {/* ── Carrusel: IA aplicada a tus leads ── */}
         <section id="carrusel" className="py-24 px-6 bg-white" aria-labelledby="carr-heading">
           <div className="max-w-6xl mx-auto">
-            <FadeSection className="max-w-2xl mb-10">
+            <Reveal className="max-w-2xl mb-10">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>IA aplicada a tus leads</span>
               <h2 id="carr-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
                 Inteligencia que <Serif>trabaja tus contactos</Serif>.
               </h2>
               <p className="mt-4 text-slate-500 text-lg">De la primera respuesta al cierre, cada paso con datos e IA de por medio.</p>
-            </FadeSection>
-            <FadeSection><LeadsCarousel /></FadeSection>
+            </Reveal>
+            <Reveal><LeadsCarousel /></Reveal>
 
             {/* Mockup de conversación (movido aquí desde el hero) */}
-            <FadeSection className="mt-16 text-center">
+            <Reveal className="mt-16 text-center">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>Sofía en acción</span>
               <h3 className="font-display font-bold text-2xl sm:text-3xl mt-3 leading-tight">
                 De un «hola» a la <Serif>cita agendada</Serif>.
@@ -823,23 +800,23 @@ export default function Index() {
                 Así clasifica al lead y agenda la reunión, en tiempo real y sobre tu propio WhatsApp.
               </p>
               <LiveConversation />
-            </FadeSection>
+            </Reveal>
           </div>
         </section>
 
         {/* ── Cómo funciona (secuencia real) ── */}
         <section id="como" className="py-24 px-6 bg-white" aria-labelledby="como-heading">
           <div className="max-w-7xl mx-auto">
-            <FadeSection className="max-w-2xl mb-14">
+            <Reveal className="max-w-2xl mb-14">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>El recorrido de un lead</span>
               <h2 id="como-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
                 Cuatro pasos, <Serif>cero trabajo manual</Serif>.
               </h2>
-            </FadeSection>
+            </Reveal>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
               {STEPS.map((s, i) => (
-                <FadeSection key={s.k} delay={i * 0.08}>
+                <Reveal key={s.k} delay={i * 0.08}>
                   <TiltCard className="h-full">
                     <div className="relative h-full p-6 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-card transition-all duration-300">
                       <div className="flex items-center justify-between mb-5">
@@ -853,7 +830,7 @@ export default function Index() {
                       )}
                     </div>
                   </TiltCard>
-                </FadeSection>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -862,17 +839,17 @@ export default function Index() {
         {/* ── Funciones reales ── */}
         <section id="funciones" className="py-24 px-6" style={{ background: "#F6F7FB" }} aria-labelledby="func-heading">
           <div className="max-w-7xl mx-auto">
-            <FadeSection className="max-w-2xl mb-14">
+            <Reveal className="max-w-2xl mb-14">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>La plataforma</span>
               <h2 id="func-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
                 Todo lo que de verdad usas, <Serif>en un solo lugar</Serif>.
               </h2>
               <p className="mt-4 text-slate-500 text-lg">Ocho herramientas conectadas alrededor de la misma conversación.</p>
-            </FadeSection>
+            </Reveal>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {FEATURES.map((f, i) => (
-                <FadeSection key={f.title} delay={(i % 4) * 0.06}>
+                <Reveal key={f.title} delay={(i % 4) * 0.06}>
                   <div className="h-full p-6 rounded-2xl bg-white border border-slate-100 hover:border-[#E11D34]/25 hover:shadow-card transition-all duration-300">
                     <div className="w-11 h-11 rounded-xl grid place-items-center mb-4" style={{ background: `${BRAND}10` }}>
                       <f.icon className="w-5 h-5" style={{ color: BRAND }} aria-hidden="true" />
@@ -880,7 +857,7 @@ export default function Index() {
                     <h3 className="font-semibold text-[15px] mb-1.5">{f.title}</h3>
                     <p className="text-[13px] leading-relaxed text-slate-500">{f.desc}</p>
                   </div>
-                </FadeSection>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -890,7 +867,7 @@ export default function Index() {
         <section id="voz" className="py-24 px-6 relative overflow-hidden" style={{ background: INK }} aria-labelledby="voz-heading">
           <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: BLUE }} aria-hidden="true" />
           <div className="relative max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
-            <FadeSection>
+            <Reveal>
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BLUE_LT }}>VoiceCRM · agente de voz</span>
               <h2 id="voz-heading" className="font-display font-bold text-3xl sm:text-4xl text-white mt-3 leading-tight">
                 Tu asesora también <Serif>atiende por teléfono</Serif>.
@@ -917,22 +894,24 @@ export default function Index() {
                   Probar VoiceCRM
                 </Link>
               </Magnetic>
-            </FadeSection>
+            </Reveal>
 
-            <FadeSection delay={0.1}>
-              <VoiceErrorBoundary>
-                <Suspense fallback={<div className="mx-auto max-w-[340px] h-80 rounded-[34px] bg-white/5 animate-pulse" />}>
-                  <VoiceCallLive />
-                </Suspense>
-              </VoiceErrorBoundary>
-            </FadeSection>
+            <Reveal delay={0.1}>
+              <DeferMount fallback={<div className="mx-auto max-w-[340px] h-80 rounded-[34px] bg-white/5 animate-pulse" />}>
+                <VoiceErrorBoundary>
+                  <Suspense fallback={<div className="mx-auto max-w-[340px] h-80 rounded-[34px] bg-white/5 animate-pulse" />}>
+                    <VoiceCallLive />
+                  </Suspense>
+                </VoiceErrorBoundary>
+              </DeferMount>
+            </Reveal>
           </div>
         </section>
 
         {/* ── Reporte diario (lo que construimos) ── */}
         <section id="reporte" className="py-24 px-6" style={{ background: INK }} aria-labelledby="rep-heading">
           <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
-            <FadeSection>
+            <Reveal>
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BLUE_LT }}>Automático · 08:00</span>
               <h2 id="rep-heading" className="font-display font-bold text-3xl sm:text-4xl text-white mt-3 leading-tight">
                 <Serif>Cada mañana</Serif>, los leads del día en tu correo.
@@ -949,9 +928,9 @@ export default function Index() {
                   </li>
                 ))}
               </ul>
-            </FadeSection>
+            </Reveal>
 
-            <FadeSection delay={0.1}>
+            <Reveal delay={0.1}>
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden shadow-2xl">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10" style={{ background: INK2 }}>
                   <span className="font-display font-semibold text-white text-sm">Reporte de leads · hoy</span>
@@ -972,7 +951,7 @@ export default function Index() {
                   enviado a jefatura@realty-plus.es · 08:00
                 </div>
               </div>
-            </FadeSection>
+            </Reveal>
           </div>
         </section>
 
@@ -985,13 +964,13 @@ export default function Index() {
               { icon: Clock, value: 8, suffix: ":00", label: "Reporte diario a jefatura" },
               { icon: Tags, value: 100, suffix: "%", label: "Leads clasificados por IA" },
             ].map((s, i) => (
-              <FadeSection key={s.label} delay={i * 0.08} className="text-center">
+              <Reveal key={s.label} delay={i * 0.08} className="text-center">
                 <s.icon className="w-6 h-6 mx-auto mb-3" style={{ color: BRAND }} aria-hidden="true" />
                 <div className="font-display font-extrabold text-4xl sm:text-5xl" style={{ color: INK }}>
                   <AnimatedCounter target={s.value} suffix={s.suffix} />
                 </div>
                 <div className="mt-2 text-sm text-slate-500">{s.label}</div>
-              </FadeSection>
+              </Reveal>
             ))}
           </div>
         </section>
@@ -999,16 +978,16 @@ export default function Index() {
         {/* ── FAQ ── */}
         <section id="faq" className="py-24 px-6" style={{ background: "#F6F7FB" }} aria-labelledby="faq-heading">
           <div className="max-w-3xl mx-auto">
-            <FadeSection className="mb-8">
+            <Reveal className="mb-8">
               <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>Preguntas frecuentes</span>
               <h2 id="faq-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3">Lo que <Serif>sueles preguntar</Serif>.</h2>
-            </FadeSection>
-            <FadeSection>
+            </Reveal>
+            <Reveal>
               <div className="rounded-2xl bg-white border border-slate-100 px-6">
                 {FAQS.map((f) => <FAQItem key={f.q} {...f} />)}
               </div>
-            </FadeSection>
-            <FadeSection className="mt-8 text-center">
+            </Reveal>
+            <Reveal className="mt-8 text-center">
               <a href="https://wa.me/56971806730" target="_blank" rel="noopener noreferrer"
                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold border-2 transition-colors hover:text-white"
                  style={{ borderColor: SIGNAL, color: "#15803d" }}
@@ -1016,13 +995,13 @@ export default function Index() {
                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                 <Phone className="w-4 h-4" aria-hidden="true" />¿Otra pregunta? Escríbenos por WhatsApp
               </a>
-            </FadeSection>
+            </Reveal>
           </div>
         </section>
 
         {/* ── CTA final ── */}
         <section className="py-24 px-6 bg-white" aria-labelledby="cta-heading">
-          <FadeSection>
+          <Reveal>
             <div className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden px-8 py-16 sm:px-16 sm:py-20 text-center" style={{ background: INK }}>
               <div className="absolute -top-20 -right-16 w-72 h-72 rounded-full blur-3xl opacity-25" style={{ background: BRAND }} aria-hidden="true" />
               <div className="absolute -bottom-20 -left-16 w-72 h-72 rounded-full blur-3xl opacity-25" style={{ background: BLUE }} aria-hidden="true" />
@@ -1043,7 +1022,7 @@ export default function Index() {
                 </Magnetic>
               </div>
             </div>
-          </FadeSection>
+          </Reveal>
         </section>
       </main>
 
