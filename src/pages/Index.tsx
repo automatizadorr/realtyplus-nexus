@@ -549,7 +549,6 @@ export default function Index() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const glowY = useTransform(scrollYProgress, [0, 1], [0, 90]);
   const gridY = useTransform(scrollYProgress, [0, 1], [0, 50]);
-  const cardY = useTransform(scrollYProgress, [0, 1], [0, -46]);
 
   useEffect(() => {
     if (!authLoading && session) navigate("/dashboard", { replace: true });
@@ -682,8 +681,8 @@ export default function Index() {
           <motion.div className="absolute top-1/3 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-[0.10] will-change-transform" style={{ y: reduce ? 0 : glowY, background: GOLD }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
-            <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
-              {/* Columna izquierda: secuencia de entrada orquestada */}
+            <div className="max-w-2xl">
+              {/* Texto del hero: secuencia de entrada orquestada (el video queda de fondo) */}
               <motion.div
                 variants={heroContainer}
                 initial={reduce ? false : "hidden"}
@@ -736,11 +735,6 @@ export default function Index() {
                   ))}
                 </motion.div>
               </motion.div>
-
-              {/* Columna derecha: tarjeta de conversación con parallax sutil */}
-              <motion.div className="pt-6 lg:pt-0 will-change-transform" style={{ y: reduce ? 0 : cardY }}>
-                <LiveConversation />
-              </motion.div>
             </div>
           </div>
 
@@ -777,6 +771,18 @@ export default function Index() {
               <p className="mt-4 text-slate-500 text-lg">De la primera respuesta al cierre, cada paso con datos e IA de por medio.</p>
             </FadeSection>
             <FadeSection><LeadsCarousel /></FadeSection>
+
+            {/* Mockup de conversación (movido aquí desde el hero) */}
+            <FadeSection className="mt-16 text-center">
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>Sofía en acción</span>
+              <h3 className="font-display font-bold text-2xl sm:text-3xl mt-3 leading-tight">
+                De un «hola» a la <Serif>cita agendada</Serif>.
+              </h3>
+              <p className="mt-3 mb-10 text-slate-500 text-base max-w-xl mx-auto">
+                Así clasifica al lead y agenda la reunión, en tiempo real y sobre tu propio WhatsApp.
+              </p>
+              <LiveConversation />
+            </FadeSection>
           </div>
         </section>
 
