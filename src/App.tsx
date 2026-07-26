@@ -7,9 +7,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
-import { Layout } from "@/components/Layout";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
+// Layout (shell del CRM: sidebar + header) solo se usa tras login → lazy, para
+// no arrastrar AppSidebar (framer-motion + radix-sidebar) al bundle de la landing.
+const Layout       = lazy(() => import("@/components/Layout").then((m) => ({ default: m.Layout })));
 const Index        = lazy(() => import("./pages/Index"));
 const Dashboard    = lazy(() => import("./pages/Dashboard"));
 const Scanner      = lazy(() => import("./pages/Scanner"));

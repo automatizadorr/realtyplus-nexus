@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useReducedMotion } from 'framer-motion';
 
 /*
@@ -60,7 +60,20 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef    = useRef<HTMLCanvasElement>(null);
     const videoRef     = useRef<HTMLVideoElement>(null);
-    const reduce       = useReducedMotion();
+    const reduceMotion = useReducedMotion();
+
+    // En punteros gruesos (táctil) el ripple va con el mouse → no aporta y es
+    // costoso (getImageData por frame). Se desactiva: muestra el medio plano.
+    const [coarse, setCoarse] = useState(false);
+    useEffect(() => {
+      if (typeof window === 'undefined' || !window.matchMedia) return;
+      const mq = window.matchMedia('(pointer: coarse)');
+      const upd = () => setCoarse(mq.matches);
+      upd();
+      mq.addEventListener?.('change', upd);
+      return () => mq.removeEventListener?.('change', upd);
+    }, []);
+    const reduce = reduceMotion || coarse;
 
     const buf1Ref   = useRef<Float32Array | null>(null);
     const buf2Ref   = useRef<Float32Array | null>(null);

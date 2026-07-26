@@ -598,7 +598,8 @@ export default function Index() {
   }, [session, authLoading, navigate]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 700);
+    // Splash breve: solo un guiño de marca, no un retardo artificial largo.
+    const t = setTimeout(() => setLoaded(true), 240);
     return () => clearTimeout(t);
   }, []);
 
@@ -717,9 +718,8 @@ export default function Index() {
             <div className="absolute inset-0 pointer-events-none hidden lg:block"
                  style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.72) 34%, rgba(255,255,255,0.12) 60%, rgba(255,255,255,0) 100%)" }} />
           </div>
-          {/* glows de marca (parallax sutil al hacer scroll) */}
-          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.12] will-change-transform pointer-events-none" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
-          <motion.div className="absolute bottom-0 right-1/3 w-96 h-96 rounded-full blur-3xl opacity-[0.10] will-change-transform pointer-events-none" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
+          {/* glow de marca único y muy sutil (parallax al hacer scroll) — sin saturar el video */}
+          <motion.div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-3xl opacity-[0.07] will-change-transform pointer-events-none" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
             <div className="max-w-2xl">
