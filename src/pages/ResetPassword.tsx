@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { KeyRound, CheckCircle, Lock } from "lucide-react";
-import nexusLogo from "@/assets/nexusplus-logo.png";
+import lexLogo from "@/assets/lexhouse-logo.webp";
 
 const NAVY = "#003DA5";
 const RED  = "#DC1C2E";
@@ -68,7 +68,7 @@ export default function ResetPassword() {
   if (!isRecovery && !hasRecoveryToken) {
     return (
       <div className={wrapper}>
-        <span className="inline-flex items-center justify-center rounded-xl bg-[#001E43] px-4 py-2.5 mb-6"><img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" /></span>
+        <span className="inline-flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-100 px-4 py-2.5 mb-6"><img src={lexLogo} alt="LexHouse AI" className="h-11 object-contain" /></span>
         <GradientCard>
           <CardHeader className="text-center pt-6">
             <CardTitle className="font-display font-bold text-xl" style={{ color: NAVY }}>
@@ -91,7 +91,7 @@ export default function ResetPassword() {
   if (success) {
     return (
       <div className={wrapper}>
-        <span className="inline-flex items-center justify-center rounded-xl bg-[#001E43] px-4 py-2.5 mb-6"><img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" /></span>
+        <span className="inline-flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-100 px-4 py-2.5 mb-6"><img src={lexLogo} alt="LexHouse AI" className="h-11 object-contain" /></span>
         <GradientCard>
           <CardContent className="pt-8 pb-8 text-center space-y-4">
             <CheckCircle className="mx-auto h-14 w-14" style={{ color: NAVY }} />
@@ -109,7 +109,7 @@ export default function ResetPassword() {
 
   return (
     <div className={wrapper}>
-      <span className="inline-flex items-center justify-center rounded-xl bg-[#001E43] px-4 py-2.5 mb-6"><img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" /></span>
+      <span className="inline-flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-100 px-4 py-2.5 mb-6"><img src={lexLogo} alt="LexHouse AI" className="h-11 object-contain" /></span>
       <GradientCard>
         <CardHeader className="text-center space-y-1 pt-6 pb-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">Portal CRM · IA</p>

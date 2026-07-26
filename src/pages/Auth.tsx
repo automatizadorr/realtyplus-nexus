@@ -10,7 +10,7 @@ import { LogIn, UserPlus, Info, X, ArrowLeft, Mail, Lock, User, Eye, EyeOff } fr
 import { Separator } from "@/components/ui/separator";
 import { RealEstatePlexus } from "@/components/auth/RealEstatePlexus";
 import { BrandShowcase } from "@/components/auth/BrandShowcase";
-import nexusLogo from "@/assets/nexusplus-logo.png";
+import lexLogo from "@/assets/lexhouse-logo.webp";
 
 const BRAND = { navy: "#003DA5", red: "#DC1C2E" };
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -202,8 +202,8 @@ export default function Auth() {
                 transition={{ type: "spring", stiffness: 320, damping: 28 }}
               >
                 <div className="flex justify-between items-center p-5 border-b">
-                  <span className="inline-flex items-center justify-center rounded-lg bg-[#001E43] px-3 py-2">
-                    <img src={nexusLogo} alt="NexusPlus-AI" className="h-7 object-contain" />
+                  <span className="inline-flex items-center justify-center rounded-lg bg-white ring-1 ring-slate-100 px-3 py-2">
+                    <img src={lexLogo} alt="LexHouse AI" className="h-9 object-contain" />
                   </span>
                   <button
                     onClick={() => setIsModalOpen(false)}
@@ -217,7 +217,7 @@ export default function Auth() {
                     Información de la Red y Acceso
                   </h3>
                   <p className="text-sm leading-relaxed">
-                    NexusPlus-AI es la herramienta centralizada para todos los miembros de la red inmobiliaria. Parte de la familia LexHouse AI.
+                    LexHouse AI es la herramienta centralizada para todos los miembros de la red inmobiliaria.
                   </p>
                   <ul className="space-y-3 text-sm">
                     {[
@@ -250,14 +250,11 @@ export default function Auth() {
           transition={{ duration: 0.5, ease: EASE }}
         >
           <div className="inline-flex flex-col items-center gap-2 bg-white/80 backdrop-blur-md rounded-2xl px-6 py-4 shadow-lg ring-1 ring-white/60">
-            <span className="inline-flex items-center justify-center rounded-xl bg-[#001E43] px-4 py-2.5 shadow-md">
-              <img src={nexusLogo} alt="NexusPlus-AI" className="h-9 object-contain" />
+            <span className="inline-flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-100 px-4 py-2.5 shadow-md">
+              <img src={lexLogo} alt="LexHouse AI" className="h-12 object-contain" />
             </span>
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">Parte de LexHouse AI</p>
-              <p className="text-sm font-display font-bold mt-0.5" style={{ color: BRAND.navy }}>
-                NexusPlus-<span className="font-serif italic font-normal" style={{ color: BRAND.red }}>AI</span>
-              </p>
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">CRM inmobiliario · sobre WhatsApp</p>
             </div>
           </div>
         </motion.div>
@@ -276,14 +273,14 @@ export default function Auth() {
             <div className="px-7 pt-6 pb-5">
               {/* Logo desktop */}
               <div className="hidden lg:flex justify-center mb-5">
-                <span className="inline-flex items-center justify-center rounded-xl bg-[#001E43] px-5 py-3 shadow-md">
-                  <img src={nexusLogo} alt="NexusPlus-AI" className="h-11 object-contain" />
+                <span className="inline-flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-100 px-5 py-3 shadow-md">
+                  <img src={lexLogo} alt="LexHouse AI" className="h-14 object-contain" />
                 </span>
               </div>
 
               {!isForgotPassword && (
                 <div className="text-center mb-5">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400 mb-1">NexusPlus-AI · Portal CRM</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400 mb-1">LexHouse AI · Portal CRM</p>
                   <h1 className="text-2xl font-display font-extrabold tracking-tight" style={{ color: BRAND.navy }}>
                     {isLogin ? (
                       <>Bienvenido de{" "}<span className="font-serif italic font-normal" style={{ color: BRAND.red }}>vuelta</span></>

@@ -279,15 +279,18 @@ function LiveConversation() {
               transition={reduce ? undefined : { type: "spring", stiffness: 210, damping: 20, delay: 0.2 }}
               className="pt-1.5"
             >
-              <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl">
-                <img
-                  src="/landing/appointment.jpg"
-                  alt="Reunión de expansión agendada"
-                  className={`w-full h-32 object-cover object-[center_78%] ${reduce ? "" : "animate-kenburns"}`}
-                  loading="lazy"
-                />
-                <div className="absolute inset-0"
-                     style={{ background: `linear-gradient(180deg, rgba(2,27,77,0.12) 0%, ${INK}f2 100%)` }} />
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-xl">
+                <div className="w-full h-32 grid place-items-center p-4"
+                     style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #EEF3FB 100%)" }}>
+                  <img
+                    src={lexLogo}
+                    alt="LexHouse AI"
+                    className="max-h-[74%] w-auto object-contain drop-shadow-[0_10px_24px_rgba(2,27,77,0.15)]"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none"
+                     style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.96) 100%)" }} />
 
                 {/* check de confirmación con anillo pulsante */}
                 <motion.div
@@ -320,8 +323,8 @@ function LiveConversation() {
                     <CalendarCheck className="w-4 h-4 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-white text-[13px] font-semibold leading-tight">Reunión confirmada</div>
-                    <div className="font-mono text-[10px] text-white/70">jueves · 10:00 · Google Calendar</div>
+                    <div className="text-[13px] font-semibold leading-tight" style={{ color: INK }}>Reunión confirmada</div>
+                    <div className="font-mono text-[10px] text-slate-500">jueves · 10:00 · Google Calendar</div>
                   </div>
                 </motion.div>
               </div>
@@ -426,11 +429,11 @@ const REPORT_TAGS = [
 
 // ── Carrusel "IA y leads" (imágenes reales · Ken Burns · autoplay · swipe) ──────
 const SLIDES = [
-  { img: "/landing/data-analytics.jpg", tag: "Datos en vivo",  title: "Cada lead, medido",             desc: "Score, intención y actividad de cada contacto en tiempo real." },
-  { img: "/landing/leads-team.jpg",     tag: "Tu equipo",      title: "Todo el equipo, un solo inbox", desc: "Nadie pisa una conversación; cada agente sabe qué le toca." },
-  { img: "/landing/ai-chip.jpg",        tag: "Inteligencia",   title: "IA entrenada en tu negocio",    desc: "Sofía responde con tu conocimiento de marca, no con respuestas genéricas." },
-  { img: "/landing/closing-deal.jpg",   tag: "Resultado",      title: "Del primer «hola» al cierre",   desc: "Menos tareas manuales, más reuniones agendadas cada semana." },
-  { img: "/landing/realestate.jpg",     tag: "Inmobiliario",   title: "Pensado para vender propiedades", desc: "Flujos, etiquetas y reportes hechos a la medida del sector." },
+  { img: lexLogo, tag: "Datos en vivo",  title: "Cada lead, medido",             desc: "Score, intención y actividad de cada contacto en tiempo real." },
+  { img: lexLogo, tag: "Tu equipo",      title: "Todo el equipo, un solo inbox", desc: "Nadie pisa una conversación; cada agente sabe qué le toca." },
+  { img: lexLogo, tag: "Inteligencia",   title: "IA entrenada en tu negocio",    desc: "Sofía responde con tu conocimiento de marca, no con respuestas genéricas." },
+  { img: lexLogo, tag: "Resultado",      title: "Del primer «hola» al cierre",   desc: "Menos tareas manuales, más reuniones agendadas cada semana." },
+  { img: lexLogo, tag: "Inmobiliario",   title: "Pensado para vender propiedades", desc: "Flujos, etiquetas y reportes hechos a la medida del sector." },
 ];
 
 function LeadsCarousel() {
@@ -449,15 +452,17 @@ function LeadsCarousel() {
   const s = SLIDES[idx];
   return (
     <div
-      className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-[#0b1730] aspect-[16/10] sm:aspect-[16/9]"
+      className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200 aspect-[16/10] sm:aspect-[16/9]"
+      style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #EEF3FB 100%)" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
+      {/* logo de marca centrado (sin recorte) */}
       <AnimatePresence>
         <motion.div
           key={idx}
-          className="absolute inset-0 will-change-transform"
-          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.05 }}
+          className="absolute inset-0 grid place-items-center p-10 sm:p-14 will-change-transform"
+          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.8, ease: EASE }}
@@ -468,17 +473,17 @@ function LeadsCarousel() {
         >
           <img
             src={s.img}
-            alt={s.title}
-            className={`w-full h-full object-cover select-none pointer-events-none ${reduce ? "" : "animate-kenburns"}`}
+            alt="LexHouse AI"
+            className="max-h-[62%] w-auto object-contain select-none pointer-events-none drop-shadow-[0_18px_40px_rgba(2,27,77,0.18)]"
             loading="lazy"
             draggable={false}
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* overlay para legibilidad del texto */}
+      {/* overlay claro para legibilidad del texto inferior */}
       <div className="absolute inset-0 pointer-events-none"
-           style={{ background: `linear-gradient(180deg, ${INK}22 0%, ${INK}00 32%, ${INK}e6 100%)` }} />
+           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 55%, rgba(255,255,255,0.94) 100%)" }} />
 
       {/* caption */}
       <div className="absolute left-0 bottom-0 p-6 sm:p-9 max-w-lg">
@@ -491,28 +496,28 @@ function LeadsCarousel() {
           >
             <span className="inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full mb-3 text-white"
                   style={{ background: BRAND }}>{s.tag}</span>
-            <h3 className="font-display font-bold text-white text-2xl sm:text-3xl leading-tight">{s.title}</h3>
-            <p className="mt-2 text-white/70 text-sm sm:text-[15px] leading-relaxed">{s.desc}</p>
+            <h3 className="font-display font-bold text-2xl sm:text-3xl leading-tight" style={{ color: INK }}>{s.title}</h3>
+            <p className="mt-2 text-slate-600 text-sm sm:text-[15px] leading-relaxed">{s.desc}</p>
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* flechas */}
-      <button aria-label="Imagen anterior" onClick={() => go(-1)}
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur border border-white/15 text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+      <button aria-label="Anterior" onClick={() => go(-1)}
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full bg-white/80 hover:bg-white backdrop-blur border border-slate-200 text-slate-700 shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003DA5]">
         <ChevronLeft className="w-5 h-5" aria-hidden="true" />
       </button>
-      <button aria-label="Imagen siguiente" onClick={() => go(1)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur border border-white/15 text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+      <button aria-label="Siguiente" onClick={() => go(1)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full bg-white/80 hover:bg-white backdrop-blur border border-slate-200 text-slate-700 shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003DA5]">
         <ChevronRight className="w-5 h-5" aria-hidden="true" />
       </button>
 
       {/* dots */}
       <div className="absolute right-5 bottom-6 flex items-center gap-2">
         {SLIDES.map((_, i) => (
-          <button key={i} aria-label={`Ir a la imagen ${i + 1}`} onClick={() => setIdx(i)}
-            className="h-1.5 rounded-full transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-            style={{ width: i === idx ? 26 : 8, background: i === idx ? BRAND : "rgba(255,255,255,0.4)" }} />
+          <button key={i} aria-label={`Ir al slide ${i + 1}`} onClick={() => setIdx(i)}
+            className="h-1.5 rounded-full transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003DA5]"
+            style={{ width: i === idx ? 26 : 8, background: i === idx ? BRAND : "rgba(15,27,45,0.2)" }} />
         ))}
       </div>
     </div>
@@ -613,16 +618,16 @@ export default function Index() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className={`inline-flex items-center justify-center rounded-lg px-2 py-1 transition-all ${scrolled ? "bg-transparent" : "bg-white/95 shadow-sm ring-1 ring-white/40"}`}>
-            <img src={lexLogo} alt="LexHouse AI" className="h-10 w-auto" width="40" height="40" />
+          <span className="inline-flex items-center justify-center">
+            <img src={lexLogo} alt="LexHouse AI" className="h-11 w-auto" width="44" height="44" />
           </span>
-          <div className={`hidden md:flex items-center gap-8 text-sm transition-colors ${scrolled ? "text-slate-600" : "text-white/80"}`}>
+          <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
             {navLinks.map(([href, label]) => (
               <a key={href} href={href} className="hover:text-[#DC1C2E] transition-colors">{label}</a>
             ))}
           </div>
           <div className="hidden md:flex items-center gap-2">
-            <Link to="/auth" className={`px-4 py-2 text-sm transition-colors ${scrolled ? "text-slate-600 hover:text-[#0F1B2D]" : "text-white/80 hover:text-white"}`}>Iniciar sesión</Link>
+            <Link to="/auth" className="px-4 py-2 text-sm text-slate-600 hover:text-[#0F1B2D] transition-colors">Iniciar sesión</Link>
             <Link to="/auth" className="px-5 py-2 text-sm font-semibold text-white rounded-lg transition-transform hover:scale-105" style={{ background: BRAND }}>
               Comenzar gratis
             </Link>
@@ -630,7 +635,7 @@ export default function Index() {
           <button
             aria-label={mobileMenu ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={mobileMenu}
-            className={`md:hidden p-1 transition-colors ${scrolled ? "text-slate-600" : "text-white"}`}
+            className="md:hidden p-1 text-slate-600"
             onClick={() => setMobileMenu(!mobileMenu)}
           >
             {mobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -650,9 +655,9 @@ export default function Index() {
 
       <main>
         {/* ── Hero ── */}
-        <section ref={heroRef} className="relative overflow-hidden" style={{ background: INK }}
+        <section ref={heroRef} className="relative overflow-hidden" style={{ background: "#FFFFFF" }}
                  aria-labelledby="hero-heading">
-          {/* fondo: VIDEO del logo (muteado · autoplay · loop) + overlay OSCURO para legibilidad */}
+          {/* fondo: VIDEO del logo (muteado · autoplay · loop) sobre BLANCO + overlay claro suave */}
           <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
             <video
               className="absolute inset-0 w-full h-full object-cover"
@@ -662,19 +667,18 @@ export default function Index() {
               loop
               playsInline
               preload="auto"
-              poster="/landing/hero-office.jpg"
             />
-            {/* velo oscuro: navy arriba/izquierda (donde va el texto) → transparente a la derecha */}
+            {/* velo BLANCO suave: más denso arriba/izquierda (donde va el texto) → transparente a la derecha (deja ver el video) */}
             <div className="absolute inset-0 pointer-events-none"
-                 style={{ background: `linear-gradient(180deg, ${INK}f2 0%, ${INK}d9 45%, ${INK}f2 100%)` }} />
+                 style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(255,255,255,0.55) 45%, rgba(255,255,255,0.88) 100%)" }} />
             <div className="absolute inset-0 pointer-events-none hidden lg:block"
-                 style={{ background: `linear-gradient(90deg, ${INK}fa 0%, ${INK}b3 46%, ${INK}66 100%)` }} />
+                 style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.5) 48%, rgba(255,255,255,0.05) 100%)" }} />
           </div>
           {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
-          <motion.div className="absolute inset-0 opacity-[0.06] will-change-transform" aria-hidden="true"
-               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#7FA8FF 1px,transparent 1px),linear-gradient(90deg,#7FA8FF 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
-          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.22] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
-          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-[0.22] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
+          <motion.div className="absolute inset-0 opacity-[0.05] will-change-transform" aria-hidden="true"
+               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#0F1B2D 1px,transparent 1px),linear-gradient(90deg,#0F1B2D 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
+          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.12] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
+          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-[0.12] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
           <motion.div className="absolute top-1/3 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-[0.10] will-change-transform" style={{ y: reduce ? 0 : glowY, background: GOLD }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
@@ -685,12 +689,12 @@ export default function Index() {
                 initial={reduce ? false : "hidden"}
                 animate={reduce ? false : (loaded ? "show" : "hidden")}
               >
-                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-sm shadow-sm mb-7">
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: GOLD }} />
-                  <span className="font-mono text-[11px] tracking-wide text-white/70">CRM inmobiliario · sobre WhatsApp</span>
+                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-white/90 backdrop-blur-sm shadow-sm mb-7">
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BRAND }} />
+                  <span className="font-mono text-[11px] tracking-wide text-slate-600">CRM inmobiliario · sobre WhatsApp</span>
                 </motion.div>
 
-                <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl text-white">
+                <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl" style={{ color: INK }}>
                   <motion.span variants={heroItem} className="block">
                     De un{" "}
                     <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: SIGNAL }}>
@@ -700,14 +704,14 @@ export default function Index() {
                   </motion.span>
                   <motion.span variants={heroItem} className="block">
                     a una{" "}
-                    <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: GOLD }}>
+                    <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: BRAND }}>
                       cita agendada
                     </span>.
                   </motion.span>
                 </h1>
 
-                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-white/70 max-w-xl">
-                  <strong className="text-white">Sofía</strong>, tu asesora con IA, responde en segundos,
+                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-slate-600 max-w-xl">
+                  <strong className="text-slate-900">Sofía</strong>, tu asesora con IA, responde en segundos,
                   califica cada lead por intención y agenda la reunión en tu calendario.
                   Tú solo cierras.
                 </motion.p>
@@ -719,15 +723,15 @@ export default function Index() {
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                     </Link>
                   </Magnetic>
-                  <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-white/90 rounded-xl text-[15px] border border-white/25 hover:bg-white/10 transition-colors">
+                  <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-slate-700 rounded-xl text-[15px] border border-slate-300 bg-white/70 hover:bg-slate-50 transition-colors">
                     Ver cómo funciona
                   </a>
                 </motion.div>
 
                 <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-2 font-mono text-[11px]">
                   {["Sobre tu propio WhatsApp", "Agenda en Google Calendar", "Reporte diario 08:00"].map((t) => (
-                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-sm text-white/60 shadow-sm">
-                      <Check className="w-3.5 h-3.5" style={{ color: GOLD }} aria-hidden="true" />{t}
+                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-white/90 backdrop-blur-sm text-slate-500 shadow-sm">
+                      <Check className="w-3.5 h-3.5" style={{ color: BLUE }} aria-hidden="true" />{t}
                     </span>
                   ))}
                 </motion.div>
@@ -745,18 +749,18 @@ export default function Index() {
             <motion.a
               href="#carrusel"
               aria-label="Desplázate para ver más"
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.4, duration: 0.8, ease: EASE }}
             >
               <span className="font-mono text-[10px] tracking-widest uppercase">Scroll</span>
               <motion.span
-                className="w-5 h-8 rounded-full border border-white/25 grid place-items-start justify-center pt-1.5"
+                className="w-5 h-8 rounded-full border border-slate-300 grid place-items-start justify-center pt-1.5"
                 animate={{ y: [0, 4, 0] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
               >
-                <span className="w-1 h-1.5 rounded-full" style={{ background: GOLD }} />
+                <span className="w-1 h-1.5 rounded-full" style={{ background: BLUE }} />
               </motion.span>
             </motion.a>
           )}

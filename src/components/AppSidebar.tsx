@@ -1,6 +1,6 @@
 import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown } from "lucide-react";
 import { useState } from "react";
-import nexusLogo from "@/assets/nexusplus-logo.png";
+import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,25 +101,23 @@ export function AppSidebar() {
             whileHover={{ scale: 1.04, rotate: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="bg-[#001E43] ring-1 ring-white/10 rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
+            className="bg-white ring-1 ring-black/5 rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
           >
             <motion.img
-              src={nexusLogo}
-              alt="NexusPlus-AI - Servicios Inmobiliarios"
-              className="w-full h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
+              src={lexLogo}
+              alt="LexHouse AI"
+              className="w-auto h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
             />
           </motion.div>
           {/* Marca compacta — modo rail de íconos */}
-          <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-xl bg-white shadow-md">
-            <span className="font-display text-sm font-extrabold leading-none tracking-tight" style={{ color: "hsl(210 100% 20%)" }}>
-              N<span style={{ color: "hsl(0 100% 40%)" }}>P</span>
-            </span>
+          <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-xl bg-white shadow-md p-1.5">
+            <img src={lexLogo} alt="LexHouse AI" className="w-full h-full object-contain" />
           </div>
           {/* Firma de marca */}
           <div className="mt-3.5 flex items-center justify-center gap-2.5 group-data-[collapsible=icon]:hidden" aria-hidden="true">
             <span className="h-px flex-1 bg-sidebar-border/70" />
             <span className="font-mono text-[9px] font-medium tracking-[0.34em] uppercase text-sidebar-foreground/45">
-              NexusPlus-AI
+              LexHouse AI
             </span>
             <span className="h-px flex-1 bg-sidebar-border/70" />
           </div>

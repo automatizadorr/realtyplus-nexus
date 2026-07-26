@@ -3,11 +3,12 @@ import { useConversation, ConversationProvider } from "@elevenlabs/react";
 import { motion } from "framer-motion";
 import { useReducedMotion } from "framer-motion";
 import { Mic, Volume2, PhoneCall, PhoneOff } from "lucide-react";
+import lexLogo from "@/assets/lexhouse-logo.webp";
 
 const VOICE_AGENT_ID = "agent_2401ksxkp4fgfw0vwt0yt1tnz7r2";
 type VState = "idle" | "connecting" | "listening" | "speaking";
 
-const INK     = "#021B4D";
+const INK     = "#0F1B2D";
 const BRAND   = "#DC1C2E";
 const BLUE_LT = "#7FA8FF";
 const SIGNAL  = "#25D366";
@@ -144,10 +145,11 @@ function VoiceCallLiveInner() {
     <div className="relative mx-auto max-w-[340px] rounded-[34px] p-3 shadow-2xl border border-white/10"
          style={{ background: "linear-gradient(160deg,#0c1a38,#0a1730)" }}>
       <div className="rounded-[26px] overflow-hidden" style={{ background: INK }}>
-        <div className="relative h-44 overflow-hidden">
-          <img src="/landing/voice-headset.jpg" alt="Asesora de NexusPlus-AI"
-               className={`w-full h-full object-cover object-center ${reduce ? "" : "animate-kenburns"}`} loading="lazy" />
-          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${INK}11, ${INK})` }} />
+        <div className="relative h-44 overflow-hidden grid place-items-center"
+             style={{ background: "linear-gradient(135deg,#FFFFFF,#EEF3FB)" }}>
+          <img src={lexLogo} alt="LexHouse AI"
+               className="max-h-[62%] w-auto object-contain drop-shadow-[0_12px_28px_rgba(2,27,77,0.18)]" loading="lazy" />
+          <div className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none" style={{ background: `linear-gradient(180deg, transparent, ${INK})` }} />
           <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur">
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: accent }} />
             <span className="font-mono text-[10px] text-white/80">
@@ -158,8 +160,8 @@ function VoiceCallLiveInner() {
         <div className="px-6 pb-6 -mt-10 relative text-center">
           <div className="relative inline-block">
             <span className={`absolute inset-0 rounded-full opacity-30 ${active && !reduce ? "animate-ping" : ""}`} style={{ background: accent }} />
-            <div className="relative w-20 h-20 rounded-full border-4 overflow-hidden transition-colors duration-300" style={{ borderColor: active ? accent : INK }}>
-              <img src="/landing/voice-headset.jpg" alt="Sofía · Voz IA" className="w-full h-full object-cover" loading="lazy" />
+            <div className="relative w-20 h-20 rounded-full border-4 overflow-hidden bg-white grid place-items-center transition-colors duration-300" style={{ borderColor: active ? accent : INK }}>
+              <img src={lexLogo} alt="LexHouse AI" className="w-full h-full object-contain p-1.5" loading="lazy" />
             </div>
           </div>
           <h3 className="mt-3 font-display font-bold text-white text-lg">Sofía · Voz IA</h3>

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { MessageCircle, Zap, Globe2, Users, CheckCheck } from "lucide-react";
+import lexLogo from "@/assets/lexhouse-logo.webp";
 
 const NAVY = "#003DA5";
 const RED = "#DC1C2E";
@@ -123,18 +124,19 @@ function CrmMockup() {
 export function BrandShowcase() {
   return (
     <div className="relative h-full w-full overflow-hidden">
-      {/* Imagen de fondo — cuadrícula geométrica clara */}
+      {/* Fondo de marca: logo oficial LexHouse como marca de agua sutil */}
+      <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, #FFFFFF 0%, #EEF3FB 100%)" }} />
       <motion.div
-        className="absolute inset-0"
+        className="absolute inset-0 grid place-items-center"
         animate={{ scale: [1, 1.04] }}
         transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
       >
         <img
-          src="/landing/tech-grid.jpg"
+          src={lexLogo}
           alt=""
           aria-hidden
-          className="w-full h-full object-cover object-center"
-          style={{ opacity: 0.55 }}
+          className="w-[62%] max-w-sm object-contain"
+          style={{ opacity: 0.06 }}
         />
       </motion.div>
 
