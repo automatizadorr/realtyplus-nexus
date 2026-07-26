@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabase } from "@/integrations/supabase/lazy";
 import { useAuth } from "@/contexts/AuthContext";
 
 type AppRole = "admin" | "sub_admin" | null;
@@ -28,17 +28,20 @@ export function useRole(): UseRoleResult {
       return;
     }
     setLoading(true);
-    (supabase as any)
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .in("role", ["admin", "sub_admin"])
-      .maybeSingle()
-      .then(({ data }: { data: { role: string } | null }) => {
-        if (!active) return;
-        setRole((data?.role as AppRole) ?? null);
-        setLoading(false);
-      });
+    getSupabase().then((supabase) => {
+      if (!active) return;
+      (supabase as any)
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .in("role", ["admin", "sub_admin"])
+        .maybeSingle()
+        .then(({ data }: { data: { role: string } | null }) => {
+          if (!active) return;
+          setRole((data?.role as AppRole) ?? null);
+          setLoading(false);
+        });
+    });
     return () => { active = false; };
     // Depende de user.id (estable al refrescar token): evita remontar páginas
     // al volver el foco a la pestaña. Ver use-is-admin.ts para contexto.
