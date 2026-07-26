@@ -428,8 +428,10 @@ const REPORT_TAGS = [
   { name: "No interesa", count: 2, color: "#94a3b8" },
 ];
 
-// ── Carrusel "IA y leads" (imágenes reales · Ken Burns · autoplay · swipe) ──────
-const SLIDES = [
+// ── Carrusel "IA y leads" (video de YouTube + slides de marca · autoplay · swipe) ──────
+type Slide = { tag: string; title: string; desc: string; img?: string; youtube?: string };
+const SLIDES: Slide[] = [
+  { youtube: "3I_0Czb1sgk", tag: "Video", title: "LexHouse AI en acción", desc: "Mira cómo Sofía convierte conversaciones de WhatsApp en citas agendadas." },
   { img: lexLogo, tag: "Datos en vivo",  title: "Cada lead, medido",             desc: "Score, intención y actividad de cada contacto en tiempo real." },
   { img: lexLogo, tag: "Tu equipo",      title: "Todo el equipo, un solo inbox", desc: "Nadie pisa una conversación; cada agente sabe qué le toca." },
   { img: lexLogo, tag: "Inteligencia",   title: "IA entrenada en tu negocio",    desc: "Sofía responde con tu conocimiento de marca, no con respuestas genéricas." },
@@ -445,10 +447,11 @@ function LeadsCarousel() {
   const go = (d: number) => setIdx((i) => (i + d + n) % n);
 
   useEffect(() => {
-    if (paused || reduce) return;
+    // No auto-avanzar mientras se ve el video (ni en pausa/reduced-motion).
+    if (paused || reduce || SLIDES[idx].youtube) return;
     const id = setInterval(() => setIdx((i) => (i + 1) % n), 5000);
     return () => clearInterval(id);
-  }, [paused, reduce, n]);
+  }, [paused, reduce, n, idx]);
 
   const s = SLIDES[idx];
   return (
@@ -458,50 +461,75 @@ function LeadsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* logo de marca centrado (sin recorte) */}
-      <AnimatePresence>
+      {s.youtube ? (
+        /* ── Slide de VIDEO (YouTube embed) ── */
         <motion.div
-          key={idx}
-          className="absolute inset-0 grid place-items-center p-10 sm:p-14 will-change-transform"
-          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
+          key={`v-${idx}`}
+          className="absolute inset-0 bg-black"
+          initial={reduce ? { opacity: 0 } : { opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: EASE }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.15}
-          onDragEnd={(_, info) => { if (info.offset.x < -80) go(1); else if (info.offset.x > 80) go(-1); }}
+          transition={{ duration: 0.6, ease: EASE }}
         >
-          <img
-            src={s.img}
-            alt="LexHouse AI"
-            className="max-h-[62%] w-auto object-contain select-none pointer-events-none drop-shadow-[0_18px_40px_rgba(2,27,77,0.18)]"
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src={`https://www.youtube-nocookie.com/embed/${s.youtube}?rel=0&modestbranding=1&playsinline=1`}
+            title={s.title}
             loading="lazy"
-            draggable={false}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
           />
+          <span className="absolute top-4 left-4 z-10 inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full text-white pointer-events-none"
+                style={{ background: BRAND }}>{s.tag}</span>
         </motion.div>
-      </AnimatePresence>
+      ) : (
+        <>
+          {/* logo de marca centrado (sin recorte) */}
+          <AnimatePresence>
+            <motion.div
+              key={idx}
+              className="absolute inset-0 grid place-items-center p-10 sm:p-14 will-change-transform"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: EASE }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.15}
+              onDragEnd={(_, info) => { if (info.offset.x < -80) go(1); else if (info.offset.x > 80) go(-1); }}
+            >
+              <img
+                src={s.img}
+                alt="LexHouse AI"
+                className="max-h-[62%] w-auto object-contain select-none pointer-events-none drop-shadow-[0_18px_40px_rgba(2,27,77,0.18)]"
+                loading="lazy"
+                draggable={false}
+              />
+            </motion.div>
+          </AnimatePresence>
 
-      {/* overlay claro para legibilidad del texto inferior */}
-      <div className="absolute inset-0 pointer-events-none"
-           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 55%, rgba(255,255,255,0.94) 100%)" }} />
+          {/* overlay claro para legibilidad del texto inferior */}
+          <div className="absolute inset-0 pointer-events-none"
+               style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 55%, rgba(255,255,255,0.94) 100%)" }} />
 
-      {/* caption */}
-      <div className="absolute left-0 bottom-0 p-6 sm:p-9 max-w-lg">
-        <AnimatePresence mode="wait">
-          <motion.div key={idx}
-            initial={reduce ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.5, ease: EASE }}
-          >
-            <span className="inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full mb-3 text-white"
-                  style={{ background: BRAND }}>{s.tag}</span>
-            <h3 className="font-display font-bold text-2xl sm:text-3xl leading-tight" style={{ color: INK }}>{s.title}</h3>
-            <p className="mt-2 text-slate-600 text-sm sm:text-[15px] leading-relaxed">{s.desc}</p>
-          </motion.div>
-        </AnimatePresence>
-      </div>
+          {/* caption */}
+          <div className="absolute left-0 bottom-0 p-6 sm:p-9 max-w-lg">
+            <AnimatePresence mode="wait">
+              <motion.div key={idx}
+                initial={reduce ? false : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.5, ease: EASE }}
+              >
+                <span className="inline-block font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full mb-3 text-white"
+                      style={{ background: BRAND }}>{s.tag}</span>
+                <h3 className="font-display font-bold text-2xl sm:text-3xl leading-tight" style={{ color: INK }}>{s.title}</h3>
+                <p className="mt-2 text-slate-600 text-sm sm:text-[15px] leading-relaxed">{s.desc}</p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </>
+      )}
 
       {/* flechas */}
       <button aria-label="Anterior" onClick={() => go(-1)}
