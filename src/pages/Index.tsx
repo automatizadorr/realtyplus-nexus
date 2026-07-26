@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react";
+import { useEffect, useRef, useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react";
 import {
   motion, AnimatePresence, useInView, useReducedMotion, animate,
   useScroll, useTransform, useSpring, useMotionValue,
@@ -12,15 +12,15 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, Phone, PhoneCall, PhoneOff,
   Volume2, Sparkles, Clock, Globe, ShieldCheck,
 } from "lucide-react";
-import nexusLogo from "@/assets/nexusplus-logo.png";
-import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
+import lexLogo from "@/assets/lexhouse-logo.webp";
 
-// ── Paleta de marca RE/MAX (azul · rojo · blanco) ─────────────────────────────
-const INK = "#021B4D";       // navy-azul RE/MAX (secciones oscuras y texto)
-const INK2 = "#0A2E6E";      // navy-azul elevado
-const BLUE = "#003DA5";      // AZUL RE/MAX (marca, sobre fondos claros)
+// ── Paleta de marca LexHouse AI (azul · rojo · dorado · navy) ─────────────────
+const INK = "#0F1B2D";       // navy LexHouse (secciones oscuras y texto)
+const INK2 = "#132743";      // navy elevado
+const BLUE = "#003DA5";      // AZUL LexHouse (marca, sobre fondos claros)
 const BLUE_LT = "#7FA8FF";   // azul claro (acentos sobre fondos oscuros)
-const BRAND = "#DC1C2E";     // ROJO RE/MAX (acción)
+const BRAND = "#DC1C2E";     // ROJO LexHouse (acción)
+const GOLD = "#D4AF37";      // DORADO LexHouse (acento premium editorial)
 const SIGNAL = "#25D366";    // verde WhatsApp — SOLO dentro del canal WhatsApp
 const HOT = "#F59E0B";       // lead caliente
 
@@ -355,7 +355,7 @@ const FAQS = [
   { q: "¿La IA agenda reuniones de verdad?", a: "Sí. Cuando el lead confirma día y hora, Sofía crea el evento en tu Google Calendar (con un mínimo de 18 horas de antelación) y envía la invitación por correo." },
   { q: "¿Cómo clasifica los leads?", a: "Lee la conversación y le asigna un estado por intención: Cita agendada, Solo quiere propiedades, No interesa, Sigue en campaña… Así sabes de un vistazo quién está caliente." },
   { q: "¿Recibo un resumen de los leads?", a: "Cada mañana a las 08:00 (hora de Madrid) recibes un reporte consolidado con los leads del día, agrupados por etiqueta y con sus conversaciones. Sin abrir el panel." },
-  { q: "¿Necesito saber de tecnología?", a: "No. Si sabes usar WhatsApp, sabes usar NexusPlus-AI. El inbox, las campañas y los reportes están pensados para agentes, no para técnicos." },
+  { q: "¿Necesito saber de tecnología?", a: "No. Si sabes usar WhatsApp, sabes usar LexHouse AI. El inbox, las campañas y los reportes están pensados para agentes, no para técnicos." },
   { q: "¿Mis datos están seguros?", a: "Tus conversaciones y leads viven en tu propia base con control de acceso por roles (RLS). No vendemos ni compartimos datos de tus clientes." },
 ];
 
@@ -546,21 +546,6 @@ export default function Index() {
   const gridY = useTransform(scrollYProgress, [0, 1], [0, 50]);
   const cardY = useTransform(scrollYProgress, [0, 1], [0, -46]);
 
-  // Efecto "hidro" (agua): el hero captura el mouse y lo pasa al canvas del ripple
-  const rippleRef = useRef<HydroRippleHandle>(null);
-  const heroLastPos = useRef({ x: -9999, y: -9999 });
-  const onHeroEnter = useCallback((e: React.MouseEvent) => {
-    rippleRef.current?.triggerSplash(e.clientX, e.clientY, "enter");
-    heroLastPos.current = { x: e.clientX, y: e.clientY };
-  }, []);
-  const onHeroMove = useCallback((e: React.MouseEvent) => {
-    const dx = e.clientX - heroLastPos.current.x;
-    const dy = e.clientY - heroLastPos.current.y;
-    if (dx * dx + dy * dy < 50 * 50) return;
-    rippleRef.current?.triggerSplash(e.clientX, e.clientY, "trail");
-    heroLastPos.current = { x: e.clientX, y: e.clientY };
-  }, []);
-
   useEffect(() => {
     if (!authLoading && session) navigate("/dashboard", { replace: true });
   }, [session, authLoading, navigate]);
@@ -590,7 +575,7 @@ export default function Index() {
         }}
         aria-hidden={loaded}
         role="status"
-        aria-label="Cargando NexusPlus-AI"
+        aria-label="Cargando LexHouse AI"
       >
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 12, scale: 0.96 }}
@@ -599,8 +584,8 @@ export default function Index() {
           className="flex flex-col items-center gap-6 rounded-[28px] bg-white px-12 py-10 border border-slate-100"
           style={{ boxShadow: "0 24px 70px -24px rgba(2,27,77,0.28), 0 2px 8px -2px rgba(2,27,77,0.08)" }}
         >
-          <span className="inline-flex items-center justify-center rounded-2xl bg-[#001E43] px-8 py-6">
-            <img src={nexusLogo} alt="NexusPlus-AI" className="w-40 h-auto" width={160} height={59} />
+          <span className="inline-flex items-center justify-center rounded-2xl bg-white px-8 py-6 ring-1 ring-slate-100">
+            <img src={lexLogo} alt="LexHouse AI" className="w-36 h-auto" width={144} height={144} />
           </span>
           {/* barra de carga indeterminada (azul → rojo RE/MAX) */}
           <div className="w-44 h-1 rounded-full overflow-hidden" style={{ background: "#eef1f6" }}>
@@ -628,16 +613,16 @@ export default function Index() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="inline-flex items-center justify-center rounded-lg bg-[#001E43] px-3 py-1.5">
-            <img src={nexusLogo} alt="NexusPlus-AI" className="h-7 w-auto" width="105" height="28" />
+          <span className={`inline-flex items-center justify-center rounded-lg px-2 py-1 transition-all ${scrolled ? "bg-transparent" : "bg-white/95 shadow-sm ring-1 ring-white/40"}`}>
+            <img src={lexLogo} alt="LexHouse AI" className="h-10 w-auto" width="40" height="40" />
           </span>
-          <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
+          <div className={`hidden md:flex items-center gap-8 text-sm transition-colors ${scrolled ? "text-slate-600" : "text-white/80"}`}>
             {navLinks.map(([href, label]) => (
-              <a key={href} href={href} className="hover:text-[#E11D34] transition-colors">{label}</a>
+              <a key={href} href={href} className="hover:text-[#DC1C2E] transition-colors">{label}</a>
             ))}
           </div>
           <div className="hidden md:flex items-center gap-2">
-            <Link to="/auth" className="px-4 py-2 text-sm text-slate-600 hover:text-[#0A1228] transition-colors">Iniciar sesión</Link>
+            <Link to="/auth" className={`px-4 py-2 text-sm transition-colors ${scrolled ? "text-slate-600 hover:text-[#0F1B2D]" : "text-white/80 hover:text-white"}`}>Iniciar sesión</Link>
             <Link to="/auth" className="px-5 py-2 text-sm font-semibold text-white rounded-lg transition-transform hover:scale-105" style={{ background: BRAND }}>
               Comenzar gratis
             </Link>
@@ -645,7 +630,7 @@ export default function Index() {
           <button
             aria-label={mobileMenu ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={mobileMenu}
-            className="md:hidden text-slate-600 p-1"
+            className={`md:hidden p-1 transition-colors ${scrolled ? "text-slate-600" : "text-white"}`}
             onClick={() => setMobileMenu(!mobileMenu)}
           >
             {mobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -665,20 +650,32 @@ export default function Index() {
 
       <main>
         {/* ── Hero ── */}
-        <section ref={heroRef} className="relative overflow-hidden" style={{ background: "linear-gradient(180deg,#FFFFFF 0%,#EEF3FB 100%)" }}
-                 aria-labelledby="hero-heading" onMouseEnter={onHeroEnter} onMouseMove={onHeroMove}>
-          {/* fondo: imagen real con efecto HIDRO (agua) + overlay BLANCO (hero claro) */}
+        <section ref={heroRef} className="relative overflow-hidden" style={{ background: INK }}
+                 aria-labelledby="hero-heading">
+          {/* fondo: VIDEO del logo (muteado · autoplay · loop) + overlay OSCURO para legibilidad */}
           <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-            <HydroRipple ref={rippleRef} src="/landing/hero-office.jpg" alt="" cover passthrough
-                         className="absolute inset-0 w-full h-full" imgClassName="w-full h-full object-cover" />
+            <video
+              className="absolute inset-0 w-full h-full object-cover"
+              src="/landing/hero-logo.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster="/landing/hero-office.jpg"
+            />
+            {/* velo oscuro: navy arriba/izquierda (donde va el texto) → transparente a la derecha */}
             <div className="absolute inset-0 pointer-events-none"
-                 style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.955) 0%, rgba(238,243,251,0.975) 50%, #FFFFFF 100%)" }} />
+                 style={{ background: `linear-gradient(180deg, ${INK}f2 0%, ${INK}d9 45%, ${INK}f2 100%)` }} />
+            <div className="absolute inset-0 pointer-events-none hidden lg:block"
+                 style={{ background: `linear-gradient(90deg, ${INK}fa 0%, ${INK}b3 46%, ${INK}66 100%)` }} />
           </div>
           {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
-          <motion.div className="absolute inset-0 opacity-[0.05] will-change-transform" aria-hidden="true"
-               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#021B4D 1px,transparent 1px),linear-gradient(90deg,#021B4D 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
-          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.14] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
-          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-[0.14] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
+          <motion.div className="absolute inset-0 opacity-[0.06] will-change-transform" aria-hidden="true"
+               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#7FA8FF 1px,transparent 1px),linear-gradient(90deg,#7FA8FF 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
+          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.22] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
+          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-[0.22] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
+          <motion.div className="absolute top-1/3 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-[0.10] will-change-transform" style={{ y: reduce ? 0 : glowY, background: GOLD }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
             <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
@@ -688,13 +685,12 @@ export default function Index() {
                 initial={reduce ? false : "hidden"}
                 animate={reduce ? false : (loaded ? "show" : "hidden")}
               >
-                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-white shadow-sm mb-7">
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BRAND }} />
-                  <span className="font-mono text-[11px] tracking-wide text-slate-600">CRM inmobiliario · sobre WhatsApp</span>
+                <motion.div variants={heroItem} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-sm shadow-sm mb-7">
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: GOLD }} />
+                  <span className="font-mono text-[11px] tracking-wide text-white/70">CRM inmobiliario · sobre WhatsApp</span>
                 </motion.div>
 
-                <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl"
-                    style={{ color: INK }}>
+                <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl text-white">
                   <motion.span variants={heroItem} className="block">
                     De un{" "}
                     <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: SIGNAL }}>
@@ -704,14 +700,14 @@ export default function Index() {
                   </motion.span>
                   <motion.span variants={heroItem} className="block">
                     a una{" "}
-                    <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: BRAND }}>
+                    <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: GOLD }}>
                       cita agendada
                     </span>.
                   </motion.span>
                 </h1>
 
-                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-slate-600 max-w-xl">
-                  <strong className="text-slate-900">Sofía</strong>, tu asesora con IA, responde en segundos,
+                <motion.p variants={heroItem} className="mt-6 text-lg leading-relaxed text-white/70 max-w-xl">
+                  <strong className="text-white">Sofía</strong>, tu asesora con IA, responde en segundos,
                   califica cada lead por intención y agenda la reunión en tu calendario.
                   Tú solo cierras.
                 </motion.p>
@@ -723,15 +719,15 @@ export default function Index() {
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                     </Link>
                   </Magnetic>
-                  <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-slate-700 rounded-xl text-[15px] border border-slate-300 hover:bg-slate-50 transition-colors">
+                  <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-white/90 rounded-xl text-[15px] border border-white/25 hover:bg-white/10 transition-colors">
                     Ver cómo funciona
                   </a>
                 </motion.div>
 
                 <motion.div variants={heroItem} className="mt-8 flex flex-wrap gap-2 font-mono text-[11px]">
                   {["Sobre tu propio WhatsApp", "Agenda en Google Calendar", "Reporte diario 08:00"].map((t) => (
-                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm">
-                      <Check className="w-3.5 h-3.5" style={{ color: BLUE }} aria-hidden="true" />{t}
+                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-sm text-white/60 shadow-sm">
+                      <Check className="w-3.5 h-3.5" style={{ color: GOLD }} aria-hidden="true" />{t}
                     </span>
                   ))}
                 </motion.div>
@@ -749,18 +745,18 @@ export default function Index() {
             <motion.a
               href="#carrusel"
               aria-label="Desplázate para ver más"
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.4, duration: 0.8, ease: EASE }}
             >
               <span className="font-mono text-[10px] tracking-widest uppercase">Scroll</span>
               <motion.span
-                className="w-5 h-8 rounded-full border border-slate-300 grid place-items-start justify-center pt-1.5"
+                className="w-5 h-8 rounded-full border border-white/25 grid place-items-start justify-center pt-1.5"
                 animate={{ y: [0, 4, 0] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
               >
-                <span className="w-1 h-1.5 rounded-full" style={{ background: BLUE }} />
+                <span className="w-1 h-1.5 rounded-full" style={{ background: GOLD }} />
               </motion.span>
             </motion.a>
           )}
@@ -933,7 +929,7 @@ export default function Index() {
         <section className="py-20 px-6 bg-white" aria-label="Datos">
           <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-6">
             {[
-              { icon: Globe, value: 25, suffix: "+", label: "Países en la red NexusPlus-AI" },
+              { icon: Globe, value: 25, suffix: "+", label: "Países en la red LexHouse AI" },
               { icon: Sparkles, value: 24, suffix: "/7", label: "Sofía atendiendo leads" },
               { icon: Clock, value: 8, suffix: ":00", label: "Reporte diario a jefatura" },
               { icon: Tags, value: 100, suffix: "%", label: "Leads clasificados por IA" },
@@ -1005,13 +1001,15 @@ export default function Index() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-10 mb-10">
             <div>
-              <img src={nexusLogo} alt="NexusPlus-AI" className="h-12 w-auto mb-4" width="160" height="48" />
+              <span className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-2 mb-4 ring-1 ring-white/10">
+                <img src={lexLogo} alt="LexHouse AI" className="h-14 w-auto" width="56" height="56" />
+              </span>
               <p className="text-white/40 text-sm leading-relaxed">CRM inmobiliario sobre WhatsApp, con IA que responde, agenda y clasifica.</p>
             </div>
             {[
               { title: "Plataforma", links: ["Inbox unificado", "Sofía · Asesora IA", "Etiquetado IA", "Campañas", "Scanner", "VoiceCRM"] },
               { title: "Recursos", links: ["Reporte diario", "Exportar leads", "Dashboard", "Integraciones"] },
-              { title: "NexusPlus-AI", links: ["Red de franquicias", "Soporte", "Privacidad", "Términos"] },
+              { title: "LexHouse AI", links: ["Red de corredores", "Soporte", "Privacidad", "Términos"] },
             ].map((col) => (
               <div key={col.title}>
                 <h3 className="font-mono text-white/70 text-xs uppercase tracking-widest mb-4">{col.title}</h3>
@@ -1024,16 +1022,17 @@ export default function Index() {
             ))}
           </div>
           <div className="border-t border-white/10 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/30 text-xs">
-            <span>© {new Date().getFullYear()} NexusPlus-AI · Servicios Inmobiliarios LExHouse-AI</span>
+            <span>© {new Date().getFullYear()} LexHouse AI · Servicios Inmobiliarios Plus Sur SL</span>
             <span className="font-mono flex items-center gap-1.5">
-              Parte de la familia{" "}
+              Conoce{" "}
               <a
                 href="https://www.lexhouse-ai.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/60 hover:text-white transition-colors underline underline-offset-2"
+                className="hover:text-white transition-colors underline underline-offset-2"
+                style={{ color: GOLD }}
               >
-                LexHouse AI
+                lexhouse-ai.com
               </a>
             </span>
           </div>
