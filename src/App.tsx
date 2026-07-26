@@ -13,6 +13,8 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 // no arrastrar AppSidebar (framer-motion + radix-sidebar) al bundle de la landing.
 const Layout       = lazy(() => import("@/components/Layout").then((m) => ({ default: m.Layout })));
 const Index        = lazy(() => import("./pages/Index"));
+const Blog         = lazy(() => import("./pages/public/Blog"));
+const BlogArticle  = lazy(() => import("./pages/public/BlogArticle"));
 const Dashboard    = lazy(() => import("./pages/Dashboard"));
 const Scanner      = lazy(() => import("./pages/Scanner"));
 const Campaigns    = lazy(() => import("./pages/Campaigns"));
@@ -99,6 +101,8 @@ const App = () => (
           <Suspense fallback={<PageSpinner />}>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogArticle />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route

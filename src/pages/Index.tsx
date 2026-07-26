@@ -604,7 +604,7 @@ export default function Index() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#voz", "Voz IA"], ["#reporte", "Reporte diario"], ["#faq", "FAQ"]];
+  const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#voz", "Voz IA"], ["#reporte", "Reporte diario"], ["/blog", "Blog"], ["#faq", "FAQ"]];
 
   // Retrasos escalonados de la entrada del hero (equivalente al stagger de antes).
   const heroDelays = ["0.08s", "0.19s", "0.30s", "0.41s", "0.52s", "0.63s"];
