@@ -6,8 +6,12 @@ import { useReducedMotion } from 'framer-motion';
 
   Independiente de GPU (no usa WebGL): funciona en cualquier navegador/dispositivo.
   Dos buffers Float32Array que propagan la ecuación de onda; el gradiente de
-  altura desplaza los píxeles de la imagen → refracción real. Cada "drop" inyecta
-  altura en un círculo → ondas concéntricas como una piedra al agua.
+  altura desplaza los píxeles → refracción real. Cada "drop" inyecta altura en un
+  círculo → ondas concéntricas como una piedra al agua.
+
+  Fuente de píxeles:
+    · src      → imagen estática (foto/textura).
+    · videoSrc → VÍDEO en vivo: cada frame se muestrea y se ondula (logo animado).
 
   API:
     forwardRef<HydroRippleHandle> → triggerSplash() para el modo passthrough.
@@ -30,7 +34,10 @@ export interface HydroRippleHandle {
 }
 
 interface HydroRippleProps {
-  src: string;
+  /** Imagen de fondo / póster de reduced-motion. Opcional si se pasa videoSrc. */
+  src?: string;
+  /** Vídeo a ondular en vivo (muteado · autoplay · loop). Prioritario sobre src. */
+  videoSrc?: string;
   alt: string;
   className?: string;
   imgClassName?: string;
@@ -46,12 +53,13 @@ interface HydroRippleProps {
 
 export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
   function HydroRipple(
-    { src, alt, className, imgClassName, imgStyle, cover, passthrough,
+    { src, videoSrc, alt, className, imgClassName, imgStyle, cover, passthrough,
       width, height, fetchPriority, decoding, loading },
     ref
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef    = useRef<HTMLCanvasElement>(null);
+    const videoRef     = useRef<HTMLVideoElement>(null);
     const reduce       = useReducedMotion();
 
     const buf1Ref   = useRef<Float32Array | null>(null);
@@ -105,9 +113,103 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
       lastPos.current = { x: e.clientX, y: e.clientY };
     }, [doSplash]);
 
-    // ── Simulación ──────────────────────────────────────────────────────────
+    // ── Simulación con VÍDEO en vivo (muestrea cada frame) ───────────────────
     useEffect(() => {
-      if (reduce) return;
+      if (reduce || !videoSrc) return;
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d', { willReadFrequently: true });
+      const video = videoRef.current;
+      if (!canvas || !ctx || !video) return;
+
+      const srcCanvas = document.createElement('canvas');
+      const sctx = srcCanvas.getContext('2d', { willReadFrequently: true });
+      if (!sctx) return;
+
+      let W = 0, H = 0, ox = 0, oy = 0, dw = 0, dh = 0;
+      let out: ImageData | null = null;
+
+      const start = () => {
+        const container = containerRef.current;
+        if (!container) return;
+        const cW = container.offsetWidth  || SIM_W_MAX;
+        const cH = container.offsetHeight || Math.round(SIM_W_MAX * 9 / 16);
+        W = Math.min(cW, SIM_W_MAX);
+        H = Math.max(1, Math.round(W * cH / cW));
+        canvas.width = W; canvas.height = H;
+        srcCanvas.width = W; srcCanvas.height = H;
+        wRef.current = W; hRef.current = H;
+
+        // cover-scaling del vídeo dentro del buffer
+        const vW = video.videoWidth || 16, vH = video.videoHeight || 9;
+        const vR = vW / vH, canR = W / H;
+        if (vR > canR) { dh = H; dw = dh * vR; ox = (W - dw) / 2; oy = 0; }
+        else           { dw = W; dh = dw / vR; oy = (H - dh) / 2; ox = 0; }
+
+        buf1Ref.current = new Float32Array(W * H);
+        buf2Ref.current = new Float32Array(W * H);
+        out = ctx.createImageData(W, H);
+        readyRef.current = true;
+
+        const tick = () => {
+          // 1) muestrea el frame actual del vídeo
+          try {
+            sctx.drawImage(video, ox, oy, dw, dh);
+            pixelsRef.current = sctx.getImageData(0, 0, W, H).data;
+          } catch {
+            canvas.style.display = 'none'; // deja ver el <video> por debajo
+            return;
+          }
+          const px = pixelsRef.current!, O = out!;
+
+          // 2) propaga la onda
+          const B1 = buf1Ref.current!, B2 = buf2Ref.current!;
+          for (let y = 1; y < H - 1; y++) {
+            for (let x = 1; x < W - 1; x++) {
+              const i = y * W + x;
+              B2[i] = (B1[i - 1] + B1[i + 1] + B1[i - W] + B1[i + W]) / 2 - B2[i];
+              B2[i] *= DAMPING;
+            }
+          }
+          buf1Ref.current = B2; buf2Ref.current = B1;
+
+          // 3) refracción + realce especular
+          const B = buf1Ref.current;
+          for (let y = 1; y < H - 1; y++) {
+            for (let x = 1; x < W - 1; x++) {
+              const i  = y * W + x;
+              const sx = Math.max(0, Math.min(W - 1, x + Math.round((B[i + 1] - B[i - 1]) * DISPLACE)));
+              const sy = Math.max(0, Math.min(H - 1, y + Math.round((B[i + W] - B[i - W]) * DISPLACE)));
+              const si = (sy * W + sx) * 4;
+              const di = i * 4;
+              const shade = (B[i] - B[i + 1]) * 2;
+              O.data[di]     = Math.max(0, Math.min(255, px[si]     + shade));
+              O.data[di + 1] = Math.max(0, Math.min(255, px[si + 1] + shade));
+              O.data[di + 2] = Math.max(0, Math.min(255, px[si + 2] + shade));
+              O.data[di + 3] = 255;
+            }
+          }
+          ctx.putImageData(O, 0, 0);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      };
+
+      if (video.readyState >= 2) start();
+      else video.addEventListener('loadeddata', start, { once: true });
+
+      return () => {
+        cancelAnimationFrame(rafRef.current);
+        video.removeEventListener('loadeddata', start);
+        readyRef.current = false;
+        buf1Ref.current = null;
+        buf2Ref.current = null;
+        pixelsRef.current = null;
+      };
+    }, [videoSrc, cover, reduce]);
+
+    // ── Simulación con IMAGEN estática ───────────────────────────────────────
+    useEffect(() => {
+      if (reduce || videoSrc || !src) return;
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d', { willReadFrequently: true });
       if (!canvas || !ctx) return;
@@ -134,7 +236,6 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
           canvas.width = W; canvas.height = H;
           wRef.current = W; hRef.current = H;
 
-          // Dibuja la imagen con cover-scaling (llena el canvas sin deformar)
           const imgR = img.naturalWidth / img.naturalHeight;
           const canR = W / H;
           let dw = W, dh = H, ox = 0, oy = 0;
@@ -145,7 +246,7 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
           try {
             pixelsRef.current = new Uint8ClampedArray(ctx.getImageData(0, 0, W, H).data);
           } catch {
-            canvas.style.display = 'none'; // CORS fallback: deja ver la <img>
+            canvas.style.display = 'none';
             return;
           }
 
@@ -174,7 +275,6 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
                 const sy = Math.max(0, Math.min(H - 1, y + Math.round((B[i + W] - B[i - W]) * DISPLACE)));
                 const si = (sy * W + sx) * 4;
                 const di = i * 4;
-                // Realce especular: pendiente positiva = brillo
                 const shade = (B[i] - B[i + 1]) * 2;
                 out.data[di]     = Math.max(0, Math.min(255, px[si]     + shade));
                 out.data[di + 1] = Math.max(0, Math.min(255, px[si + 1] + shade));
@@ -200,11 +300,15 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
         pixelsRef.current = null;
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [src, cover, reduce]);
+    }, [src, videoSrc, cover, reduce]);
 
     const canvasStyle: React.CSSProperties = cover
       ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', ...imgStyle }
       : { display: 'block', width: '100%', height: 'auto', ...imgStyle };
+
+    const mediaStyle: React.CSSProperties = cover
+      ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', ...imgStyle }
+      : (imgStyle ?? {});
 
     return (
       <div
@@ -214,15 +318,31 @@ export const HydroRipple = forwardRef<HydroRippleHandle, HydroRippleProps>(
         onMouseEnter={passthrough ? undefined : onMouseEnter}
         onMouseMove={passthrough  ? undefined : onMouseMove}
       >
-        {/* Fallback estático: reduced-motion o CORS/carga fallida (queda debajo del canvas) */}
-        <img
-          src={src} alt={alt}
-          className={imgClassName}
-          style={cover ? { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', ...imgStyle } : imgStyle}
-          width={width} height={height}
-          fetchPriority={fetchPriority} decoding={decoding} loading={loading}
-          aria-hidden={!reduce}
-        />
+        {/* Fuente/fallback: vídeo (muestreado por el canvas; visible tal cual en reduced-motion) */}
+        {videoSrc ? (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            poster={src}
+            className={imgClassName}
+            style={mediaStyle}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-hidden
+          />
+        ) : (
+          <img
+            src={src} alt={alt}
+            className={imgClassName}
+            style={mediaStyle}
+            width={width} height={height}
+            fetchPriority={fetchPriority} decoding={decoding} loading={loading}
+            aria-hidden={!reduce}
+          />
+        )}
         {!reduce && (
           <canvas ref={canvasRef} className={imgClassName} style={canvasStyle} aria-hidden />
         )}

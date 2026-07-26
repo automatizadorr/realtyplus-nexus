@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react";
 import {
   motion, AnimatePresence, useInView, useReducedMotion, animate,
   useScroll, useTransform, useSpring, useMotionValue,
@@ -13,6 +13,7 @@ import {
   Volume2, Sparkles, Clock, Globe, ShieldCheck,
 } from "lucide-react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
+import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
 
 // ── Paleta de marca LexHouse AI (azul · rojo · dorado · navy) ─────────────────
 const INK = "#0F1B2D";       // navy LexHouse (secciones oscuras y texto)
@@ -548,7 +549,21 @@ export default function Index() {
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const glowY = useTransform(scrollYProgress, [0, 1], [0, 90]);
-  const gridY = useTransform(scrollYProgress, [0, 1], [0, 50]);
+
+  // Efecto "hidro" (agua): el hero captura el mouse y lo pasa al canvas del ripple (que ondula el vídeo)
+  const rippleRef = useRef<HydroRippleHandle>(null);
+  const heroLastPos = useRef({ x: -9999, y: -9999 });
+  const onHeroEnter = useCallback((e: React.MouseEvent) => {
+    rippleRef.current?.triggerSplash(e.clientX, e.clientY, "enter");
+    heroLastPos.current = { x: e.clientX, y: e.clientY };
+  }, []);
+  const onHeroMove = useCallback((e: React.MouseEvent) => {
+    const dx = e.clientX - heroLastPos.current.x;
+    const dy = e.clientY - heroLastPos.current.y;
+    if (dx * dx + dy * dy < 50 * 50) return;
+    rippleRef.current?.triggerSplash(e.clientX, e.clientY, "trail");
+    heroLastPos.current = { x: e.clientX, y: e.clientY };
+  }, []);
 
   useEffect(() => {
     if (!authLoading && session) navigate("/dashboard", { replace: true });
@@ -655,30 +670,28 @@ export default function Index() {
       <main>
         {/* ── Hero ── */}
         <section ref={heroRef} className="relative overflow-hidden" style={{ background: "#FFFFFF" }}
-                 aria-labelledby="hero-heading">
-          {/* fondo: VIDEO del logo (muteado · autoplay · loop) sobre BLANCO + overlay claro suave */}
+                 aria-labelledby="hero-heading" onMouseEnter={onHeroEnter} onMouseMove={onHeroMove}>
+          {/* fondo: VÍDEO del logo con efecto HIDRO (agua) — el canvas ondula el vídeo en vivo */}
           <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-            <video
-              className="absolute inset-0 w-full h-full object-cover"
-              src="/landing/hero-logo.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
+            <HydroRipple
+              ref={rippleRef}
+              videoSrc="/landing/hero-logo.mp4"
+              alt=""
+              cover
+              passthrough
+              className="absolute inset-0 w-full h-full"
+              imgClassName="w-full h-full object-cover"
             />
-            {/* velo BLANCO suave: más denso arriba/izquierda (donde va el texto) → transparente a la derecha (deja ver el video) */}
-            <div className="absolute inset-0 pointer-events-none"
-                 style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(255,255,255,0.55) 45%, rgba(255,255,255,0.88) 100%)" }} />
+            {/* velo para el mejor CONTRASTE del vídeo: sólo un scrim a la izquierda (donde va el texto);
+                la derecha queda casi limpia para que el vídeo se aprecie a pleno contraste */}
+            <div className="absolute inset-0 pointer-events-none lg:hidden"
+                 style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.80) 100%)" }} />
             <div className="absolute inset-0 pointer-events-none hidden lg:block"
-                 style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.5) 48%, rgba(255,255,255,0.05) 100%)" }} />
+                 style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.72) 34%, rgba(255,255,255,0.12) 60%, rgba(255,255,255,0) 100%)" }} />
           </div>
-          {/* fondo: grid sutil + glows (parallax sutil al hacer scroll) */}
-          <motion.div className="absolute inset-0 opacity-[0.05] will-change-transform" aria-hidden="true"
-               style={{ y: reduce ? 0 : gridY, backgroundImage: "linear-gradient(#0F1B2D 1px,transparent 1px),linear-gradient(90deg,#0F1B2D 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
-          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.12] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
-          <motion.div className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-[0.12] will-change-transform" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
-          <motion.div className="absolute top-1/3 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-[0.10] will-change-transform" style={{ y: reduce ? 0 : glowY, background: GOLD }} aria-hidden="true" />
+          {/* glows de marca (parallax sutil al hacer scroll) */}
+          <motion.div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-[0.12] will-change-transform pointer-events-none" style={{ y: reduce ? 0 : glowY, background: BRAND }} aria-hidden="true" />
+          <motion.div className="absolute bottom-0 right-1/3 w-96 h-96 rounded-full blur-3xl opacity-[0.10] will-change-transform pointer-events-none" style={{ y: reduce ? 0 : glowY, background: BLUE }} aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-20 lg:pt-32 lg:pb-28">
             <div className="max-w-2xl">
