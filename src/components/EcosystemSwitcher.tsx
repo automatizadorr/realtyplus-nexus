@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { LayoutGrid, ChevronDown, ArrowUpRight, Sparkles, MessageSquare, Clapperboard } from "lucide-react";
+import { ChevronDown, ArrowUpRight, Building2, MessagesSquare, Clapperboard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /*
   EcosystemSwitcher — selector de productos del ecosistema LexHouse AI.
-  Botón de navbar que despliega un panel para saltar entre los sitios de la marca.
-  Diseñado para crecer: añade una entrada nueva a SITES cuando el Studio (creador
-  de videos) tenga su dominio. Marca "Estás aquí" el sitio actual (prop `current`).
+  Botón con glyph de marca (4 puntos azul/rojo/dorado) + panel con tiles de
+  íconos en gradiente por color de producto. Mismo diseño en los 3 sitios.
+  Añadir producto = agregar a SITES.
 */
 
 const BLUE = "#003DA5";
@@ -21,9 +21,10 @@ interface Site {
   name: string;
   tag: string;
   desc: string;
-  href?: string;   // ausente = próximamente
+  href?: string;
   icon: LucideIcon;
   color: string;
+  grad: [string, string];
 }
 
 const SITES: Site[] = [
@@ -33,8 +34,9 @@ const SITES: Site[] = [
     tag: "Plataforma",
     desc: "SaaS inmobiliario con IA: marketplace, contratos y agentes.",
     href: "https://lexhouse-ai.com",
-    icon: Sparkles,
+    icon: Building2,
     color: BLUE,
+    grad: ["#1E5FD0", "#003DA5"],
   },
   {
     key: "crm",
@@ -42,8 +44,9 @@ const SITES: Site[] = [
     tag: "CRM",
     desc: "CRM sobre WhatsApp: Sofía atiende, agenda y clasifica leads.",
     href: "https://lexhouse-ai.homes",
-    icon: MessageSquare,
+    icon: MessagesSquare,
     color: RED,
+    grad: ["#F0384A", "#DC1C2E"],
   },
   {
     key: "studio",
@@ -53,15 +56,26 @@ const SITES: Site[] = [
     href: "https://lexhouse-ai.online",
     icon: Clapperboard,
     color: GOLD,
+    grad: ["#E6C25A", "#C9A233"],
   },
 ];
 
 interface Props {
-  /** Sitio actual (se marca "Estás aquí"). */
   current: SiteKey;
-  /** Tema del botón según el fondo del navbar. */
   theme?: "light" | "dark";
   className?: string;
+}
+
+/** Glyph de marca: 2×2 de puntos azul/rojo/dorado/ink — representa el ecosistema. */
+function EcosystemGlyph() {
+  const dots = [BLUE, RED, GOLD, `${INK}59`];
+  return (
+    <span className="grid grid-cols-2 gap-[3px]" aria-hidden="true">
+      {dots.map((c, i) => (
+        <span key={i} className="h-[7px] w-[7px] rounded-[2px]" style={{ background: c }} />
+      ))}
+    </span>
+  );
 }
 
 export function EcosystemSwitcher({ current, theme = "light", className = "" }: Props) {
@@ -79,7 +93,7 @@ export function EcosystemSwitcher({ current, theme = "light", className = "" }: 
     return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
-  const btnLight = "border-slate-200 bg-white/90 text-slate-700 hover:border-slate-300 hover:text-[#0F1B2D]";
+  const btnLight = "border-slate-200 bg-white/90 text-slate-700 hover:border-slate-300 hover:text-[#0F1B2D] hover:shadow-sm";
   const btnDark = "border-white/20 bg-white/10 text-white/90 hover:bg-white/15";
 
   return (
@@ -90,38 +104,39 @@ export function EcosystemSwitcher({ current, theme = "light", className = "" }: 
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Cambiar de sitio · Ecosistema LexHouse AI"
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium backdrop-blur-sm transition-colors ${theme === "dark" ? btnDark : btnLight}`}
+        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium backdrop-blur-sm transition-all ${theme === "dark" ? btnDark : btnLight}`}
       >
-        <LayoutGrid className="h-4 w-4" style={{ color: theme === "dark" ? undefined : BLUE }} aria-hidden="true" />
+        <EcosystemGlyph />
         <span className="hidden sm:inline">Ecosistema</span>
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+        <ChevronDown className={`h-3.5 w-3.5 opacity-60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-[300px] origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,27,45,0.35)]"
+          className="absolute right-0 z-50 mt-2 w-[320px] origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_28px_70px_-24px_rgba(15,27,45,0.45)]"
         >
-          {/* Encabezado */}
-          <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: RED }} />
+          {/* Barra de acento con la paleta de marca */}
+          <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${BLUE} 0%, ${RED} 55%, ${GOLD} 100%)` }} />
+
+          <div className="flex items-center gap-2 px-4 pb-2.5 pt-3">
+            <EcosystemGlyph />
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
               Ecosistema LexHouse AI
             </span>
           </div>
 
-          {/* Productos */}
-          <div className="p-1.5">
+          <div className="p-1.5 pt-0">
             {SITES.map((s) => {
               const isCurrent = s.key === current;
               const soon = !s.href;
               const Inner = (
                 <>
                   <span
-                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: `${s.color}14`, color: s.color }}
+                    className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ring-1 ring-black/5 transition-transform duration-200 group-hover:scale-105"
+                    style={{ background: `linear-gradient(135deg, ${s.grad[0]}, ${s.grad[1]})`, boxShadow: `0 6px 16px -6px ${s.color}` }}
                   >
-                    <s.icon className="h-[18px] w-[18px]" />
+                    <s.icon className="h-5 w-5" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5">
@@ -130,23 +145,24 @@ export function EcosystemSwitcher({ current, theme = "light", className = "" }: 
                     </span>
                     <span className="mt-0.5 block text-[12px] leading-snug text-slate-500">{s.desc}</span>
                     {isCurrent && (
-                      <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                      <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
                         Estás aquí
                       </span>
                     )}
                     {soon && !isCurrent && (
-                      <span className="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${GOLD}1f`, color: "#8a6d1a" }}>
+                      <span className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${GOLD}1f`, color: "#8a6d1a" }}>
                         Próximamente
                       </span>
                     )}
                   </span>
                   {s.href && !isCurrent && (
-                    <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" aria-hidden="true" />
+                    <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-600" aria-hidden="true" />
                   )}
                 </>
               );
 
-              const base = "group flex items-start gap-3 rounded-xl p-3 text-left transition-colors";
+              const base = "group flex items-start gap-3 rounded-xl p-2.5 text-left transition-colors";
 
               if (soon) {
                 return (
