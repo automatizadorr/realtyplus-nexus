@@ -178,6 +178,173 @@ export const POSTS: BlogPost[] = [
       </>
     ),
   },
+  {
+    slug: "calificar-leads-inmobiliarios-ia",
+    title: "Cómo calificar leads inmobiliarios con IA (lead scoring) en 2026",
+    description:
+      "El lead scoring con inteligencia artificial te dice a quién llamar primero. Aprende cómo la IA puntúa a tus contactos por intención de compra y deja de perder tiempo en curiosos.",
+    category: "Leads · IA",
+    date: "2026-07-27",
+    dateLabel: "27 de julio de 2026",
+    readingTime: "6 min",
+    keywords: "calificación de leads, lead scoring inmobiliario, CRM inmobiliario con inteligencia artificial, captación de leads, IA para inmobiliarias",
+    Body: () => (
+      <>
+        <P>
+          El problema no suele ser la falta de leads, sino no saber a cuál dedicarle tiempo.
+          Un corredor recibe decenas de consultas por portales, redes y WhatsApp, pero solo un
+          puñado está listo para comprar. El <strong>lead scoring con IA</strong> resuelve
+          justo eso: puntúa a cada contacto según qué tan cerca está de cerrar.
+        </P>
+
+        <H2>¿Qué es el lead scoring?</H2>
+        <P>
+          Es asignar un puntaje a cada lead a partir de su comportamiento e intención: qué
+          propiedades mira, cuánto responde, si pregunta por financiamiento o por agendar una
+          visita. En vez de una lista plana de contactos, tienes una lista <em>priorizada</em>.
+        </P>
+
+        <H2>Qué mira la IA para puntuar</H2>
+        <UL
+          items={[
+            "Intención en el mensaje: «quiero agendar» pesa más que «solo miraba».",
+            "Velocidad y frecuencia de respuesta del contacto.",
+            "Presupuesto y financiamiento mencionados en la conversación.",
+            "Tipo y cantidad de propiedades por las que consulta.",
+            "Momento: un lead que responde en minutos está caliente.",
+          ]}
+        />
+
+        <H2>De la puntuación a la acción</H2>
+        <P>
+          Un buen sistema no solo puntúa: <strong>actúa</strong>. Clasifica al lead por intención,
+          agenda la reunión y te avisa cuando alguien está listo. Eso es exactamente lo que hacen
+          los <LexLink to="/soluciones/ia">agentes IA de LexHouse</LexLink>: leen la conversación,
+          califican y agendan, para que tú entres solo cuando vale la pena.
+        </P>
+
+        <H2>No pierdas al lead caliente</H2>
+        <P>
+          El 78% contrata con quien responde primero. Combinar lead scoring con respuesta
+          instantánea es la diferencia entre cerrar o ver cómo tu lead se va con la competencia.
+          Si quieres la suite completa —marketplace, contratos con IA y valuación—, está toda en{" "}
+          <LexLink to="/soluciones/plataforma">lexhouse-ai.com</LexLink>.
+        </P>
+      </>
+    ),
+  },
+  {
+    slug: "chatbot-inmobiliario-whatsapp",
+    title: "Chatbot inmobiliario por WhatsApp: capta y responde primero",
+    description:
+      "Un chatbot inmobiliario con IA en WhatsApp atiende, cualifica y agenda 24/7. Te contamos qué debe hacer un buen asistente y por qué responder primero define quién cierra la venta.",
+    category: "WhatsApp · IA",
+    date: "2026-07-27",
+    dateLabel: "27 de julio de 2026",
+    readingTime: "6 min",
+    keywords: "chatbot para inmobiliarias, chatbot inmobiliario WhatsApp, CRM para inmobiliarias con WhatsApp, captación de leads, automatización inmobiliaria",
+    Body: () => (
+      <>
+        <P>
+          Los leads inmobiliarios llegan por WhatsApp, a cualquier hora. El que responde en
+          minutos gana; el que responde al día siguiente, pierde. Un <strong>chatbot inmobiliario
+          con IA</strong> se asegura de que siempre haya respuesta, aunque estés en una visita o
+          durmiendo.
+        </P>
+
+        <H2>Qué debe hacer un buen chatbot inmobiliario</H2>
+        <UL
+          items={[
+            "Responder al instante con el tono de tu marca, no con respuestas robóticas.",
+            "Cualificar: preguntar por zona, presupuesto y plazo sin agobiar.",
+            "Agendar la visita o reunión directo en tu calendario.",
+            "Pasarte la conversación ordenada y clasificada cuando el lead está listo.",
+          ]}
+        />
+
+        <H2>Por qué WhatsApp y no otra cosa</H2>
+        <P>
+          Tu cliente ya está en WhatsApp; obligarlo a un formulario o a otra app pierde a la
+          mayoría. Un asistente que vive en WhatsApp trabaja donde el lead ya está. Así funciona
+          <strong> Sofía</strong>, la asesora IA de este ecosistema: atiende sobre tu propio número.
+        </P>
+
+        <H2>Del chatbot a la plataforma completa</H2>
+        <P>
+          Responder primero es el inicio. Después necesitas publicar la propiedad, revisar el
+          contrato y valorizar bien. Todo eso vive en{" "}
+          <LexLink to="/">LexHouse AI</LexLink>: mira los{" "}
+          <LexLink to="/soluciones/ia">agentes IA</LexLink> para la atención automática y{" "}
+          <LexLink to="/soluciones/legal">Contratos IA</LexLink> para revisar promesas y
+          arriendos en segundos.
+        </P>
+      </>
+    ),
+  },
+  {
+    slug: "herramientas-ia-agentes-inmobiliarios-2026",
+    title: "Herramientas de IA para agentes inmobiliarios: guía 2026",
+    description:
+      "Del primer contacto al cierre: las herramientas de inteligencia artificial que hoy usan los agentes inmobiliarios para captar leads, revisar contratos, valorizar y crear contenido.",
+    category: "Guía · IA",
+    date: "2026-07-27",
+    dateLabel: "27 de julio de 2026",
+    readingTime: "8 min",
+    keywords: "herramientas de IA para agentes inmobiliarios, software inmobiliario con IA, inteligencia artificial inmobiliaria, automatización inmobiliaria, corredor de propiedades",
+    Body: () => (
+      <>
+        <P>
+          La inteligencia artificial dejó de ser un lujo para grandes agencias: hoy un corredor
+          independiente puede automatizar casi todo el recorrido de una venta. Esta es la guía
+          práctica de las herramientas de IA que de verdad mueven la aguja en 2026, ordenadas por
+          etapa del negocio.
+        </P>
+
+        <H2>1. Captación y atención de leads</H2>
+        <P>
+          Asistentes con IA que responden por WhatsApp en segundos, cualifican por intención y
+          agendan solos. Es la base: sin respuesta rápida, el resto no importa. Ver los{" "}
+          <LexLink to="/soluciones/ia">agentes IA de LexHouse</LexLink>.
+        </P>
+
+        <H2>2. Revisión legal de contratos</H2>
+        <P>
+          Promesas, arriendos y compraventas esconden cláusulas de riesgo. La IA legal las detecta
+          en menos de un minuto y entrega un informe con semáforo de riesgo —ideal antes de firmar.
+          Ver <LexLink to="/soluciones/legal">Contratos IA</LexLink>.
+        </P>
+
+        <H2>3. Valuación y datos de mercado</H2>
+        <P>
+          Poner el precio correcto define si vendes en semanas o en meses. Las herramientas de
+          valuación inteligente cruzan datos por comuna y tipo de propiedad para sugerir un rango
+          realista. Todo esto está en la{" "}
+          <LexLink to="/soluciones/plataforma">plataforma de LexHouse AI</LexLink>.
+        </P>
+
+        <H2>4. Marketing y contenido con IA</H2>
+        <P>
+          Textos de aviso, publicación en múltiples portales y <strong>reels</strong> verticales
+          para redes. Crear contenido de propiedades con IA acelera la exposición sin equipo de
+          marketing.
+        </P>
+
+        <H2>5. Organización con un CRM</H2>
+        <P>
+          Un CRM que ordena las conversaciones y te dice a quién seguir evita que los leads se
+          enfríen. Es el hilo que conecta todas las etapas anteriores.
+        </P>
+
+        <H2>Cómo empezar sin abrumarte</H2>
+        <P>
+          No necesitas todo el día uno. Empieza por la respuesta automática de leads, suma la
+          revisión de contratos y la valuación, y ve creciendo. Todo el ecosistema —plataforma,
+          CRM y creación de video— parte desde{" "}
+          <LexLink to="/">lexhouse-ai.com</LexLink>.
+        </P>
+      </>
+    ),
+  },
 ];
 
 export const getPost = (slug: string) => POSTS.find((p) => p.slug === slug);
