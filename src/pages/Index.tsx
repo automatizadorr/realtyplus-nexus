@@ -11,6 +11,7 @@ import {
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
 import { EcosystemSwitcher } from "@/components/EcosystemSwitcher";
+import { PublicFooter } from "@/components/public/PublicFooter";
 
 // ── Paleta de marca LexHouse AI (azul · rojo · dorado · navy) ─────────────────
 const INK = "#0F1B2D";       // navy LexHouse (secciones oscuras y texto)
@@ -18,7 +19,6 @@ const INK2 = "#132743";      // navy elevado
 const BLUE = "#003DA5";      // AZUL LexHouse (marca, sobre fondos claros)
 const BLUE_LT = "#7FA8FF";   // azul claro (acentos sobre fondos oscuros)
 const BRAND = "#DC1C2E";     // ROJO LexHouse (acción)
-const GOLD = "#D4AF37";      // DORADO LexHouse (acento premium editorial)
 const SIGNAL = "#25D366";    // verde WhatsApp — SOLO dentro del canal WhatsApp
 const HOT = "#F59E0B";       // lead caliente
 
@@ -1029,48 +1029,7 @@ export default function Index() {
         </section>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="py-14 px-6" style={{ background: INK }} aria-label="Pie de página">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-10 mb-10">
-            <div>
-              <span className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-2 mb-4 ring-1 ring-white/10">
-                <img src={lexLogo} alt="LexHouse AI" className="h-14 w-auto" width="56" height="56" />
-              </span>
-              <p className="text-white/40 text-sm leading-relaxed">CRM inmobiliario sobre WhatsApp, con IA que responde, agenda y clasifica.</p>
-            </div>
-            {[
-              { title: "Plataforma", links: ["Inbox unificado", "Sofía · Asesora IA", "Etiquetado IA", "Campañas", "Scanner", "VoiceCRM"] },
-              { title: "Recursos", links: ["Reporte diario", "Exportar leads", "Dashboard", "Integraciones"] },
-              { title: "LexHouse AI", links: ["Red de corredores", "Soporte", "Privacidad", "Términos"] },
-            ].map((col) => (
-              <div key={col.title}>
-                <h3 className="font-mono text-white/70 text-xs uppercase tracking-widest mb-4">{col.title}</h3>
-                <ul className="space-y-2.5">
-                  {col.links.map((l) => (
-                    <li key={l}><span className="text-white/45 text-sm">{l}</span></li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-white/10 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/30 text-xs">
-            <span>© {new Date().getFullYear()} LexHouse AI · Servicios Inmobiliarios Plus Sur SL</span>
-            <span className="font-mono flex items-center gap-1.5">
-              Conoce{" "}
-              <a
-                href="https://www.lexhouse-ai.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors underline underline-offset-2"
-                style={{ color: GOLD }}
-              >
-                lexhouse-ai.com
-              </a>
-            </span>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

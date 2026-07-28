@@ -286,7 +286,16 @@ All colors MUST be HSL.
 @keyframes lh-scroll-dot { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 .lh-scroll-dot { animation: lh-scroll-dot 1.8s ease-in-out infinite; }
 
+/* Scan line del footer (lenguaje de marca del ecosistema LexHouse AI). */
+@keyframes lh-footer-scan {
+  0%   { transform: translateY(0);    opacity: 0; }
+  8%   { opacity: 0.22; }
+  92%  { opacity: 0.22; }
+  100% { transform: translateY(520px); opacity: 0; }
+}
+.lh-footer-scan { animation: lh-footer-scan 11s linear infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .lh-reveal, .lh-hero-item { opacity: 1 !important; transform: none !important; transition: none !important; }
-  .lh-fade, .lh-msg, .lh-appt, .lh-check, .lh-ring, .lh-detail, .lh-loadbar, .lh-scrollcue, .lh-scroll-dot { animation: none !important; }
+  .lh-fade, .lh-msg, .lh-appt, .lh-check, .lh-ring, .lh-detail, .lh-loadbar, .lh-scrollcue, .lh-scroll-dot, .lh-footer-scan { animation: none !important; }
 }

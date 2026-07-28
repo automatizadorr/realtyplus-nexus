@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { EcosystemSwitcher } from "@/components/EcosystemSwitcher";
+import { PublicFooter } from "@/components/public/PublicFooter";
 
 const INK = "#0F1B2D";
 const BRAND = "#DC1C2E";
-const GOLD = "#D4AF37";
 
 /* Marco público (nav + footer) para páginas fuera de la landing (blog). */
 export function PublicShell({ children }: { children: ReactNode }) {
@@ -29,20 +29,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
 
       <main>{children}</main>
 
-      {/* Footer */}
-      <footer className="mt-20 py-12 px-6" style={{ background: INK }} aria-label="Pie de página">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-2 ring-1 ring-white/10">
-            <img src={lexLogo} alt="LexHouse AI" className="h-11 w-auto" width="44" height="44" />
-          </span>
-          <p className="text-white/40 text-xs text-center sm:text-right font-mono">
-            © {new Date().getFullYear()} LexHouse AI · Servicios Inmobiliarios Plus Sur SL ·{" "}
-            <a href="https://lexhouse-ai.com" target="_blank" rel="noopener" className="hover:text-white underline underline-offset-2" style={{ color: GOLD }}>
-              lexhouse-ai.com
-            </a>
-          </p>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
