@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { bodyToHtml, buildProEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
+import { EMAIL_COPYS, type EmailCopy } from "@/lib/emailCopys";
 
 type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
@@ -164,6 +165,18 @@ export default function CorreosPersonalizados() {
   const [footerText, setFooterText] = useState(
     "LexHouse · Inteligencia artificial para corredoras de propiedades. Responde este correo y te contactamos.",
   );
+
+  // Aplica una plantilla de copy (asunto + título + cuerpo + botón + regalo) al composer.
+  const applyCopy = (c: EmailCopy) => {
+    setSubject(c.subject);
+    setTitulo(c.titulo);
+    setBody(c.body);
+    setCtaText(c.ctaText);
+    setCtaUrl(c.ctaUrl);
+    setBrandColor(c.brandColor);
+    setDesignMode("pro");
+    toast({ title: `Plantilla "${c.badge}" cargada`, description: "Asunto, cuerpo, botón y regalo listos. Revisa y envía." });
+  };
 
   // Compone el HTML de la campaña (plantilla con {{variables}} intactas; la edge las rellena).
   const composeHtml = () =>
@@ -402,8 +415,44 @@ export default function CorreosPersonalizados() {
         </CardContent>
       </Card>
 
+      {/* Plantillas que convierten (copys especializados con regalo) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-[#003DA5]" /> Plantillas que convierten
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Copys listos para <strong>leads tibios</strong>, cada uno ataca un dolor y regala una guía de valor. Un clic carga asunto, cuerpo, botón y regalo.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {EMAIL_COPYS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => applyCopy(c)}
+                className="group flex flex-col rounded-xl border p-3 text-left transition hover:border-[#003DA5]/50 hover:shadow-sm"
+              >
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ backgroundColor: `${c.brandColor}18`, color: c.brandColor }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c.brandColor }} />
+                  {c.badge}
+                </span>
+                <span className="mt-2 text-sm font-semibold leading-snug">{c.titulo}</span>
+                <span className="mt-1 text-xs text-muted-foreground">Dolor: {c.dolor}</span>
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#003DA5] opacity-0 transition group-hover:opacity-100">
+                  <Sparkles className="h-3 w-3" /> Usar esta plantilla
+                </span>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Diseño del correo */}
       <EmailDesignCard
+        userId={user?.id}
         designMode={designMode} setDesignMode={setDesignMode}
         titulo={titulo} setTitulo={setTitulo}
         ctaText={ctaText} setCtaText={setCtaText}

@@ -1,7 +1,11 @@
-import { Palette, Type, MousePointerClick, Link2, Image, AlignLeft } from "lucide-react";
+import { useRef, useState } from "react";
+import { Palette, Type, MousePointerClick, Link2, Image, AlignLeft, Upload, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export type DesignMode = "texto" | "pro";
 
@@ -14,6 +18,7 @@ type Props = {
   brandColor: string; setBrandColor: (v: string) => void;
   logoUrl: string; setLogoUrl: (v: string) => void;
   footerText: string; setFooterText: (v: string) => void;
+  userId?: string;
 };
 
 const modeBtn = (active: boolean) =>
@@ -23,6 +28,38 @@ const modeBtn = (active: boolean) =>
 
 export default function EmailDesignCard(p: Props) {
   const pro = p.designMode === "pro";
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleLogoFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Archivo no válido", description: "Sube una imagen (PNG, JPG o WEBP).", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Imagen muy pesada", description: "Máximo 2 MB. Comprime el logo e inténtalo de nuevo.", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `${p.userId || "shared"}/logo-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("email-assets")
+        .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "31536000" });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("email-assets").getPublicUrl(path);
+      p.setLogoUrl(pub.publicUrl);
+      toast({ title: "Logo subido", description: "Se usará en el encabezado del correo." });
+    } catch (e) {
+      toast({ title: "No se pudo subir", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -69,8 +106,26 @@ export default function EmailDesignCard(p: Props) {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5 text-xs"><Image className="h-3.5 w-3.5" /> Logo (URL pública, opcional)</Label>
-                <Input value={p.logoUrl} onChange={(e) => p.setLogoUrl(e.target.value)} placeholder="https://…/logo.png (si vacío, usa el nombre)" />
+                <Label className="flex items-center gap-1.5 text-xs"><Image className="h-3.5 w-3.5" /> Logo (opcional)</Label>
+                <div className="flex items-center gap-2">
+                  {p.logoUrl && (
+                    <span className="grid h-9 w-14 shrink-0 place-items-center overflow-hidden rounded border border-input bg-[#0f1e3a] px-1">
+                      <img src={p.logoUrl} alt="logo" className="max-h-7 max-w-full object-contain" />
+                    </span>
+                  )}
+                  <Input value={p.logoUrl} onChange={(e) => p.setLogoUrl(e.target.value)} placeholder="Pega una URL o sube una imagen →" />
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); }} />
+                  <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Subir
+                  </Button>
+                  {p.logoUrl && (
+                    <Button type="button" variant="ghost" size="sm" className="shrink-0 text-muted-foreground" onClick={() => p.setLogoUrl("")}>
+                      Quitar
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">PNG/JPG/WEBP, máx 2 MB. Si lo dejas vacío, el encabezado usa el nombre del remitente.</p>
               </div>
             </div>
             <div className="space-y-1.5">
