@@ -20,6 +20,7 @@ type Recipient = { email: string; empresa: string; ciudad: string; gancho: strin
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const isEmail = (s: string) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test((s || "").trim());
 
 const DEFAULT_SUBJECT = "{{empresa}}: que ningún lead se te vuelva a escapar";
 const DEFAULT_BODY = `Hola equipo de {{empresa}},
@@ -64,6 +65,97 @@ function bodyToHtml(text: string): string {
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1a2b4a;line-height:1.6;max-width:560px;margin:0 auto">\n${html}\n</div>`;
 }
 
+// --- Scraping / extracción de datos desde HTML ---
+
+// Extrae el primer array JSON de objetos ([{...}]) del texto, con matching de
+// corchetes balanceado (tolera arrays anidados como "problemas"). Sirve para
+// leer el bloque `const data = [ ... ]` que traen los HTML de prospección.
+function extractFirstJsonArray(text: string): Record<string, unknown>[] | null {
+  const m = text.match(/\[\s*\{/);
+  if (!m || m.index === undefined) return null;
+  const start = m.index;
+  let depth = 0, inStr = false, esc = false, quote = "";
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === quote) inStr = false;
+      continue;
+    }
+    if (c === '"' || c === "'") { inStr = true; quote = c; continue; }
+    if (c === "[") depth++;
+    else if (c === "]") {
+      depth--;
+      if (depth === 0) {
+        try {
+          const arr = JSON.parse(text.slice(start, i + 1));
+          return Array.isArray(arr) ? arr : null;
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// Deriva un "gancho" (dolor) legible desde el registro de prospección.
+function toGancho(o: Record<string, unknown>): string {
+  if (typeof o.gancho === "string" && o.gancho.trim()) return o.gancho.trim();
+  const p = o.problemas;
+  if (Array.isArray(p) && p.length > 0) {
+    const first = String(p[0]).trim();
+    return first ? first.charAt(0).toLowerCase() + first.slice(1) : "";
+  }
+  return "";
+}
+
+const pick = (o: Record<string, unknown>, ...keys: string[]): string => {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+};
+
+// Parsea texto/HTML pegado y devuelve destinatarios. Primero intenta el array
+// estructurado (empresa/ciudad/gancho); luego añade correos sueltos (mailto: y
+// regex) que no estuvieran ya. `structured` = cuántos vinieron con datos.
+function parseProspects(raw: string): { recips: Recipient[]; structured: number } {
+  const out: Recipient[] = [];
+  const seen = new Set<string>();
+  let structured = 0;
+
+  const arr = extractFirstJsonArray(raw);
+  if (arr) {
+    for (const o of arr) {
+      const email = pick(o, "email", "correo", "mail").toLowerCase();
+      if (!isEmail(email) || seen.has(email)) continue;
+      seen.add(email);
+      out.push({
+        email,
+        empresa: pick(o, "nombre", "empresa", "name", "corredora"),
+        ciudad: pick(o, "ciudad", "city", "comuna"),
+        gancho: toGancho(o),
+      });
+      structured++;
+    }
+  }
+
+  // Correos sueltos: enlaces mailto: y coincidencias de regex.
+  const mailtos = [...raw.matchAll(/mailto:([^"'>\s?]+)/gi)].map((mm) => mm[1]);
+  const plains = raw.match(EMAIL_RE) || [];
+  for (const cand of [...mailtos, ...plains]) {
+    const e = cand.toLowerCase();
+    if (!isEmail(e) || seen.has(e)) continue;
+    seen.add(e);
+    out.push({ email: e, empresa: "", ciudad: "", gancho: "" });
+  }
+
+  return { recips: out, structured };
+}
+
 export default function CorreosPersonalizados() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -81,28 +173,30 @@ export default function CorreosPersonalizados() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const validCount = useMemo(
-    () => recipients.filter((r) => EMAIL_RE.test(r.email)).length,
+    () => recipients.filter((r) => isEmail(r.email)).length,
     [recipients],
   );
 
-  // Extrae correos del texto pegado y los añade (deduplicando con los existentes).
-  const extractEmails = () => {
-    const found = rawInput.match(EMAIL_RE) || [];
+  // Importa desde el texto/HTML pegado: primero intenta datos estructurados
+  // (bloque `const data = [...]` de los HTML de prospección → empresa/ciudad/gancho)
+  // y, si no, cae a extraer solo los correos (mailto: + regex). Deduplica.
+  const importData = () => {
+    const { recips } = parseProspects(rawInput);
     const existing = new Set(recipients.map((r) => r.email.toLowerCase()));
-    const nuevos: Recipient[] = [];
-    for (const raw of found) {
-      const e = raw.toLowerCase();
-      if (existing.has(e)) continue;
-      existing.add(e);
-      nuevos.push({ email: e, empresa: "", ciudad: "", gancho: "" });
-    }
+    const nuevos = recips.filter((r) => !existing.has(r.email));
     if (nuevos.length === 0) {
-      toast({ title: "Sin correos nuevos", description: "No encontré correos nuevos en el texto pegado.", variant: "destructive" });
+      toast({ title: "Sin correos nuevos", description: "No encontré correos nuevos en el texto/HTML pegado.", variant: "destructive" });
       return;
     }
     setRecipients((prev) => [...prev, ...nuevos]);
     setRawInput("");
-    toast({ title: `${nuevos.length} correo(s) añadido(s)`, description: "Completa empresa, ciudad y gancho de cada uno." });
+    const conDatos = nuevos.filter((r) => r.empresa || r.ciudad || r.gancho).length;
+    toast({
+      title: `${nuevos.length} destinatario(s) importado(s)`,
+      description: conDatos > 0
+        ? `${conDatos} con empresa/ciudad/gancho autocompletados desde el HTML. Revisa lo que falte.`
+        : "Solo correos detectados. Completa empresa, ciudad y gancho de cada uno.",
+    });
   };
 
   const updateRow = (i: number, field: keyof Recipient, value: string) => {
@@ -164,7 +258,7 @@ export default function CorreosPersonalizados() {
     );
   };
 
-  const previewRow = recipients.find((r) => EMAIL_RE.test(r.email)) || {
+  const previewRow = recipients.find((r) => isEmail(r.email)) || {
     empresa: "Tu Corredora", ciudad: "tu ciudad", gancho: "los leads se pierden entre planillas y WhatsApp",
   };
 
@@ -193,16 +287,20 @@ export default function CorreosPersonalizados() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Label className="text-xs text-muted-foreground">Pega aquí texto, HTML o una lista con correos y extráelos automáticamente</Label>
+          <Label className="text-xs text-muted-foreground">
+            Pega el <strong>HTML de prospección</strong> (o cualquier texto/lista con correos). Si detecta los datos
+            estructurados, autocompleta <strong>empresa, ciudad y gancho</strong>; si no, extrae solo los correos.
+          </Label>
           <Textarea
             value={rawInput}
             onChange={(e) => setRawInput(e.target.value)}
-            placeholder="Pega aquí el texto/HTML con los correos…"
-            rows={3}
+            placeholder="Pega aquí el HTML de la campaña (p. ej. campana-nexus-inmobiliarias.html) o una lista de correos…"
+            rows={4}
+            className="font-mono text-[12px]"
           />
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={extractEmails} disabled={!rawInput.trim()} className="gap-2">
-              <Sparkles className="h-4 w-4" /> Extraer correos
+            <Button type="button" onClick={importData} disabled={!rawInput.trim()} className="gap-2">
+              <Sparkles className="h-4 w-4" /> Extraer datos del HTML
             </Button>
             <Button type="button" variant="outline" onClick={addEmptyRow} className="gap-2">
               <UserPlus className="h-4 w-4" /> Añadir fila manual
@@ -231,7 +329,7 @@ export default function CorreosPersonalizados() {
                     <TableRow key={i}>
                       <TableCell>
                         <Input value={r.email} onChange={(e) => updateRow(i, "email", e.target.value)} placeholder="correo@dominio.cl"
-                          className={!r.email || EMAIL_RE.test(r.email) ? "" : "border-destructive"} />
+                          className={!r.email || isEmail(r.email) ? "" : "border-destructive"} />
                       </TableCell>
                       <TableCell><Input value={r.empresa} onChange={(e) => updateRow(i, "empresa", e.target.value)} placeholder="Nombre corredora" /></TableCell>
                       <TableCell><Input value={r.ciudad} onChange={(e) => updateRow(i, "ciudad", e.target.value)} placeholder="Ciudad" /></TableCell>
@@ -375,7 +473,7 @@ export default function CorreosPersonalizados() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-[#003DA5] hover:bg-[#003DA5]/90"
-              onClick={() => { setConfirmOpen(false); doSend(recipients.filter((r) => EMAIL_RE.test(r.email)), "Campaña"); }}
+              onClick={() => { setConfirmOpen(false); doSend(recipients.filter((r) => isEmail(r.email)), "Campaña"); }}
             >
               Sí, enviar
             </AlertDialogAction>
