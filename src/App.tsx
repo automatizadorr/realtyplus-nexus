@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { EcosystemAgentsFab } from "@/components/global/EcosystemAgentsFab";
 
 // Layout (shell del CRM: sidebar + header) solo se usa tras login → lazy, para
 // no arrastrar AppSidebar (framer-motion + radix-sidebar) al bundle de la landing.
@@ -99,6 +100,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <InstallPrompt />
+          <EcosystemAgentsFab />
           <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
             <Routes>

@@ -1,5 +1,9 @@
 project_id = "owykkhwqpnumvgdeugmj"
 
+# Sofía — chat público de la landing (visitantes anónimos). Debe ser público.
+[functions.sofia-chat]
+verify_jwt = false
+
 [functions.sync-id-contacto]
 verify_jwt = false
 
