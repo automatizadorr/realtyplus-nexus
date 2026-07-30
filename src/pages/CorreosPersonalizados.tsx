@@ -15,6 +15,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { bodyToHtml, buildProEmail } from "@/lib/emailTemplates";
+import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
 
 type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
@@ -46,23 +48,6 @@ function fill(tpl: string, r: Partial<Recipient>): string {
     const key = k.toLowerCase() as keyof Recipient;
     return (r[key] as string) || "";
   });
-}
-
-// Convierte el cuerpo en texto plano a HTML con estilo (párrafos, listas y saltos).
-function bodyToHtml(text: string): string {
-  const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
-  const html = blocks
-    .map((block) => {
-      const lines = block.split(/\n/).map((l) => l.trim());
-      const isList = lines.every((l) => /^[-•]\s+/.test(l));
-      if (isList) {
-        const items = lines.map((l) => `<li>${l.replace(/^[-•]\s+/, "")}</li>`).join("");
-        return `<ul>${items}</ul>`;
-      }
-      return `<p>${lines.join("<br>")}</p>`;
-    })
-    .join("\n");
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1a2b4a;line-height:1.6;max-width:560px;margin:0 auto">\n${html}\n</div>`;
 }
 
 // --- Scraping / extracción de datos desde HTML ---
@@ -168,6 +153,24 @@ export default function CorreosPersonalizados() {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [body, setBody] = useState(DEFAULT_BODY);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Diseño del correo
+  const [designMode, setDesignMode] = useState<DesignMode>("pro");
+  const [titulo, setTitulo] = useState("Que ningún lead de {{empresa}} se vuelva a escapar");
+  const [ctaText, setCtaText] = useState("Agendar 10 minutos");
+  const [ctaUrl, setCtaUrl] = useState("");
+  const [brandColor, setBrandColor] = useState("#003DA5");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [footerText, setFooterText] = useState(
+    "LexHouse · Inteligencia artificial para corredoras de propiedades. Responde este correo y te contactamos.",
+  );
+
+  // Compone el HTML de la campaña (plantilla con {{variables}} intactas; la edge las rellena).
+  const composeHtml = () =>
+    designMode === "pro"
+      ? buildProEmail({ fromName, titulo, body, ctaText, ctaUrl, brandColor, logoUrl, footerText })
+      : bodyToHtml(body);
+
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -247,7 +250,7 @@ export default function CorreosPersonalizados() {
           replyTo: replyTo.trim() || undefined,
           subject,
           text: body,
-          html: bodyToHtml(body),
+          html: composeHtml(),
           recipients: payloadRecipients,
         },
       });
@@ -399,6 +402,17 @@ export default function CorreosPersonalizados() {
         </CardContent>
       </Card>
 
+      {/* Diseño del correo */}
+      <EmailDesignCard
+        designMode={designMode} setDesignMode={setDesignMode}
+        titulo={titulo} setTitulo={setTitulo}
+        ctaText={ctaText} setCtaText={setCtaText}
+        ctaUrl={ctaUrl} setCtaUrl={setCtaUrl}
+        brandColor={brandColor} setBrandColor={setBrandColor}
+        logoUrl={logoUrl} setLogoUrl={setLogoUrl}
+        footerText={footerText} setFooterText={setFooterText}
+      />
+
       {/* Paso 3 — Mensaje */}
       <Card>
         <CardHeader>
@@ -433,8 +447,16 @@ export default function CorreosPersonalizados() {
                 Vista previa · {("empresa" in previewRow && previewRow.empresa) || "(sin empresa)"}
               </p>
               <p className="mb-3 text-sm font-semibold">{fill(subject, previewRow)}</p>
-              <div className="prose prose-sm max-w-none text-[14px] [&_ul]:list-disc [&_ul]:pl-5"
-                dangerouslySetInnerHTML={{ __html: bodyToHtml(fill(body, previewRow)) }} />
+              {designMode === "pro" ? (
+                <iframe
+                  title="Vista previa del correo"
+                  className="h-[560px] w-full rounded-md border bg-white"
+                  srcDoc={fill(composeHtml(), previewRow)}
+                />
+              ) : (
+                <div className="prose prose-sm max-w-none text-[14px] [&_ul]:list-disc [&_ul]:pl-5"
+                  dangerouslySetInnerHTML={{ __html: bodyToHtml(fill(body, previewRow)) }} />
+              )}
             </div>
           )}
         </CardContent>
