@@ -28,7 +28,29 @@ type LeadRow = {
 };
 
 const PAGE_SIZE = 25;
+const MAX_ENVIO = 200; // tope de destinatarios por campaña en send-personalized-campaign
 const LEADS_IMPORT_KEY = "prospeccion_leads_import";
+
+type Filters = {
+  q: string; tagId: string; pais: string; estado: string;
+  respondido: string; incluirArchivados: boolean; soloConEmail: boolean;
+};
+
+// Aplica los filtros a un query builder de leads_campana.
+// Compartido por la tabla paginada y por la carga a Correos (una sola fuente de verdad).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyFilters(query: any, f: Filters): any {
+  if (!f.incluirArchivados) query = query.not("archivado", "is", true);
+  if (f.tagId !== "all") query = query.contains("tag_ids", [f.tagId]);
+  if (f.pais !== "all") query = query.eq("pais", f.pais);
+  if (f.estado !== "all") query = query.eq("estado", f.estado);
+  if (f.respondido === "si") query = query.eq("ha_respondido", true);
+  if (f.respondido === "no") query = query.not("ha_respondido", "is", true);
+  if (f.soloConEmail) query = query.not("email", "is", null).neq("email", "");
+  const term = f.q.trim();
+  if (term) query = query.or(`nombre.ilike.%${term}%,email.ilike.%${term}%,telefono.ilike.%${term}%`);
+  return query;
+}
 
 const digits = (t?: string | null) => (t ?? "").split("@")[0].replace(/\D/g, "");
 const waHref = (t?: string | null) => { const d = digits(t); return d.length >= 8 ? `https://wa.me/${d}` : null; };
@@ -61,6 +83,7 @@ export default function ReactivacionTab() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [cargando, setCargando] = useState(false);
 
   const tagMap = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -90,17 +113,7 @@ export default function ReactivacionTab() {
             "id, nombre, telefono, email, pais, estado, puntuacion, dias_reales, ha_respondido, archivado, tag_ids, ultimo_contacto_at, resumen_ia",
             { count: "exact" }
           );
-
-        if (!incluirArchivados) query = query.not("archivado", "is", true);
-        if (tagId !== "all") query = query.contains("tag_ids", [tagId]);
-        if (pais !== "all") query = query.eq("pais", pais);
-        if (estado !== "all") query = query.eq("estado", estado);
-        if (respondido === "si") query = query.eq("ha_respondido", true);
-        if (respondido === "no") query = query.not("ha_respondido", "is", true);
-        if (soloConEmail) query = query.not("email", "is", null).neq("email", "");
-        const term = qDebounced.trim();
-        if (term) query = query.or(`nombre.ilike.%${term}%,email.ilike.%${term}%,telefono.ilike.%${term}%`);
-
+        query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
         query = query
           .order("dias_reales", { ascending: false, nullsFirst: false })
           .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -126,17 +139,43 @@ export default function ReactivacionTab() {
     setRespondido("all"); setIncluirArchivados(false); setSoloConEmail(false);
   };
 
-  const cargarEnCorreos = () => {
-    const conCorreo = rows.filter((l) => (l.email || "").trim());
-    if (!conCorreo.length) { toast({ title: "Sin correos en esta página", variant: "destructive" }); return; }
-    const recips = conCorreo.map((l) => ({
-      email: (l.email || "").trim().toLowerCase(),
-      empresa: l.nombre || "",
-      ciudad: l.pais || "",
-      gancho: l.resumen_ia || "",
-    }));
-    sessionStorage.setItem(LEADS_IMPORT_KEY, JSON.stringify(recips));
-    navigate("/correos-personalizados");
+  // Carga TODOS los leads del filtro (con email, deduplicados), no solo la página visible.
+  // Tope MAX_ENVIO = 200 = límite de destinatarios por campaña.
+  const cargarEnCorreos = async () => {
+    setCargando(true);
+    try {
+      let query = supabase.from("leads_campana").select("nombre, email, pais, resumen_ia");
+      query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
+      query = query
+        .not("email", "is", null).neq("email", "")
+        .order("dias_reales", { ascending: false, nullsFirst: false })
+        .range(0, MAX_ENVIO - 1);
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const seen = new Set<string>();
+      const recips: { email: string; empresa: string; ciudad: string; gancho: string }[] = [];
+      for (const l of (data ?? []) as Pick<LeadRow, "nombre" | "email" | "pais" | "resumen_ia">[]) {
+        const email = (l.email || "").trim().toLowerCase();
+        if (!email || seen.has(email)) continue;
+        seen.add(email);
+        recips.push({ email, empresa: l.nombre || "", ciudad: l.pais || "", gancho: l.resumen_ia || "" });
+      }
+      if (!recips.length) { toast({ title: "Sin correos en el filtro", variant: "destructive" }); return; }
+
+      sessionStorage.setItem(LEADS_IMPORT_KEY, JSON.stringify(recips));
+      toast({
+        title: `${recips.length} leads cargados`,
+        description: total > MAX_ENVIO
+          ? `El filtro tiene ${total.toLocaleString("es-CL")}; se cargaron los primeros ${recips.length} (máx ${MAX_ENVIO}/campaña). Afina el filtro o envía en tandas.`
+          : "Revisa y envía en Correos Personalizados.",
+      });
+      navigate("/correos-personalizados");
+    } catch (e) {
+      toast({ title: "Error al cargar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setCargando(false);
+    }
   };
 
   const desde = total === 0 ? 0 : page * PAGE_SIZE + 1;
@@ -233,8 +272,9 @@ export default function ReactivacionTab() {
               Leads de reactivación
               <Badge variant="secondary">{loading ? "…" : total.toLocaleString("es-CL")}</Badge>
             </span>
-            <Button type="button" size="sm" onClick={cargarEnCorreos} disabled={loading || rows.length === 0} className="gap-1.5">
-              <Send className="h-4 w-4" /> Cargar página en Correos
+            <Button type="button" size="sm" onClick={cargarEnCorreos} disabled={loading || cargando || total === 0} className="gap-1.5">
+              {cargando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Cargar {Math.min(total, MAX_ENVIO)} en Correos
             </Button>
           </CardTitle>
         </CardHeader>
