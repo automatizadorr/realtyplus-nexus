@@ -1,7 +1,7 @@
-// Buscador de leads (prospección) con Claude + web search.
+// Buscador de leads (prospección) con Perplexity Sonar (búsqueda web nativa).
 // Replica la skill "prospeccion": busca negocios reales de un nicho+ciudad,
 // analiza su presencia digital, puntúa la oportunidad y devuelve un dataset.
-// Requiere caller admin (has_role) y el secreto ANTHROPIC_API_KEY.
+// Requiere caller admin (has_role) y el secreto PERPLEXITY_API_KEY.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -10,7 +10,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const MODEL = "claude-sonnet-4-6";
+// Sonar Pro: búsqueda web con más contexto (mejor para extraer datos de contacto).
+const MODEL = "sonar-pro";
 
 // Extrae el primer array JSON de objetos ([{...}]) con corchetes balanceados.
 function extractFirstJsonArray(text: string): unknown[] | null {
@@ -64,10 +65,10 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
 
-    if (!ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY no configurado en el proyecto" }), {
+    if (!PERPLEXITY_API_KEY) {
+      return new Response(JSON.stringify({ error: "PERPLEXITY_API_KEY no configurado en el proyecto" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -109,39 +110,39 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Llamada a Claude con web search ---
-    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+    // --- Llamada a Perplexity Sonar (búsqueda web + análisis en una sola llamada) ---
+    const pplxRes = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 8000,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 8 }],
-        messages: [{ role: "user", content: buildPrompt(nicho, ciudad, servicio, cantidad) }],
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: "Eres un prospector experto que responde EXCLUSIVAMENTE con un array JSON válido (sin markdown, sin texto antes ni después). Solo usas datos reales verificados con la búsqueda web; nunca inventas negocios, teléfonos, webs ni correos." },
+          { role: "user", content: buildPrompt(nicho, ciudad, servicio, cantidad) },
+        ],
       }),
       signal: AbortSignal.timeout(230000),
     });
 
-    const data = await anthropicRes.json();
-    if (!anthropicRes.ok) {
-      const msg = data?.error?.message || `HTTP ${anthropicRes.status}`;
-      return new Response(JSON.stringify({ error: `Claude API: ${msg}` }), {
+    const data = await pplxRes.json();
+    if (!pplxRes.ok) {
+      const msg = data?.error?.message || data?.error || `HTTP ${pplxRes.status}`;
+      return new Response(JSON.stringify({ error: `Perplexity API: ${msg}` }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Concatena los bloques de texto de la respuesta.
-    const text = Array.isArray(data?.content)
-      ? data.content.filter((b: { type?: string }) => b?.type === "text").map((b: { text?: string }) => b.text ?? "").join("\n")
-      : "";
+    // Respuesta OpenAI-compatible: choices[0].message.content.
+    const text = (data?.choices?.[0]?.message?.content ?? "").toString();
 
     const leads = extractFirstJsonArray(text) ?? [];
     if (leads.length === 0) {
-      return new Response(JSON.stringify({ success: false, error: "Claude no devolvió un dataset parseable", leads: [], raw: text.slice(0, 2000) }), {
+      return new Response(JSON.stringify({ success: false, error: "Perplexity no devolvió un dataset parseable", leads: [], raw: text.slice(0, 2000) }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

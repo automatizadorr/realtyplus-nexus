@@ -95,7 +95,7 @@ export default function BuscarLeads() {
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">Buscar Leads</h1>
           <p className="text-sm text-muted-foreground">
-            Claude busca negocios reales, analiza su presencia digital y arma la base para tu campaña.
+            La IA busca negocios reales en internet, analiza su presencia digital y arma la base para tu campaña.
           </p>
         </div>
       </motion.div>
