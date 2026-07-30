@@ -8,13 +8,13 @@ const AGENT_PHOTO =
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const WELCOME =
-  "¡Hola! 👋 Soy Sofía, tu asistente de LexHouse. ¿En qué te ayudo? Puedo contarte sobre los módulos IA, planes y precios, o cómo empezar.";
+  "¡Hola! 👋 Soy Sofía, la asesora IA de LexHouse. Dentro del CRM soy quien atiende tu WhatsApp, califica tus leads y te agenda las citas. ¿Qué te gustaría saber?";
 
 const QUICK = [
-  "¿Cuánto cuesta?",
-  "¿Cómo funciona el agente de WhatsApp?",
-  "¿Qué incluye el plan gratis?",
-  "¿En cuánto tiempo está listo?",
+  "¿Cómo funciona?",
+  "¿Usa mi WhatsApp actual?",
+  "¿De verdad agendas las citas?",
+  "¿Cómo empiezo gratis?",
 ];
 
 type Msg = { role: "user" | "assistant"; content: string };
