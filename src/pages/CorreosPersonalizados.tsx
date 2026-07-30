@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,6 +171,33 @@ export default function CorreosPersonalizados() {
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Si venimos desde "Buscar Leads", precargamos los destinatarios importados.
+  useEffect(() => {
+    const raw = sessionStorage.getItem("prospeccion_leads_import");
+    if (!raw) return;
+    sessionStorage.removeItem("prospeccion_leads_import");
+    try {
+      const imported = JSON.parse(raw);
+      if (Array.isArray(imported) && imported.length) {
+        const rows: Recipient[] = imported
+          .filter((r: Partial<Recipient>) => isEmail(r?.email ?? ""))
+          .map((r: Partial<Recipient>) => ({
+            email: (r.email ?? "").toLowerCase(),
+            empresa: r.empresa ?? "",
+            ciudad: r.ciudad ?? "",
+            gancho: r.gancho ?? "",
+          }));
+        if (rows.length) {
+          setRecipients(rows);
+          toast({ title: `${rows.length} leads cargados`, description: "Vienen del buscador, con empresa/ciudad/gancho. Revisa y envía." });
+        }
+      }
+    } catch {
+      /* ignora payload corrupto */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const validCount = useMemo(
     () => recipients.filter((r) => isEmail(r.email)).length,

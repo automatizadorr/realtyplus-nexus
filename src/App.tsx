@@ -19,6 +19,7 @@ const Dashboard    = lazy(() => import("./pages/Dashboard"));
 const Scanner      = lazy(() => import("./pages/Scanner"));
 const Campaigns    = lazy(() => import("./pages/Campaigns"));
 const CorreosPersonalizados = lazy(() => import("./pages/CorreosPersonalizados"));
+const BuscarLeads  = lazy(() => import("./pages/BuscarLeads"));
 const Inbox        = lazy(() => import("./pages/Inbox"));
 const Automation   = lazy(() => import("./pages/Automation"));
 const AutomationInbox = lazy(() => import("./pages/AutomationInbox"));
@@ -117,6 +118,7 @@ const App = () => (
                           <Route path="/dashboard" element={<Dashboard />} />
                           <Route path="/scanner" element={<AdminRoute><Scanner /></AdminRoute>} />
                           <Route path="/campaigns" element={<AdminRoute><Campaigns /></AdminRoute>} />
+                          <Route path="/buscar-leads" element={<AdminRoute><BuscarLeads /></AdminRoute>} />
                           <Route path="/correos-personalizados" element={<AdminRoute><CorreosPersonalizados /></AdminRoute>} />
                           <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />
                           <Route path="/automation" element={<AdminRoute><Automation /></AdminRoute>} />
