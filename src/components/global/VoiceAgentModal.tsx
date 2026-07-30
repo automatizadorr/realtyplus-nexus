@@ -1,7 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useConversation } from "@elevenlabs/react";
+import { useConversation, ConversationProvider } from "@elevenlabs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Phone, PhoneOff } from "lucide-react";
+
+// Agente de voz Lex del ecosistema LexHouse (el mismo que usa VoiceCallLive, ya
+// habilitado para estos dominios). El de la landing (6801…) no conecta aquí.
+const VOICE_AGENT_ID = "agent_2401ksxkp4fgfw0vwt0yt1tnz7r2";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -183,7 +187,7 @@ function ReactiveLogo({
 }
 
 
-export function VoiceAgentModal({ open, onOpenChange }: VoiceAgentModalProps) {
+function VoiceAgentModalInner({ open, onOpenChange }: VoiceAgentModalProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -207,7 +211,7 @@ export function VoiceAgentModal({ open, onOpenChange }: VoiceAgentModalProps) {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
       await conversation.startSession({
-        agentId: "agent_6801ke7r4trye3qt02f1k59dx6yb",
+        agentId: VOICE_AGENT_ID,
         connectionType: "webrtc",
       } as any);
     } catch (err) {
@@ -331,5 +335,14 @@ export function VoiceAgentModal({ open, onOpenChange }: VoiceAgentModalProps) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// En @elevenlabs/react v1.x, useConversation DEBE ir dentro de un ConversationProvider.
+export function VoiceAgentModal(props: VoiceAgentModalProps) {
+  return (
+    <ConversationProvider>
+      <VoiceAgentModalInner {...props} />
+    </ConversationProvider>
   );
 }
