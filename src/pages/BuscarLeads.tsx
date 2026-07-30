@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Radar, Search, Loader2, Send, MapPin, Globe, MessageCircle, Mail as MailIcon,
-  Download, History, Trash2, Sparkles,
+  Download, History, Trash2, Sparkles, RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import LeadDetailDialog, { type Lead } from "@/components/prospeccion/LeadDetailDialog";
+import ReactivacionTab from "@/components/prospeccion/ReactivacionTab";
 
 type Stats = {
   total?: number; con_email?: number; con_whatsapp?: number;
@@ -211,6 +212,7 @@ export default function BuscarLeads() {
         <TabsList>
           <TabsTrigger id="tab-buscar-trigger" value="buscar" className="gap-1.5"><Search className="h-4 w-4" /> Buscar</TabsTrigger>
           <TabsTrigger value="historial" className="gap-1.5" onClick={cargarHistorial}><History className="h-4 w-4" /> Historial</TabsTrigger>
+          <TabsTrigger value="reactivacion" className="gap-1.5"><RefreshCw className="h-4 w-4" /> Reactivación</TabsTrigger>
         </TabsList>
 
         {/* ===================== BUSCAR ===================== */}
@@ -391,6 +393,11 @@ export default function BuscarLeads() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ===================== REACTIVACIÓN ===================== */}
+        <TabsContent value="reactivacion">
+          <ReactivacionTab />
         </TabsContent>
       </Tabs>
 
