@@ -175,7 +175,10 @@ export default function CorreosPersonalizados() {
     setCtaUrl(c.ctaUrl);
     setBrandColor(c.brandColor);
     setDesignMode("pro");
-    toast({ title: `Plantilla "${c.badge}" cargada`, description: "Asunto, cuerpo, botón y regalo listos. Revisa y envía." });
+    // Los ganchos rotan según la plantilla elegida.
+    setActiveGanchos(c.ganchos?.length ? c.ganchos : GANCHOS_DOLOR);
+    setGanchoSel("rotar");
+    toast({ title: `Plantilla "${c.badge}" cargada`, description: "Asunto, cuerpo, botón, regalo y ganchos afines listos. Revisa y envía." });
   };
 
   // Compone el HTML de la campaña (plantilla con {{variables}} intactas; la edge las rellena).
@@ -244,6 +247,8 @@ export default function CorreosPersonalizados() {
 
   // Gancho de dolor por defecto para leads que no lo traen ("rotar" = varía por lead).
   const [ganchoSel, setGanchoSel] = useState("rotar");
+  // Set de ganchos activo: por defecto los generales; al elegir una plantilla, los suyos.
+  const [activeGanchos, setActiveGanchos] = useState<string[]>(GANCHOS_DOLOR);
 
   // Rellena el gancho de los destinatarios que lo tengan vacío (fijo o rotando).
   const rellenarGanchos = () => {
@@ -252,7 +257,7 @@ export default function CorreosPersonalizados() {
       prev.map((r) => {
         if ((r.gancho || "").trim()) return r;
         filled++;
-        const gancho = ganchoSel === "rotar" ? GANCHOS_DOLOR[rot++ % GANCHOS_DOLOR.length] : ganchoSel;
+        const gancho = ganchoSel === "rotar" ? activeGanchos[rot++ % activeGanchos.length] : ganchoSel;
         return { ...r, gancho };
       }),
     );
@@ -283,7 +288,7 @@ export default function CorreosPersonalizados() {
       const finalRecipients = payloadRecipients.map((r) =>
         (r.gancho || "").trim()
           ? r
-          : { ...r, gancho: ganchoSel === "rotar" ? GANCHOS_DOLOR[rot++ % GANCHOS_DOLOR.length] : ganchoSel },
+          : { ...r, gancho: ganchoSel === "rotar" ? activeGanchos[rot++ % activeGanchos.length] : ganchoSel },
       );
       const { data, error } = await supabase.functions.invoke("send-personalized-campaign", {
         body: {
@@ -334,7 +339,7 @@ export default function CorreosPersonalizados() {
   };
   const previewRow = {
     ...previewBase,
-    gancho: (previewBase.gancho || "").trim() || (ganchoSel === "rotar" ? GANCHOS_DOLOR[0] : ganchoSel),
+    gancho: (previewBase.gancho || "").trim() || (ganchoSel === "rotar" ? activeGanchos[0] : ganchoSel),
   };
 
   return (
@@ -391,8 +396,8 @@ export default function CorreosPersonalizados() {
                   onChange={(e) => setGanchoSel(e.target.value)}
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  <option value="rotar">↻ Rotar automáticamente (variar por lead)</option>
-                  {GANCHOS_DOLOR.map((g) => (
+                  <option value="rotar">↻ Rotar automáticamente (según la plantilla)</option>
+                  {activeGanchos.map((g) => (
                     <option key={g} value={g}>{g.length > 70 ? g.slice(0, 70) + "…" : g}</option>
                   ))}
                 </select>

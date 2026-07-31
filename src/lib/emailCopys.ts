@@ -32,6 +32,7 @@ export type EmailCopy = {
   body: string;
   ctaText: string;
   ctaUrl: string;       // enlace al regalo
+  ganchos: string[];    // ganchos de dolor afines a ESTA plataforma (para {{gancho}})
 };
 
 export const EMAIL_COPYS: EmailCopy[] = [
@@ -59,6 +60,12 @@ Un saludo,
 Mario · LexHouse`,
     ctaText: "Descargar la guía gratis",
     ctaUrl: `${REGALOS}/guia-whatsapp-inmobiliario.html`,
+    ganchos: [
+      "los leads llegan por WhatsApp y se pierden entre chats sin seguimiento",
+      "no alcanzan a responder cada consulta a tiempo y el interesado se va con otra corredora",
+      "las consultas que llegan de noche o el fin de semana quedan sin responder",
+      "el seguimiento depende de la memoria de cada corredor y no de un sistema",
+    ],
   },
   {
     id: "reels-video",
@@ -84,6 +91,12 @@ Un saludo,
 Mario · LexHouse`,
     ctaText: "Descargar los 10 ganchos",
     ctaUrl: `${REGALOS}/guia-reels-inmobiliarios.html`,
+    ganchos: [
+      "las propiedades se publican pero casi no generan consultas",
+      "las fotos de las propiedades no destacan frente a la competencia",
+      "las publicaciones pasan desapercibidas en redes y no generan visitas",
+      "grabar y editar un buen video de cada propiedad toma más tiempo del que hay",
+    ],
   },
   {
     id: "reactivacion-base",
@@ -109,5 +122,11 @@ Un saludo,
 Mario · LexHouse`,
     ctaText: "Descargar la secuencia",
     ctaUrl: `${REGALOS}/guia-reactivacion-clientes.html`,
+    ganchos: [
+      "cientos de contactos antiguos se enfrían sin que nadie los retome",
+      "la base de datos de clientes crece pero nadie la vuelve a trabajar",
+      "no hay forma clara de saber qué lead está caliente y cuál ya se perdió",
+      "los clientes de años anteriores quedan olvidados en una planilla",
+    ],
   },
 ];
