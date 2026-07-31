@@ -158,8 +158,8 @@ Te la dejo aquí abajo, es gratis 👇
 
 Un saludo,
 Mario · LexHouse`,
-    ctaText: "Ver la idea (guía gratis)",
-    ctaUrl: `${REGALOS}/guia-whatsapp-inmobiliario.html`,
+    ctaText: "Hacer el autodiagnóstico",
+    ctaUrl: `${REGALOS}/autodiagnostico-corredora.html`,
     ganchos: GANCHOS_DOLOR,
   },
   {
@@ -181,8 +181,8 @@ Preparé una guía breve con lo que mejor funciona. Es tuya, sin compromiso 👇
 
 Un saludo,
 Mario · LexHouse`,
-    ctaText: "Sí, quiero la guía",
-    ctaUrl: `${REGALOS}/guia-whatsapp-inmobiliario.html`,
+    ctaText: "Hacer el test de 5 minutos",
+    ctaUrl: `${REGALOS}/autodiagnostico-corredora.html`,
     ganchos: GANCHOS_DOLOR,
   },
 
@@ -208,8 +208,8 @@ Amplié cada punto en una guía práctica. Te la dejo de regalo 👇
 
 Un saludo,
 Mario · LexHouse`,
-    ctaText: "Descargar las ideas",
-    ctaUrl: `${REGALOS}/guia-whatsapp-inmobiliario.html`,
+    ctaText: "Descargar el sistema",
+    ctaUrl: `${REGALOS}/sistema-anti-fuga-leads.html`,
     ganchos: GANCHOS_DOLOR,
   },
   {
@@ -231,8 +231,8 @@ Es gratis y va sin compromiso 👇
 
 Un saludo,
 Mario · LexHouse`,
-    ctaText: "Ver cómo lo hacen",
-    ctaUrl: `${REGALOS}/guia-reactivacion-clientes.html`,
+    ctaText: "Ver el checklist",
+    ctaUrl: `${REGALOS}/checklist-corredoras-top.html`,
     ganchos: GANCHOS_DOLOR,
   },
 
