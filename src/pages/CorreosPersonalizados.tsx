@@ -15,7 +15,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { bodyToHtml, buildProEmail } from "@/lib/emailTemplates";
+import { bodyToHtml, buildProEmail, buildPlainEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
 import CorreoSeguimiento from "@/components/correos/CorreoSeguimiento";
 import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
@@ -193,10 +193,13 @@ export default function CorreosPersonalizados() {
   };
 
   // Compone el HTML de la campaña (plantilla con {{variables}} intactas; la edge las rellena).
-  const composeHtml = () =>
-    designMode === "pro"
-      ? buildProEmail({ fromName, titulo, body, ctaText, ctaUrl, cta2Text, cta2Url, brandColor, logoUrl, avatarUrl, footerText, bonusText, bonusUrl })
-      : bodyToHtml(body);
+  const composeHtml = () => {
+    if (designMode === "pro")
+      return buildProEmail({ fromName, titulo, body, ctaText, ctaUrl, cta2Text, cta2Url, brandColor, logoUrl, avatarUrl, footerText, bonusText, bonusUrl });
+    if (designMode === "personal")
+      return buildPlainEmail({ fromName, titulo, body, ctaText, ctaUrl, cta2Text, cta2Url, brandColor, bonusText, bonusUrl });
+    return bodyToHtml(body);
+  };
 
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SendResult[] | null>(null);
@@ -575,10 +578,10 @@ export default function CorreosPersonalizados() {
                 Vista previa · {("empresa" in previewRow && previewRow.empresa) || "(sin empresa)"}
               </p>
               <p className="mb-3 text-sm font-semibold">{fill(subject, previewRow)}</p>
-              {designMode === "pro" ? (
+              {designMode !== "texto" ? (
                 <iframe
                   title="Vista previa del correo"
-                  className="h-[560px] w-full rounded-md border bg-white"
+                  className={`w-full rounded-md border bg-white ${designMode === "pro" ? "h-[560px]" : "h-[320px]"}`}
                   srcDoc={fill(composeHtml(), previewRow)}
                 />
               ) : (

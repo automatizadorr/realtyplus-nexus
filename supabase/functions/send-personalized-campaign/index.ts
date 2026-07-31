@@ -121,6 +121,12 @@ Deno.serve(async (req) => {
       if (replyTo) payload.reply_to = replyTo;
       if (htmlTpl.trim()) payload.html = fillTemplate(htmlTpl, r);
       if (textTpl.trim()) payload.text = fillTemplate(textTpl, r);
+      // List-Unsubscribe: mejora la reputación/entregabilidad (baja 1 clic por email).
+      const unsubTo = replyTo || fromEmail;
+      payload.headers = {
+        "List-Unsubscribe": `<mailto:${unsubTo}?subject=baja>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      };
 
       try {
         const res = await fetch("https://api.resend.com/emails", {

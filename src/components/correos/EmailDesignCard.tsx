@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export type DesignMode = "texto" | "pro";
+export type DesignMode = "personal" | "texto" | "pro";
 
 type Props = {
   designMode: DesignMode;
@@ -74,14 +74,23 @@ export default function EmailDesignCard(p: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <button type="button" className={modeBtn(!pro)} onClick={() => p.setDesignMode("texto")}>
-            Texto simple
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" className={modeBtn(p.designMode === "personal")} onClick={() => p.setDesignMode("personal")}>
+            📥 Bandeja principal
           </button>
           <button type="button" className={modeBtn(pro)} onClick={() => p.setDesignMode("pro")}>
-            Diseño profesional (HTML)
+            ✨ Profesional
+          </button>
+          <button type="button" className={modeBtn(p.designMode === "texto")} onClick={() => p.setDesignMode("texto")}>
+            Texto simple
           </button>
         </div>
+
+        {p.designMode === "personal" && (
+          <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-700 dark:text-emerald-400">
+            <strong>Modo bandeja principal:</strong> envía un correo simple y personal (sin banners ni botones), la forma más probable de <strong>evitar la pestaña Promociones</strong> de Gmail. Usa el cuerpo del paso 3 + tus enlaces como texto. Para máxima entrega, desactiva el <em>rastreo de clics</em> en Resend.
+          </p>
+        )}
 
         {pro ? (
           <div className="space-y-4">

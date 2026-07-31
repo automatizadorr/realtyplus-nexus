@@ -61,6 +61,48 @@ export function bodyToHtml(text: string): string {
   return `<div style="font-family:${FONT_BODY};font-size:15px;color:${INK};line-height:1.65;max-width:560px;margin:0 auto">\n${html}\n</div>`;
 }
 
+// Bloques simples (párrafos + listas) sin estilos de marketing, para el modo personal.
+function plainInner(text: string): string {
+  const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  return blocks
+    .map((block) => {
+      const lines = block.split(/\n/).map((l) => l.trim()).filter(Boolean);
+      const isList = lines.length > 0 && lines.every((l) => /^[-•]\s+/.test(l));
+      if (isList) {
+        const items = lines.map((l) => `<li style="margin:0 0 4px;">${esc(l.replace(/^[-•]\s+/, ""))}</li>`).join("");
+        return `<ul style="margin:0 0 12px;padding-left:20px;">${items}</ul>`;
+      }
+      return `<p style="margin:0 0 12px;">${lines.map(esc).join("<br>")}</p>`;
+    })
+    .join("\n");
+}
+
+// Correo "personal" minimalista: parece un correo 1:1 escrito a mano, sin banners,
+// botones ni bloques de color. Maximiza la probabilidad de caer en Bandeja principal
+// (Gmail suele mandar el HTML de marketing a "Promociones").
+export function buildPlainEmail(opts: ProEmailOptions): string {
+  const brand = (opts.brandColor || BLUE).trim();
+  const inner = plainInner(opts.body || "");
+  const cta = (opts.ctaText || "").trim();
+  const ctaUrl = (opts.ctaUrl || "").trim();
+  const cta2 = (opts.cta2Text || "").trim();
+  const cta2Url = (opts.cta2Url || "").trim();
+  const bonus = (opts.bonusText || "").trim();
+  const bonusUrl = (opts.bonusUrl || "").trim();
+  const links: string[] = [];
+  if (cta && ctaUrl) links.push(`<a href="${esc(ctaUrl)}" style="color:${brand};font-weight:600;">${esc(cta)}</a>`);
+  if (cta2 && cta2Url) links.push(`<a href="${esc(cta2Url)}" style="color:${brand};font-weight:600;">${esc(cta2)}</a>`);
+  const ctaLine = links.length ? `<p style="margin:0 0 12px;">${links.join("&nbsp;&nbsp;·&nbsp;&nbsp;")}</p>` : "";
+  const bonusLine = bonus && bonusUrl
+    ? `<p style="margin:0 0 12px;font-size:13px;color:#666666;"><a href="${esc(bonusUrl)}" style="color:${brand};">${esc(bonus)}</a></p>`
+    : "";
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#222222;max-width:600px;margin:0 auto;">
+${inner}
+${ctaLine}
+${bonusLine}
+</div>`;
+}
+
 export type ProEmailOptions = {
   fromName: string;
   titulo: string;
