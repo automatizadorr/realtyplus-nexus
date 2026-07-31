@@ -165,6 +165,9 @@ export default function CorreosPersonalizados() {
   const [footerText, setFooterText] = useState(
     "LexHouse · Inteligencia artificial para corredoras de propiedades. Responde este correo y te contactamos.",
   );
+  // Regalo/bonus opcional (línea bajo el CTA; lo fijan las plantillas de Agendamiento).
+  const [bonusText, setBonusText] = useState("");
+  const [bonusUrl, setBonusUrl] = useState("");
 
   // Aplica una plantilla de copy (asunto + título + cuerpo + botón + regalo) al composer.
   const applyCopy = (c: EmailCopy) => {
@@ -174,6 +177,8 @@ export default function CorreosPersonalizados() {
     setCtaText(c.ctaText);
     setCtaUrl(c.ctaUrl);
     setBrandColor(c.brandColor);
+    setBonusText(c.bonusText ?? "");
+    setBonusUrl(c.bonusUrl ?? "");
     setDesignMode("pro");
     // Los ganchos rotan según la plantilla elegida.
     setActiveGanchos(c.ganchos?.length ? c.ganchos : GANCHOS_DOLOR);
@@ -184,7 +189,7 @@ export default function CorreosPersonalizados() {
   // Compone el HTML de la campaña (plantilla con {{variables}} intactas; la edge las rellena).
   const composeHtml = () =>
     designMode === "pro"
-      ? buildProEmail({ fromName, titulo, body, ctaText, ctaUrl, brandColor, logoUrl, footerText })
+      ? buildProEmail({ fromName, titulo, body, ctaText, ctaUrl, brandColor, logoUrl, footerText, bonusText, bonusUrl })
       : bodyToHtml(body);
 
   const [sending, setSending] = useState(false);

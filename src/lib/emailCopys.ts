@@ -34,6 +34,8 @@ export type EmailCopy = {
   ctaText: string;
   ctaUrl: string;       // enlace al regalo
   ganchos: string[];    // ganchos de dolor afines a ESTA plataforma (para {{gancho}})
+  bonusText?: string;   // regalo/bonus opcional (línea bajo el CTA; p. ej. en Agendamiento)
+  bonusUrl?: string;
 };
 
 // Categorías únicas en orden de aparición (para agrupar el selector).
@@ -259,6 +261,8 @@ Mario · LexHouse`,
     ctaText: "Agendar 10 minutos",
     ctaUrl: "https://wa.me/56900000000?text=Quiero%20agendar%20una%20demo%20de%20LexHouse",
     ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: 5 preguntas para elegir bien tu herramienta",
+    bonusUrl: `${REGALOS}/checklist-antes-de-tu-reunion.html`,
   },
   {
     id: "agenda-cierre",
@@ -282,5 +286,7 @@ Mario · LexHouse`,
     ctaText: "Sí, agendemos",
     ctaUrl: "https://wa.me/56900000000?text=Quiero%20agendar%20la%20demo%20de%20LexHouse",
     ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: 5 preguntas para elegir bien tu herramienta",
+    bonusUrl: `${REGALOS}/checklist-antes-de-tu-reunion.html`,
   },
 ];

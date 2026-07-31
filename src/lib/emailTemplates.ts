@@ -58,6 +58,8 @@ export type ProEmailOptions = {
   brandColor?: string;
   logoUrl?: string;
   footerText?: string;
+  bonusText?: string;   // regalo/bonus opcional (línea bajo el CTA)
+  bonusUrl?: string;
 };
 
 // Genera un correo HTML profesional, responsivo y compatible con clientes de correo.
@@ -79,12 +81,22 @@ export function buildProEmail(opts: ProEmailOptions): string {
     ? `<img src="${esc(opts.logoUrl.trim())}" alt="${esc(opts.fromName)}" height="34" style="display:block;border:0;outline:none;text-decoration:none;height:34px;">`
     : `<span style="font-family:Georgia,'Times New Roman',serif;font-size:21px;font-weight:700;color:#ffffff;letter-spacing:.3px;">${esc(opts.fromName)}</span>`;
 
+  const bonus = (opts.bonusText || "").trim();
+  const bonusUrl = (opts.bonusUrl || "").trim();
+  const showBonus = Boolean(bonus && bonusUrl);
+
   const ctaBlock = showCta
-    ? `<tr><td class="px" align="left" style="padding:4px 34px 32px;">
+    ? `<tr><td class="px" align="left" style="padding:4px 34px ${showBonus ? "12px" : "32px"};">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr>
     <td align="center" style="border-radius:10px;background:${brand};">
       <a href="${esc(ctaUrl)}" target="_blank" style="display:inline-block;padding:14px 30px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;background:${brand};">${esc(cta)}</a>
     </td></tr></table>
+</td></tr>`
+    : "";
+
+  const bonusBlock = showBonus
+    ? `<tr><td class="px" align="left" style="padding:0 34px 30px;">
+  <a href="${esc(bonusUrl)}" target="_blank" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${brand};text-decoration:none;border-bottom:1px dashed ${brand}66;padding-bottom:1px;">&#127873; ${esc(bonus)} &rarr;</a>
 </td></tr>`
     : "";
 
@@ -121,6 +133,7 @@ export function buildProEmail(opts: ProEmailOptions): string {
      ${bodyHtml}
    </td></tr>
    ${ctaBlock}
+   ${bonusBlock}
    <tr><td class="px" style="background:#0f1e3a;padding:22px 34px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#9fb0cc;">${esc(footer)}</td></tr>
   </table>
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#94a3b8;padding:16px 12px 0;max-width:600px;">
