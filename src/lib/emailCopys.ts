@@ -23,6 +23,7 @@ export const GANCHOS_DOLOR: string[] = [
 
 export type EmailCopy = {
   id: string;
+  categoria: string;    // grupo en el selector (Por producto / Icebreaker / Tibio / Agendamiento)
   plataforma: string;   // producto del ecosistema
   dolor: string;        // dolor que ataca
   badge: string;        // etiqueta corta para el selector
@@ -35,9 +36,14 @@ export type EmailCopy = {
   ganchos: string[];    // ganchos de dolor afines a ESTA plataforma (para {{gancho}})
 };
 
+// Categorías únicas en orden de aparición (para agrupar el selector).
+export const emailCopyCategorias = (): string[] =>
+  [...new Set(EMAIL_COPYS.map((c) => c.categoria))];
+
 export const EMAIL_COPYS: EmailCopy[] = [
   {
     id: "whatsapp-respuesta",
+    categoria: "Por producto (con regalo)",
     plataforma: "LexHouse CRM · WhatsApp IA",
     dolor: "Respondes tarde y el lead se enfría",
     badge: "Respuesta / WhatsApp",
@@ -69,6 +75,7 @@ Mario · LexHouse`,
   },
   {
     id: "reels-video",
+    categoria: "Por producto (con regalo)",
     plataforma: "LexHouse Studio · Reels IA",
     dolor: "Tus publicaciones pasan desapercibidas",
     badge: "Video / Reels",
@@ -100,6 +107,7 @@ Mario · LexHouse`,
   },
   {
     id: "reactivacion-base",
+    categoria: "Por producto (con regalo)",
     plataforma: "LexHouse · Reactivación / CRM",
     dolor: "Tu base de contactos antiguos está muerta",
     badge: "Reactivación",
@@ -128,5 +136,151 @@ Mario · LexHouse`,
       "no hay forma clara de saber qué lead está caliente y cuál ya se perdió",
       "los clientes de años anteriores quedan olvidados en una planilla",
     ],
+  },
+
+  // ── ICEBREAKER (primer contacto, rompe el hielo) ───────────────────────────
+  {
+    id: "icebreaker-observacion",
+    categoria: "Icebreaker (primer contacto)",
+    plataforma: "Genérico · ecosistema",
+    dolor: "Arrancar la conversación sin sonar a venta",
+    badge: "Icebreaker · Observación",
+    brandColor: "#003DA5",
+    subject: "{{empresa}}: una idea rápida (30 segundos)",
+    titulo: "Vi lo de {{empresa}} y quise escribirte",
+    body: `Hola equipo de {{empresa}},
+
+Seré breve. Estuve mirando cómo trabajan las corredoras en {{ciudad}} y noté algo que se repite: {{gancho}}.
+
+No vengo a venderte nada hoy. Solo armé una guía corta con ideas concretas para resolver justo eso, y pensé que a {{empresa}} le podía servir.
+
+Te la dejo aquí abajo, es gratis 👇
+
+Un saludo,
+Mario · LexHouse`,
+    ctaText: "Ver la idea (guía gratis)",
+    ctaUrl: `${REGALOS}/guia-whatsapp-inmobiliario.html`,
+    ganchos: GANCHOS_DOLOR,
+  },
+  {
+    id: "icebreaker-pregunta",
+    categoria: "Icebreaker (primer contacto)",
+    plataforma: "Genérico · ecosistema",
+    dolor: "Conectar desde el problema del lead",
+    badge: "Icebreaker · Pregunta",
+    brandColor: "#003DA5",
+    subject: "{{empresa}}, ¿te pasa esto?",
+    titulo: "Una pregunta honesta para {{empresa}}",
+    body: `Hola equipo de {{empresa}},
+
+Pregunta directa: ¿les pasa que {{gancho}}?
+
+Si la respuesta es sí, no están solos — es lo más común entre las corredoras con las que hablo, y tiene solución.
+
+Preparé una guía breve con lo que mejor funciona. Es tuya, sin compromiso 👇
+
+Un saludo,
+Mario · LexHouse`,
+    ctaText: "Sí, quiero la guía",
+    ctaUrl: `${REGALOS}/guia-whatsapp-inmobiliario.html`,
+    ganchos: GANCHOS_DOLOR,
+  },
+
+  // ── CORREO TIBIO (nutrición, ya hubo algún contacto) ───────────────────────
+  {
+    id: "tibio-valor",
+    categoria: "Correo tibio (nutrición)",
+    plataforma: "Genérico · ecosistema",
+    dolor: "Aportar valor sin presionar",
+    badge: "Tibio · Valor",
+    brandColor: "#0e7c66",
+    subject: "3 ideas que le sirven a {{empresa}} esta semana",
+    titulo: "No vengo a venderte. Vengo a aportar.",
+    body: `Hola equipo de {{empresa}},
+
+Sé que están ocupados, así que voy al grano con 3 ideas que puedes aplicar hoy — sobre todo si {{gancho}}:
+
+- Responde toda consulta en menos de 5 minutos, aunque sea con un mensaje corto.
+- Haz un solo seguimiento con una pregunta de sí/no: dispara las respuestas.
+- Guarda cada contacto en un solo lugar, no en la cabeza de cada corredor.
+
+Amplié cada punto en una guía práctica. Te la dejo de regalo 👇
+
+Un saludo,
+Mario · LexHouse`,
+    ctaText: "Descargar las ideas",
+    ctaUrl: `${REGALOS}/guia-whatsapp-inmobiliario.html`,
+    ganchos: GANCHOS_DOLOR,
+  },
+  {
+    id: "tibio-prueba-social",
+    categoria: "Correo tibio (nutrición)",
+    plataforma: "Genérico · ecosistema",
+    dolor: "Generar confianza con prueba social",
+    badge: "Tibio · Resultados",
+    brandColor: "#0e7c66",
+    subject: "Lo que cambió para corredoras como {{empresa}}",
+    titulo: "Corredoras en {{ciudad}} ya lo están usando",
+    body: `Hola equipo de {{empresa}},
+
+Cuando una corredora deja de perder tiempo en {{gancho}}, pasa algo simple: aparecen más visitas y más cierres, con el mismo equipo.
+
+No es magia, es método. Reuní lo esencial en una guía corta para que lo veas por dentro y decidas si les hace sentido.
+
+Es gratis y va sin compromiso 👇
+
+Un saludo,
+Mario · LexHouse`,
+    ctaText: "Ver cómo lo hacen",
+    ctaUrl: `${REGALOS}/guia-reactivacion-clientes.html`,
+    ganchos: GANCHOS_DOLOR,
+  },
+
+  // ── AGENDAMIENTO (llevar a reunión / llamada) ──────────────────────────────
+  {
+    id: "agenda-demo",
+    categoria: "Agendamiento (reunión)",
+    plataforma: "Genérico · ecosistema",
+    dolor: "Convertir interés en una reunión",
+    badge: "Agenda · Demo",
+    brandColor: "#003DA5",
+    subject: "{{empresa}}: 10 minutos y te muestro cómo se vería",
+    titulo: "¿Te muestro cómo se vería con {{empresa}}?",
+    body: `Hola equipo de {{empresa}},
+
+Si les hace ruido que {{gancho}}, la mejor forma de que lo evalúen no es leyendo un correo, es viéndolo con sus propias propiedades.
+
+Son 10 minutos, sin PowerPoint: te muestro en vivo cómo quedaría con {{empresa}} y ustedes deciden.
+
+¿Agendamos esta semana? Toca el botón y elige tu horario 👇
+
+Un saludo,
+Mario · LexHouse`,
+    ctaText: "Agendar 10 minutos",
+    ctaUrl: "https://wa.me/56900000000?text=Quiero%20agendar%20una%20demo%20de%20LexHouse",
+    ganchos: GANCHOS_DOLOR,
+  },
+  {
+    id: "agenda-cierre",
+    categoria: "Agendamiento (reunión)",
+    plataforma: "Genérico · ecosistema",
+    dolor: "Cierre suave para agendar",
+    badge: "Agenda · Cierre suave",
+    brandColor: "#7c1f2e",
+    subject: "{{empresa}}, ¿lo dejamos para esta semana?",
+    titulo: "Cierro el tema, salvo que quieras verlo",
+    body: `Hola equipo de {{empresa}},
+
+No quiero insistir de más 🙂 Este es mi último mensaje sobre esto.
+
+Si en algún momento les molestó que {{gancho}}, tengo lista una demo de 10 minutos con las propiedades de {{empresa}}. Si no es el momento, sin problema, cierro el tema.
+
+Si sí quieres verlo, toca abajo y agendamos al toque 👇
+
+Un abrazo,
+Mario · LexHouse`,
+    ctaText: "Sí, agendemos",
+    ctaUrl: "https://wa.me/56900000000?text=Quiero%20agendar%20la%20demo%20de%20LexHouse",
+    ganchos: GANCHOS_DOLOR,
   },
 ];

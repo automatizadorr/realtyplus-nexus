@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { bodyToHtml, buildProEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
-import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR } from "@/lib/emailCopys";
+import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
 
 type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
@@ -484,29 +484,34 @@ export default function CorreosPersonalizados() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Copys listos para <strong>leads tibios</strong>, cada uno ataca un dolor y regala una guía de valor. Un clic carga asunto, cuerpo, botón y regalo.
+            Copys listos por etapa del embudo. Cada uno ataca un dolor, rota ganchos afines y (según el caso) regala una guía. Un clic carga asunto, cuerpo, botón, regalo y ganchos.
           </p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {EMAIL_COPYS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => applyCopy(c)}
-                className="group flex flex-col rounded-xl border p-3 text-left transition hover:border-[#003DA5]/50 hover:shadow-sm"
-              >
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                  style={{ backgroundColor: `${c.brandColor}18`, color: c.brandColor }}>
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c.brandColor }} />
-                  {c.badge}
-                </span>
-                <span className="mt-2 text-sm font-semibold leading-snug">{c.titulo}</span>
-                <span className="mt-1 text-xs text-muted-foreground">Dolor: {c.dolor}</span>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#003DA5] opacity-0 transition group-hover:opacity-100">
-                  <Sparkles className="h-3 w-3" /> Usar esta plantilla
-                </span>
-              </button>
-            ))}
-          </div>
+          {emailCopyCategorias().map((cat) => (
+            <div key={cat} className="space-y-2">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{cat}</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {EMAIL_COPYS.filter((c) => c.categoria === cat).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => applyCopy(c)}
+                    className="group flex flex-col rounded-xl border p-3 text-left transition hover:border-[#003DA5]/50 hover:shadow-sm"
+                  >
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      style={{ backgroundColor: `${c.brandColor}18`, color: c.brandColor }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c.brandColor }} />
+                      {c.badge}
+                    </span>
+                    <span className="mt-2 text-sm font-semibold leading-snug">{c.titulo}</span>
+                    <span className="mt-1 text-xs text-muted-foreground">Dolor: {c.dolor}</span>
+                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#003DA5] opacity-0 transition group-hover:opacity-100">
+                      <Sparkles className="h-3 w-3" /> Usar esta plantilla
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
