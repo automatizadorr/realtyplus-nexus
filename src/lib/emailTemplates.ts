@@ -55,6 +55,8 @@ export type ProEmailOptions = {
   body: string;
   ctaText?: string;
   ctaUrl?: string;
+  cta2Text?: string;    // botón secundario opcional (p. ej. contacto directo)
+  cta2Url?: string;
   brandColor?: string;
   logoUrl?: string;
   footerText?: string;
@@ -81,16 +83,30 @@ export function buildProEmail(opts: ProEmailOptions): string {
     ? `<img src="${esc(opts.logoUrl.trim())}" alt="${esc(opts.fromName)}" height="34" style="display:block;border:0;outline:none;text-decoration:none;height:34px;">`
     : `<span style="font-family:Georgia,'Times New Roman',serif;font-size:21px;font-weight:700;color:#ffffff;letter-spacing:.3px;">${esc(opts.fromName)}</span>`;
 
+  const cta2 = (opts.cta2Text || "").trim();
+  const cta2Url = (opts.cta2Url || "").trim();
+  const showCta2 = Boolean(cta2 && cta2Url);
   const bonus = (opts.bonusText || "").trim();
   const bonusUrl = (opts.bonusUrl || "").trim();
   const showBonus = Boolean(bonus && bonusUrl);
 
-  const ctaBlock = showCta
-    ? `<tr><td class="px" align="left" style="padding:4px 34px ${showBonus ? "12px" : "32px"};">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr>
+  const primaryBtn = showCta
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr>
     <td align="center" style="border-radius:10px;background:${brand};">
       <a href="${esc(ctaUrl)}" target="_blank" style="display:inline-block;padding:14px 30px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;background:${brand};">${esc(cta)}</a>
-    </td></tr></table>
+    </td></tr></table>`
+    : "";
+  const secondaryBtn = showCta2
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr>
+    <td align="center" style="border-radius:10px;border:2px solid ${brand};">
+      <a href="${esc(cta2Url)}" target="_blank" style="display:inline-block;padding:12px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${brand};text-decoration:none;border-radius:10px;">${esc(cta2)}</a>
+    </td></tr></table>`
+    : "";
+  const spacer = `<div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>`;
+
+  const ctaBlock = (showCta || showCta2)
+    ? `<tr><td class="px" align="left" style="padding:4px 34px ${showBonus ? "12px" : "30px"};">
+  ${primaryBtn}${showCta && showCta2 ? spacer : ""}${secondaryBtn}
 </td></tr>`
     : "";
 

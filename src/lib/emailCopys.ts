@@ -34,9 +34,15 @@ export type EmailCopy = {
   ctaText: string;
   ctaUrl: string;       // enlace al regalo
   ganchos: string[];    // ganchos de dolor afines a ESTA plataforma (para {{gancho}})
+  cta2Text?: string;    // botón secundario opcional (p. ej. contacto directo)
+  cta2Url?: string;
   bonusText?: string;   // regalo/bonus opcional (línea bajo el CTA; p. ej. en Agendamiento)
   bonusUrl?: string;
 };
+
+// Contactos WhatsApp (números reales).
+const WA_AGENTE = "https://wa.me/56930620321?text=Hola%2C%20quiero%20agendar%20una%20reuni%C3%B3n%20con%20LexHouse"; // Agente Meta AI → agendar reunión
+const WA_DIRECTO = "https://wa.me/56971806730?text=Hola%20Mario%2C%20te%20escribo%20por%20LexHouse";                 // Mario Valdés → contacto directo
 
 // Categorías únicas en orden de aparición (para agrupar el selector).
 export const emailCopyCategorias = (): string[] =>
@@ -254,12 +260,14 @@ Si les hace ruido que {{gancho}}, la mejor forma de que lo evalúen no es leyend
 
 Son 10 minutos, sin PowerPoint: te muestro en vivo cómo quedaría con {{empresa}} y ustedes deciden.
 
-¿Agendamos esta semana? Toca el botón y elige tu horario 👇
+Para agendar, escribe a nuestro agente por WhatsApp (te coordina el horario al instante). Y si prefieres hablar directo conmigo, ahí tienes mi WhatsApp también 👇
 
 Un saludo,
 Mario · LexHouse`,
-    ctaText: "Agendar 10 minutos",
-    ctaUrl: "https://wa.me/56900000000?text=Quiero%20agendar%20una%20demo%20de%20LexHouse",
+    ctaText: "Agendar reunión (agente IA)",
+    ctaUrl: WA_AGENTE,
+    cta2Text: "Escríbeme directo (Mario)",
+    cta2Url: WA_DIRECTO,
     ganchos: GANCHOS_DOLOR,
     bonusText: "Regalo: 5 preguntas para elegir bien tu herramienta",
     bonusUrl: `${REGALOS}/checklist-antes-de-tu-reunion.html`,
@@ -279,12 +287,14 @@ No quiero insistir de más 🙂 Este es mi último mensaje sobre esto.
 
 Si en algún momento les molestó que {{gancho}}, tengo lista una demo de 10 minutos con las propiedades de {{empresa}}. Si no es el momento, sin problema, cierro el tema.
 
-Si sí quieres verlo, toca abajo y agendamos al toque 👇
+Si sí quieres verlo, agenda con nuestro agente por WhatsApp. Y si prefieres, escríbeme directo a mí 👇
 
 Un abrazo,
 Mario · LexHouse`,
-    ctaText: "Sí, agendemos",
-    ctaUrl: "https://wa.me/56900000000?text=Quiero%20agendar%20la%20demo%20de%20LexHouse",
+    ctaText: "Sí, agendemos (agente IA)",
+    ctaUrl: WA_AGENTE,
+    cta2Text: "Escríbeme directo (Mario)",
+    cta2Url: WA_DIRECTO,
     ganchos: GANCHOS_DOLOR,
     bonusText: "Regalo: 5 preguntas para elegir bien tu herramienta",
     bonusUrl: `${REGALOS}/checklist-antes-de-tu-reunion.html`,
