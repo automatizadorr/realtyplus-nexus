@@ -21,6 +21,9 @@ const BLUE_LT = "#7FA8FF";   // azul claro (acentos sobre fondos oscuros)
 const BRAND = "#DC1C2E";     // ROJO LexHouse (acción)
 const SIGNAL = "#25D366";    // verde WhatsApp — SOLO dentro del canal WhatsApp
 const HOT = "#F59E0B";       // lead caliente
+// Avatar de Sofía (foto Pexels — licencia gratuita), mujer joven rubia profesional.
+const SOFIA_AVATAR =
+  "https://images.pexels.com/photos/38707525/pexels-photo-38707525.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop&facepad=3";
 
 // ── Hooks utilitarios (sin dependencias de animación) ─────────────────────────
 // ¿el puntero es fino (mouse/trackpad)? — para desactivar tilt/magnético en touch
@@ -267,9 +270,21 @@ function LiveConversation() {
       <div className="rounded-[26px] border border-white/10 bg-[#0b1730] overflow-hidden shadow-2xl">
         {/* Cabecera */}
         <div className="flex items-center gap-3 px-4 py-3" style={{ background: INK2 }}>
-          <div className="w-9 h-9 rounded-full grid place-items-center text-white font-bold text-sm shrink-0"
-               style={{ background: `linear-gradient(135deg, ${BRAND}, ${INK})` }}>
-            So
+          <div className="relative shrink-0">
+            <div className="relative w-9 h-9 rounded-full grid place-items-center overflow-hidden text-white font-bold text-sm ring-2 ring-white/10"
+                 style={{ background: `linear-gradient(135deg, ${BRAND}, ${INK})` }}>
+              So
+              <img
+                src={SOFIA_AVATAR}
+                alt="Sofía"
+                className="absolute inset-0 h-full w-full object-cover object-top"
+                loading="lazy"
+                draggable={false}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
+              />
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2"
+                  style={{ background: SIGNAL, borderColor: INK2 }} />
           </div>
           <div className="min-w-0">
             <div className="text-white text-sm font-semibold leading-tight">Sofía · Asesora IA</div>
@@ -314,21 +329,18 @@ function LiveConversation() {
             </div>
           )}
 
-          {/* Tarjeta de cita agendada: logo de marca + animaciones al confirmar */}
+          {/* Tarjeta de cita agendada: imagen real (workspace) + animaciones al confirmar */}
           {agendada && (
             <div className="lh-appt pt-1.5">
-              <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-xl">
-                <div className="w-full h-32 grid place-items-center p-4"
-                     style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #EEF3FB 100%)" }}>
-                  <img
-                    src={lexLogo}
-                    alt="LexHouse AI"
-                    className="max-h-[74%] w-auto object-contain drop-shadow-[0_10px_24px_rgba(2,27,77,0.15)]"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none"
-                     style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.96) 100%)" }} />
+              <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl">
+                <img
+                  src="/landing/appointment.jpg"
+                  alt="Reunión de expansión agendada"
+                  className={`w-full h-32 object-cover object-[center_78%] ${reduce ? "" : "animate-kenburns"}`}
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 pointer-events-none"
+                     style={{ background: `linear-gradient(180deg, rgba(2,27,77,0.12) 0%, ${INK}f2 100%)` }} />
 
                 {/* check de confirmación con anillo pulsante */}
                 <div className="lh-check absolute top-2.5 right-2.5 w-7 h-7 rounded-full grid place-items-center shadow-lg"
@@ -345,8 +357,8 @@ function LiveConversation() {
                     <CalendarCheck className="w-4 h-4 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[13px] font-semibold leading-tight" style={{ color: INK }}>Reunión confirmada</div>
-                    <div className="font-mono text-[10px] text-slate-500">jueves · 10:00 · Google Calendar</div>
+                    <div className="text-[13px] font-semibold leading-tight text-white">Reunión confirmada</div>
+                    <div className="font-mono text-[10px] text-white/70">jueves · 10:00 · Google Calendar</div>
                   </div>
                 </div>
               </div>
@@ -453,11 +465,10 @@ const REPORT_TAGS = [
 type Slide = { tag: string; title: string; desc: string; img?: string; youtube?: string };
 const SLIDES: Slide[] = [
   { youtube: "3I_0Czb1sgk", tag: "Video", title: "LexHouse AI en acción", desc: "Mira cómo Sofía convierte conversaciones de WhatsApp en citas agendadas." },
-  { img: lexLogo, tag: "Datos en vivo",  title: "Cada lead, medido",             desc: "Score, intención y actividad de cada contacto en tiempo real." },
-  { img: lexLogo, tag: "Tu equipo",      title: "Todo el equipo, un solo inbox", desc: "Nadie pisa una conversación; cada agente sabe qué le toca." },
-  { img: lexLogo, tag: "Inteligencia",   title: "IA entrenada en tu negocio",    desc: "Sofía responde con tu conocimiento de marca, no con respuestas genéricas." },
-  { img: lexLogo, tag: "Resultado",      title: "Del primer «hola» al cierre",   desc: "Menos tareas manuales, más reuniones agendadas cada semana." },
-  { img: lexLogo, tag: "Inmobiliario",   title: "Pensado para vender propiedades", desc: "Flujos, etiquetas y reportes hechos a la medida del sector." },
+  { img: "/landing/crm-analitica-mensajeria.jpg", tag: "Datos en vivo", title: "Cada mensaje, medido",             desc: "Tasa de entrega, lectura y respuesta de tu WhatsApp en tiempo real, con semáforo de leads calientes." },
+  { img: "/landing/crm-buscar-propiedad.jpg",     tag: "Búsqueda IA",   title: "Encuentra la propiedad al instante", desc: "Pídele a Sofía cualquier propiedad y te la trae con precio, tipo y estado desde tu cartera." },
+  { img: "/landing/crm-buscar-leads.jpg",         tag: "Prospección",   title: "Nuevos clientes, encontrados por IA", desc: "La IA busca negocios reales, analiza su presencia digital y redacta el mensaje de contacto." },
+  { img: "/landing/crm-agendar-reunion.jpg",      tag: "Agenda automática", title: "Del chat a la reunión confirmada", desc: "Sofía propone día y hora, confirma y envía la invitación de Google Meet — sola." },
 ];
 
 function LeadsCarousel() {
@@ -506,12 +517,12 @@ function LeadsCarousel() {
         </div>
       ) : (
         <>
-          {/* logo de marca centrado (sin recorte) */}
-          <div key={idx} className="lh-fade absolute inset-0 grid place-items-center p-10 sm:p-14">
+          {/* captura real del producto (marco tipo UI) */}
+          <div key={idx} className="lh-fade absolute inset-0 grid place-items-center px-6 pt-7 pb-24 sm:px-10 sm:pt-9 sm:pb-24">
             <img
               src={s.img}
-              alt="LexHouse AI"
-              className="max-h-[62%] w-auto object-contain select-none pointer-events-none drop-shadow-[0_18px_40px_rgba(2,27,77,0.18)]"
+              alt={s.title}
+              className="max-h-full max-w-full w-auto object-contain rounded-xl bg-white ring-1 ring-slate-200 shadow-[0_18px_40px_rgba(2,27,77,0.18)] select-none pointer-events-none"
               loading="lazy"
               draggable={false}
             />
