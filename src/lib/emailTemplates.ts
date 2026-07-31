@@ -11,6 +11,7 @@ const esc = (s: string) =>
 const NAVY = "#0F1E3A";
 const RED = "#E4002B";
 const BLUE = "#003DA5";
+const GOLD = "#C9A227";
 const INK = "#3A4A63";
 const MUTED = "#6B7A91";
 const FONT_BODY = "'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
@@ -76,11 +77,12 @@ export type ProEmailOptions = {
   bonusUrl?: string;
 };
 
-// Banda tricolor RE/MAX (rojo | azul), firma de marca constante bajo el encabezado.
+// Banda tricolor de marca (rojo RE/MAX | dorado | azul), firma constante bajo el encabezado.
 const TRICOLOR = `<tr><td style="padding:0;font-size:0;line-height:0;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-    <td width="50%" height="5" style="height:5px;background:${RED};font-size:0;line-height:0;">&nbsp;</td>
-    <td width="50%" height="5" style="height:5px;background:${BLUE};font-size:0;line-height:0;">&nbsp;</td>
+    <td width="40%" height="5" style="height:5px;background:${RED};font-size:0;line-height:0;">&nbsp;</td>
+    <td width="20%" height="5" style="height:5px;background:${GOLD};font-size:0;line-height:0;">&nbsp;</td>
+    <td width="40%" height="5" style="height:5px;background:${BLUE};font-size:0;line-height:0;">&nbsp;</td>
   </tr></table>
 </td></tr>`;
 
@@ -180,7 +182,8 @@ export function buildProEmail(opts: ProEmailOptions): string {
    <tr><td class="px" style="background:${NAVY};padding:24px 34px;">${header}</td></tr>
    ${TRICOLOR}
    <tr><td class="px" style="padding:36px 34px 8px;">
-     ${titulo ? `<h1 class="h1" style="margin:0 0 20px;font-family:${FONT_HEAD};font-size:27px;line-height:1.24;color:${NAVY};font-weight:700;letter-spacing:-.2px;">${esc(titulo)}</h1>` : ""}
+     ${titulo ? `<h1 class="h1" style="margin:0 0 14px;font-family:${FONT_HEAD};font-size:27px;line-height:1.24;color:${NAVY};font-weight:700;letter-spacing:-.2px;">${esc(titulo)}</h1>
+     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;"><tr><td width="48" height="3" style="width:48px;height:3px;background:${GOLD};border-radius:2px;font-size:0;line-height:0;">&nbsp;</td></tr></table>` : ""}
      ${bodyHtml}
    </td></tr>
    ${avatarBlock}
