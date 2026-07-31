@@ -59,6 +59,144 @@ export interface BlogPost {
 
 export const POSTS: BlogPost[] = [
   {
+    slug: "prospeccion-inmobiliaria-scraping-ia",
+    title: "Prospección inmobiliaria con IA: encontrar clientes con scraping en 2026",
+    description:
+      "Deja de esperar leads y sal a buscarlos. Cómo el scraping con inteligencia artificial encuentra prospectos reales, analiza su presencia digital y redacta el mensaje de contacto — sin listas frías ni copiar y pegar.",
+    category: "Prospección · IA",
+    date: "2026-07-31",
+    dateLabel: "31 de julio de 2026",
+    readingTime: "7 min",
+    keywords: "prospección inmobiliaria, scraping inmobiliario, captación de clientes con IA, buscar leads inmobiliarios, prospección con inteligencia artificial, CRM inmobiliario",
+    Body: () => (
+      <>
+        <P>
+          La mayoría de los corredores viven en modo reactivo: publican, esperan y contestan lo que
+          llega. Funciona… hasta que el mes está flojo. La <strong>prospección con IA</strong> le da
+          la vuelta al juego: en lugar de esperar leads, la inteligencia artificial sale a buscarlos
+          por ti, encuentra negocios y personas que encajan con tu servicio y te deja el primer
+          mensaje listo para enviar.
+        </P>
+
+        <H2>Qué es el scraping aplicado a la prospección</H2>
+        <P>
+          «Scraping» suena técnico, pero la idea es simple: rastrear fuentes públicas de internet para
+          encontrar prospectos reales según un criterio. Le dices a la IA el rubro y la zona
+          —«inmobiliarias en La Serena», «constructoras en Madrid», «arrendadores particulares»— y
+          ella arma una lista de candidatos con datos de contacto y contexto, no una base fría
+          comprada al azar.
+        </P>
+
+        <H2>De la lista al primer mensaje, sin trabajo manual</H2>
+        <P>
+          Encontrar el prospecto es solo la mitad. Un buen sistema de prospección con IA hace el
+          recorrido completo:
+        </P>
+        <UL
+          items={[
+            "Rastrea negocios y contactos reales por rubro y ciudad.",
+            "Analiza su presencia digital (web, redes, reseñas) y puntúa la oportunidad.",
+            "Redacta el mensaje de contacto para WhatsApp, email o una propuesta.",
+            "Guarda un historial con estado de gestión para no volver a prospectar al mismo.",
+          ]}
+        />
+        <P>
+          Así conviertes horas de búsqueda en Google y hojas de cálculo en una lista priorizada y
+          lista para contactar en minutos.
+        </P>
+
+        <H2>Por qué la IA prospecta mejor que una lista comprada</H2>
+        <P>
+          Las bases compradas están quemadas: todo el mundo las tiene y nadie responde. La
+          prospección con IA es fresca y contextual —sabe <em>por qué</em> ese prospecto encaja— así
+          que el mensaje se puede personalizar y la tasa de respuesta sube. Es la misma lógica que
+          mueve a los{" "}
+          <LexLink to="/soluciones/ia">agentes IA de LexHouse</LexLink>: responder con contexto en
+          vez de plantillas genéricas.
+        </P>
+
+        <H2>Del prospecto al cierre</H2>
+        <P>
+          Prospectar es el primer eslabón. Cuando el contacto responde, necesitas atenderlo rápido,
+          calificarlo y agendar — y después publicar, revisar el contrato y valorizar la propiedad.
+          Todo ese recorrido vive en el mismo ecosistema: revisa la{" "}
+          <LexLink to="/soluciones/plataforma">plataforma completa de LexHouse AI</LexLink> con
+          marketplace, contratos con IA, valuación y publicación multiportal, o empieza por{" "}
+          <LexLink to="/">lexhouse-ai.com</LexLink>.
+        </P>
+      </>
+    ),
+  },
+  {
+    slug: "correos-personalizados-inmobiliaria",
+    title: "Correos personalizados para inmobiliarias: llega a la bandeja principal",
+    description:
+      "Cómo enviar campañas de email personalizadas que de verdad se abren: variables por contacto, diseño profesional y las señales de entrega (SPF, DKIM, List-Unsubscribe) que evitan la pestaña de Promociones y el spam.",
+    category: "Email · Marketing",
+    date: "2026-07-31",
+    dateLabel: "31 de julio de 2026",
+    readingTime: "7 min",
+    keywords: "correos personalizados, email marketing inmobiliario, campañas de correo inmobiliaria, llegar a la bandeja principal, evitar promociones gmail, deliverability email",
+    Body: () => (
+      <>
+        <P>
+          El email sigue siendo uno de los canales más rentables para un corredor… si el correo
+          llega a la bandeja principal. El problema no suele ser el mensaje, sino la entrega: campañas
+          bien escritas que terminan en Promociones o en spam y nadie las ve. La clave está en
+          <strong> personalizar de verdad</strong> y cuidar las señales técnicas de entrega.
+        </P>
+
+        <H2>Personalizar no es poner «Hola {"{{nombre}}"}»</H2>
+        <P>
+          La personalización real usa los datos que ya tienes de cada contacto: nombre, empresa,
+          la propiedad por la que consultó, la zona que le interesa. Un buen sistema toma tu Excel y
+          reemplaza variables por contacto para que cada correo se sienta escrito a mano, aunque envíes
+          cientos a la vez.
+        </P>
+        <UL
+          items={[
+            "Sube tu base desde Excel o CSV y mapea las columnas a variables.",
+            "Personaliza asunto y cuerpo por contacto (nombre, empresa, propiedad, zona…).",
+            "Diseño profesional con la identidad de tu marca, no un texto plano.",
+            "Envío masivo con seguimiento, sin copiar y pegar uno por uno.",
+          ]}
+        />
+
+        <H2>Cómo llegar a la bandeja principal (y no a Promociones)</H2>
+        <P>
+          Gmail y Outlook deciden dónde cae tu correo según señales de reputación y formato. Para
+          maximizar la entrega a la bandeja principal:
+        </P>
+        <UL
+          items={[
+            "Autentica tu dominio con SPF, DKIM y DMARC — sin esto, casi todo cae en spam.",
+            "Incluye la cabecera List-Unsubscribe: los proveedores premian el poder darse de baja.",
+            "Evita el look «promoción»: demasiadas imágenes, botones y mayúsculas te mandan a esa pestaña.",
+            "Envía a contactos que te conocen y limpia rebotes: la reputación lo es todo.",
+          ]}
+        />
+
+        <H2>Cuándo usar correo y cuándo WhatsApp</H2>
+        <P>
+          El correo es ideal para propuestas, seguimientos formales y campañas a tu cartera; WhatsApp,
+          para la respuesta inmediata al lead caliente. Lo potente es combinarlos: prospectas, envías
+          un correo personalizado y cuando responde entra{" "}
+          <LexLink to="/soluciones/ia">Sofía, la asesora IA</LexLink>, para atender y agendar en el
+          acto.
+        </P>
+
+        <H2>Parte de un ecosistema completo</H2>
+        <P>
+          Los correos personalizados son una pieza más del recorrido comercial. Cuando quieras la
+          suite completa —marketplace, contratos con IA, valuación y publicación multiportal— está
+          toda en{" "}
+          <LexLink to="/soluciones/plataforma">lexhouse-ai.com</LexLink>. Y si recién empiezas,
+          arranca desde <LexLink to="/">el portal de LexHouse AI</LexLink>.
+        </P>
+      </>
+    ),
+  },
+  {
     slug: "marketing-inmobiliario-ia-guia-2026",
     title: "Marketing inmobiliario con IA en 2026: guía para corredores",
     description:

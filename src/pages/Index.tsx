@@ -6,7 +6,7 @@ import {
   MessageSquare, CalendarCheck, Tags, Megaphone, ScanLine, Mic,
   FileSpreadsheet, LayoutDashboard, ArrowRight, Check, Menu, X,
   ChevronDown, ChevronLeft, ChevronRight, Phone, PhoneCall,
-  Sparkles, Clock, Globe, ShieldCheck,
+  Sparkles, Clock, Globe, ShieldCheck, Radar, Mail, Send,
 } from "lucide-react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
@@ -615,7 +615,7 @@ export default function Index() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#voz", "Voz IA"], ["#reporte", "Reporte diario"], ["/blog", "Blog"], ["#faq", "FAQ"]];
+  const navLinks = [["#como", "Cómo funciona"], ["#funciones", "Funciones"], ["#prospeccion", "Prospección"], ["#correos", "Correos"], ["#voz", "Voz IA"], ["/blog", "Blog"], ["#faq", "FAQ"]];
 
   // Retrasos escalonados de la entrada del hero (equivalente al stagger de antes).
   const heroDelays = ["0.08s", "0.19s", "0.30s", "0.41s", "0.52s", "0.63s"];
@@ -873,6 +873,99 @@ export default function Index() {
                   </div>
                 </Reveal>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Prospección (scraping IA) + Correos personalizados ── */}
+        <section id="prospeccion" className="py-24 px-6 bg-white" aria-labelledby="prosp-heading">
+          <div className="max-w-7xl mx-auto">
+            <Reveal className="max-w-2xl mb-14">
+              <span className="font-mono text-xs tracking-widest uppercase" style={{ color: BRAND }}>Captación proactiva</span>
+              <h2 id="prosp-heading" className="font-display font-bold text-3xl sm:text-4xl mt-3 leading-tight">
+                No solo esperes leads: <Serif>sal a buscarlos</Serif>.
+              </h2>
+              <p className="mt-4 text-slate-500 text-lg">
+                Dos motores para llenar tu embudo — la IA encuentra clientes nuevos y tus correos llegan a la bandeja principal.
+              </p>
+            </Reveal>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Prospección con IA (scraping) */}
+              <Reveal>
+                <div className="h-full p-8 rounded-3xl border border-slate-200 bg-slate-50/60 hover:shadow-card transition-all duration-300">
+                  <div className="w-12 h-12 rounded-2xl grid place-items-center mb-5" style={{ background: `${BRAND}10` }}>
+                    <Radar className="w-6 h-6" style={{ color: BRAND }} aria-hidden="true" />
+                  </div>
+                  <span className="font-mono text-[11px] tracking-widest uppercase" style={{ color: BRAND }}>Prospección · scraping IA</span>
+                  <h3 className="font-display font-bold text-2xl mt-2 mb-3 leading-tight" style={{ color: INK }}>
+                    Encuentra clientes nuevos con IA
+                  </h3>
+                  <p className="text-slate-500 text-[15px] leading-relaxed mb-5">
+                    Dile a la IA el rubro y la ciudad y ella rastrea negocios reales, analiza su presencia
+                    digital, puntúa la oportunidad y te deja el mensaje de contacto listo para enviar.
+                  </p>
+                  <ul className="space-y-2.5 mb-7">
+                    {[
+                      "Rastrea prospectos reales por rubro y zona",
+                      "Analiza su presencia digital y puntúa la oportunidad",
+                      "Redacta el mensaje de WhatsApp, email y propuesta",
+                      "Historial con estado de gestión: nunca prospectas dos veces al mismo",
+                    ].map((t) => (
+                      <li key={t} className="flex items-start gap-2.5 text-slate-600 text-sm">
+                        <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: BRAND }} aria-hidden="true" />{t}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Link to="/auth" className="group inline-flex items-center gap-2 px-6 py-3 font-bold text-white rounded-xl text-sm transition-transform hover:scale-[1.03]" style={{ background: BRAND, boxShadow: `0 12px 30px ${BRAND}40` }}>
+                      <Radar className="w-4 h-4" aria-hidden="true" />
+                      Buscar leads
+                    </Link>
+                    <Link to="/blog/prospeccion-inmobiliaria-scraping-ia" className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-80" style={{ color: BLUE }}>
+                      Leer la guía <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              </Reveal>
+
+              {/* Correos personalizados */}
+              <Reveal delay={0.1}>
+                <div id="correos" className="h-full p-8 rounded-3xl border border-slate-200 bg-slate-50/60 hover:shadow-card transition-all duration-300 scroll-mt-24">
+                  <div className="w-12 h-12 rounded-2xl grid place-items-center mb-5" style={{ background: `${BLUE}12` }}>
+                    <Mail className="w-6 h-6" style={{ color: BLUE }} aria-hidden="true" />
+                  </div>
+                  <span className="font-mono text-[11px] tracking-widest uppercase" style={{ color: BLUE }}>Correos personalizados</span>
+                  <h3 className="font-display font-bold text-2xl mt-2 mb-3 leading-tight" style={{ color: INK }}>
+                    Campañas que llegan a la bandeja principal
+                  </h3>
+                  <p className="text-slate-500 text-[15px] leading-relaxed mb-5">
+                    Sube tu Excel, personaliza cada correo con variables por contacto y envía con diseño
+                    profesional — con las señales de entrega que evitan la pestaña de Promociones.
+                  </p>
+                  <ul className="space-y-2.5 mb-7">
+                    {[
+                      "Personaliza con variables por contacto (nombre, empresa, propiedad…)",
+                      "Diseño profesional con la identidad de tu marca",
+                      "Modo bandeja principal + List-Unsubscribe (evita Promociones y spam)",
+                      "Envío masivo con seguimiento, sin copiar y pegar",
+                    ].map((t) => (
+                      <li key={t} className="flex items-start gap-2.5 text-slate-600 text-sm">
+                        <Check className="w-4 h-4 shrink-0 mt-0.5" style={{ color: BLUE }} aria-hidden="true" />{t}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Link to="/auth" className="group inline-flex items-center gap-2 px-6 py-3 font-bold text-white rounded-xl text-sm transition-transform hover:scale-[1.03]" style={{ background: BLUE, boxShadow: `0 12px 30px ${BLUE}40` }}>
+                      <Send className="w-4 h-4" aria-hidden="true" />
+                      Crear campaña
+                    </Link>
+                    <Link to="/blog/correos-personalizados-inmobiliaria" className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-80" style={{ color: BLUE }}>
+                      Leer más <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              </Reveal>
             </div>
           </div>
         </section>
