@@ -4,6 +4,10 @@ project_id = "owykkhwqpnumvgdeugmj"
 [functions.sofia-chat]
 verify_jwt = false
 
+# Webhook de eventos de Resend (delivered/opened/...). Público; seguridad por firma Svix.
+[functions.resend-webhook]
+verify_jwt = false
+
 [functions.sync-id-contacto]
 verify_jwt = false
 

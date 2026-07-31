@@ -106,13 +106,17 @@ Deno.serve(async (req) => {
 
     const from = `${fromName} <${fromEmail}>`;
     const results: { email: string; ok: boolean; id?: string; error?: string }[] = [];
+    // Filas para el log de seguimiento (correo_envios).
+    const logRows: Record<string, unknown>[] = [];
+    const userId = userData.user.id;
     let sent = 0, failed = 0;
 
     for (const r of valid) {
+      const subject = fillTemplate(subjectTpl, r);
       const payload: Record<string, unknown> = {
         from,
         to: [r.email],
-        subject: fillTemplate(subjectTpl, r),
+        subject,
       };
       if (replyTo) payload.reply_to = replyTo;
       if (htmlTpl.trim()) payload.html = fillTemplate(htmlTpl, r);
@@ -131,18 +135,28 @@ Deno.serve(async (req) => {
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.id) {
           results.push({ email: r.email, ok: true, id: data.id });
+          logRows.push({ resend_id: data.id, email: r.email, empresa: r.empresa ?? null, asunto: subject, enviado_por: userId, estado: "enviado" });
           sent++;
         } else {
           const errMsg = data?.message || data?.error || `HTTP ${res.status}`;
           results.push({ email: r.email, ok: false, error: String(errMsg) });
+          logRows.push({ email: r.email, empresa: r.empresa ?? null, asunto: subject, enviado_por: userId, estado: "fallido", error: String(errMsg).slice(0, 300) });
           failed++;
         }
       } catch (e) {
-        results.push({ email: r.email, ok: false, error: e instanceof Error ? e.message : String(e) });
+        const errMsg = e instanceof Error ? e.message : String(e);
+        results.push({ email: r.email, ok: false, error: errMsg });
+        logRows.push({ email: r.email, empresa: r.empresa ?? null, asunto: subject, enviado_por: userId, estado: "fallido", error: errMsg.slice(0, 300) });
         failed++;
       }
       // Pequeña pausa para respetar el rate limit de Resend (~2 req/s).
       await new Promise((r) => setTimeout(r, 550));
+    }
+
+    // Registrar los envíos para el panel de seguimiento (no bloquea la respuesta si falla).
+    if (logRows.length) {
+      const { error: logErr } = await svc.from("correo_envios").insert(logRows);
+      if (logErr) console.error("correo_envios insert error:", logErr.message);
     }
 
     return new Response(JSON.stringify({ success: true, sent, failed, total: valid.length, results }), {

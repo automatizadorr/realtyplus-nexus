@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { bodyToHtml, buildProEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
+import CorreoSeguimiento from "@/components/correos/CorreoSeguimiento";
 import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
 
 type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
@@ -195,6 +196,7 @@ export default function CorreosPersonalizados() {
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [seguimientoKey, setSeguimientoKey] = useState(0);
 
   // Si venimos desde "Buscar Leads", precargamos los destinatarios importados.
   useEffect(() => {
@@ -308,6 +310,7 @@ export default function CorreosPersonalizados() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setResults(data?.results ?? []);
+      setSeguimientoKey((k) => k + 1); // refresca el panel de seguimiento
       toast({
         title: `${label}: ${data?.sent ?? 0} enviado(s)`,
         description: data?.failed ? `${data.failed} fallaron. Revisa el detalle abajo.` : "Todos entregados a Resend.",
@@ -626,6 +629,9 @@ export default function CorreosPersonalizados() {
           </CardContent>
         </Card>
       )}
+
+      {/* Seguimiento de correos (recibido / abierto / clic vía webhook de Resend) */}
+      <CorreoSeguimiento refreshKey={seguimientoKey} />
 
       {/* Confirmación de envío masivo */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
