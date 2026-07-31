@@ -6,6 +6,21 @@
 
 const REGALOS = "https://lexhouse-ai.homes/regalos";
 
+// Ganchos de dolor para la variable {{gancho}} cuando el lead no trae uno.
+// Redactados como cláusula en minúscula para encajar mid-frase:
+//   "…vemos una y otra vez: {{gancho}}."  ·  "…sobre todo cuando {{gancho}}."
+export const GANCHOS_DOLOR: string[] = [
+  "los leads llegan por WhatsApp y se pierden entre chats sin seguimiento",
+  "no alcanzan a responder cada consulta a tiempo y el interesado se va con otra corredora",
+  "las propiedades se publican pero casi no generan consultas",
+  "cientos de contactos antiguos se enfrían sin que nadie los retome",
+  "el seguimiento depende de la memoria de cada corredor y no de un sistema",
+  "publicar la misma propiedad en cada portal toma horas que nadie tiene",
+  "no hay forma clara de saber qué lead está caliente y cuál ya se perdió",
+  "las consultas que llegan de noche o el fin de semana quedan sin responder",
+  "las fotos de las propiedades no destacan frente a la competencia",
+];
+
 export type EmailCopy = {
   id: string;
   plataforma: string;   // producto del ecosistema

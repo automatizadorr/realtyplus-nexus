@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { bodyToHtml, buildProEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
-import { EMAIL_COPYS, type EmailCopy } from "@/lib/emailCopys";
+import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR } from "@/lib/emailCopys";
 
 type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
@@ -242,6 +242,27 @@ export default function CorreosPersonalizados() {
     });
   };
 
+  // Gancho de dolor por defecto para leads que no lo traen ("rotar" = varía por lead).
+  const [ganchoSel, setGanchoSel] = useState("rotar");
+
+  // Rellena el gancho de los destinatarios que lo tengan vacío (fijo o rotando).
+  const rellenarGanchos = () => {
+    let rot = 0, filled = 0;
+    setRecipients((prev) =>
+      prev.map((r) => {
+        if ((r.gancho || "").trim()) return r;
+        filled++;
+        const gancho = ganchoSel === "rotar" ? GANCHOS_DOLOR[rot++ % GANCHOS_DOLOR.length] : ganchoSel;
+        return { ...r, gancho };
+      }),
+    );
+    if (filled === 0) {
+      toast({ title: "Nada que rellenar", description: "Todos los destinatarios ya tienen un gancho de dolor." });
+    } else {
+      toast({ title: `${filled} gancho(s) rellenados`, description: ganchoSel === "rotar" ? "Se variaron entre los 9 ganchos. Puedes editarlos en la tabla." : "Puedes editarlos en la tabla." });
+    }
+  };
+
   const updateRow = (i: number, field: keyof Recipient, value: string) => {
     setRecipients((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
   };
@@ -257,6 +278,13 @@ export default function CorreosPersonalizados() {
     setSending(true);
     setResults(null);
     try {
+      // Red de seguridad: ningún correo sale con {{gancho}} vacío.
+      let rot = 0;
+      const finalRecipients = payloadRecipients.map((r) =>
+        (r.gancho || "").trim()
+          ? r
+          : { ...r, gancho: ganchoSel === "rotar" ? GANCHOS_DOLOR[rot++ % GANCHOS_DOLOR.length] : ganchoSel },
+      );
       const { data, error } = await supabase.functions.invoke("send-personalized-campaign", {
         body: {
           fromName, fromEmail,
@@ -264,7 +292,7 @@ export default function CorreosPersonalizados() {
           subject,
           text: body,
           html: composeHtml(),
-          recipients: payloadRecipients,
+          recipients: finalRecipients,
         },
       });
       if (error) throw error;
@@ -301,8 +329,12 @@ export default function CorreosPersonalizados() {
     );
   };
 
-  const previewRow = recipients.find((r) => isEmail(r.email)) || {
-    empresa: "Tu Corredora", ciudad: "tu ciudad", gancho: "los leads se pierden entre planillas y WhatsApp",
+  const previewBase = recipients.find((r) => isEmail(r.email)) || {
+    empresa: "Tu Corredora", ciudad: "tu ciudad", gancho: "",
+  };
+  const previewRow = {
+    ...previewBase,
+    gancho: (previewBase.gancho || "").trim() || (ganchoSel === "rotar" ? GANCHOS_DOLOR[0] : ganchoSel),
   };
 
   return (
@@ -349,6 +381,29 @@ export default function CorreosPersonalizados() {
               <UserPlus className="h-4 w-4" /> Añadir fila manual
             </Button>
           </div>
+
+          {recipients.length > 0 && (
+            <div className="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/30 p-3">
+              <div className="min-w-[240px] flex-1 space-y-1.5">
+                <Label className="text-xs">Gancho de dolor por defecto (para leads sin gancho)</Label>
+                <select
+                  value={ganchoSel}
+                  onChange={(e) => setGanchoSel(e.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="rotar">↻ Rotar automáticamente (variar por lead)</option>
+                  {GANCHOS_DOLOR.map((g) => (
+                    <option key={g} value={g}>{g.length > 70 ? g.slice(0, 70) + "…" : g}</option>
+                  ))}
+                </select>
+              </div>
+              <Button type="button" variant="outline" onClick={rellenarGanchos} className="gap-2">
+                <Sparkles className="h-4 w-4" /> Rellenar ganchos vacíos
+                {recipients.filter((r) => !(r.gancho || "").trim()).length > 0 &&
+                  <Badge variant="secondary">{recipients.filter((r) => !(r.gancho || "").trim()).length}</Badge>}
+              </Button>
+            </div>
+          )}
 
           {recipients.length === 0 ? (
             <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
