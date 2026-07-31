@@ -112,8 +112,8 @@ export function buildProEmail(opts: ProEmailOptions): string {
 
   const primaryBtn = showCta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr>
-    <td align="center" style="border-radius:12px;background:${brand};box-shadow:0 8px 18px ${brand}3d;">
-      <a href="${esc(ctaUrl)}" target="_blank" style="display:inline-block;padding:15px 34px;font-family:${FONT_BODY};font-size:15px;font-weight:700;letter-spacing:.2px;color:#ffffff;text-decoration:none;border-radius:12px;background:${brand};">${esc(cta)}</a>
+    <td align="center" style="border-radius:12px;background:${brand};border:2px solid ${GOLD};box-shadow:0 8px 18px ${brand}3d;">
+      <a href="${esc(ctaUrl)}" target="_blank" style="display:inline-block;padding:14px 32px;font-family:${FONT_BODY};font-size:15px;font-weight:700;letter-spacing:.2px;color:#ffffff;text-decoration:none;border-radius:10px;background:${brand};">${esc(cta)}</a>
     </td></tr></table>`
     : "";
   const secondaryBtn = showCta2
@@ -132,7 +132,7 @@ export function buildProEmail(opts: ProEmailOptions): string {
     <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
       <td width="48" style="vertical-align:middle;"><img src="${esc(avatar)}" width="48" height="48" alt="${esc(opts.fromName)}" style="display:block;border:0;border-radius:50%;width:48px;height:48px;object-fit:cover;box-shadow:0 3px 8px rgba(15,30,58,.18);"></td>
       <td style="padding-left:13px;vertical-align:middle;font-family:${FONT_BODY};">
-        <div style="font-size:14.5px;font-weight:700;color:${NAVY};">${esc(opts.fromName)}</div>
+        <div style="font-size:14.5px;font-weight:700;color:${NAVY};">${esc(opts.fromName)}<span style="display:inline-block;width:17px;height:17px;line-height:17px;text-align:center;border-radius:50%;background:${GOLD};color:#ffffff;font-size:10px;font-weight:700;vertical-align:middle;margin-left:7px;box-shadow:0 1px 3px rgba(201,162,39,.5);">&#10003;</span></div>
         <div style="font-size:12px;color:${MUTED};letter-spacing:.2px;">LexHouse AI</div>
       </td>
     </tr></table>
