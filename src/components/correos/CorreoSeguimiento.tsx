@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Loader2, MailCheck, Eye, MousePointerClick, AlertTriangle, Mail } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RefreshCw, Loader2, MailCheck, Eye, MousePointerClick, AlertTriangle, Mail, Sparkles, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -26,13 +26,25 @@ const ESTADO_UI: Record<string, { label: string; cls: string }> = {
 const fmt = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-CL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
-export default function CorreoSeguimiento({ refreshKey = 0 }: { refreshKey?: number }) {
+const abrio = (r: Envio) => Boolean(r.abierto_at) || r.estado === "abierto" || r.estado === "click";
+const hizoClic = (r: Envio) => Boolean(r.click_at) || r.estado === "click";
+
+type Filtro = "todos" | "abrieron" | "no_abrieron" | "clic";
+
+type Props = {
+  refreshKey?: number;
+  onCargarLeads?: (leads: { email: string; empresa: string }[]) => void;
+};
+
+export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Props) {
   // correo_envios / RPC aún no están en el types.ts generado.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any;
   const [rows, setRows] = useState<Envio[]>([]);
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(false);
+  const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [cargandoSeg, setCargandoSeg] = useState(false);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -50,6 +62,45 @@ export default function CorreoSeguimiento({ refreshKey = 0 }: { refreshKey?: num
   }, []);
 
   useEffect(() => { cargar(); }, [cargar, refreshKey]);
+
+  const visibles = useMemo(() => {
+    if (filtro === "abrieron") return rows.filter(abrio);
+    if (filtro === "no_abrieron") return rows.filter((r) => !abrio(r) && r.estado !== "rebotado" && r.estado !== "fallido");
+    if (filtro === "clic") return rows.filter(hizoClic);
+    return rows;
+  }, [rows, filtro]);
+
+  // Carga en el composer SOLO los que abrieron (consulta la BD, no solo los visibles).
+  const campanaAbrieron = async () => {
+    if (!onCargarLeads) return;
+    setCargandoSeg(true);
+    try {
+      const { data } = await sb
+        .from("correo_envios")
+        .select("email, empresa, abierto_at, estado")
+        .or("abierto_at.not.is.null,estado.eq.click,estado.eq.abierto")
+        .order("abierto_at", { ascending: false })
+        .limit(1000);
+      const seen = new Set<string>();
+      const leads: { email: string; empresa: string }[] = [];
+      for (const r of (data ?? []) as { email: string; empresa: string | null }[]) {
+        const email = (r.email || "").trim().toLowerCase();
+        if (!email || seen.has(email)) continue;
+        seen.add(email);
+        leads.push({ email, empresa: r.empresa || "" });
+      }
+      onCargarLeads(leads);
+    } finally {
+      setCargandoSeg(false);
+    }
+  };
+
+  const segmentos: { id: Filtro; label: string; cls: string; n: number }[] = [
+    { id: "todos", label: "Todos", cls: "from-slate-400 to-slate-500", n: rows.length },
+    { id: "abrieron", label: "Abrieron", cls: "from-emerald-400 to-emerald-600", n: rows.filter(abrio).length },
+    { id: "no_abrieron", label: "No abrieron", cls: "from-amber-400 to-orange-500", n: rows.filter((r) => !abrio(r) && r.estado !== "rebotado" && r.estado !== "fallido").length },
+    { id: "clic", label: "Con clic", cls: "from-violet-400 to-fuchsia-600", n: rows.filter(hizoClic).length },
+  ];
 
   const kpis = [
     { k: "Enviados", v: resumen?.total ?? 0, icon: Mail, cls: "text-slate-600" },
@@ -83,9 +134,53 @@ export default function CorreoSeguimiento({ refreshKey = 0 }: { refreshKey?: num
           ))}
         </div>
 
+        {/* Segmentos animados + campaña con los que abrieron */}
+        <style>{`@keyframes lhGrad{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}`}</style>
+        <div className="flex flex-wrap items-center gap-2">
+          {segmentos.map((s) => {
+            const active = filtro === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setFiltro(s.id)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  active
+                    ? `bg-gradient-to-r ${s.cls} text-white shadow-sm scale-[1.03]`
+                    : "border bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {s.label}
+                <span className={`rounded-full px-1.5 text-[10px] ${active ? "bg-white/25" : "bg-muted"}`}>{s.n}</span>
+              </button>
+            );
+          })}
+          {onCargarLeads && (
+            <button
+              type="button"
+              onClick={campanaAbrieron}
+              disabled={cargandoSeg || rows.filter(abrio).length === 0}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-md transition hover:scale-[1.04] hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100"
+              style={{
+                backgroundImage: "linear-gradient(90deg,#003DA5,#0e7c66,#7c1f2e,#C9A227,#003DA5)",
+                backgroundSize: "300% 300%",
+                animation: "lhGrad 6s ease infinite",
+              }}
+            >
+              {cargandoSeg ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              Campaña con los que abrieron
+              <Send className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
         {rows.length === 0 ? (
           <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
             {loading ? "Cargando…" : "Aún no hay envíos registrados. Al enviar una campaña aparecerán aquí con su estado."}
+          </div>
+        ) : visibles.length === 0 ? (
+          <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+            Ningún correo en este segmento (de los últimos 100 mostrados).
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border">
@@ -100,7 +195,7 @@ export default function CorreoSeguimiento({ refreshKey = 0 }: { refreshKey?: num
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((r) => {
+                {visibles.map((r) => {
                   const ui = ESTADO_UI[r.estado] ?? ESTADO_UI.enviado;
                   return (
                     <TableRow key={r.id}>

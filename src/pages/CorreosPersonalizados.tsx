@@ -163,6 +163,7 @@ export default function CorreosPersonalizados() {
   const [ctaUrl, setCtaUrl] = useState("");
   const [brandColor, setBrandColor] = useState("#003DA5");
   const [logoUrl, setLogoUrl] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [footerText, setFooterText] = useState(
     "LexHouse · Inteligencia artificial para corredoras de propiedades. Responde este correo y te contactamos.",
   );
@@ -194,7 +195,7 @@ export default function CorreosPersonalizados() {
   // Compone el HTML de la campaña (plantilla con {{variables}} intactas; la edge las rellena).
   const composeHtml = () =>
     designMode === "pro"
-      ? buildProEmail({ fromName, titulo, body, ctaText, ctaUrl, cta2Text, cta2Url, brandColor, logoUrl, footerText, bonusText, bonusUrl })
+      ? buildProEmail({ fromName, titulo, body, ctaText, ctaUrl, cta2Text, cta2Url, brandColor, logoUrl, avatarUrl, footerText, bonusText, bonusUrl })
       : bodyToHtml(body);
 
   const [sending, setSending] = useState(false);
@@ -536,6 +537,7 @@ export default function CorreosPersonalizados() {
         ctaUrl={ctaUrl} setCtaUrl={setCtaUrl}
         brandColor={brandColor} setBrandColor={setBrandColor}
         logoUrl={logoUrl} setLogoUrl={setLogoUrl}
+        avatarUrl={avatarUrl} setAvatarUrl={setAvatarUrl}
         footerText={footerText} setFooterText={setFooterText}
       />
 
@@ -635,7 +637,15 @@ export default function CorreosPersonalizados() {
       )}
 
       {/* Seguimiento de correos (recibido / abierto / clic vía webhook de Resend) */}
-      <CorreoSeguimiento refreshKey={seguimientoKey} />
+      <CorreoSeguimiento
+        refreshKey={seguimientoKey}
+        onCargarLeads={(leads) => {
+          if (!leads.length) { toast({ title: "Nadie abrió aún", description: "Cuando haya aperturas podrás armar la campaña.", variant: "destructive" }); return; }
+          setRecipients(leads.map((l) => ({ email: l.email, empresa: l.empresa, ciudad: "", gancho: "" })));
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          toast({ title: `${leads.length} leads cargados`, description: "Solo los que abrieron un correo. Ajusta el mensaje y envía tu campaña." });
+        }}
+      />
 
       {/* Confirmación de envío masivo */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>

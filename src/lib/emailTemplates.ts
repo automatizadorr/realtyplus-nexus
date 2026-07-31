@@ -59,6 +59,7 @@ export type ProEmailOptions = {
   cta2Url?: string;
   brandColor?: string;
   logoUrl?: string;
+  avatarUrl?: string;   // foto de perfil del remitente (firma con foto)
   footerText?: string;
   bonusText?: string;   // regalo/bonus opcional (línea bajo el CTA)
   bonusUrl?: string;
@@ -104,6 +105,20 @@ export function buildProEmail(opts: ProEmailOptions): string {
     : "";
   const spacer = `<div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>`;
 
+  // Firma con foto de perfil del remitente (opcional).
+  const avatar = (opts.avatarUrl || "").trim();
+  const avatarBlock = avatar
+    ? `<tr><td class="px" style="padding:10px 34px 2px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td width="46" style="vertical-align:middle;"><img src="${esc(avatar)}" width="46" height="46" alt="${esc(opts.fromName)}" style="display:block;border:0;border-radius:50%;width:46px;height:46px;object-fit:cover;"></td>
+    <td style="padding-left:12px;vertical-align:middle;font-family:Arial,Helvetica,sans-serif;">
+      <div style="font-size:14px;font-weight:700;color:#0f1e3a;">${esc(opts.fromName)}</div>
+      <div style="font-size:12px;color:#5b6b86;">LexHouse AI</div>
+    </td>
+  </tr></table>
+</td></tr>`
+    : "";
+
   const ctaBlock = (showCta || showCta2)
     ? `<tr><td class="px" align="left" style="padding:4px 34px ${showBonus ? "12px" : "30px"};">
   ${primaryBtn}${showCta && showCta2 ? spacer : ""}${secondaryBtn}
@@ -148,6 +163,7 @@ export function buildProEmail(opts: ProEmailOptions): string {
      ${titulo ? `<h1 class="h1" style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.25;color:#0f1e3a;font-weight:700;">${esc(titulo)}</h1>` : ""}
      ${bodyHtml}
    </td></tr>
+   ${avatarBlock}
    ${ctaBlock}
    ${bonusBlock}
    <tr><td class="px" style="background:#0f1e3a;padding:22px 34px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#9fb0cc;">${esc(footer)}</td></tr>
