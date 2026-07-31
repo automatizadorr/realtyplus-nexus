@@ -2,12 +2,21 @@
 // IMPORTANTE: las plantillas conservan las variables {{empresa}}/{{ciudad}}/{{gancho}}
 // intactas — la edge function `send-personalized-campaign` las rellena por destinatario.
 // El HTML profesional usa layout de TABLAS + estilos inline (compatibilidad Gmail/Outlook/Apple Mail).
+// Identidad de marca RE/MAX = LexHouse: azul (#003DA5) + rojo (#E4002B) + blanco, sobre navy (#0F1E3A).
 
 const esc = (s: string) =>
   (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// Convierte el cuerpo en texto plano a bloques HTML (párrafos + listas con viñeta ✓).
-// `brand` colorea las viñetas. Usado por el diseño profesional.
+// Paleta y tipografía (fuentes web-safe con Segoe UI en Windows/Outlook y Georgia para títulos).
+const NAVY = "#0F1E3A";
+const RED = "#E4002B";
+const BLUE = "#003DA5";
+const INK = "#3A4A63";
+const MUTED = "#6B7A91";
+const FONT_BODY = "'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const FONT_HEAD = "Georgia,'Times New Roman',serif";
+
+// Convierte el cuerpo en texto plano a bloques HTML (párrafos + listas con viñeta ✓ en chip).
 function renderBlocks(text: string, brand: string): string {
   const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
   return blocks
@@ -19,15 +28,17 @@ function renderBlocks(text: string, brand: string): string {
           .map((l) => {
             const t = esc(l.replace(/^[-•]\s+/, ""));
             return `<tr>
-  <td valign="top" style="padding:0 10px 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:${brand};font-weight:700;">&#10003;</td>
-  <td valign="top" style="padding:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#2a3b57;">${t}</td>
+  <td valign="top" style="padding:0 12px 12px 0;">
+    <span style="display:inline-block;width:22px;height:22px;border-radius:7px;background:${brand}14;color:${brand};font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;text-align:center;line-height:22px;">&#10003;</span>
+  </td>
+  <td valign="top" style="padding:1px 0 12px;font-family:${FONT_BODY};font-size:15.5px;line-height:1.55;color:${INK};">${t}</td>
 </tr>`;
           })
           .join("");
-        return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">${rows}</table>`;
+        return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:2px 0 18px;">${rows}</table>`;
       }
       const p = lines.map(esc).join("<br>");
-      return `<p style="margin:0 0 15px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#2a3b57;">${p}</p>`;
+      return `<p style="margin:0 0 16px;font-family:${FONT_BODY};font-size:15.5px;line-height:1.72;color:${INK};">${p}</p>`;
     })
     .join("\n");
 }
@@ -46,7 +57,7 @@ export function bodyToHtml(text: string): string {
       return `<p>${lines.join("<br>")}</p>`;
     })
     .join("\n");
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1a2b4a;line-height:1.6;max-width:560px;margin:0 auto">\n${html}\n</div>`;
+  return `<div style="font-family:${FONT_BODY};font-size:15px;color:${INK};line-height:1.65;max-width:560px;margin:0 auto">\n${html}\n</div>`;
 }
 
 export type ProEmailOptions = {
@@ -65,24 +76,30 @@ export type ProEmailOptions = {
   bonusUrl?: string;
 };
 
+// Banda tricolor RE/MAX (rojo | azul), firma de marca constante bajo el encabezado.
+const TRICOLOR = `<tr><td style="padding:0;font-size:0;line-height:0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td width="50%" height="5" style="height:5px;background:${RED};font-size:0;line-height:0;">&nbsp;</td>
+    <td width="50%" height="5" style="height:5px;background:${BLUE};font-size:0;line-height:0;">&nbsp;</td>
+  </tr></table>
+</td></tr>`;
+
 // Genera un correo HTML profesional, responsivo y compatible con clientes de correo.
 export function buildProEmail(opts: ProEmailOptions): string {
-  const brand = (opts.brandColor || "#003DA5").trim();
+  const brand = (opts.brandColor || BLUE).trim();
   const titulo = opts.titulo?.trim() || "";
   const bodyHtml = renderBlocks(opts.body || "", brand);
   const cta = (opts.ctaText || "").trim();
   const ctaUrl = (opts.ctaUrl || "").trim();
-  const showCta = cta && ctaUrl;
+  const showCta = Boolean(cta && ctaUrl);
   const footer = (opts.footerText || `${opts.fromName} · Inteligencia artificial para tu negocio.`).trim();
-  // Preheader (texto oculto de vista previa en la bandeja): quitamos los tokens
-  // {{...}} ANTES de recortar para no dejar un token partido (p. ej. "{{gan").
   const preheader = esc(
     (opts.body || titulo).replace(/\{\{[^}]*\}\}/g, " ").replace(/[-•]/g, " ").replace(/\s+/g, " ").trim().slice(0, 110),
   );
 
   const header = opts.logoUrl?.trim()
-    ? `<img src="${esc(opts.logoUrl.trim())}" alt="${esc(opts.fromName)}" height="34" style="display:block;border:0;outline:none;text-decoration:none;height:34px;">`
-    : `<span style="font-family:Georgia,'Times New Roman',serif;font-size:21px;font-weight:700;color:#ffffff;letter-spacing:.3px;">${esc(opts.fromName)}</span>`;
+    ? `<img src="${esc(opts.logoUrl.trim())}" alt="${esc(opts.fromName)}" height="36" style="display:block;border:0;outline:none;text-decoration:none;height:36px;">`
+    : `<span style="font-family:${FONT_HEAD};font-size:22px;font-weight:700;color:#ffffff;letter-spacing:.3px;">${esc(opts.fromName)}</span>`;
 
   const cta2 = (opts.cta2Text || "").trim();
   const cta2Url = (opts.cta2Url || "").trim();
@@ -93,41 +110,43 @@ export function buildProEmail(opts: ProEmailOptions): string {
 
   const primaryBtn = showCta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr>
-    <td align="center" style="border-radius:10px;background:${brand};">
-      <a href="${esc(ctaUrl)}" target="_blank" style="display:inline-block;padding:14px 30px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;background:${brand};">${esc(cta)}</a>
+    <td align="center" style="border-radius:12px;background:${brand};box-shadow:0 8px 18px ${brand}3d;">
+      <a href="${esc(ctaUrl)}" target="_blank" style="display:inline-block;padding:15px 34px;font-family:${FONT_BODY};font-size:15px;font-weight:700;letter-spacing:.2px;color:#ffffff;text-decoration:none;border-radius:12px;background:${brand};">${esc(cta)}</a>
     </td></tr></table>`
     : "";
   const secondaryBtn = showCta2
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn"><tr>
-    <td align="center" style="border-radius:10px;border:2px solid ${brand};">
-      <a href="${esc(cta2Url)}" target="_blank" style="display:inline-block;padding:12px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${brand};text-decoration:none;border-radius:10px;">${esc(cta2)}</a>
+    <td align="center" style="border-radius:12px;border:2px solid ${brand};background:#ffffff;">
+      <a href="${esc(cta2Url)}" target="_blank" style="display:inline-block;padding:13px 32px;font-family:${FONT_BODY};font-size:15px;font-weight:700;letter-spacing:.2px;color:${brand};text-decoration:none;border-radius:12px;">${esc(cta2)}</a>
     </td></tr></table>`
     : "";
-  const spacer = `<div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>`;
+  const spacer = `<div style="height:11px;line-height:11px;font-size:0;">&nbsp;</div>`;
 
-  // Firma con foto de perfil del remitente (opcional).
+  // Firma con foto de perfil del remitente (opcional), con separador sutil.
   const avatar = (opts.avatarUrl || "").trim();
   const avatarBlock = avatar
-    ? `<tr><td class="px" style="padding:10px 34px 2px;">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-    <td width="46" style="vertical-align:middle;"><img src="${esc(avatar)}" width="46" height="46" alt="${esc(opts.fromName)}" style="display:block;border:0;border-radius:50%;width:46px;height:46px;object-fit:cover;"></td>
-    <td style="padding-left:12px;vertical-align:middle;font-family:Arial,Helvetica,sans-serif;">
-      <div style="font-size:14px;font-weight:700;color:#0f1e3a;">${esc(opts.fromName)}</div>
-      <div style="font-size:12px;color:#5b6b86;">LexHouse AI</div>
-    </td>
-  </tr></table>
+    ? `<tr><td class="px" style="padding:6px 34px 4px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #edf0f5;padding-top:16px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="48" style="vertical-align:middle;"><img src="${esc(avatar)}" width="48" height="48" alt="${esc(opts.fromName)}" style="display:block;border:0;border-radius:50%;width:48px;height:48px;object-fit:cover;box-shadow:0 3px 8px rgba(15,30,58,.18);"></td>
+      <td style="padding-left:13px;vertical-align:middle;font-family:${FONT_BODY};">
+        <div style="font-size:14.5px;font-weight:700;color:${NAVY};">${esc(opts.fromName)}</div>
+        <div style="font-size:12px;color:${MUTED};letter-spacing:.2px;">LexHouse AI</div>
+      </td>
+    </tr></table>
+  </td></tr></table>
 </td></tr>`
     : "";
 
   const ctaBlock = (showCta || showCta2)
-    ? `<tr><td class="px" align="left" style="padding:4px 34px ${showBonus ? "12px" : "30px"};">
+    ? `<tr><td class="px" align="left" style="padding:8px 34px ${showBonus ? "12px" : "32px"};">
   ${primaryBtn}${showCta && showCta2 ? spacer : ""}${secondaryBtn}
 </td></tr>`
     : "";
 
   const bonusBlock = showBonus
     ? `<tr><td class="px" align="left" style="padding:0 34px 30px;">
-  <a href="${esc(bonusUrl)}" target="_blank" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${brand};text-decoration:none;border-bottom:1px dashed ${brand}66;padding-bottom:1px;">&#127873; ${esc(bonus)} &rarr;</a>
+  <a href="${esc(bonusUrl)}" target="_blank" style="font-family:${FONT_BODY};font-size:13px;font-weight:600;color:${brand};text-decoration:none;border-bottom:1px dashed ${brand}66;padding-bottom:2px;">&#127873; ${esc(bonus)} &rarr;</a>
 </td></tr>`
     : "";
 
@@ -140,35 +159,37 @@ export function buildProEmail(opts: ProEmailOptions): string {
 <meta name="x-apple-disable-message-reformatting">
 <title>${esc(titulo || opts.fromName)}</title>
 <style>
-  body{margin:0;padding:0;background:#eef1f6;-webkit-text-size-adjust:100%;}
-  table{border-collapse:collapse;}
-  img{border:0;line-height:100%;outline:none;text-decoration:none;}
+  body{margin:0;padding:0;background:#e9edf3;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}
+  table{border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0;}
+  img{border:0;line-height:100%;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}
   a{color:${brand};}
+  .btn a:hover{opacity:.92;}
   @media only screen and (max-width:600px){
     .container{width:100%!important;border-radius:0!important;}
-    .px{padding-left:22px!important;padding-right:22px!important;}
-    .h1{font-size:22px!important;}
-    .btn a{display:block!important;text-align:center!important;}
+    .px{padding-left:24px!important;padding-right:24px!important;}
+    .h1{font-size:23px!important;}
+    .btn,.btn a{display:block!important;width:100%!important;text-align:center!important;}
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#eef1f6;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#eef1f6;font-size:1px;line-height:1px;">${preheader}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef1f6;">
- <tr><td align="center" style="padding:28px 12px;">
-  <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-   <tr><td class="px" style="background:${brand};padding:22px 32px;">${header}</td></tr>
-   <tr><td style="height:4px;line-height:4px;font-size:0;background:${brand};">&nbsp;</td></tr>
-   <tr><td class="px" style="padding:34px 34px 6px;">
-     ${titulo ? `<h1 class="h1" style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.25;color:#0f1e3a;font-weight:700;">${esc(titulo)}</h1>` : ""}
+<body style="margin:0;padding:0;background:#e9edf3;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#e9edf3;font-size:1px;line-height:1px;">${preheader}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e9edf3;">
+ <tr><td align="center" style="padding:30px 12px;">
+  <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #dfe4ec;box-shadow:0 14px 38px rgba(15,30,58,.12);">
+   <tr><td class="px" style="background:${NAVY};padding:24px 34px;">${header}</td></tr>
+   ${TRICOLOR}
+   <tr><td class="px" style="padding:36px 34px 8px;">
+     ${titulo ? `<h1 class="h1" style="margin:0 0 20px;font-family:${FONT_HEAD};font-size:27px;line-height:1.24;color:${NAVY};font-weight:700;letter-spacing:-.2px;">${esc(titulo)}</h1>` : ""}
      ${bodyHtml}
    </td></tr>
    ${avatarBlock}
    ${ctaBlock}
    ${bonusBlock}
-   <tr><td class="px" style="background:#0f1e3a;padding:22px 34px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#9fb0cc;">${esc(footer)}</td></tr>
+   ${TRICOLOR}
+   <tr><td class="px" style="background:${NAVY};padding:24px 34px;font-family:${FONT_BODY};font-size:12.5px;line-height:1.65;color:#9db0cc;">${esc(footer)}</td></tr>
   </table>
-  <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#94a3b8;padding:16px 12px 0;max-width:600px;">
+  <div style="font-family:${FONT_BODY};font-size:11px;line-height:1.55;color:#94a3b8;padding:18px 12px 0;max-width:600px;">
     Recibes este correo porque tu negocio podría beneficiarse de nuestra solución. Si no te interesa, responde este correo con &ldquo;baja&rdquo; y no volveremos a escribirte.
   </div>
  </td></tr>
