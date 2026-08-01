@@ -108,16 +108,16 @@ export function AppSidebar() {
             whileHover={{ scale: 1.04, rotate: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="bg-white ring-1 ring-black/5 rounded-xl p-3 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
+            className="bg-white ring-1 ring-black/5 rounded-xl p-5 shadow-md w-full flex items-center justify-center overflow-hidden group group-data-[collapsible=icon]:hidden"
           >
             <motion.img
               src={lexLogo}
               alt="LexHouse AI"
-              className="w-auto h-auto max-h-16 object-contain transition-transform duration-300 group-hover:scale-110"
+              className="w-auto h-auto max-h-28 object-contain transition-transform duration-300 group-hover:scale-110"
             />
           </motion.div>
           {/* Marca compacta — modo rail de íconos */}
-          <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-xl bg-white shadow-md p-1.5">
+          <div className="hidden group-data-[collapsible=icon]:flex aspect-square w-full items-center justify-center rounded-xl bg-white shadow-md p-2">
             <img src={lexLogo} alt="LexHouse AI" className="w-full h-full object-contain" />
           </div>
           {/* Firma de marca */}
