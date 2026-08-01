@@ -111,12 +111,12 @@ export default function Dashboard() {
   >([]);
   const [hotLead, setHotLead] = useState<HotLead | null>(null);
 
-  async function fetchData() {
+  async function fetchEssential() {
     const last90d = new Date();
     last90d.setDate(last90d.getDate() - 90);
     const since = last90d.toISOString();
 
-    const [leadsRes, messagesRes, countRes, countryRes] = await Promise.all([
+    const [leadsRes, messagesRes, countRes] = await Promise.all([
       supabase
         .from("leads_campana")
         .select("id, nombre, telefono, pais, estado, ha_respondido, bot_activo")
@@ -130,7 +130,6 @@ export default function Dashboard() {
       supabase
         .from("mensajes_whatsapp")
         .select("*", { count: "exact", head: true }),
-      supabase.functions.invoke("sheets-country-kpis", { body: {} }),
     ]);
 
     const messages = (messagesRes.data ?? []) as {
@@ -140,8 +139,6 @@ export default function Dashboard() {
     const leadsData = (leadsRes.data ?? []) as LeadRow[];
     setLeads(leadsData);
 
-    // Real respondents = distinct phones with at least one inbound message
-    // Contacted = distinct phones with at least one outbound message
     const inboundPhones = new Set<string>();
     const outboundPhones = new Set<string>();
     messages.forEach((m) => {
@@ -168,7 +165,6 @@ export default function Dashboard() {
       responseRate,
     });
 
-    // Messages by day (last 14 days)
     const dayMap: Record<string, { inbound: number; outbound: number }> = {};
     const now = new Date();
     for (let i = 13; i >= 0; i--) {
@@ -188,7 +184,6 @@ export default function Dashboard() {
       Object.entries(dayMap).map(([date, c]) => ({ date: date.slice(5), ...c })),
     );
 
-    // Country KPIs: total leads + REAL responses per country (from messages)
     const respByCountry = new Map<string, { total: number; resp: number }>();
     leadsData.forEach((l) => {
       const key = (l.pais || "Sin país").trim() || "Sin país";
@@ -197,6 +192,14 @@ export default function Dashboard() {
       if (inboundPhones.has(String(l.telefono).split("@")[0])) cur.resp += 1;
       respByCountry.set(key, cur);
     });
+
+    return { leadsData, respByCountry };
+  }
+
+  async function fetchCountryData(
+    respByCountry: Map<string, { total: number; resp: number }>,
+  ) {
+    const countryRes = await supabase.functions.invoke("sheets-country-kpis", { body: {} });
 
     const sheetsCountries: CountryKPI[] = countryRes.data?.success
       ? countryRes.data.countries || []
@@ -227,15 +230,22 @@ export default function Dashboard() {
     setCountries(merged);
   }
 
+  async function fetchData() {
+    const { respByCountry } = await fetchEssential();
+    await fetchCountryData(respByCountry);
+  }
+
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        await fetchData();
+        const { respByCountry } = await fetchEssential();
+        setLoading(false);
+        fetchCountryData(respByCountry).catch(console.error);
       } catch (e) {
         console.error(e);
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 
