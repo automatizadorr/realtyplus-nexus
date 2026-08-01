@@ -136,6 +136,7 @@ export function AppSidebar() {
                     item.url === "/dashboard"
                       ? location.pathname === "/dashboard"
                       : location.pathname.startsWith(item.url);
+                  const Icon = item.icon;
 
                   return (
                     <div key={item.title}>
