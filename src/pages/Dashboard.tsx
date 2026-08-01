@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AnimatedNumber, kpiGrid, kpiItem } from "@/components/AnimatedNumber";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -12,7 +11,6 @@ import {
   Loader2,
   TrendingUp,
   UserCheck,
-  Globe2,
   RefreshCw,
   Download,
   Inbox as InboxIcon,
@@ -23,20 +21,6 @@ import {
   ArrowRight,
   Reply,
 } from "lucide-react";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  BarChart,
-  Bar,
-} from "recharts";
 import {
   Table,
   TableBody,
@@ -53,11 +37,14 @@ import {
 } from "@/components/ui/dialog";
 import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
-import NewStatsSection from "@/components/dashboard/NewStatsSection";
 import { FxPanel, StatTile } from "@/components/dashboard/fx";
 import { HotLeadDialog, type HotLead } from "@/components/dashboard/HotLeadDialog";
 import { tickFase } from "@/lib/acuse";
 import { EditablePhoneCell } from "@/components/EditablePhoneCell";
+
+const NewStatsSection = lazy(() => import("@/components/dashboard/NewStatsSection"));
+const DashboardCharts = lazy(() => import("@/components/dashboard/DashboardCharts"));
+const CountryDetailTable = lazy(() => import("@/components/dashboard/CountryDetailTable"));
 
 function timeAgo(ms: number): string {
   const diff = Date.now() - ms;
@@ -125,7 +112,10 @@ export default function Dashboard() {
   const [hotLead, setHotLead] = useState<HotLead | null>(null);
 
   async function fetchData() {
-    // Fetch messages in pages (Supabase default cap is 1000)
+    const last180d = new Date();
+    last180d.setDate(last180d.getDate() - 180);
+    const since = last180d.toISOString();
+
     async function fetchAllMessages() {
       const all: { direccion: string; created_at: string; telefono: string; estado_envio?: string | null }[] = [];
       const pageSize = 1000;
@@ -133,12 +123,13 @@ export default function Dashboard() {
         const { data, error } = await supabase
           .from("mensajes_whatsapp")
           .select("direccion, created_at, telefono, estado_envio")
+          .gte("created_at", since)
           .order("created_at", { ascending: false })
           .range(from, from + pageSize - 1);
         if (error || !data || data.length === 0) break;
         all.push(...(data as any));
         if (data.length < pageSize) break;
-        if (from > 200000) break; // safety
+        if (from > 200000) break;
       }
       return all;
     }
@@ -503,201 +494,26 @@ export default function Dashboard() {
         </div>
       </FxPanel>
 
-      <NewStatsSection />
+      <Suspense fallback={<div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}>
+        <NewStatsSection />
+      </Suspense>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-40px" }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <Card className="border-border/60 transition-shadow hover:shadow-md">
-          <CardHeader className="pb-3">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">Actividad</p>
-            <CardTitle className="mt-1 flex items-center gap-2 text-base font-semibold">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20">
-                <MessageSquareText className="h-4 w-4" />
-              </span>
-              Mensajes por día
-              <span className="ml-auto text-xs font-normal text-muted-foreground">últimos 14 días</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={lineChartConfig} className="h-[220px] w-full">
-              <LineChart data={messagesByDay} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="inbound" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} name="Entrantes" />
-                <Line type="monotone" dataKey="outbound" stroke="hsl(142, 71%, 45%)" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} name="Salientes" />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </motion.div>
+      <Suspense fallback={<div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}>
+        <DashboardCharts
+          messagesByDay={messagesByDay}
+          topCountries={topCountries}
+          topResponseCountries={topResponseCountries}
+          countries={countries}
+          lineChartConfig={lineChartConfig}
+          countryChartConfig={countryChartConfig}
+          respChartConfig={respChartConfig}
+          onSelectCountry={setSelectedCountry}
+        />
+      </Suspense>
 
-      {countries.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-3"
-        >
-          <Card className="border-border/60 transition-shadow hover:shadow-md">
-            <CardHeader className="pb-3">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">Volumen</p>
-              <CardTitle className="mt-1 flex items-center gap-2 text-base font-semibold">
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/20">
-                  <Globe2 className="h-4 w-4" />
-                </span>
-                Top 10 países por contactos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={countryChartConfig} className="h-[240px] w-full">
-                <BarChart
-                  data={topCountries}
-                  layout="vertical"
-                  margin={{ top: 5, right: 16, left: 8, bottom: 5 }}
-                  onClick={(state: any) => {
-                    const p = state?.activePayload?.[0]?.payload as CountryKPI | undefined;
-                    if (p) setSelectedCountry(p);
-                  }}
-                >
-                  <defs>
-                    <linearGradient id="barPrimary" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={1} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="pais" width={110} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="total" radius={[0, 4, 4, 0]} fill="url(#barPrimary)" className="cursor-pointer" />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 transition-shadow hover:shadow-md">
-            <CardHeader className="pb-3">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">Efectividad</p>
-              <CardTitle className="mt-1 flex items-center gap-2 text-base font-semibold">
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 text-emerald-600 ring-1 ring-emerald-500/20">
-                  <TrendingUp className="h-4 w-4" />
-                </span>
-                Tasa de respuesta por país (top 10)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {topResponseCountries.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-12 text-center">
-                  Aún no hay leads con respuesta registrada.
-                </p>
-              ) : (
-                <ChartContainer config={respChartConfig} className="h-[240px] w-full">
-                  <BarChart
-                    data={topResponseCountries}
-                    layout="vertical"
-                    margin={{ top: 5, right: 16, left: 8, bottom: 5 }}
-                    onClick={(state: any) => {
-                      const p = state?.activePayload?.[0]?.payload as CountryKPI | undefined;
-                      if (p) setSelectedCountry(p);
-                    }}
-                  >
-                    <defs>
-                      <linearGradient id="barEmerald" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11 }} unit="%" tickLine={false} axisLine={false} />
-                    <YAxis type="category" dataKey="pais" width={110} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="tasa_respuesta" fill="url(#barEmerald)" radius={[0, 4, 4, 0]} className="cursor-pointer" />
-                  </BarChart>
-                </ChartContainer>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {countries.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">Detalle</p>
-              <CardTitle className="mt-1 text-base font-semibold">
-                Detalle por país <span className="font-normal text-muted-foreground">({countries.length})</span>
-                <span className="ml-2 text-xs font-normal text-muted-foreground">· clic en una fila para segmentar</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border/60">
-                <Table>
-                  <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur supports-[backdrop-filter]:bg-muted/40 [&_th]:h-9 [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>País</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Participación</TableHead>
-                      <TableHead className="text-right">Respondieron</TableHead>
-                      <TableHead>Tasa resp.</TableHead>
-                      <TableHead className="text-right">Últ. 7d</TableHead>
-                      <TableHead className="text-right">Días prom.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {countries.map((c) => (
-                      <TableRow
-                        key={c.pais}
-                        className="cursor-pointer even:bg-muted/20 hover:bg-primary/5"
-                        onClick={() => setSelectedCountry(c)}
-                      >
-                        <TableCell className="font-medium">
-                          <span className="mr-2">{countryFlag(c.pais)}</span>
-                          {c.pais}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums">{c.total.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-full min-w-[36px] max-w-[90px] overflow-hidden rounded-full bg-muted">
-                              <div className="h-full rounded-full bg-primary/60" style={{ width: `${Math.min(c.pct, 100)}%` }} />
-                            </div>
-                            <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">{c.pct}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{(c.respondidos ?? 0).toLocaleString()}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-full min-w-[36px] max-w-[90px] overflow-hidden rounded-full bg-muted">
-                              <div className="h-full rounded-full bg-emerald-500/70" style={{ width: `${Math.min(c.tasa_respuesta ?? 0, 100)}%` }} />
-                            </div>
-                            <span className="w-11 text-right text-xs font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                              {(c.tasa_respuesta ?? 0).toFixed(1)}%
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{c.recientes_7d.toLocaleString()}</TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">{c.promedio_dias}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+      <Suspense fallback={null}>
+        <CountryDetailTable countries={countries} onSelectCountry={setSelectedCountry} />
+      </Suspense>
 
       <Dialog open={!!selectedCountry} onOpenChange={(o) => !o && setSelectedCountry(null)}>
         <DialogContent className="max-w-4xl">
