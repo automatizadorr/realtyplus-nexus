@@ -147,15 +147,15 @@ export function InstallPrompt() {
   const isHandheld = device === "mobile";
   const Icon = isHandheld ? Smartphone : Monitor;
   const title = isHandheld
-    ? "Instala NexusPlus-AI en tu móvil"
+    ? "Instala Lexhouse PLUS en tu móvil"
     : device === "tablet"
-    ? "Instala NexusPlus-AI en tu tablet"
-    : "Instala NexusPlus-AI en tu PC";
+    ? "Instala Lexhouse PLUS en tu tablet"
+    : "Instala Lexhouse PLUS en tu PC";
 
   const manualHint = ios
     ? null
     : device === "desktop"
-    ? 'En Chrome/Edge: icono "Instalar" (⊕) en la barra de direcciones, o menú ⋮ → "Instalar NexusPlus-AI".'
+    ? 'En Chrome/Edge: icono "Instalar" (⊕) en la barra de direcciones, o menú ⋮ → "Instalar Lexhouse PLUS".'
     : 'En Chrome: menú ⋮ → "Instalar app" o "Añadir a pantalla de inicio".';
 
   return (

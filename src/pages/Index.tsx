@@ -764,6 +764,10 @@ export default function Index() {
                   <a href="#como" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-slate-700 rounded-xl text-[15px] border border-slate-300 bg-white/70 hover:bg-slate-50 transition-colors">
                     Ver cómo funciona
                   </a>
+                  <a href="https://lexhouse-ai.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-[#003DA5] rounded-xl text-[15px] border border-[#003DA5]/30 bg-[#003DA5]/5 hover:bg-[#003DA5]/10 transition-colors">
+                    Conocer el ecosistema
+                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                  </a>
                 </div>
 
                 <div className="lh-hero-item mt-8 flex flex-wrap gap-2 font-mono text-[11px]" style={{ "--lh-d": heroDelays[5] } as CSSProperties}>
@@ -1127,6 +1131,13 @@ export default function Index() {
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                   </Link>
                 </Magnetic>
+                <p className="mt-6 text-white/50 text-sm">
+                  ¿Buscas el ecosistema completo? Explora{" "}
+                  <a href="https://lexhouse-ai.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-white underline underline-offset-2 hover:text-[#D4AF37] transition-colors">
+                    lexhouse-ai.com
+                  </a>{" "}
+                  — plataforma, marketplace y contratos con IA.
+                </p>
               </div>
             </div>
           </Reveal>
