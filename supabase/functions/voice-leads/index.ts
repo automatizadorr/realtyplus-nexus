@@ -100,7 +100,8 @@ Deno.serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
     if (!GOOGLE_SHEETS_API_KEY) throw new Error("GOOGLE_SHEETS_API_KEY missing");
 
-    // Auth + admin
+    // Auth + CRM access. Read the canonical role table directly so access does
+    // not depend on the optional has_crm_access RPC being present externally.
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
     const userClient = createClient(SUPABASE_URL, ANON_KEY, {
@@ -110,10 +111,19 @@ Deno.serve(async (req) => {
     if (authErr || !user) return json({ error: "Unauthorized" }, 401);
     const userId = user.id;
     const svc = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: hasAccess } = await svc.rpc("has_crm_access", {
-      _user_id: userId,
-    });
-    if (!hasAccess) return json({ error: "Forbidden: admin role required" }, 403);
+    const { data: roleRows, error: roleError } = await svc
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "sub_admin"])
+      .limit(1);
+    if (roleError) {
+      console.error("voice-leads role lookup failed:", roleError.message);
+      return json({ error: "Unable to verify CRM access" }, 500);
+    }
+    if (!roleRows?.length) {
+      return json({ error: "Forbidden: CRM access requires admin or sub_admin role" }, 403);
+    }
 
     const gwHeaders = {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
