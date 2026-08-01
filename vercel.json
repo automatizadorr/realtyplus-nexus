@@ -2,8 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html",
-      "prerender": true
+      "destination": "/index.html"
     }
   ],
   "headers": [
