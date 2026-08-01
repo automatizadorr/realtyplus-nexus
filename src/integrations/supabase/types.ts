@@ -68,6 +68,63 @@ export type Database = {
         }
         Relationships: []
       }
+      correo_envios: {
+        Row: {
+          abierto_at: string | null
+          asunto: string | null
+          click_at: string | null
+          clicks: number
+          email: string
+          empresa: string | null
+          entregado_at: string | null
+          enviado_at: string
+          enviado_por: string | null
+          error: string | null
+          estado: string
+          id: string
+          opens: number
+          rebotado_at: string | null
+          resend_id: string | null
+          ultimo_evento_at: string | null
+        }
+        Insert: {
+          abierto_at?: string | null
+          asunto?: string | null
+          click_at?: string | null
+          clicks?: number
+          email: string
+          empresa?: string | null
+          entregado_at?: string | null
+          enviado_at?: string
+          enviado_por?: string | null
+          error?: string | null
+          estado?: string
+          id?: string
+          opens?: number
+          rebotado_at?: string | null
+          resend_id?: string | null
+          ultimo_evento_at?: string | null
+        }
+        Update: {
+          abierto_at?: string | null
+          asunto?: string | null
+          click_at?: string | null
+          clicks?: number
+          email?: string
+          empresa?: string | null
+          entregado_at?: string | null
+          enviado_at?: string
+          enviado_por?: string | null
+          error?: string | null
+          estado?: string
+          id?: string
+          opens?: number
+          rebotado_at?: string | null
+          resend_id?: string | null
+          ultimo_evento_at?: string | null
+        }
+        Relationships: []
+      }
       documentos_rag: {
         Row: {
           contenido: string
@@ -662,6 +719,143 @@ export type Database = {
         }
         Relationships: []
       }
+      prospeccion_busquedas: {
+        Row: {
+          cantidad_encontrada: number
+          cantidad_solicitada: number
+          ciudad: string
+          creado_por: string | null
+          created_at: string
+          estadisticas: Json
+          id: string
+          nicho: string
+          nuevos: number
+          repetidos: number
+          servicio: string | null
+        }
+        Insert: {
+          cantidad_encontrada?: number
+          cantidad_solicitada?: number
+          ciudad: string
+          creado_por?: string | null
+          created_at?: string
+          estadisticas?: Json
+          id?: string
+          nicho: string
+          nuevos?: number
+          repetidos?: number
+          servicio?: string | null
+        }
+        Update: {
+          cantidad_encontrada?: number
+          cantidad_solicitada?: number
+          ciudad?: string
+          creado_por?: string | null
+          created_at?: string
+          estadisticas?: Json
+          id?: string
+          nicho?: string
+          nuevos?: number
+          repetidos?: number
+          servicio?: string | null
+        }
+        Relationships: []
+      }
+      prospeccion_leads: {
+        Row: {
+          busqueda_id: string | null
+          ciudad: string | null
+          creado_por: string | null
+          created_at: string
+          dedup_key: string | null
+          direccion: string | null
+          email: string | null
+          estado_gestion: string
+          fuente: string | null
+          google_maps: string | null
+          id: string
+          instagram: string | null
+          mensaje_email: string | null
+          mensaje_whatsapp: string | null
+          nivel: string | null
+          nombre: string
+          notas: string | null
+          problemas: string[]
+          propuesta_valor: string | null
+          region: string | null
+          score: number | null
+          telefono: string | null
+          tipo_lead: string | null
+          updated_at: string
+          web: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          busqueda_id?: string | null
+          ciudad?: string | null
+          creado_por?: string | null
+          created_at?: string
+          dedup_key?: string | null
+          direccion?: string | null
+          email?: string | null
+          estado_gestion?: string
+          fuente?: string | null
+          google_maps?: string | null
+          id?: string
+          instagram?: string | null
+          mensaje_email?: string | null
+          mensaje_whatsapp?: string | null
+          nivel?: string | null
+          nombre: string
+          notas?: string | null
+          problemas?: string[]
+          propuesta_valor?: string | null
+          region?: string | null
+          score?: number | null
+          telefono?: string | null
+          tipo_lead?: string | null
+          updated_at?: string
+          web?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          busqueda_id?: string | null
+          ciudad?: string | null
+          creado_por?: string | null
+          created_at?: string
+          dedup_key?: string | null
+          direccion?: string | null
+          email?: string | null
+          estado_gestion?: string
+          fuente?: string | null
+          google_maps?: string | null
+          id?: string
+          instagram?: string | null
+          mensaje_email?: string | null
+          mensaje_whatsapp?: string | null
+          nivel?: string | null
+          nombre?: string
+          notas?: string | null
+          problemas?: string[]
+          propuesta_valor?: string | null
+          region?: string | null
+          score?: number | null
+          telefono?: string | null
+          tipo_lead?: string | null
+          updated_at?: string
+          web?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospeccion_leads_busqueda_id_fkey"
+            columns: ["busqueda_id"]
+            isOneToOne: false
+            referencedRelation: "prospeccion_busquedas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_replies: {
         Row: {
           contenido: string
@@ -703,6 +897,48 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      video_jobs: {
+        Row: {
+          created_at: string
+          download_url: string | null
+          id: string
+          is_hybrid: boolean
+          progress: number
+          status: string
+          task_id: string
+          tipo: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          download_url?: string | null
+          id?: string
+          is_hybrid?: boolean
+          progress?: number
+          status?: string
+          task_id: string
+          tipo: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          download_url?: string | null
+          id?: string
+          is_hybrid?: boolean
+          progress?: number
+          status?: string
+          task_id?: string
+          tipo?: string
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -789,6 +1025,16 @@ export type Database = {
     }
     Functions: {
       complete_onboarding: { Args: never; Returns: undefined }
+      correo_envios_resumen: {
+        Args: { _dias?: number }
+        Returns: {
+          abiertos: number
+          clicks: number
+          entregados: number
+          rebotados: number
+          total: number
+        }[]
+      }
       has_crm_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -807,6 +1053,13 @@ export type Database = {
           total: number
         }[]
       }
+      leads_campana_paises: {
+        Args: never
+        Returns: {
+          n: number
+          pais: string
+        }[]
+      }
       marcar_leidos_conversacion: {
         Args: { p_phone_key: string }
         Returns: number
@@ -818,6 +1071,23 @@ export type Database = {
           id: number
           metadata: Json
           similarity: number
+        }[]
+      }
+      prospeccion_historial: {
+        Args: never
+        Returns: {
+          cantidad_encontrada: number
+          ciudad: string
+          clientes: number
+          contactados: number
+          created_at: string
+          estadisticas: Json
+          id: string
+          nicho: string
+          nuevos: number
+          repetidos: number
+          servicio: string
+          total_leads: number
         }[]
       }
       sync_id_contacto_from_sheet: { Args: never; Returns: Json }
