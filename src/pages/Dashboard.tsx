@@ -112,36 +112,30 @@ export default function Dashboard() {
   const [hotLead, setHotLead] = useState<HotLead | null>(null);
 
   async function fetchData() {
-    const last180d = new Date();
-    last180d.setDate(last180d.getDate() - 180);
-    const since = last180d.toISOString();
+    const last90d = new Date();
+    last90d.setDate(last90d.getDate() - 90);
+    const since = last90d.toISOString();
 
-    async function fetchAllMessages() {
-      const all: { direccion: string; created_at: string; telefono: string; estado_envio?: string | null }[] = [];
-      const pageSize = 1000;
-      for (let from = 0; ; from += pageSize) {
-        const { data, error } = await supabase
-          .from("mensajes_whatsapp")
-          .select("direccion, created_at, telefono, estado_envio")
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .range(from, from + pageSize - 1);
-        if (error || !data || data.length === 0) break;
-        all.push(...(data as any));
-        if (data.length < pageSize) break;
-        if (from > 200000) break;
-      }
-      return all;
-    }
-
-    const [leadsRes, messages, countryRes] = await Promise.all([
+    const [leadsRes, messagesRes, countRes, countryRes] = await Promise.all([
       supabase
         .from("leads_campana")
         .select("id, nombre, telefono, pais, estado, ha_respondido, bot_activo")
         .limit(10000),
-      fetchAllMessages(),
+      supabase
+        .from("mensajes_whatsapp")
+        .select("direccion, created_at, telefono, estado_envio")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      supabase
+        .from("mensajes_whatsapp")
+        .select("*", { count: "exact", head: true }),
       supabase.functions.invoke("sheets-country-kpis", { body: {} }),
     ]);
+
+    const messages = (messagesRes.data ?? []) as {
+      direccion: string; created_at: string; telefono: string; estado_envio?: string | null;
+    }[];
 
     const leadsData = (leadsRes.data ?? []) as LeadRow[];
     setLeads(leadsData);
@@ -168,7 +162,7 @@ export default function Dashboard() {
       leadsData.length > 0 ? (leadsResponded / leadsData.length) * 100 : 0;
 
     setKpis({
-      totalMessages: messages.length,
+      totalMessages: countRes.count ?? 0,
       botActive,
       leadsResponded,
       responseRate,
