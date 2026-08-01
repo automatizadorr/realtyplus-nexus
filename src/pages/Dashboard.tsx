@@ -54,7 +54,6 @@ import {
 import { countryFlag } from "@/lib/countryFlag";
 import { toast } from "sonner";
 import NewStatsSection from "@/components/dashboard/NewStatsSection";
-import MessagingAnalytics from "@/components/dashboard/MessagingAnalytics";
 import { FxPanel, StatTile } from "@/components/dashboard/fx";
 import { HotLeadDialog, type HotLead } from "@/components/dashboard/HotLeadDialog";
 import { tickFase } from "@/lib/acuse";
@@ -422,9 +421,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-4">
       {/* ── Centro de mando (panel claro futurista) ──────────────────────── */}
-      <FxPanel className="p-5 sm:p-6">
+      <FxPanel className="p-4 sm:p-5">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
@@ -504,8 +503,6 @@ export default function Dashboard() {
         </div>
       </FxPanel>
 
-      <MessagingAnalytics messages={rawMessages} />
-
       <NewStatsSection />
 
       <motion.div
@@ -526,7 +523,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={lineChartConfig} className="h-[280px] w-full">
+            <ChartContainer config={lineChartConfig} className="h-[220px] w-full">
               <LineChart data={messagesByDay} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
@@ -546,7 +543,7 @@ export default function Dashboard() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-3"
         >
           <Card className="border-border/60 transition-shadow hover:shadow-md">
             <CardHeader className="pb-3">
@@ -559,7 +556,7 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={countryChartConfig} className="h-[320px] w-full">
+              <ChartContainer config={countryChartConfig} className="h-[240px] w-full">
                 <BarChart
                   data={topCountries}
                   layout="vertical"
@@ -601,7 +598,7 @@ export default function Dashboard() {
                   Aún no hay leads con respuesta registrada.
                 </p>
               ) : (
-                <ChartContainer config={respChartConfig} className="h-[320px] w-full">
+                <ChartContainer config={respChartConfig} className="h-[240px] w-full">
                   <BarChart
                     data={topResponseCountries}
                     layout="vertical"
@@ -646,7 +643,7 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="max-h-[440px] overflow-y-auto rounded-lg border border-border/60">
+              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border/60">
                 <Table>
                   <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur supports-[backdrop-filter]:bg-muted/40 [&_th]:h-9 [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide">
                     <TableRow className="hover:bg-transparent">
