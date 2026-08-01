@@ -156,6 +156,8 @@ export function AppSidebar() {
                       key={item.title}
                       initial={{ opacity: 0, x: -16 }}
                       animate={{ opacity: 1, x: 0 }}
+                      whileHover={{ scale: 1.02, x: 3 }}
+                      whileTap={{ scale: 0.96 }}
                       transition={{ delay: index * 0.04, type: "spring", stiffness: 320, damping: 26 }}
                     >
                       <SidebarMenuItem>
