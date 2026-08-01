@@ -67,20 +67,6 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
 // Transición compartida del indicador activo (se desliza entre ítems).
 const ACTIVE_SPRING = { type: "spring", stiffness: 380, damping: 32 } as const;
 
-function AnimatedIcon({ icon: Icon, isActive }: { icon: React.ElementType; isActive: boolean }) {
-  return (
-    <motion.div
-      whileHover={{ scale: 1.15 }}
-      whileTap={{ scale: 0.9 }}
-      animate={isActive ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-      transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
-      className="relative z-10 shrink-0"
-    >
-      <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.4 : 2} />
-    </motion.div>
-  );
-}
-
 export function AppSidebar() {
   const { setOpenMobile, isMobile } = useSidebar();
   const location = useLocation();
@@ -152,14 +138,7 @@ export function AppSidebar() {
                       : location.pathname.startsWith(item.url);
 
                   return (
-                    <motion.div
-                      key={item.title}
-                      initial={{ opacity: 0, x: -16 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.02, x: 3 }}
-                      whileTap={{ scale: 0.96 }}
-                      transition={{ delay: index * 0.04, type: "spring", stiffness: 320, damping: 26 }}
-                    >
+                    <div key={item.title}>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip={item.title}>
                           <NavLink
@@ -169,7 +148,6 @@ export function AppSidebar() {
                             activeClassName="text-sidebar-accent-foreground font-semibold"
                             onClick={handleNavClick}
                           >
-                            {/* Fondo activo que se desliza entre ítems */}
                             {isActive && (
                               <motion.span
                                 layoutId="sidebar-active-bg"
@@ -177,7 +155,6 @@ export function AppSidebar() {
                                 className="absolute inset-0 rounded-lg bg-sidebar-accent/80 shadow-sm"
                               />
                             )}
-                            {/* Barra de acento a la izquierda */}
                             {isActive && (
                               <motion.span
                                 layoutId="sidebar-active-bar"
@@ -185,19 +162,14 @@ export function AppSidebar() {
                                 className="absolute left-0 top-1/2 z-10 h-5 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary"
                               />
                             )}
-                            <AnimatedIcon icon={item.icon} isActive={isActive} />
-                            <motion.span
-                              initial={{ opacity: 0, x: -6 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.04 + 0.1, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                              className="relative z-10 ml-2 truncate font-display text-[13px] font-medium tracking-tight transition-[letter-spacing] duration-200 group-hover/nav:tracking-normal"
-                            >
+                            <Icon className="relative z-10 h-[18px] w-[18px] shrink-0" strokeWidth={isActive ? 2.4 : 2} />
+                            <span className="relative z-10 ml-2 truncate font-display text-[13px] font-medium tracking-tight">
                               {item.title}
-                            </motion.span>
+                            </span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </SidebarMenu>
