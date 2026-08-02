@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { bodyToHtml, buildProEmail, buildPlainEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
 import CorreoSeguimiento from "@/components/correos/CorreoSeguimiento";
+import SecuenciasCorreo from "@/components/correos/SecuenciasCorreo";
 import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
 
 type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
@@ -592,6 +593,14 @@ export default function CorreosPersonalizados() {
           )}
         </CardContent>
       </Card>
+
+      {/* Secuencia de correos (embudo con guías) */}
+      <SecuenciasCorreo
+        destinatarios={recipients.filter((r) => isEmail(r.email)).map((r) => ({ ...r }))}
+        fromName={fromName}
+        fromEmail={fromEmail}
+        replyTo={replyTo}
+      />
 
       {/* Acciones */}
       <div className="flex flex-wrap items-center gap-3">

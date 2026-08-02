@@ -56,6 +56,18 @@ const digits = (t?: string | null) => (t ?? "").split("@")[0].replace(/\D/g, "")
 const waHref = (t?: string | null) => { const d = digits(t); return d.length >= 8 ? `https://wa.me/${d}` : null; };
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—");
 
+// Estados del log de correos (correo_envios) para la columna "Último correo".
+const CORREO_UI: Record<string, { label: string; cls: string }> = {
+  enviado:   { label: "Enviado", cls: "bg-slate-500/15 text-slate-600 border-slate-500/30" },
+  entregado: { label: "Recibido", cls: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
+  abierto:   { label: "Abierto", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
+  click:     { label: "Clic", cls: "bg-violet-500/15 text-violet-600 border-violet-500/30" },
+  rebotado:  { label: "Rebotó", cls: "bg-red-500/15 text-red-600 border-red-500/30" },
+  quejado:   { label: "Queja", cls: "bg-red-500/15 text-red-600 border-red-500/30" },
+};
+const fmtFechaHora = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+
 export default function ReactivacionTab() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -77,6 +89,9 @@ export default function ReactivacionTab() {
   const [respondido, setRespondido] = useState("all"); // all | si | no
   const [incluirArchivados, setIncluirArchivados] = useState(false);
   const [soloConEmail, setSoloConEmail] = useState(false);
+  const [soloConCorreo, setSoloConCorreo] = useState(false);
+  // email → último envío de correo conocido (estado, fecha, nº de envíos).
+  const [correosMap, setCorreosMap] = useState<Record<string, { estado: string; enviado_at: string | null; count: number }>>({});
 
   // Datos + paginación
   const [rows, setRows] = useState<LeadRow[]>([]);
@@ -99,7 +114,35 @@ export default function ReactivacionTab() {
   }, []);
 
   // Al cambiar cualquier filtro, volvemos a la página 0
-  useEffect(() => { setPage(0); }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail]);
+  useEffect(() => { setPage(0); }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo]);
+
+  // Emails que ya recibieron algún correo (desde correo_envios), para el filtro.
+  const emailsConCorreo = async (): Promise<Set<string> | null> => {
+    if (!soloConCorreo) return null;
+    const { data } = await sb.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(10000);
+    return new Set(
+      (data ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean),
+    );
+  };
+
+  // Último correo + nº de envíos por email de la página visible.
+  const enriquecerCorreos = async (rows: LeadRow[]): Promise<Record<string, { estado: string; enviado_at: string | null; count: number }>> => {
+    const emails = rows.map((r) => (r.email || "").trim().toLowerCase()).filter(Boolean);
+    const map: Record<string, { estado: string; enviado_at: string | null; count: number }> = {};
+    if (!emails.length) return map;
+    const { data } = await sb
+      .from("correo_envios")
+      .select("email, estado, enviado_at")
+      .in("email", emails)
+      .order("enviado_at", { ascending: false });
+    for (const e of (data ?? []) as { email: string; estado: string; enviado_at: string | null }[]) {
+      const k = (e.email || "").trim().toLowerCase();
+      const cur = map[k];
+      if (cur) { cur.count++; continue; }
+      map[k] = { estado: e.estado, enviado_at: e.enviado_at, count: 1 };
+    }
+    return map;
+  };
 
   // Consulta paginada server-side (nunca trae las 8k filas de golpe)
   useEffect(() => {
@@ -114,6 +157,12 @@ export default function ReactivacionTab() {
             { count: "exact" }
           );
         query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
+        const setE = await emailsConCorreo();
+        if (cancel) return;
+        if (setE) {
+          if (!setE.size) { setRows([]); setTotal(0); setCorreosMap({}); return; }
+          query = query.in("email", [...setE]);
+        }
         query = query
           .order("dias_reales", { ascending: false, nullsFirst: false })
           .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -123,6 +172,7 @@ export default function ReactivacionTab() {
         if (cancel) return;
         setRows((data ?? []) as LeadRow[]);
         setTotal(count ?? 0);
+        setCorreosMap(await enriquecerCorreos((data ?? []) as LeadRow[]));
       } catch (e) {
         if (!cancel) toast({ title: "Error al filtrar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
       } finally {
@@ -132,11 +182,12 @@ export default function ReactivacionTab() {
     run();
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, page]);
+  }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, page]);
 
   const resetFiltros = () => {
     setQ(""); setTagId("all"); setPais("all"); setEstado("all");
-    setRespondido("all"); setIncluirArchivados(false); setSoloConEmail(false);
+    setRespondido("all"); setIncluirArchivados(false); setSoloConEmail(false); setSoloConCorreo(false);
+    setCorreosMap({});
   };
 
   // Carga TODOS los leads del filtro (con email, deduplicados), no solo la página visible.
@@ -146,6 +197,15 @@ export default function ReactivacionTab() {
     try {
       let query = supabase.from("leads_campana").select("nombre, email, pais, resumen_ia");
       query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
+      const setE = await emailsConCorreo();
+      if (setE) {
+        if (!setE.size) {
+          setCargando(false);
+          toast({ title: "Sin correos en el filtro", description: "Ningún lead del filtro recibió correo aún.", variant: "destructive" });
+          return;
+        }
+        query = query.in("email", [...setE]);
+      }
       query = query
         .not("email", "is", null).neq("email", "")
         .order("dias_reales", { ascending: false, nullsFirst: false })
@@ -261,6 +321,9 @@ export default function ReactivacionTab() {
             <label className="flex items-center gap-2 text-sm">
               <Switch checked={incluirArchivados} onCheckedChange={setIncluirArchivados} /> Incluir archivados
             </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={soloConCorreo} onCheckedChange={setSoloConCorreo} /> Solo con correo enviado
+            </label>
             <Button type="button" variant="ghost" size="sm" onClick={resetFiltros} className="ml-auto gap-1.5 text-muted-foreground">
               <RotateCcw className="h-3.5 w-3.5" /> Limpiar
             </Button>
@@ -289,6 +352,7 @@ export default function ReactivacionTab() {
                 <TableRow>
                   <TableHead>Lead</TableHead>
                   <TableHead className="hidden sm:table-cell">País</TableHead>
+                  <TableHead className="hidden sm:table-cell">Último correo</TableHead>
                   <TableHead className="hidden md:table-cell">Etiquetas</TableHead>
                   <TableHead className="hidden lg:table-cell w-16">Días</TableHead>
                   <TableHead className="hidden lg:table-cell w-16">Punt.</TableHead>
@@ -297,13 +361,13 @@ export default function ReactivacionTab() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6}>
+                  <TableRow><TableCell colSpan={7}>
                     <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
                     </div>
                   </TableCell></TableRow>
                 ) : rows.length === 0 ? (
-                  <TableRow><TableCell colSpan={6}>
+                  <TableRow><TableCell colSpan={7}>
                     <div className="py-10 text-center text-sm text-muted-foreground">Sin resultados con estos filtros.</div>
                   </TableCell></TableRow>
                 ) : (
@@ -320,6 +384,22 @@ export default function ReactivacionTab() {
                           {l.ha_respondido && <span className="mt-0.5 inline-block rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">respondió</span>}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-xs">{l.pais || "—"}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {(() => {
+                            const c = l.email ? correosMap[(l.email || "").trim().toLowerCase()] : undefined;
+                            if (!c) return <span className="text-xs text-muted-foreground">—</span>;
+                            const ui = CORREO_UI[c.estado] ?? CORREO_UI.enviado;
+                            return (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${ui.cls}`}>
+                                  {ui.label}
+                                  {c.count > 1 && <span className="opacity-70">·{c.count}</span>}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">{fmtFechaHora(c.enviado_at)}</span>
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="flex flex-wrap gap-1">
                             {(l.tag_ids ?? []).slice(0, 3).map((id) => {

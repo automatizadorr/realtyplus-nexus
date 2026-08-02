@@ -50,4 +50,10 @@ verify_jwt = true
 [functions.buscar-leads]
 verify_jwt = true
 
+[functions.programar-secuencia]
+verify_jwt = true
+
+[functions.cron-secuencias-correo]
+verify_jwt = false
+
 
