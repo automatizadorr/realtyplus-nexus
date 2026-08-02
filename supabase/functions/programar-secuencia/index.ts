@@ -33,7 +33,7 @@ function zonedToUtc(ymd: string, hhmm: string, tz: string): string {
   return new Date(guess - (asUTC - guess)).toISOString();
 }
 
-type Recipient = { email: string; empresa?: string; ciudad?: string; gancho?: string };
+type Recipient = { email: string; empresa?: string; ciudad?: string; gancho?: string; nombre?: string; datos?: Record<string, unknown> };
 type PasoOverride = { paso: number; hora?: string; asunto?: string };
 
 Deno.serve(async (req) => {
@@ -147,6 +147,8 @@ Deno.serve(async (req) => {
           empresa: r.empresa ?? null,
           ciudad: r.ciudad ?? null,
           gancho: r.gancho ?? null,
+          nombre: r.nombre ?? null,
+          datos: r.datos && Object.keys(r.datos).length ? r.datos : null,
           paso: p.paso,
           asunto,
           cuerpo: p.cuerpo,

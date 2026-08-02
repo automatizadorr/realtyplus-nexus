@@ -14,16 +14,27 @@ type Recipient = {
   empresa?: string;
   ciudad?: string;
   gancho?: string;
+  nombre?: string;
+  datos?: Record<string, unknown>;
 };
 
-// Reemplaza {{empresa}}, {{ciudad}}, {{gancho}} (y alias en mayúscula) en una plantilla.
+// Reemplaza {{variable}} en una plantilla: columnas fijas (empresa, ciudad,
+// gancho, nombre, email) + cualquier columna del sheet en el jsonb `datos`.
 function fillTemplate(tpl: string, r: Recipient): string {
   const map: Record<string, string> = {
+    email: r.email ?? "",
     empresa: r.empresa ?? "",
     ciudad: r.ciudad ?? "",
     gancho: r.gancho ?? "",
+    // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
+    nombre: r.nombre ?? r.empresa ?? "",
   };
-  return tpl.replace(/\{\{\s*(empresa|ciudad|gancho)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
+  for (const [k, v] of Object.entries(r.datos ?? {})) {
+    if (v == null) continue;
+    const s = String(v).trim();
+    if (s) map[k.toLowerCase()] = s;
+  }
+  return tpl.replace(/\{\{\s*([\w\-.]+)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

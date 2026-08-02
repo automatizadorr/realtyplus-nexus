@@ -19,14 +19,25 @@ const corsHeaders = {
 const MAX_POR_CORRIDA = 50;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Reemplaza {{empresa}}, {{ciudad}}, {{gancho}} en una plantilla.
+// Reemplaza {{variable}} en una plantilla. Resuelve las columnas fijas del
+// snapshot (empresa, ciudad, gancho, nombre, email) y CUALQUIER columna del
+// sheet guardada en el jsonb `datos` (web, telefono, instagram, region, ...).
 function fillTemplate(tpl: string, r: Record<string, unknown>): string {
+  const datos = (typeof r.datos === "object" && r.datos !== null ? r.datos : {}) as Record<string, unknown>;
   const map: Record<string, string> = {
+    email: (r.email as string) ?? "",
     empresa: (r.empresa as string) ?? "",
     ciudad: (r.ciudad as string) ?? "",
     gancho: (r.gancho as string) ?? "",
+    // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
+    nombre: (r.nombre as string) ?? (r.empresa as string) ?? "",
   };
-  return tpl.replace(/\{\{\s*(empresa|ciudad|gancho)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
+  for (const [k, v] of Object.entries(datos)) {
+    if (v == null) continue;
+    const s = String(v).trim();
+    if (s) map[k.toLowerCase()] = s;
+  }
+  return tpl.replace(/\{\{\s*([\w\-.]+)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

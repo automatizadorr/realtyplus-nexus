@@ -21,7 +21,14 @@ import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesi
 import SecuenciasCorreo from "@/components/correos/SecuenciasCorreo";
 import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
 
-type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
+type Recipient = {
+  email: string;
+  empresa: string;
+  ciudad: string;
+  gancho: string;
+  nombre?: string;
+  datos?: Record<string, string>;
+};
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
@@ -45,12 +52,46 @@ En la práctica: menos leads perdidos, respuesta inmediata y tu equipo enfocado 
 Un saludo,
 Mario · LexHouse`;
 
-// Reemplaza {{empresa}}/{{ciudad}}/{{gancho}} en una plantilla.
+// Reemplaza {{variable}} en una plantilla: columnas fijas (empresa, ciudad,
+// gancho, nombre, email) + cualquier columna del sheet en `datos`.
 function fill(tpl: string, r: Partial<Recipient>): string {
-  return tpl.replace(/\{\{\s*(empresa|ciudad|gancho)\s*\}\}/gi, (_m, k) => {
-    const key = k.toLowerCase() as keyof Recipient;
-    return (r[key] as string) || "";
-  });
+  const map: Record<string, string> = {
+    email: r.email ?? "",
+    empresa: r.empresa ?? "",
+    ciudad: r.ciudad ?? "",
+    gancho: r.gancho ?? "",
+    // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
+    nombre: r.nombre ?? r.empresa ?? "",
+  };
+  for (const [k, v] of Object.entries(r.datos ?? {})) {
+    if (v == null) continue;
+    const s = String(v).trim();
+    if (s) map[k.toLowerCase()] = s;
+  }
+  return tpl.replace(/\{\{\s*([\w\-.]+)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
+}
+
+// Claves típicas del nombre de la persona de contacto en los HTML/sheets.
+const NOMBRE_KEYS = [
+  "nombre_contacto", "contacto", "nombre_persona", "persona", "agente",
+  "nombre_agente", "encargado", "representante", "gerente", "propietario",
+  "corredor", "asesor",
+];
+
+// Claves que se mapean a las columnas fijas y NO se repiten en `datos`.
+const FIJO_KEYS = new Set(["email", "correo", "mail", "nombre", "empresa", "name", "corredora",
+  "ciudad", "city", "comuna", "gancho", "problemas", ...NOMBRE_KEYS]);
+
+// Guarda todas las columnas del registro en `datos` (stringificadas y en
+// minúscula) para que {{cualquier_columna}} funcione en plantillas y secuencias.
+function toDatos(o: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (FIJO_KEYS.has(k) || v == null) continue;
+    const s = Array.isArray(v) ? v.join(", ") : typeof v === "object" ? "" : String(v);
+    if (s.trim()) out[k.toLowerCase()] = s.trim();
+  }
+  return out;
 }
 
 // --- Scraping / extracción de datos desde HTML ---
@@ -121,11 +162,14 @@ function parseProspects(raw: string): { recips: Recipient[]; structured: number 
       const email = pick(o, "email", "correo", "mail").toLowerCase();
       if (!isEmail(email) || seen.has(email)) continue;
       seen.add(email);
+      const empresa = pick(o, "nombre", "empresa", "name", "corredora");
       out.push({
         email,
-        empresa: pick(o, "nombre", "empresa", "name", "corredora"),
+        empresa,
+        nombre: pick(o, ...NOMBRE_KEYS) || (!empresa ? pick(o, "nombre") : ""),
         ciudad: pick(o, "ciudad", "city", "comuna"),
         gancho: toGancho(o),
+        datos: toDatos(o),
       });
       structured++;
     }
@@ -138,7 +182,7 @@ function parseProspects(raw: string): { recips: Recipient[]; structured: number 
     const e = cand.toLowerCase();
     if (!isEmail(e) || seen.has(e)) continue;
     seen.add(e);
-    out.push({ email: e, empresa: "", ciudad: "", gancho: "" });
+    out.push({ email: e, empresa: "", ciudad: "", gancho: "", nombre: "", datos: {} });
   }
 
   return { recips: out, structured };
@@ -237,10 +281,12 @@ export default function CorreosPersonalizados() {
             empresa: r.empresa ?? "",
             ciudad: r.ciudad ?? "",
             gancho: r.gancho ?? "",
+            nombre: r.nombre ?? "",
+            datos: r.datos ?? {},
           }));
         if (rows.length) {
           setRecipients(rows);
-          toast({ title: `${rows.length} leads cargados`, description: "Vienen del buscador, con empresa/ciudad/gancho. Revisa y envía." });
+          toast({ title: `${rows.length} leads cargados`, description: "Vienen del buscador, con empresa/ciudad/gancho y demás datos. Revisa y envía." });
         }
       }
     } catch {
@@ -303,7 +349,7 @@ export default function CorreosPersonalizados() {
     setRecipients((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
   };
   const removeRow = (i: number) => setRecipients((prev) => prev.filter((_, idx) => idx !== i));
-  const addEmptyRow = () => setRecipients((prev) => [...prev, { email: "", empresa: "", ciudad: "", gancho: "" }]);
+  const addEmptyRow = () => setRecipients((prev) => [...prev, { email: "", empresa: "", ciudad: "", gancho: "", nombre: "", datos: {} }]);
 
   // Envía a Resend vía edge function. `only` limita a un destinatario (prueba).
   const doSend = async (payloadRecipients: Recipient[], label: string) => {
@@ -358,9 +404,11 @@ export default function CorreosPersonalizados() {
     doSend(
       [{
         email: testTo,
+        nombre: base?.nombre || base?.empresa || "tu corredora",
         empresa: base?.empresa || "Tu Corredora",
         ciudad: base?.ciudad || "tu ciudad",
         gancho: base?.gancho || "los leads se pierden entre planillas y WhatsApp",
+        datos: base?.datos ?? {},
       }],
       "Prueba",
     );
@@ -453,6 +501,7 @@ export default function CorreosPersonalizados() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[220px]">Correo</TableHead>
+                    <TableHead className="min-w-[140px]">Nombre</TableHead>
                     <TableHead className="min-w-[150px]">Empresa</TableHead>
                     <TableHead className="min-w-[120px]">Ciudad</TableHead>
                     <TableHead className="min-w-[240px]">Gancho (dolor)</TableHead>
@@ -465,6 +514,9 @@ export default function CorreosPersonalizados() {
                       <TableCell>
                         <Input value={r.email} onChange={(e) => updateRow(i, "email", e.target.value)} placeholder="correo@dominio.cl"
                           className={!r.email || isEmail(r.email) ? "" : "border-destructive"} />
+                      </TableCell>
+                      <TableCell>
+                        <Input value={r.nombre ?? ""} onChange={(e) => updateRow(i, "nombre", e.target.value)} placeholder="Nombre contacto" />
                       </TableCell>
                       <TableCell><Input value={r.empresa} onChange={(e) => updateRow(i, "empresa", e.target.value)} placeholder="Nombre corredora" /></TableCell>
                       <TableCell><Input value={r.ciudad} onChange={(e) => updateRow(i, "ciudad", e.target.value)} placeholder="Ciudad" /></TableCell>
@@ -576,8 +628,12 @@ export default function CorreosPersonalizados() {
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">
             Variables disponibles: <code className="rounded bg-muted px-1">{"{{empresa}}"}</code>{" "}
+            <code className="rounded bg-muted px-1">{"{{nombre}}"}</code>{" "}
             <code className="rounded bg-muted px-1">{"{{ciudad}}"}</code>{" "}
             <code className="rounded bg-muted px-1">{"{{gancho}}"}</code> — se rellenan por fila.
+            También puedes usar cualquier columna del sheet/HTML (p. ej.{" "}
+            <code className="rounded bg-muted px-1">{"{{web}}"}</code>,{" "}
+            <code className="rounded bg-muted px-1">{"{{telefono}}"}</code>).
           </p>
           <div className="space-y-1.5">
             <Label className="text-xs">Asunto</Label>

@@ -14,7 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type Recipient = { email: string; empresa: string; ciudad: string; gancho: string };
+type Recipient = { email: string; empresa: string; ciudad: string; gancho: string; nombre?: string; datos?: Record<string, string> };
 type Paso = {
   id: string; paso: number; dias_desde_inicio: number; hora_envio: string;
   asunto: string; cuerpo: string; cta_texto: string | null; cta_url: string | null; guia_titulo: string | null;

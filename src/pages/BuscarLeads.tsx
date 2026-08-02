@@ -230,9 +230,25 @@ export default function BuscarLeads() {
     }
     const recips = conCorreo.map((l) => ({
       email: (l.email || "").trim().toLowerCase(),
+      nombre: l.nombre || "",
       empresa: l.nombre || "",
       ciudad: l.ciudad || "",
       gancho: Array.isArray(l.problemas) && l.problemas.length ? l.problemas[0] : "",
+      // Todas las columnas del lead para usar como {{variable}} en correos/plantillas.
+      datos: {
+        region: l.region || "",
+        web: l.web || "",
+        telefono: l.telefono || "",
+        whatsapp: l.whatsapp || "",
+        instagram: l.instagram || "",
+        direccion: l.direccion || "",
+        fuente: l.fuente || "",
+        score: l.score != null ? String(l.score) : "",
+        nivel: l.nivel || "",
+        tipo_lead: l.tipo_lead || "",
+        propuesta_valor: l.propuesta_valor || "",
+        mensaje_email: l.mensaje_email || "",
+      },
     }));
     sessionStorage.setItem(LEADS_IMPORT_KEY, JSON.stringify(recips));
     navigate("/correos-personalizados");
