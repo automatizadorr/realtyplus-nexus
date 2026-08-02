@@ -187,10 +187,25 @@ export default function CorreosPersonalizados() {
     setBonusText(c.bonusText ?? "");
     setBonusUrl(c.bonusUrl ?? "");
     setDesignMode("pro");
-    // Los ganchos rotan según la plantilla elegida.
-    setActiveGanchos(c.ganchos?.length ? c.ganchos : GANCHOS_DOLOR);
-    setGanchoSel("rotar");
-    toast({ title: `Plantilla "${c.badge}" cargada`, description: "Asunto, cuerpo, botón, regalo y ganchos afines listos. Revisa y envía." });
+    // El gancho (dolor) cambia junto con la plantilla: se fija el dolor principal
+    // de esta plantilla y se aplica a los destinatarios que no traen gancho propio.
+    const ganchos = c.ganchos?.length ? c.ganchos : GANCHOS_DOLOR;
+    setActiveGanchos(ganchos);
+    const ganchoDefault = ganchos[0] ?? "rotar";
+    setGanchoSel(ganchoDefault);
+    const sinGancho = recipients.filter((r) => !(r.gancho || "").trim()).length;
+    if (ganchoDefault !== "rotar" && sinGancho > 0) {
+      setRecipients((prev) =>
+        prev.map((r) => ((r.gancho || "").trim() ? r : { ...r, gancho: ganchoDefault })),
+      );
+    }
+    const corto = ganchoDefault.length > 60 ? `${ganchoDefault.slice(0, 57)}…` : ganchoDefault;
+    toast({
+      title: `Plantilla "${c.badge}" cargada`,
+      description: sinGancho > 0
+        ? `Asunto, cuerpo, botón y regalo listos. Gancho "${corto}" aplicado a ${sinGancho} destinatario(s) sin gancho.`
+        : `Asunto, cuerpo, botón y regalo listos. Gancho "${corto}" listo en el selector.`,
+    });
   };
 
   // Compone el HTML de la campaña (plantilla con {{variables}} intactas; la edge las rellena).
@@ -501,7 +516,7 @@ export default function CorreosPersonalizados() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Copys listos por etapa del embudo. Cada uno ataca un dolor, rota ganchos afines y (según el caso) regala una guía. Un clic carga asunto, cuerpo, botón, regalo y ganchos.
+            Copys listos por etapa del embudo. Cada uno ataca un dolor: al usarlo se carga asunto, cuerpo, botón, regalo y el gancho (dolor) cambia automáticamente, aplicándose a los destinatarios que no traen gancho propio.
           </p>
           {emailCopyCategorias().map((cat) => (
             <div key={cat} className="space-y-2">
