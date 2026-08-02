@@ -27,7 +27,7 @@ function fillTemplate(tpl: string, r: Recipient): string {
     ciudad: r.ciudad ?? "",
     gancho: r.gancho ?? "",
     // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
-    nombre: r.nombre ?? r.empresa ?? "",
+    nombre: (r.nombre || r.empresa) ?? "",
   };
   for (const [k, v] of Object.entries(r.datos ?? {})) {
     if (v == null) continue;

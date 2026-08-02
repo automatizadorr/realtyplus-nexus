@@ -30,7 +30,7 @@ function fillTemplate(tpl: string, r: Record<string, unknown>): string {
     ciudad: (r.ciudad as string) ?? "",
     gancho: (r.gancho as string) ?? "",
     // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
-    nombre: (r.nombre as string) ?? (r.empresa as string) ?? "",
+    nombre: (r.nombre as string) || (r.empresa as string) || "",
   };
   for (const [k, v] of Object.entries(datos)) {
     if (v == null) continue;
