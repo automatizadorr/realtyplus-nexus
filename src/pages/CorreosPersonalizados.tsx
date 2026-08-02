@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle, MailCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { bodyToHtml, buildProEmail, buildPlainEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
-import CorreoSeguimiento from "@/components/correos/CorreoSeguimiento";
 import SecuenciasCorreo from "@/components/correos/SecuenciasCorreo";
 import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
 
@@ -147,6 +147,7 @@ function parseProspects(raw: string): { recips: Recipient[]; structured: number 
 export default function CorreosPersonalizados() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [rawInput, setRawInput] = useState("");
   const [recipients, setRecipients] = useState<Recipient[]>([]);
@@ -220,7 +221,6 @@ export default function CorreosPersonalizados() {
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [seguimientoKey, setSeguimientoKey] = useState(0);
 
   // Si venimos desde "Buscar Leads", precargamos los destinatarios importados.
   useEffect(() => {
@@ -663,16 +663,22 @@ export default function CorreosPersonalizados() {
         </Card>
       )}
 
-      {/* Seguimiento de correos (recibido / abierto / clic vía webhook de Resend) */}
-      <CorreoSeguimiento
-        refreshKey={seguimientoKey}
-        onCargarLeads={(leads) => {
-          if (!leads.length) { toast({ title: "Nadie abrió aún", description: "Cuando haya aperturas podrás armar la campaña.", variant: "destructive" }); return; }
-          setRecipients(leads.map((l) => ({ email: l.email, empresa: l.empresa, ciudad: "", gancho: "" })));
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          toast({ title: `${leads.length} leads cargados`, description: "Solo los que abrieron un correo. Ajusta el mensaje y envía tu campaña." });
-        }}
-      />
+      {/* Acceso al seguimiento (página propia) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MailCheck className="h-4 w-4 text-[#003DA5]" /> Seguimiento de correos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Recibido / abierto / clic de tus envíos vía webhook de Resend (últimos 30 días).
+          </p>
+          <Button type="button" variant="outline" onClick={() => navigate("/seguimiento-correos")} className="gap-1.5">
+            <MailCheck className="h-4 w-4" /> Ver seguimiento
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Confirmación de envío masivo */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
