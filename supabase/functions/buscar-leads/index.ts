@@ -19,6 +19,7 @@ const corsHeaders = {
 const MODEL = "sonar-pro";
 
 type Lead = {
+  id?: string;
   nombre?: string; ciudad?: string; region?: string; web?: string;
   telefono?: string; whatsapp?: string; email?: string; instagram?: string;
   direccion?: string; google_maps?: string; fuente?: string;
@@ -160,12 +161,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Historial previo del usuario (para dedup y para no repetir en el prompt) ---
+    // --- Historial previo del usuario (para dedup, para no repetir en el prompt y
+    // para devolver el id de los repetidos ya guardados) ---
     const { data: previos } = await svc
       .from("prospeccion_leads")
-      .select("dedup_key, nombre")
+      .select("dedup_key, id, nombre")
       .eq("creado_por", userId);
     const clavesPrevias = new Set((previos ?? []).map((r: { dedup_key: string }) => r.dedup_key));
+    const idPrevios = new Map<string, string>();
+    for (const r of (previos ?? []) as { dedup_key: string; id: string }[]) {
+      if (r.dedup_key) idPrevios.set(r.dedup_key, r.id);
+    }
     const nombresPrevios = (previos ?? [])
       .map((r: { nombre?: string }) => (r.nombre ?? "").trim())
       .filter(Boolean);
@@ -207,7 +213,14 @@ Deno.serve(async (req) => {
     }
 
     // --- Deduplicación contra el historial ---
-    const marcados: Lead[] = parsed.map((l) => ({ ...l, repetido: clavesPrevias.has(dedupKey(l)) }));
+    // Los repetidos ya guardados llevan su id real (mini-CRM editable desde el primer momento).
+    const marcados: Lead[] = parsed.map((l) => {
+      const k = dedupKey(l);
+      const copy: Lead = { ...l, repetido: clavesPrevias.has(k) };
+      const prevId = idPrevios.get(k);
+      if (prevId) copy.id = prevId;
+      return copy;
+    });
     const nuevos = marcados.filter((l) => !l.repetido);
     const visibles = excluirRepetidos ? nuevos : marcados;
     const stats = computeStats(visibles);
@@ -246,7 +259,25 @@ Deno.serve(async (req) => {
         mensaje_email: l.mensaje_email ?? "",
       }));
       if (rows.length) {
-        await svc.from("prospeccion_leads").insert(rows).select("id");
+        const { data: inserted, error: insErr } = await svc
+          .from("prospeccion_leads")
+          .insert(rows)
+          .select("id, dedup_key");
+        if (insErr) {
+          console.error("buscar-leads insert error:", insErr.message);
+        } else if (inserted) {
+          // Devolvemos los ids para que el mini-CRM (estado/notas) funcione de inmediato.
+          const idByKey = new Map<string, string>();
+          for (const r of inserted as { id: string; dedup_key: string }[]) {
+            if (r.dedup_key) idByKey.set(r.dedup_key, r.id);
+          }
+          for (const l of visibles) {
+            if (!l.id) {
+              const id = idByKey.get(dedupKey(l));
+              if (id) l.id = id;
+            }
+          }
+        }
       }
     } else if (busqErr) {
       console.error("buscar-leads persist error:", busqErr.message);

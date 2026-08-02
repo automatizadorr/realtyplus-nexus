@@ -183,11 +183,15 @@ export default function ReactivacionTab() {
 
   return (
     <div className="space-y-4">
+      <p className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
+        Estos leads provienen de tus <span className="font-semibold text-foreground">campañas</span> (no del buscador de leads).
+        Úsalos para re-contactar y reactivar contactos que ya no responden.
+      </p>
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Filter className="h-4 w-4 text-[#003DA5]" /> Filtro de reactivación
+            <Filter className="h-4 w-4 text-[#003DA5]" /> Filtro de leads de campaña
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -269,7 +273,7 @@ export default function ReactivacionTab() {
         <CardHeader className="pb-3">
           <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
             <span className="flex items-center gap-2">
-              Leads de reactivación
+              Leads de campaña
               <Badge variant="secondary">{loading ? "…" : total.toLocaleString("es-CL")}</Badge>
             </span>
             <Button type="button" size="sm" onClick={cargarEnCorreos} disabled={loading || cargando || total === 0} className="gap-1.5">

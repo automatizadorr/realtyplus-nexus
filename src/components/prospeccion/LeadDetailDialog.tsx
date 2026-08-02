@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
 export type Lead = {
@@ -73,7 +74,12 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoCha
           <DialogTitle className="flex items-center gap-2">
             {lead.nombre || "Prospecto"}
             {typeof lead.score === "number" && (
-              <Badge variant="secondary" className="font-mono">score {lead.score}</Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="secondary" className="cursor-help font-mono">score {lead.score}</Badge>
+                </TooltipTrigger>
+                <TooltipContent>0–100: qué tan probable es que este negocio necesite tu servicio.</TooltipContent>
+              </Tooltip>
             )}
             {lead.tipo_lead && <Badge variant="outline">{lead.tipo_lead}</Badge>}
           </DialogTitle>

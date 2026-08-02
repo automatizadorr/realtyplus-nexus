@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Radar, Search, Loader2, Send, MapPin, Globe, MessageCircle, Mail as MailIcon,
-  Download, History, Trash2, Sparkles, RefreshCw,
+  Download, History, Trash2, Sparkles, Users, CheckCircle2, Copy, X, XCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import LeadDetailDialog, { type Lead } from "@/components/prospeccion/LeadDetailDialog";
+import LeadDetailDialog, { type Lead, waLink } from "@/components/prospeccion/LeadDetailDialog";
 import ReactivacionTab from "@/components/prospeccion/ReactivacionTab";
 
 type Stats = {
@@ -33,6 +34,25 @@ type Busqueda = {
 const LEADS_IMPORT_KEY = "prospeccion_leads_import";
 const DEFAULT_SERVICIO = "CRM inmobiliario con captación de leads y automatización de WhatsApp";
 
+const TIPOS = ["Oportunidad caliente", "Reactivar", "Nuevo", "Descartar"] as const;
+const TIPO_SHORT: Record<string, string> = {
+  "Oportunidad caliente": "Calientes",
+  "Reactivar": "Reactivar",
+  "Nuevo": "Nuevos",
+  "Descartar": "Descartar",
+};
+const TIPO_DOT: Record<string, string> = {
+  "Oportunidad caliente": "#ef4444",
+  "Reactivar": "#f59e0b",
+  "Nuevo": "#3b82f6",
+  "Descartar": "#6b7280",
+};
+const ESTADOS_ORDER = ["nuevo", "contactado", "respondio", "cliente", "descartado"] as const;
+const ESTADO_LABEL: Record<string, string> = {
+  nuevo: "Nuevo", contactado: "Contactado", respondio: "Respondió", cliente: "Cliente", descartado: "Descartado",
+};
+const SCORE_HINT = "0–100: qué tan probable es que este negocio necesite tu servicio.";
+
 function tipoBadge(tipo?: string) {
   const t = (tipo || "").toLowerCase();
   if (t.includes("caliente")) return "bg-red-500/15 text-red-600 border-red-500/30";
@@ -41,8 +61,22 @@ function tipoBadge(tipo?: string) {
   return "bg-blue-500/15 text-blue-600 border-blue-500/30";
 }
 
+function estadoBadge(estado?: string) {
+  switch (estado) {
+    case "contactado": return "bg-blue-500/15 text-blue-600 border-blue-500/30";
+    case "respondio": return "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
+    case "cliente": return "bg-green-600/15 text-green-700 border-green-600/30";
+    case "descartado": return "bg-muted text-muted-foreground border-border";
+    default: return "bg-amber-500/15 text-amber-600 border-amber-500/30";
+  }
+}
+
 function toCsv(rows: Lead[]): string {
-  const cols = ["nombre", "ciudad", "region", "web", "telefono", "whatsapp", "email", "instagram", "direccion", "score", "nivel", "tipo_lead"] as const;
+  const cols = [
+    "nombre", "ciudad", "region", "web", "telefono", "whatsapp", "email", "instagram",
+    "direccion", "score", "nivel", "tipo_lead", "estado_gestion", "notas",
+    "mensaje_whatsapp", "mensaje_email",
+  ] as const;
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const head = cols.join(",");
   const body = rows.map((r) => cols.map((c) => esc((r as Record<string, unknown>)[c])).join(",")).join("\n");
@@ -67,22 +101,88 @@ export default function BuscarLeads() {
   const [cantidad, setCantidad] = useState(15);
   const [excluirRepetidos, setExcluirRepetidos] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [repetidos, setRepetidos] = useState(0);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [rawRespuesta, setRawRespuesta] = useState<string | null>(null);
 
   const [detail, setDetail] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  const [tab, setTab] = useState("buscar");
   const [historial, setHistorial] = useState<Busqueda[] | null>(null);
   const [histLoading, setHistLoading] = useState(false);
+
+  // Filtros + selección de la tabla de resultados
+  const [tipoFilter, setTipoFilter] = useState("all");
+  const [estadoFilter, setEstadoFilter] = useState("all");
+  const [soloEmail, setSoloEmail] = useState(false);
+  const [ocultarDescartar, setOcultarDescartar] = useState(false);
+  const [ordenScore, setOrdenScore] = useState<"desc" | "asc">("desc");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Las tablas prospeccion_* aún no están en el types.ts generado (se regenera desde
   // Lovable). Accesor sin tipos solo para esas tablas/RPC nuevas.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any;
 
-  const conEmail = (leads ?? []).filter((l) => (l.email || "").trim()).length;
+  // Temporizador mientras la búsqueda está en curso (1–2 min sin feedback = parece colgado).
+  useEffect(() => {
+    if (!loading) { setElapsed(0); return; }
+    const iv = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(iv);
+  }, [loading]);
+
+  const faseProgreso =
+    elapsed < 20
+      ? "Buscando negocios en internet…"
+      : elapsed < 45
+        ? "Analizando la presencia digital de cada negocio…"
+        : "Puntuando oportunidades y redactando mensajes de contacto…";
+
+  const filtered = useMemo(() => {
+    let list = leads ?? [];
+    if (tipoFilter !== "all") list = list.filter((l) => ((l.tipo_lead || "Nuevo").trim() === tipoFilter));
+    if (estadoFilter !== "all") list = list.filter((l) => (l.estado_gestion || "nuevo") === estadoFilter);
+    if (soloEmail) list = list.filter((l) => (l.email || "").trim());
+    if (ocultarDescartar) list = list.filter((l) => !(l.tipo_lead || "").trim().toLowerCase().includes("descart"));
+    return [...list].sort((a, b) =>
+      ordenScore === "desc" ? (b.score ?? 0) - (a.score ?? 0) : (a.score ?? 0) - (b.score ?? 0)
+    );
+  }, [leads, tipoFilter, estadoFilter, soloEmail, ocultarDescartar, ordenScore]);
+
+  const conEmailFiltrado = filtered.filter((l) => (l.email || "").trim()).length;
+
+  const leadKey = (l: Lead) => l.id ?? `${(l.nombre || "").trim().toLowerCase()}|${(l.ciudad || "").trim().toLowerCase()}`;
+  const selectedLeads = useMemo(() => filtered.filter((l) => selected.has(leadKey(l))), [filtered, selected]);
+
+  const toggleSel = (l: Lead) => {
+    const k = leadKey(l);
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (filtered.length && filtered.every((l) => n.has(leadKey(l)))) {
+        filtered.forEach((l) => n.delete(leadKey(l)));
+      } else {
+        filtered.forEach((l) => n.add(leadKey(l)));
+      }
+      return n;
+    });
+  };
+
+  const limpiarFiltros = () => {
+    setTipoFilter("all"); setEstadoFilter("all"); setSoloEmail(false);
+    setOcultarDescartar(false); setOrdenScore("desc"); setSelected(new Set());
+  };
 
   const abrirDetalle = (l: Lead) => { setDetail(l); setDetailOpen(true); };
 
@@ -91,13 +191,17 @@ export default function BuscarLeads() {
       toast({ title: "Faltan datos", description: "Indica el rubro y la ciudad.", variant: "destructive" });
       return;
     }
-    setLoading(true); setLeads(null); setStats(null);
+    setLoading(true); setLeads(null); setStats(null); setRepetidos(0);
+    setSearchError(null); setRawRespuesta(null); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke("buscar-leads", {
         body: { nicho, ciudad, servicio, cantidad, excluir_repetidos: excluirRepetidos },
       });
       if (error) throw error;
-      if (data?.error && !data?.leads?.length) throw new Error(data.error);
+      if (data?.error && !data?.leads?.length) {
+        if (typeof data?.raw === "string" && data.raw) setRawRespuesta(data.raw.slice(0, 2500));
+        throw new Error(data.error);
+      }
       const found: Lead[] = data?.leads ?? [];
       setLeads(found);
       setStats(data?.stats ?? null);
@@ -110,6 +214,7 @@ export default function BuscarLeads() {
         variant: found.length ? "default" : "destructive",
       });
     } catch (e) {
+      setSearchError(e instanceof Error ? e.message : String(e));
       toast({ title: "Error en la búsqueda", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
       setLoading(false);
@@ -140,6 +245,29 @@ export default function BuscarLeads() {
     toast({ title: `${emails.length} emails copiados` });
   };
 
+  const copiarWa = (source: Lead[]) => {
+    const links = source.map((l) => waLink(l)).filter((x): x is string => Boolean(x));
+    if (!links.length) { toast({ title: "Sin WhatsApp", description: "Ninguno tiene teléfono/WhatsApp válido.", variant: "destructive" }); return; }
+    navigator.clipboard.writeText(links.join("\n"));
+    toast({ title: `${links.length} links de WhatsApp copiados` });
+  };
+
+  // Acción masiva: marca como "contactado" todos los seleccionados con id en BD.
+  const marcarContactado = async () => {
+    const ids = selectedLeads.map((l) => l.id).filter(Boolean) as string[];
+    if (!ids.length) {
+      toast({ title: "Sin leads guardados", description: "Los seleccionados aún no están en el historial.", variant: "destructive" });
+      return;
+    }
+    const { error } = await sb.from("prospeccion_leads").update({ estado_gestion: "contactado" }).in("id", ids);
+    if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
+    const idSet = new Set(ids);
+    setLeads((ls) => (ls ?? []).map((l) => (l.id && idSet.has(l.id) ? { ...l, estado_gestion: "contactado" } : l)));
+    setDetail((d) => (d && d.id && idSet.has(d.id) ? { ...d, estado_gestion: "contactado" } : d));
+    toast({ title: `${ids.length} marcados como contactados` });
+    setSelected(new Set());
+  };
+
   // --- Historial ---
   const cargarHistorial = async () => {
     setHistLoading(true);
@@ -165,9 +293,8 @@ export default function BuscarLeads() {
     setLeads((data ?? []) as Lead[]);
     setStats(b.estadisticas ?? null);
     setRepetidos(b.repetidos ?? 0);
-    // vuelve a la pestaña Buscar mostrando estos resultados
-    const el = document.getElementById("tab-buscar-trigger");
-    el?.click();
+    limpiarFiltros();
+    setTab("buscar");
   };
 
   const borrarBusqueda = async (id: string) => {
@@ -193,6 +320,8 @@ export default function BuscarLeads() {
     toast({ title: "Notas guardadas" });
   };
 
+  const allChecked = filtered.length > 0 && filtered.every((l) => selected.has(leadKey(l)));
+
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -208,11 +337,11 @@ export default function BuscarLeads() {
         </div>
       </motion.div>
 
-      <Tabs defaultValue="buscar">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger id="tab-buscar-trigger" value="buscar" className="gap-1.5"><Search className="h-4 w-4" /> Buscar</TabsTrigger>
+          <TabsTrigger value="buscar" className="gap-1.5"><Search className="h-4 w-4" /> Buscar</TabsTrigger>
           <TabsTrigger value="historial" className="gap-1.5" onClick={cargarHistorial}><History className="h-4 w-4" /> Historial</TabsTrigger>
-          <TabsTrigger value="reactivacion" className="gap-1.5"><RefreshCw className="h-4 w-4" /> Reactivación</TabsTrigger>
+          <TabsTrigger value="reactivacion" className="gap-1.5"><Users className="h-4 w-4" /> Leads de campaña</TabsTrigger>
         </TabsList>
 
         {/* ===================== BUSCAR ===================== */}
@@ -255,17 +384,44 @@ export default function BuscarLeads() {
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                   Buscar leads
                 </Button>
-                {loading && <span className="text-sm text-muted-foreground">Buscando en internet… ~1-2 min. No cierres la página.</span>}
+                {loading && (
+                  <div className="flex flex-1 flex-wrap items-center gap-3 rounded-lg border border-[#003DA5]/20 bg-[#003DA5]/5 px-3 py-2.5 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#003DA5]" />
+                    <span>{faseProgreso}</span>
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">{elapsed}s</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
+          {/* Error de búsqueda con opción de reintentar y ver respuesta cruda */}
+          {searchError && (
+            <Card className="border-destructive/40">
+              <CardContent className="space-y-3 p-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <XCircle className="h-4 w-4 text-destructive" />
+                  <span className="font-medium text-destructive">Error en la búsqueda</span>
+                  <span className="text-muted-foreground">{searchError}</span>
+                </div>
+                {rawRespuesta && (
+                  <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 text-[11px] text-muted-foreground">{rawRespuesta}</pre>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={buscar} disabled={loading}>Reintentar búsqueda</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => { setSearchError(null); setRawRespuesta(null); }}>Descartar</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Estadísticas del nicho */}
           {stats && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               {[
                 { k: "Encontrados", v: stats.total ?? 0 },
                 { k: "Con email", v: stats.con_email ?? 0 },
+                { k: "Con WhatsApp", v: stats.con_whatsapp ?? 0 },
                 { k: "Score prom.", v: stats.score_promedio ?? 0 },
                 { k: "Sin web", v: `${stats.sin_web_pct ?? 0}%` },
               ].map((c) => (
@@ -283,44 +439,166 @@ export default function BuscarLeads() {
               <CardHeader>
                 <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
                   <span className="flex items-center gap-2">
-                    Resultados <Badge variant="secondary">{leads.length}</Badge>
-                    {conEmail > 0 && <Badge variant="secondary">{conEmail} con email</Badge>}
+                    Resultados <Badge variant="secondary">{filtered.length}</Badge>
+                    {conEmailFiltrado > 0 && <Badge variant="secondary">{conEmailFiltrado} con email</Badge>}
                     {repetidos > 0 && <Badge variant="outline">{repetidos} repetidos ocultos</Badge>}
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => copiarEmails(leads)} className="gap-1.5">
+                    <Button type="button" variant="outline" size="sm" onClick={() => copiarEmails(filtered)} className="gap-1.5">
                       <MailIcon className="h-4 w-4" /> Copiar emails
                     </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => download(`prospeccion-${ciudad || "leads"}.csv`, toCsv(leads))} className="gap-1.5">
+                    <Button type="button" variant="outline" size="sm" onClick={() => download(`prospeccion-${ciudad || "leads"}.csv`, toCsv(filtered))} className="gap-1.5">
                       <Download className="h-4 w-4" /> CSV
                     </Button>
-                    <Button type="button" size="sm" onClick={() => usarEnCorreos(leads)} disabled={conEmail === 0} className="gap-1.5">
+                    <Button type="button" size="sm" onClick={() => usarEnCorreos(filtered)} disabled={conEmailFiltrado === 0} className="gap-1.5">
                       <Send className="h-4 w-4" /> Correos
                     </Button>
                   </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {/* Chips de distribución por tipo de lead (filtran la tabla) */}
+                {stats?.distribucion_tipo && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTipoFilter("all")}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        tipoFilter === "all" ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input hover:bg-muted"
+                      }`}
+                    >
+                      Todos · {filtered.length}
+                    </button>
+                    {TIPOS.map((t) => {
+                      const n = stats.distribucion_tipo?.[t] ?? 0;
+                      if (!n) return null;
+                      const activo = tipoFilter === t;
+                      return (
+                        <button
+                          key={t} type="button"
+                          onClick={() => setTipoFilter(activo ? "all" : t)}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                            activo ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input hover:bg-muted"
+                          }`}
+                        >
+                          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: activo ? "#fff" : TIPO_DOT[t] }} />
+                          {TIPO_SHORT[t]} · {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Filtros finos */}
+                <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                  <label className="flex items-center gap-2">
+                    <Switch checked={soloEmail} onCheckedChange={setSoloEmail} /> Solo con email
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <Switch checked={ocultarDescartar} onCheckedChange={setOcultarDescartar} /> Ocultar descartados
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    Estado
+                    <select
+                      value={estadoFilter}
+                      onChange={(e) => setEstadoFilter(e.target.value)}
+                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="all">Todos</option>
+                      {ESTADOS_ORDER.map((e) => <option key={e} value={e}>{ESTADO_LABEL[e]}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    Orden
+                    <select
+                      value={ordenScore}
+                      onChange={(e) => setOrdenScore(e.target.value as "desc" | "asc")}
+                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="desc">Score ↓</option>
+                      <option value="asc">Score ↑</option>
+                    </select>
+                  </label>
+                  {(tipoFilter !== "all" || estadoFilter !== "all" || soloEmail || ocultarDescartar) && (
+                    <Button type="button" variant="ghost" size="sm" onClick={limpiarFiltros} className="gap-1.5 text-muted-foreground">
+                      <X className="h-3.5 w-3.5" /> Limpiar
+                    </Button>
+                  )}
+                </div>
+
+                {/* Barra de acciones masivas */}
+                {selectedLeads.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#003DA5]/30 bg-[#003DA5]/5 p-2">
+                    <Badge variant="secondary">{selectedLeads.length} seleccionados</Badge>
+                    <Button type="button" size="sm" variant="outline" onClick={marcarContactado} className="gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Marcar contactado
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => copiarEmails(selectedLeads)} className="gap-1.5">
+                      <Copy className="h-3.5 w-3.5" /> Copiar emails
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => copiarWa(selectedLeads)} className="gap-1.5">
+                      <MessageCircle className="h-3.5 w-3.5" /> Copiar WhatsApp
+                    </Button>
+                    <Button type="button" size="sm" onClick={() => usarEnCorreos(selectedLeads)} className="gap-1.5">
+                      <Send className="h-3.5 w-3.5" /> Enviar a Correos
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="gap-1.5 text-muted-foreground">
+                      <X className="h-3.5 w-3.5" /> Limpiar
+                    </Button>
+                  </div>
+                )}
+
                 {leads.length === 0 ? (
                   <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
                     No se encontraron leads nuevos. Prueba otra ciudad, un rubro más amplio, o desactiva el filtro de repetidos.
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="space-y-3 rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
+                    <p>Ningún resultado con los filtros actuales.</p>
+                    <Button type="button" variant="outline" size="sm" onClick={limpiarFiltros}>Limpiar filtros</Button>
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">
+                            <input
+                              type="checkbox"
+                              aria-label="Seleccionar todos"
+                              className="h-4 w-4 accent-[#003DA5]"
+                              checked={allChecked}
+                              onChange={toggleAll}
+                            />
+                          </TableHead>
                           <TableHead>Negocio</TableHead>
                           <TableHead>Contacto</TableHead>
-                          <TableHead className="w-16">Score</TableHead>
+                          <TableHead className="w-16">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted">Score</span>
+                              </TooltipTrigger>
+                              <TooltipContent>{SCORE_HINT}</TooltipContent>
+                            </Tooltip>
+                          </TableHead>
                           <TableHead>Tipo</TableHead>
+                          <TableHead>Estado</TableHead>
                           <TableHead className="min-w-[220px]">Gancho</TableHead>
                           <TableHead className="w-24"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {leads.map((l, i) => (
-                          <TableRow key={l.id ?? i} className="cursor-pointer" onClick={() => abrirDetalle(l)}>
+                        {filtered.map((l, i) => (
+                          <TableRow key={l.id ?? `r-${i}`} className="cursor-pointer" onClick={() => abrirDetalle(l)}>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                aria-label={`Seleccionar ${l.nombre || "lead"}`}
+                                className="h-4 w-4 accent-[#003DA5]"
+                                checked={selected.has(leadKey(l))}
+                                onChange={() => toggleSel(l)}
+                              />
+                            </TableCell>
                             <TableCell>
                               <div className="font-medium">{l.nombre || "—"}</div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -333,10 +611,22 @@ export default function BuscarLeads() {
                               {(l.whatsapp || l.telefono) && <div className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-emerald-600" /> {l.telefono || l.whatsapp}</div>}
                               {!l.email && !l.whatsapp && !l.telefono && (l.instagram ? `IG ${l.instagram}` : "—")}
                             </TableCell>
-                            <TableCell><span className="font-mono text-sm font-semibold">{typeof l.score === "number" ? l.score : "—"}</span></TableCell>
+                            <TableCell>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help font-mono text-sm font-semibold">{typeof l.score === "number" ? l.score : "—"}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>{SCORE_HINT}</TooltipContent>
+                              </Tooltip>
+                            </TableCell>
                             <TableCell>
                               <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${tipoBadge(l.tipo_lead)}`}>
                                 {l.tipo_lead || "Nuevo"}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${estadoBadge(l.estado_gestion)}`}>
+                                {ESTADO_LABEL[l.estado_gestion || "nuevo"] ?? l.estado_gestion}
                               </span>
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">
@@ -395,7 +685,7 @@ export default function BuscarLeads() {
           </Card>
         </TabsContent>
 
-        {/* ===================== REACTIVACIÓN ===================== */}
+        {/* ===================== LEADS DE CAMPAÑA (ex Reactivación) ===================== */}
         <TabsContent value="reactivacion">
           <ReactivacionTab />
         </TabsContent>
