@@ -28,8 +28,10 @@ const fmt = (iso: string | null) =>
 
 const abrio = (r: Envio) => Boolean(r.abierto_at) || r.estado === "abierto" || r.estado === "click";
 const hizoClic = (r: Envio) => Boolean(r.click_at) || r.estado === "click";
+const recibido = (r: Envio) =>
+  Boolean(r.entregado_at) || ["entregado", "abierto", "click"].includes(r.estado);
 
-type Filtro = "todos" | "abrieron" | "no_abrieron" | "clic";
+type Filtro = "todos" | "recibidos" | "abrieron" | "no_abrieron" | "clic";
 
 type Props = {
   refreshKey?: number;
@@ -64,23 +66,36 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
   useEffect(() => { cargar(); }, [cargar, refreshKey]);
 
   const visibles = useMemo(() => {
+    if (filtro === "recibidos") return rows.filter(recibido);
     if (filtro === "abrieron") return rows.filter(abrio);
     if (filtro === "no_abrieron") return rows.filter((r) => !abrio(r) && r.estado !== "rebotado" && r.estado !== "fallido");
     if (filtro === "clic") return rows.filter(hizoClic);
     return rows;
   }, [rows, filtro]);
 
-  // Carga en el composer SOLO los que abrieron (consulta la BD, no solo los visibles).
-  const campanaAbrieron = async () => {
+  // Carga en el composer SOLO los del segmento activo (consulta la BD, no solo los visibles).
+  const campanaSegmento = async () => {
     if (!onCargarLeads) return;
     setCargandoSeg(true);
     try {
-      const { data } = await sb
-        .from("correo_envios")
-        .select("email, empresa, abierto_at, estado")
-        .or("abierto_at.not.is.null,estado.eq.click,estado.eq.abierto")
-        .order("abierto_at", { ascending: false })
-        .limit(1000);
+      let query = sb.from("correo_envios").select("email, empresa, abierto_at, estado");
+      if (filtro === "abrieron") {
+        query = query.or("abierto_at.not.is.null,estado.eq.click,estado.eq.abierto");
+      } else if (filtro === "recibidos") {
+        query = query
+          .or("entregado_at.not.is.null,estado.eq.entregado,estado.eq.abierto,estado.eq.click")
+          .not("estado", "in", '("rebotado","fallido")');
+      } else if (filtro === "no_abrieron") {
+        query = query
+          .or("entregado_at.not.is.null,estado.eq.entregado,estado.eq.abierto,estado.eq.click")
+          .not("estado", "in", '("rebotado","fallido")')
+          .or("abierto_at.is.null,estado.not.in.(" + ['"abierto"', '"click"'].join(",") + ")");
+      } else if (filtro === "clic") {
+        query = query.or("click_at.not.is.null,estado.eq.click");
+      } else {
+        query = query.not("estado", "in", '("rebotado","fallido")');
+      }
+      const { data } = await query.order("abierto_at", { ascending: false }).limit(1000);
       const seen = new Set<string>();
       const leads: { email: string; empresa: string }[] = [];
       for (const r of (data ?? []) as { email: string; empresa: string | null }[]) {
@@ -95,8 +110,17 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
     }
   };
 
+  const FILTRO_LABEL: Record<Filtro, string> = {
+    todos: "todos los que recibieron",
+    recibidos: "los que recibieron",
+    abrieron: "los que abrieron",
+    no_abrieron: "los que no abrieron",
+    clic: "los que hicieron clic",
+  };
+
   const segmentos: { id: Filtro; label: string; cls: string; n: number }[] = [
     { id: "todos", label: "Todos", cls: "from-slate-400 to-slate-500", n: rows.length },
+    { id: "recibidos", label: "Recibidos", cls: "from-blue-400 to-blue-600", n: rows.filter(recibido).length },
     { id: "abrieron", label: "Abrieron", cls: "from-emerald-400 to-emerald-600", n: rows.filter(abrio).length },
     { id: "no_abrieron", label: "No abrieron", cls: "from-amber-400 to-orange-500", n: rows.filter((r) => !abrio(r) && r.estado !== "rebotado" && r.estado !== "fallido").length },
     { id: "clic", label: "Con clic", cls: "from-violet-400 to-fuchsia-600", n: rows.filter(hizoClic).length },
@@ -158,8 +182,8 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
           {onCargarLeads && (
             <button
               type="button"
-              onClick={campanaAbrieron}
-              disabled={cargandoSeg || rows.filter(abrio).length === 0}
+              onClick={campanaSegmento}
+              disabled={cargandoSeg || (segmentos.find((s) => s.id === filtro)?.n ?? 0) === 0}
               className="ml-auto inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-md transition hover:scale-[1.04] hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100"
               style={{
                 backgroundImage: "linear-gradient(90deg,#003DA5,#0e7c66,#7c1f2e,#C9A227,#003DA5)",
@@ -168,7 +192,7 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
               }}
             >
               {cargandoSeg ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              Campaña con los que abrieron
+              Campaña con {FILTRO_LABEL[filtro]}
               <Send className="h-3.5 w-3.5" />
             </button>
           )}
