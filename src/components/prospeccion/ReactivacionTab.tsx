@@ -29,6 +29,7 @@ type LeadRow = {
 
 const PAGE_SIZE = 25;
 const MAX_ENVIO = 200; // tope de destinatarios por campaña en send-personalized-campaign
+const LOTES = [50, 100, MAX_ENVIO]; // tandas de correos (Resend gratis: 100 correos/día)
 const LEADS_IMPORT_KEY = "prospeccion_leads_import";
 
 type Filters = {
@@ -99,6 +100,11 @@ export default function ReactivacionTab() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [cargando, setCargando] = useState(false);
+
+  // Tandas de envío a Correos: tamaño (50/100/200) y cuál se envía hoy.
+  const [lote, setLote] = useState(100);
+  const [tanda, setTanda] = useState(1);
+  const totalTandas = Math.max(1, Math.ceil(total / lote));
 
   const tagMap = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -190,8 +196,12 @@ export default function ReactivacionTab() {
     setCorreosMap({});
   };
 
-  // Carga TODOS los leads del filtro (con email, deduplicados), no solo la página visible.
-  // Tope MAX_ENVIO = 200 = límite de destinatarios por campaña.
+  // Al cambiar el tamaño de tanda volvemos a la tanda 1; si el total baja, la clampa.
+  useEffect(() => { setTanda(1); }, [lote]);
+  useEffect(() => { setTanda((t) => Math.min(t, totalTandas)); }, [totalTandas]);
+
+  // Carga UNA tanda del filtro (con email, deduplicados) hacia Correos Personalizados.
+  // Las tandas existen para respetar el límite de Resend gratis (100 correos/día).
   const cargarEnCorreos = async () => {
     setCargando(true);
     try {
@@ -209,7 +219,7 @@ export default function ReactivacionTab() {
       query = query
         .not("email", "is", null).neq("email", "")
         .order("dias_reales", { ascending: false, nullsFirst: false })
-        .range(0, MAX_ENVIO - 1);
+        .range((tanda - 1) * lote, Math.min(tanda * lote, MAX_ENVIO) - 1);
       const { data, error } = await query;
       if (error) throw error;
 
@@ -225,9 +235,9 @@ export default function ReactivacionTab() {
 
       sessionStorage.setItem(LEADS_IMPORT_KEY, JSON.stringify(recips));
       toast({
-        title: `${recips.length} leads cargados`,
-        description: total > MAX_ENVIO
-          ? `El filtro tiene ${total.toLocaleString("es-CL")}; se cargaron los primeros ${recips.length} (máx ${MAX_ENVIO}/campaña). Afina el filtro o envía en tandas.`
+        title: `${recips.length} leads cargados (tanda ${tanda} de ${totalTandas})`,
+        description: totalTandas > 1
+          ? `Resend gratis envía 100 correos/día. Tanda ${tanda} de ${totalTandas}; quedan ${totalTandas - tanda} para los próximos días.`
           : "Revisa y envía en Correos Personalizados.",
       });
       navigate("/correos-personalizados");
@@ -339,10 +349,30 @@ export default function ReactivacionTab() {
               Leads de campaña
               <Badge variant="secondary">{loading ? "…" : total.toLocaleString("es-CL")}</Badge>
             </span>
-            <Button type="button" size="sm" onClick={cargarEnCorreos} disabled={loading || cargando || total === 0} className="gap-1.5">
-              {cargando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Cargar {Math.min(total, MAX_ENVIO)} en Correos
-            </Button>
+            <span className="flex flex-wrap items-center gap-2">
+              <Select value={String(lote)} onValueChange={(v) => setLote(Number(v))} disabled={loading || cargando || total === 0}>
+                <SelectTrigger className="h-9 w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LOTES.map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n} por tanda</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={String(tanda)} onValueChange={(v) => setTanda(Number(v))} disabled={loading || cargando || total === 0}>
+                <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: totalTandas }, (_, i) => (
+                    <SelectItem key={i} value={String(i + 1)}>
+                      Tanda {i + 1} · {i * lote + 1}–{Math.min((i + 1) * lote, total)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" size="sm" onClick={cargarEnCorreos} disabled={loading || cargando || total === 0} className="gap-1.5">
+                {cargando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Cargar tanda {tanda} en Correos
+              </Button>
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
