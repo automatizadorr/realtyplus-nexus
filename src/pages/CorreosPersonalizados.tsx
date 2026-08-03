@@ -19,21 +19,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { bodyToHtml, buildProEmail, buildPlainEmail } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
 import SecuenciasCorreo from "@/components/correos/SecuenciasCorreo";
+import PreviewEnvio from "@/components/correos/PreviewEnvio";
+import { fill, isEmail, type Recipient } from "@/lib/correosVariables";
 import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
 
-type Recipient = {
-  email: string;
-  empresa: string;
-  ciudad: string;
-  gancho: string;
-  nombre?: string;
-  pais?: string;
-  datos?: Record<string, string>;
-};
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
-
-const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-const isEmail = (s: string) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test((s || "").trim());
 
 const DEFAULT_SUBJECT = "{{empresa}}: que ningún lead se te vuelva a escapar";
 const DEFAULT_BODY = `Hola equipo de {{empresa}},
@@ -52,25 +42,6 @@ En la práctica: menos leads perdidos, respuesta inmediata y tu equipo enfocado 
 
 Un saludo,
 Mario · LexHouse`;
-
-// Reemplaza {{variable}} en una plantilla: columnas fijas (empresa, ciudad,
-// gancho, nombre, email) + cualquier columna del sheet en `datos`.
-function fill(tpl: string, r: Partial<Recipient>): string {
-  const map: Record<string, string> = {
-    email: r.email ?? "",
-    empresa: r.empresa ?? "",
-    ciudad: r.ciudad ?? "",
-    gancho: r.gancho ?? "",
-    // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
-    nombre: (r.nombre || r.empresa) ?? "",
-  };
-  for (const [k, v] of Object.entries(r.datos ?? {})) {
-    if (v == null) continue;
-    const s = String(v).trim();
-    if (s) map[k.toLowerCase()] = s;
-  }
-  return tpl.replace(/\{\{\s*([\w\-.]+)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
-}
 
 // Claves típicas del nombre de la persona de contacto en los HTML/sheets.
 const NOMBRE_KEYS = [
@@ -277,15 +248,15 @@ export default function CorreosPersonalizados() {
       if (Array.isArray(imported) && imported.length) {
         const rows: Recipient[] = imported
           .filter((r: Partial<Recipient>) => isEmail(r?.email ?? ""))
-.map((r: Partial<Recipient>) => ({
-              email: (r.email ?? "").toLowerCase(),
-              empresa: r.empresa ?? "",
-              ciudad: r.ciudad ?? "",
-              gancho: r.gancho ?? "",
-              nombre: r.nombre ?? "",
-              pais: r.pais ?? "",
-              datos: r.datos ?? {},
-            }));
+          .map((r: Partial<Recipient>) => ({
+            email: (r.email ?? "").toLowerCase(),
+            empresa: r.empresa ?? "",
+            ciudad: r.ciudad ?? "",
+            gancho: r.gancho ?? "",
+            nombre: r.nombre ?? "",
+            pais: r.pais ?? "",
+            datos: r.datos ?? {},
+          }));
         if (rows.length) {
           setRecipients(rows);
           toast({ title: `${rows.length} leads cargados`, description: "Vienen del buscador, con empresa/ciudad/gancho y demás datos. Revisa y envía." });
@@ -673,6 +644,15 @@ export default function CorreosPersonalizados() {
         fromName={fromName}
         fromEmail={fromEmail}
         replyTo={replyTo}
+      />
+
+      {/* Vista previa de envío: cómo verá cada destinatario el correo antes de mandarlo */}
+      <PreviewEnvio
+        recipients={recipients}
+        subject={subject}
+        cuerpo={body}
+        cuerpoRendered={composeHtml()}
+        ganchoFallo={ganchoSel === "rotar" ? activeGanchos[0] : ganchoSel}
       />
 
       {/* Acciones */}
