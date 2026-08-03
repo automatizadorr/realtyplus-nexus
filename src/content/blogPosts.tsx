@@ -213,7 +213,9 @@ export const POSTS: BlogPost[] = [
           Así, en cuatro días a la semana y con minutos por día, el embudo nunca se seca. Y cuando
           el volumen crece, la parte de búsqueda y redacción ya la hace la IA por ti —el mismo motor
           que alimenta a{" "}
-          <LexLink to="/soluciones/ia">los agentes IA de LexHouse</LexLink>.
+          <LexLink to="/soluciones/ia">los agentes IA de LexHouse</LexLink>. Para la estrategia de
+          fondo, revisa cómo{" "}
+          <LexLink to="/blog/captar-propiedades-corredor">captar propiedades como corredor</LexLink>.
         </P>
       </>
     ),
@@ -428,7 +430,8 @@ export const POSTS: BlogPost[] = [
         <P>
           La regla es simple: automatiza lo repetitivo para dedicar tu tiempo a lo que solo tú
           puedes hacer — cerrar. Si quieres ver todo el ecosistema en acción, empieza por{" "}
-          <LexLink to="/">lexhouse-ai.com</LexLink>.
+          <LexLink to="/">lexhouse-ai.com</LexLink>, y profundiza con la guía de{" "}
+          <LexLink to="/blog/marketing-inmobiliario-redes">marketing inmobiliario en redes sociales</LexLink>.
         </P>
       </>
     ),
@@ -523,7 +526,10 @@ export const POSTS: BlogPost[] = [
           No necesitas cambiar de número ni saber de tecnología: si usas WhatsApp, ya sabes usarlo.
           Conecta tu cuenta y deja que la IA atienda la primera respuesta. Y cuando quieras la suite
           completa para corredores, revisa los{" "}
-          <LexLink to="/soluciones/ia">agentes IA de LexHouse</LexLink>.
+          <LexLink to="/soluciones/ia">agentes IA de LexHouse</LexLink>. Para profundizar en la
+          estrategia, lee las guías de{" "}
+          <LexLink to="/blog/whatsapp-inmobiliaria">WhatsApp para inmobiliarias</LexLink> y de{" "}
+          <LexLink to="/blog/crm-inmobiliario">CRM inmobiliario</LexLink> en lexhouse-ai.com.
         </P>
       </>
     ),
@@ -700,7 +706,8 @@ export const POSTS: BlogPost[] = [
           <LexLink to="/">LexHouse AI</LexLink>: mira los{" "}
           <LexLink to="/soluciones/ia">agentes IA</LexLink> para la atención automática y{" "}
           <LexLink to="/soluciones/legal">Contratos IA</LexLink> para revisar promesas y
-          arriendos en segundos.
+          arriendos en segundos. Y para la estrategia completa, lee la guía de{" "}
+          <LexLink to="/blog/whatsapp-inmobiliaria">WhatsApp para inmobiliarias</LexLink>.
         </P>
       </>
     ),
@@ -816,7 +823,8 @@ export const POSTS: BlogPost[] = [
           No necesitas todo el día uno. Empieza por la respuesta automática de leads, suma la
           revisión de contratos y la valuación, y ve creciendo. Todo el ecosistema —plataforma,
           CRM y creación de video— parte desde{" "}
-          <LexLink to="/">lexhouse-ai.com</LexLink>.
+          <LexLink to="/">lexhouse-ai.com</LexLink>. Compara opciones en la guía de{" "}
+          <LexLink to="/blog/software-corredores-propiedades">software para corredores de propiedades</LexLink>.
         </P>
       </>
     ),
