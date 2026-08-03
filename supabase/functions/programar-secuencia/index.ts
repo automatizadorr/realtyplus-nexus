@@ -5,46 +5,12 @@
 // envía los que vencen vía Resend.
 // Auth: Bearer + rol admin (mismo patrón que send-personalized-campaign).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { corsHeaders, EMAIL_RE, HORA_RE, pickPais, TZ, zonedToUtc } from "../_shared/correo.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const TZ = "America/Santiago";
 const MAX_DESTINATARIOS = 200;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-// Convierte "2026-08-02 09:00" en hora local de `tz` a un instante UTC.
-// Truco estándar: adivina UTC, lee qué hora local representa en ese tz y corrige.
-function zonedToUtc(ymd: string, hhmm: string, tz: string): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const [h, mi] = hhmm.split(":").map(Number);
-  const guess = Date.UTC(y, m - 1, d, h, mi);
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz, hourCycle: "h23",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
-  const parts = Object.fromEntries(dtf.formatToParts(new Date(guess)).map((p) => [p.type, p.value]));
-  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
-  return new Date(guess - (asUTC - guess)).toISOString();
-}
 
 type Recipient = { email: string; empresa?: string; ciudad?: string; gancho?: string; nombre?: string; pais?: string; datos?: Record<string, unknown> };
 type PasoOverride = { paso: number; hora?: string; asunto?: string };
-
-// País ya resuelto o desde cualquier columna del sheet (datos.*).
-function pickPais(r: Recipient): string {
-  if (r.pais?.trim()) return r.pais.trim();
-  const d = r.datos ?? {};
-  if (typeof d.pais === "string" && d.pais.trim()) return d.pais.trim();
-  if (typeof d.país === "string" && d.país.trim()) return d.país.trim();
-  if (typeof d.country === "string" && d.country.trim()) return d.country.trim();
-  return "";
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

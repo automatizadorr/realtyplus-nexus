@@ -2,12 +2,7 @@
 // Requiere caller autenticado con rol admin (misma política que send-n8n-webhook).
 // El secreto RESEND_API_KEY se guarda en los secrets del proyecto Supabase.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, zonedToUtc } from "../_shared/correo.ts";
 
 type Recipient = {
   email: string;
@@ -18,58 +13,6 @@ type Recipient = {
   pais?: string;
   datos?: Record<string, unknown>;
 };
-
-// País ya resuelto o desde cualquier columna del sheet (datos.*).
-function pickPais(r: Recipient): string {
-  if (r.pais?.trim()) return r.pais.trim();
-  const d = r.datos ?? {};
-  if (typeof d.pais === "string" && d.pais.trim()) return d.pais.trim();
-  if (typeof d.país === "string" && d.país.trim()) return d.país.trim();
-  if (typeof d.country === "string" && d.country.trim()) return d.country.trim();
-  return "";
-}
-
-// Reemplaza {{variable}} en una plantilla: columnas fijas (empresa, ciudad,
-// gancho, nombre, email) + cualquier columna del sheet en el jsonb `datos`.
-function fillTemplate(tpl: string, r: Recipient): string {
-  const map: Record<string, string> = {
-    email: r.email ?? "",
-    empresa: r.empresa ?? "",
-    ciudad: r.ciudad ?? "",
-    gancho: r.gancho ?? "",
-    pais: pickPais(r),
-    // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
-    nombre: (r.nombre || r.empresa) ?? "",
-  };
-  for (const [k, v] of Object.entries(r.datos ?? {})) {
-    if (v == null) continue;
-    const s = String(v).trim();
-    if (s) map[k.toLowerCase()] = s;
-  }
-  return tpl.replace(/\{\{\s*([\w\-.]+)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Resend gratis: 100 correos/día. Si la campaña trae más, hoy solo se envían
-// los primeros `LIMITE_DIA` y el resto se agenda en secuencia_envios_programados
-// para los días siguientes (el cron los envía cuando vencen).
-const LIMITE_DIA = 100;
-
-// "2026-08-03 09:30" en hora local de `tz` → instante UTC (mismo truco que programar-secuencia).
-function zonedToUtc(ymd: string, hhmm: string, tz: string): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const [h, mi] = hhmm.split(":").map(Number);
-  const guess = Date.UTC(y, m - 1, d, h, mi);
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz, hourCycle: "h23",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
-  const parts = Object.fromEntries(dtf.formatToParts(new Date(guess)).map((p) => [p.type, p.value]));
-  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
-  return new Date(guess - (asUTC - guess)).toISOString();
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

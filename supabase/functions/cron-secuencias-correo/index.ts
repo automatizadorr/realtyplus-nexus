@@ -9,39 +9,9 @@
 // Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o CRON_SECRET).
 // En config.toml: verify_jwt = false (lo llama pg_cron, no el navegador).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-webhook-secret",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders, EMAIL_RE, esc, fillTemplate } from "../_shared/correo.ts";
 
 const MAX_POR_CORRIDA = 50;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Reemplaza {{variable}} en una plantilla. Resuelve las columnas fijas del
-// snapshot (empresa, ciudad, gancho, nombre, email) y CUALQUIER columna del
-// sheet guardada en el jsonb `datos` (web, telefono, instagram, region, ...).
-function fillTemplate(tpl: string, r: Record<string, unknown>): string {
-  const datos = (typeof r.datos === "object" && r.datos !== null ? r.datos : {}) as Record<string, unknown>;
-  const map: Record<string, string> = {
-    email: (r.email as string) ?? "",
-    empresa: (r.empresa as string) ?? "",
-    ciudad: (r.ciudad as string) ?? "",
-    gancho: (r.gancho as string) ?? "",
-    pais: (r.pais as string) || (datos.pais as string) || (datos.country as string) || "",
-    // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
-    nombre: (r.nombre as string) || (r.empresa as string) || "",
-  };
-  for (const [k, v] of Object.entries(datos)) {
-    if (v == null) continue;
-    const s = String(v).trim();
-    if (s) map[k.toLowerCase()] = s;
-  }
-  return tpl.replace(/\{\{\s*([\w\-.]+)\s*\}\}/gi, (_m, key) => map[key.toLowerCase()] ?? "");
-}
-
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 // HTML simple y con marca (azul #003DA5, CTA a la guía), compatible con clientes de correo.
 function buildHtml(body: string, ctaTexto: string, ctaUrl: string): string {
