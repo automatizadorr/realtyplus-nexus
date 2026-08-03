@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle, MailCheck } from "lucide-react";
+import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle, MailCheck, ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -237,6 +237,8 @@ export default function CorreosPersonalizados() {
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Wizard: 1 = Destinatarios, 2 = Mensaje (remitente + plantillas + diseño), 3 = Revisión y envío
+  const [paso, setPaso] = useState<1 | 2 | 3>(1);
 
   // Si venimos desde "Buscar Leads", precargamos los destinatarios importados.
   useEffect(() => {
@@ -410,6 +412,38 @@ export default function CorreosPersonalizados() {
         </div>
       </motion.div>
 
+      {/* Wizard: indicador de pasos */}
+      <div className="flex flex-wrap items-center gap-2">
+        {([
+          { n: 1, label: "Destinatarios", ok: validCount > 0 },
+          { n: 2, label: "Mensaje", ok: Boolean(subject.trim()) && Boolean(body.trim()) },
+          { n: 3, label: "Revisión y envío", ok: Boolean(results) },
+        ] as const).map(({ n, label, ok }) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => setPaso(n)}
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              paso === n
+                ? "border-[#003DA5] bg-[#003DA5] text-white"
+                : ok
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : "border-border bg-background text-muted-foreground hover:border-[#003DA5]/40"
+            }`}
+          >
+            <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] font-bold ${
+              paso === n ? "bg-white/20" : ok ? "bg-emerald-500/20" : "bg-muted"
+            }`}>
+              {n}
+            </span>
+            {label}
+            {ok && n < 3 && <span className="text-emerald-600">✓</span>}
+          </button>
+        ))}
+      </div>
+
+      {paso === 1 && (
+        <>
       {/* Paso 1 — Destinatarios */}
       <Card>
         <CardHeader>
@@ -507,7 +541,16 @@ export default function CorreosPersonalizados() {
           )}
         </CardContent>
       </Card>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" onClick={() => setPaso(2)} disabled={validCount === 0} className="gap-2">
+              Continuar <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </>
+      )}
 
+      {paso === 2 && (
+        <>
       {/* Paso 2 — Remitente */}
       <Card>
         <CardHeader>
@@ -638,6 +681,19 @@ export default function CorreosPersonalizados() {
         </CardContent>
       </Card>
 
+          <div className="flex justify-between gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setPaso(1)} className="gap-2">
+              <ArrowLeft className="h-4 w-4" /> Destinatarios
+            </Button>
+            <Button type="button" onClick={() => setPaso(3)} disabled={!subject.trim() || !body.trim()} className="gap-2">
+              Revisar y enviar <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+      </>
+      )}
+
+      {paso === 3 && (
+        <>
       {/* Secuencia de correos (embudo con guías) */}
       <SecuenciasCorreo
         destinatarios={recipients.filter((r) => isEmail(r.email)).map((r) => ({ ...r }))}
@@ -657,6 +713,9 @@ export default function CorreosPersonalizados() {
 
       {/* Acciones */}
       <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" onClick={() => setPaso(2)} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Volver al mensaje
+        </Button>
         <Button type="button" variant="outline" onClick={sendTest} disabled={sending} className="gap-2">
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
           Enviar prueba a mí
@@ -717,6 +776,8 @@ export default function CorreosPersonalizados() {
           </Button>
         </CardContent>
       </Card>
+        </>
+      )}
 
       {/* Confirmación de envío masivo */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
