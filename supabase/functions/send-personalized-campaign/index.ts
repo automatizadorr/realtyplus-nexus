@@ -51,6 +51,26 @@ function fillTemplate(tpl: string, r: Recipient): string {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Resend gratis: 100 correos/día. Si la campaña trae más, hoy solo se envían
+// los primeros `LIMITE_DIA` y el resto se agenda en secuencia_envios_programados
+// para los días siguientes (el cron los envía cuando vencen).
+const LIMITE_DIA = 100;
+
+// "2026-08-03 09:30" en hora local de `tz` → instante UTC (mismo truco que programar-secuencia).
+function zonedToUtc(ymd: string, hhmm: string, tz: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const [h, mi] = hhmm.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, h, mi);
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz, hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+  const parts = Object.fromEntries(dtf.formatToParts(new Date(guess)).map((p) => [p.type, p.value]));
+  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return new Date(guess - (asUTC - guess)).toISOString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -121,20 +141,24 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (valid.length > 200) {
-      return new Response(JSON.stringify({ error: "Máximo 200 destinatarios por envío" }), {
+    if (valid.length > 2000) {
+      return new Response(JSON.stringify({ error: "Máximo 2000 destinatarios por envío" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const from = `${fromName} <${fromEmail}>`;
-    const results: { email: string; ok: boolean; id?: string; error?: string }[] = [];
+    const results: { email: string; ok: boolean; id?: string; error?: string; programado?: boolean }[] = [];
     // Filas para el log de seguimiento (correo_envios).
     const logRows: Record<string, unknown>[] = [];
     const userId = userData.user.id;
-    let sent = 0, failed = 0;
+    let sent = 0, failed = 0, programados = 0;
 
-    for (const r of valid) {
+    // --- Auto-batching: hoy solo el cupo diario; el resto se agenda. ---
+    const hoy = valid.slice(0, LIMITE_DIA);
+    const excedente = valid.slice(LIMITE_DIA);
+
+    for (const r of hoy) {
       const subject = fillTemplate(subjectTpl, r);
       const payload: Record<string, unknown> = {
         from,
@@ -188,7 +212,59 @@ Deno.serve(async (req) => {
       if (logErr) console.error("correo_envios insert error:", logErr.message);
     }
 
-    return new Response(JSON.stringify({ success: true, sent, failed, total: valid.length, results }), {
+    // --- Agenda el excedente para los próximos días (100/día) vía el cron. ---
+    if (excedente.length) {
+      const row: Record<string, unknown>[] = [];
+      for (let i = 0; i < excedente.length; i++) {
+        const r = excedente[i];
+        const dia = Math.floor(i / LIMITE_DIA) + 1; // mañana = día 1
+        const fecha = new Date();
+        fecha.setUTCDate(fecha.getUTCDate() + dia);
+        const ymd = fecha.toISOString().slice(0, 10);
+        row.push({
+          email: r.email,
+          empresa: r.empresa ?? null,
+          ciudad: r.ciudad ?? null,
+          gancho: r.gancho ?? null,
+          nombre: r.nombre ?? null,
+          pais: pickPais(r) || null,
+          datos: r.datos && Object.keys(r.datos).length ? r.datos : null,
+          paso: 0,
+          secuencia_nombre: "Campaña manual (auto-batching)",
+          asunto: subjectTpl,
+          cuerpo: textTpl,
+          html: htmlTpl,
+          cta_texto: "",
+          cta_url: "",
+          from_name: fromName,
+          from_email: fromEmail,
+          reply_to: replyTo ?? null,
+          enviar_en: zonedToUtc(ymd, "09:30", "America/Santiago"),
+          creado_por: userId,
+        });
+      }
+      const { error: insErr } = await svc.from("secuencia_envios_programados").insert(row);
+      if (insErr) {
+        console.error("auto-batching insert error:", insErr.message);
+        for (const r of excedente) {
+          results.push({ email: r.email, ok: false, error: "No se pudo agendar el excedente" });
+          failed++;
+        }
+      } else {
+        programados = excedente.length;
+        for (const r of excedente) results.push({ email: r.email, ok: true, programado: true });
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      sent, failed, programados,
+      total: valid.length,
+      aviso: programados > 0
+        ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${LIMITE_DIA}/día).`
+        : undefined,
+      results,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

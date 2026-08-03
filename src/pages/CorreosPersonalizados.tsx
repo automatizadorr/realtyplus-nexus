@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle, MailCheck, ArrowLeft, ArrowRight } from "lucide-react";
+import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle, MailCheck, ArrowLeft, ArrowRight, CalendarClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import PreviewEnvio from "@/components/correos/PreviewEnvio";
 import { fill, isEmail, type Recipient } from "@/lib/correosVariables";
 import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from "@/lib/emailCopys";
 
-type SendResult = { email: string; ok: boolean; id?: string; error?: string };
+type SendResult = { email: string; ok: boolean; id?: string; error?: string; programado?: boolean };
 
 const DEFAULT_SUBJECT = "{{empresa}}: que ningún lead se te vuelva a escapar";
 const DEFAULT_BODY = `Hola equipo de {{empresa}},
@@ -356,9 +356,14 @@ export default function CorreosPersonalizados() {
       if (data?.error) throw new Error(data.error);
       setResults(data?.results ?? []);
       setSeguimientoKey((k) => k + 1); // refresca el panel de seguimiento
+      const programados = data?.programados ?? 0;
       toast({
-        title: `${label}: ${data?.sent ?? 0} enviado(s)`,
-        description: data?.failed ? `${data.failed} fallaron. Revisa el detalle abajo.` : "Todos entregados a Resend.",
+        title: `${label}: ${data?.sent ?? 0} enviado(s), ${programados} programado(s)`,
+        description: data?.failed
+          ? `${data.failed} fallaron. Revisa el detalle abajo.`
+          : programados > 0
+            ? `Hoy se enviaron ${data?.sent ?? 0}. Los otros ${programados} quedaron agendados para los próximos días (límite diario Resend: 100).`
+            : "Todos entregados a Resend.",
         variant: data?.failed ? "destructive" : "default",
       });
     } catch (e) {
@@ -744,13 +749,15 @@ export default function CorreosPersonalizados() {
                     <TableRow key={i}>
                       <TableCell className="font-mono text-xs">{r.email}</TableCell>
                       <TableCell>
-                        {r.ok ? (
+                        {r.ok && r.programado ? (
+                          <span className="inline-flex items-center gap-1.5 text-[#003DA5]"><CalendarClock className="h-4 w-4" /> Programado</span>
+                        ) : r.ok ? (
                           <span className="inline-flex items-center gap-1.5 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Enviado</span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-destructive"><XCircle className="h-4 w-4" /> Falló</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{r.ok ? r.id : r.error}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{r.ok ? (r.programado ? "Se enviará automáticamente los próximos días." : r.id) : r.error}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

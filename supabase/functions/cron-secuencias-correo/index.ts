@@ -115,7 +115,10 @@ Deno.serve(async (req) => {
       }
 
       const subject = fillTemplate(row.asunto ?? "", row);
-      const html = buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
+      const rawHtml = typeof row.html === "string" && row.html.trim()
+        ? fillTemplate(row.html, row)
+        : buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
+      const html = rawHtml.trim() ? rawHtml : buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
       const from = `${row.from_name ?? "Mario · LexHouse"} <${row.from_email ?? "no-reply@send.lexhouse-ai.com"}>`;
       const payload: Record<string, unknown> = {
         from,
