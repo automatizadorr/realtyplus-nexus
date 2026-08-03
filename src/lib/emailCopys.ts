@@ -299,4 +299,37 @@ Mario · LexHouse`,
     bonusText: "Regalo: 5 preguntas para elegir bien tu herramienta",
     bonusUrl: `${REGALOS}/checklist-antes-de-tu-reunion.html`,
   },
+
+  // ── SERVICIOS COMPLETOS (todo en uno) ─────────────────────────────────────
+  {
+    id: "servicios-todo-en-uno",
+    categoria: "Servicios completos (todo en uno)",
+    plataforma: "LexHouse · Software + IA + Marketing",
+    dolor: "Fragmentación: muchas herramientas, ningún resultado",
+    badge: "Servicios · Todo en uno",
+    brandColor: "#003DA5",
+    subject: "{{empresa}}: un solo equipo para software, IA y marketing inmobiliario",
+    titulo: "Deja de pagar por cinco herramientas. Trabaja con un solo equipo.",
+    body: `Hola {{nombre}},
+
+Sé que suena a frase de vendedor, pero voy a ser concreto: LexHouse es un equipo completo de tecnología e inteligencia artificial construido alrededor de las corredoras — y cuando {{gancho}}, el problema casi nunca es la falta de clientes: es la fragmentación.
+
+Lo que hacemos, en una sola línea:
+
+- Software a medida y CRM inmobiliario que reúne todos tus leads en un solo panel.
+- Inteligencia artificial que responde, clasifica y da seguimiento por ti, 24/7.
+- Agentes de voz IA que atienden llamadas y califican interesados.
+- Marketing digital, prospección y reactivación de leads fríos con método.
+- Un generador de videos IA para que tus propiedades no pasen desapercibidas.
+
+No te pido que me creas: te dejo de regalo un autodiagnóstico de 2 minutos para medir cuántos leads se te escapan hoy, y nuestra carta de presentación completa para que veas el ecosistema entero 👇
+
+Un saludo,
+Mario · LexHouse`,
+    ctaText: "Conocer LexHouse (carta de presentación)",
+    ctaUrl: "https://lexhouse-ai.com",
+    ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: autodiagnóstico de 2 minutos",
+    bonusUrl: `${REGALOS}/autodiagnostico-corredora.html`,
+  },
 ];

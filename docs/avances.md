@@ -6,6 +6,23 @@ Registro de cambios y decisiones clave. Lo más reciente arriba.
 
 ## 2026-08-03
 
+### Fase 4.1 — Remanentes Fase 4 + {{pais}} en la vista previa
+`send-personalized-campaign` y `cron-secuencias-correo` pasaron a usar `TZ`/`pickPais`
+compartidos (antes tenían literales locales). `src/lib/correosVariables.ts` ahora
+también resuelve `{{pais}}`, para que la vista previa muestre lo mismo que el correo real.
+
+### Secuencia de Servicios Completos · Todo en uno (correos)
+Nueva plantilla y embudo automático que presenta el ecosistema LexHouse completo:
+software a medida, IA, CRM inmobiliario, agentes de voz IA, marketing digital,
+prospección, reactivación de leads y generador de videos para inmobiliarias.
+
+- **Plantilla** `servicios-todo-en-uno` en `src/lib/emailCopys.ts` (categoría
+  "Servicios completos (todo en uno)") con regalo (autodiagnóstico) y CTA a
+  **lexhouse-ai.com** como carta de presentación.
+- **Secuencia SQL** (`20260805090000_secuencia_servicios_completos.sql`, id
+  `...000006`): 3 correos en 6 días — ecosistema completo, reactivación de
+  clientes, y cierre invitando a la demo/web. Cada paso regala una guía.
+
 ### Fase 4 — Helpers compartidos de correo (refactor)
 Se creó `supabase/functions/_shared/correo.ts` con los helpers que vivían duplicados
 en las 3 edge functions de correo: `pickPais`, `fillTemplate`, `zonedToUtc`, `esc`,
@@ -14,10 +31,6 @@ en las 3 edge functions de correo: `pickPais`, `fillTemplate`, `zonedToUtc`, `es
 - **send-personalized-campaign**, **cron-secuencias-correo** y **programar-secuencia**
   ahora importan desde `_shared/correo.ts` → la resolución de `{{variables}}` es
   idéntica en los tres.
-- Remanentes Fase 4.1: `send-personalized-campaign` y `cron-secuencias-correo` pasaron
-  a usar `TZ`/`pickPais` compartidos (antes tenían literales locales).
-- La vista previa del frontend (`src/lib/correosVariables.ts`) ahora también resuelve
-  `{{pais}}` (`pickPais`), para que muestre lo mismo que el correo real.
 
 ---
 
