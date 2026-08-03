@@ -32,7 +32,7 @@ export default function SeguimientoCorreos() {
           }
           sessionStorage.setItem(
             LEADS_IMPORT_KEY,
-            JSON.stringify(leads.map((l) => ({ email: l.email, empresa: l.empresa, ciudad: "", gancho: "" }))),
+            JSON.stringify(leads.map((l) => ({ email: l.email, nombre: l.nombre || "", empresa: l.empresa, pais: l.pais || "", ciudad: "", gancho: "" }))),
           );
           navigate("/correos-personalizados");
           toast({ title: `${leads.length} leads cargados`, description: "Solo los que abrieron un correo. Ajusta el mensaje y envía tu campaña." });

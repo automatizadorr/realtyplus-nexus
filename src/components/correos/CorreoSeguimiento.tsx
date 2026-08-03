@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 
 type Envio = {
-  id: string; email: string; empresa: string | null; asunto: string | null;
+  id: string; email: string; nombre: string | null; empresa: string | null; pais: string | null;
+  asunto: string | null;
   estado: string; enviado_at: string; entregado_at: string | null;
   abierto_at: string | null; click_at: string | null; opens: number; clicks: number; error: string | null;
 };
@@ -35,7 +36,7 @@ type Filtro = "todos" | "recibidos" | "abrieron" | "no_abrieron" | "clic";
 
 type Props = {
   refreshKey?: number;
-  onCargarLeads?: (leads: { email: string; empresa: string }[]) => void;
+  onCargarLeads?: (leads: { email: string; nombre: string; empresa: string; pais: string }[]) => void;
 };
 
 export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Props) {
@@ -52,7 +53,7 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
     setLoading(true);
     try {
       const [{ data: envios }, { data: res }] = await Promise.all([
-        sb.from("correo_envios").select("*").order("enviado_at", { ascending: false }).limit(100),
+        sb.from("correo_envios").select("id, email, nombre, empresa, pais, asunto, estado, enviado_at, entregado_at, abierto_at, click_at, opens, clicks, error").order("enviado_at", { ascending: false }).limit(100),
         sb.rpc("correo_envios_resumen", { _dias: 30 }),
       ]);
       setRows((envios ?? []) as Envio[]);
@@ -78,7 +79,7 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
     if (!onCargarLeads) return;
     setCargandoSeg(true);
     try {
-      let query = sb.from("correo_envios").select("email, empresa, abierto_at, estado");
+      let query = sb.from("correo_envios").select("email, nombre, empresa, pais, abierto_at, estado");
       if (filtro === "abrieron") {
         query = query.or("abierto_at.not.is.null,estado.eq.click,estado.eq.abierto");
       } else if (filtro === "recibidos") {
@@ -97,12 +98,12 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
       }
       const { data } = await query.order("abierto_at", { ascending: false }).limit(1000);
       const seen = new Set<string>();
-      const leads: { email: string; empresa: string }[] = [];
-      for (const r of (data ?? []) as { email: string; empresa: string | null }[]) {
+      const leads: { email: string; nombre: string; empresa: string; pais: string }[] = [];
+      for (const r of (data ?? []) as { email: string; nombre: string | null; empresa: string | null; pais: string | null }[]) {
         const email = (r.email || "").trim().toLowerCase();
         if (!email || seen.has(email)) continue;
         seen.add(email);
-        leads.push({ email, empresa: r.empresa || "" });
+        leads.push({ email, nombre: r.nombre || "", empresa: r.empresa || "", pais: r.pais || "" });
       }
       onCargarLeads(leads);
     } finally {
@@ -212,6 +213,8 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
               <TableHeader>
                 <TableRow>
                   <TableHead>Destinatario</TableHead>
+                  <TableHead className="hidden lg:table-cell">Empresa</TableHead>
+                  <TableHead className="hidden lg:table-cell">País</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="hidden sm:table-cell">Enviado</TableHead>
                   <TableHead className="hidden md:table-cell">Recibido</TableHead>
@@ -224,9 +227,14 @@ export default function CorreoSeguimiento({ refreshKey = 0, onCargarLeads }: Pro
                   return (
                     <TableRow key={r.id}>
                       <TableCell>
-                        <div className="font-medium">{r.email}</div>
-                        <div className="text-xs text-muted-foreground">{r.empresa || r.asunto || ""}</div>
+                        <div className="font-medium">{r.nombre || r.email}</div>
+                        <div className="text-xs text-muted-foreground">{r.email}</div>
+                        {r.nombre && r.empresa && (
+                          <div className="text-xs text-muted-foreground">{r.empresa}</div>
+                        )}
                       </TableCell>
+                      <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">{r.empresa || "—"}</TableCell>
+                      <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">{r.pais || "—"}</TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${ui.cls}`}>
                           {ui.label}{r.estado === "rebotado" && <AlertTriangle className="h-3 w-3" />}

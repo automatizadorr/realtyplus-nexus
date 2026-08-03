@@ -33,8 +33,18 @@ function zonedToUtc(ymd: string, hhmm: string, tz: string): string {
   return new Date(guess - (asUTC - guess)).toISOString();
 }
 
-type Recipient = { email: string; empresa?: string; ciudad?: string; gancho?: string; nombre?: string; datos?: Record<string, unknown> };
+type Recipient = { email: string; empresa?: string; ciudad?: string; gancho?: string; nombre?: string; pais?: string; datos?: Record<string, unknown> };
 type PasoOverride = { paso: number; hora?: string; asunto?: string };
+
+// País ya resuelto o desde cualquier columna del sheet (datos.*).
+function pickPais(r: Recipient): string {
+  if (r.pais?.trim()) return r.pais.trim();
+  const d = r.datos ?? {};
+  if (typeof d.pais === "string" && d.pais.trim()) return d.pais.trim();
+  if (typeof d.país === "string" && d.país.trim()) return d.país.trim();
+  if (typeof d.country === "string" && d.country.trim()) return d.country.trim();
+  return "";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -148,6 +158,7 @@ Deno.serve(async (req) => {
           ciudad: r.ciudad ?? null,
           gancho: r.gancho ?? null,
           nombre: r.nombre ?? null,
+          pais: pickPais(r) || null,
           datos: r.datos && Object.keys(r.datos).length ? r.datos : null,
           paso: p.paso,
           asunto,

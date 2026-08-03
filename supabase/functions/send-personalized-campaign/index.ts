@@ -15,8 +15,19 @@ type Recipient = {
   ciudad?: string;
   gancho?: string;
   nombre?: string;
+  pais?: string;
   datos?: Record<string, unknown>;
 };
+
+// País ya resuelto o desde cualquier columna del sheet (datos.*).
+function pickPais(r: Recipient): string {
+  if (r.pais?.trim()) return r.pais.trim();
+  const d = r.datos ?? {};
+  if (typeof d.pais === "string" && d.pais.trim()) return d.pais.trim();
+  if (typeof d.país === "string" && d.país.trim()) return d.país.trim();
+  if (typeof d.country === "string" && d.country.trim()) return d.country.trim();
+  return "";
+}
 
 // Reemplaza {{variable}} en una plantilla: columnas fijas (empresa, ciudad,
 // gancho, nombre, email) + cualquier columna del sheet en el jsonb `datos`.
@@ -26,6 +37,7 @@ function fillTemplate(tpl: string, r: Recipient): string {
     empresa: r.empresa ?? "",
     ciudad: r.ciudad ?? "",
     gancho: r.gancho ?? "",
+    pais: pickPais(r),
     // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
     nombre: (r.nombre || r.empresa) ?? "",
   };
@@ -152,18 +164,18 @@ Deno.serve(async (req) => {
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.id) {
           results.push({ email: r.email, ok: true, id: data.id });
-          logRows.push({ resend_id: data.id, email: r.email, empresa: r.empresa ?? null, asunto: subject, enviado_por: userId, estado: "enviado" });
+          logRows.push({ resend_id: data.id, email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "enviado" });
           sent++;
         } else {
           const errMsg = data?.message || data?.error || `HTTP ${res.status}`;
           results.push({ email: r.email, ok: false, error: String(errMsg) });
-          logRows.push({ email: r.email, empresa: r.empresa ?? null, asunto: subject, enviado_por: userId, estado: "fallido", error: String(errMsg).slice(0, 300) });
+          logRows.push({ email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "fallido", error: String(errMsg).slice(0, 300) });
           failed++;
         }
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : String(e);
         results.push({ email: r.email, ok: false, error: errMsg });
-        logRows.push({ email: r.email, empresa: r.empresa ?? null, asunto: subject, enviado_por: userId, estado: "fallido", error: errMsg.slice(0, 300) });
+        logRows.push({ email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "fallido", error: errMsg.slice(0, 300) });
         failed++;
       }
       // Pequeña pausa para respetar el rate limit de Resend (~2 req/s).

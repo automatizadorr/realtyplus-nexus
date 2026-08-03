@@ -27,6 +27,7 @@ type Recipient = {
   ciudad: string;
   gancho: string;
   nombre?: string;
+  pais?: string;
   datos?: Record<string, string>;
 };
 type SendResult = { email: string; ok: boolean; id?: string; error?: string };
@@ -276,14 +277,15 @@ export default function CorreosPersonalizados() {
       if (Array.isArray(imported) && imported.length) {
         const rows: Recipient[] = imported
           .filter((r: Partial<Recipient>) => isEmail(r?.email ?? ""))
-          .map((r: Partial<Recipient>) => ({
-            email: (r.email ?? "").toLowerCase(),
-            empresa: r.empresa ?? "",
-            ciudad: r.ciudad ?? "",
-            gancho: r.gancho ?? "",
-            nombre: r.nombre ?? "",
-            datos: r.datos ?? {},
-          }));
+.map((r: Partial<Recipient>) => ({
+              email: (r.email ?? "").toLowerCase(),
+              empresa: r.empresa ?? "",
+              ciudad: r.ciudad ?? "",
+              gancho: r.gancho ?? "",
+              nombre: r.nombre ?? "",
+              pais: r.pais ?? "",
+              datos: r.datos ?? {},
+            }));
         if (rows.length) {
           setRecipients(rows);
           toast({ title: `${rows.length} leads cargados`, description: "Vienen del buscador, con empresa/ciudad/gancho y demás datos. Revisa y envía." });

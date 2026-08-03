@@ -82,7 +82,9 @@ export type Database = {
           error: string | null
           estado: string
           id: string
+          nombre: string | null
           opens: number
+          pais: string | null
           rebotado_at: string | null
           resend_id: string | null
           ultimo_evento_at: string | null
@@ -100,7 +102,9 @@ export type Database = {
           error?: string | null
           estado?: string
           id?: string
+          nombre?: string | null
           opens?: number
+          pais?: string | null
           rebotado_at?: string | null
           resend_id?: string | null
           ultimo_evento_at?: string | null
@@ -118,7 +122,9 @@ export type Database = {
           error?: string | null
           estado?: string
           id?: string
+          nombre?: string | null
           opens?: number
+          pais?: string | null
           rebotado_at?: string | null
           resend_id?: string | null
           ultimo_evento_at?: string | null

@@ -29,6 +29,7 @@ function fillTemplate(tpl: string, r: Record<string, unknown>): string {
     empresa: (r.empresa as string) ?? "",
     ciudad: (r.ciudad as string) ?? "",
     gancho: (r.gancho as string) ?? "",
+    pais: (r.pais as string) || (datos.pais as string) || (datos.country as string) || "",
     // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
     nombre: (r.nombre as string) || (r.empresa as string) || "",
   };
@@ -146,7 +147,9 @@ Deno.serve(async (req) => {
           await svc.from("correo_envios").insert({
             resend_id: data.id,
             email,
+            nombre: row.nombre ?? null,
             empresa: row.empresa ?? null,
+            pais: (row.pais as string) || null,
             asunto: subject,
             enviado_por: row.creado_por ?? null,
             estado: "enviado",
