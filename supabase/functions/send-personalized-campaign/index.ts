@@ -2,7 +2,7 @@
 // Requiere caller autenticado con rol admin (misma política que send-n8n-webhook).
 // El secreto RESEND_API_KEY se guarda en los secrets del proyecto Supabase.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, zonedToUtc } from "../_shared/correo.ts";
+import { corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, TZ, zonedToUtc } from "../_shared/correo.ts";
 
 type Recipient = {
   email: string;
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
           from_name: fromName,
           from_email: fromEmail,
           reply_to: replyTo ?? null,
-          enviar_en: zonedToUtc(ymd, "09:30", "America/Santiago"),
+          enviar_en: zonedToUtc(ymd, "09:30", TZ),
           creado_por: userId,
         });
       }

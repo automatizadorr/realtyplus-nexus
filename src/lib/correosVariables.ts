@@ -16,6 +16,16 @@ export const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 export const isEmail = (s: string) =>
   /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test((s || "").trim());
 
+// País ya resuelto o desde cualquier columna del sheet (datos.*).
+export function pickPais(r: Partial<Recipient>): string {
+  if ((r.pais ?? "").trim()) return (r.pais as string).trim();
+  const d = r.datos ?? {};
+  if (typeof d.pais === "string" && d.pais.trim()) return d.pais;
+  if (typeof d["país"] === "string" && d["país"].trim()) return d["país"];
+  if (typeof d.country === "string" && d.country.trim()) return d.country;
+  return "";
+}
+
 // Reemplaza {{variable}} en una plantilla: columnas fijas + cualquier columna
 // del sheet en `datos` (minúsculas). Las variables desconocidas quedan intactas
 // ({{name}}?) solo para que la vista previa pueda detectarlas.
@@ -25,6 +35,7 @@ export function fill(tpl: string, r: Partial<Recipient>): string {
     empresa: r.empresa ?? "",
     ciudad: r.ciudad ?? "",
     gancho: r.gancho ?? "",
+    pais: pickPais(r),
     // {{nombre}} nunca queda vacío: cae al nombre de la empresa.
     nombre: (r.nombre || r.empresa) ?? "",
   };

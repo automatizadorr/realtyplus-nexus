@@ -4,6 +4,23 @@ Registro de cambios y decisiones clave. Lo más reciente arriba.
 
 ---
 
+## 2026-08-03
+
+### Fase 4 — Helpers compartidos de correo (refactor)
+Se creó `supabase/functions/_shared/correo.ts` con los helpers que vivían duplicados
+en las 3 edge functions de correo: `pickPais`, `fillTemplate`, `zonedToUtc`, `esc`,
+`HORA_RE`, `TZ`, `LIMITE_DIA` y `corsHeaders`.
+
+- **send-personalized-campaign**, **cron-secuencias-correo** y **programar-secuencia**
+  ahora importan desde `_shared/correo.ts` → la resolución de `{{variables}}` es
+  idéntica en los tres.
+- Remanentes Fase 4.1: `send-personalized-campaign` y `cron-secuencias-correo` pasaron
+  a usar `TZ`/`pickPais` compartidos (antes tenían literales locales).
+- La vista previa del frontend (`src/lib/correosVariables.ts`) ahora también resuelve
+  `{{pais}}` (`pickPais`), para que muestre lo mismo que el correo real.
+
+---
+
 ## 2026-06-25
 
 ### Campaña para NUEVOS LEADS (n8n)
