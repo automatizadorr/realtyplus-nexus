@@ -50,7 +50,7 @@ Te dejo de regalo la secuencia exacta de 3 mensajes para revivir clientes fríos
 Y cuando lo quieras, míralo aplicado a {{ciudad}}: en la web de LexHouse te muestro cómo se automatiza la reactivación, la prospección y todo el ecosistema 👇
 
 Un saludo,
-Mario · LexHouse$$',
+Mario · LexHouse$$,
    'Descargar guía de reactivación', 'https://lexhouse-ai.homes/regalos/guia-reactivacion-clientes.html',
    'Guía: reactivación de clientes'),
   ('a1111111-0000-4000-8000-000000000006', 3, 6, '09:00',
@@ -64,7 +64,7 @@ Esa es exactamente la parte divertida: en lexhouse-ai.com tienes el ecosistema c
 Recorre cada producto o agéndame abajo 👇
 
 Un saludo,
-Mario · LexHouse$$',
+Mario · LexHouse$$,
    'Ver el ecosistema LexHouse', 'https://lexhouse-ai.com',
    'Web: ecosistema LexHouse')
 ON CONFLICT (secuencia_id, paso) DO NOTHING;
