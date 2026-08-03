@@ -332,4 +332,167 @@ Mario · LexHouse`,
     bonusText: "Regalo: autodiagnóstico de 2 minutos",
     bonusUrl: `${REGALOS}/autodiagnostico-corredora.html`,
   },
+
+  // ── DIRECTOS · cortos con keywords y CTA fuerte ───────────────────────────
+  {
+    id: "directo-crm-ia",
+    categoria: "Directos (cortos con CTA)",
+    plataforma: "LexHouse · CRM inmobiliario con IA",
+    dolor: "Leads dispersos, sin seguimiento",
+    badge: "Directo · CRM + IA",
+    brandColor: "#003DA5",
+    subject: "CRM inmobiliario + IA para {{empresa}}",
+    titulo: "Todos tus leads en un panel. Seguimiento automático. 24/7.",
+    body: `Hola {{nombre}},
+
+¿Siguen tus leads en Excel, WhatsApp y en la cabeza de cada corredor?
+
+CRM inmobiliario con inteligencia artificial de LexHouse:
+- Captación de leads en un solo panel.
+- Seguimiento automático y respuestas 24/7.
+- Prospección, etiquetado y reportes claros.
+
+{{gancho}} → solución inmediata.
+
+Mira la demo 👇
+Mario · LexHouse`,
+    ctaText: "Ver demo del CRM",
+    ctaUrl: "https://lexhouse-ai.com",
+    ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: autodiagnóstico",
+    bonusUrl: `${REGALOS}/autodiagnostico-corredora.html`,
+  },
+  {
+    id: "directo-voz-ia",
+    categoria: "Directos (cortos con CTA)",
+    plataforma: "LexHouse · Agentes de voz IA",
+    dolor: "Llamadas sin contestar, leads perdidos",
+    badge: "Voz IA · Llamadas",
+    brandColor: "#003DA5",
+    subject: "Agentes de voz IA para {{empresa}}",
+    titulo: "Tu agente de voz IA contesta y califica cada llamada.",
+    body: `Hola {{nombre}},
+
+¿Cuántas llamadas de {{ciudad}} se pierden cuando nadie contesta?
+
+Agentes de voz IA de LexHouse:
+- Contestan 24/7, responden y califican interesados.
+- Toman datos, agendan visitas y cierran citas.
+- Se integran al CRM inmobiliario y a tu WhatsApp.
+
+Tu teléfono nunca descansa. Actívalo hoy 👇
+Mario · LexHouse`,
+    ctaText: "Activar mi agente de voz",
+    ctaUrl: "https://lexhouse-ai.com",
+    ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: checklist de corredora",
+    bonusUrl: `${REGALOS}/checklist-corredoras-top.html`,
+  },
+  {
+    id: "directo-prospeccion",
+    categoria: "Directos (cortos con CTA)",
+    plataforma: "LexHouse · Prospección IA",
+    badge: "Prospección · IA",
+    brandColor: "#003DA5",
+    subject: "Prospección con IA para {{empresa}}",
+    body: `Hola {{nombre}},
+
+¿Hoy tu equipo pasa horas buscando vendedores y no llega a responder?
+
+Prospección con IA de LexHouse:
+- Detecta y tiene leads calientes automáticamente.
+- Apoya las campañas de WhatsApp y correo.
+- Alimenta tu embudo de ventas cada 15 minutos.
+
+Interesados sí, frios no. Empieza hoy 👇
+Mario · LexHouse`,
+    ctaText: "Quiero prospección IA",
+    ctaUrl: "https://lexhouse-ai.com",
+    ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: sistema anti-fuga",
+    bonusUrl: `${REGALOS}/sistema-anti-fuga-leads.html`,
+  },
+  {
+    id: "directo-reactivacion",
+    categoria: "Directos (cortos con CTA)",
+    plataforma: "LexHouse · Reactivación de leads",
+    badge: "Reactivación · Leads",
+    brandColor: "#DC1C2E",
+    dolor: "Base de datos congelada",
+    subject: "Reactivación de leads para {{empresa}}",
+    body: `Hola {{nombre}},
+
+Tu base de datos de {{ciudad}} tiene clientes dormidos. Y son tu próxima venta.
+
+Reactivación de leads con IA da vida a lo que ya tienes:
+- 3 mensajes + seguimiento del día 0, el día 2 y el día 5.
+- Campaña de reactivación con tus propios contactos.
+- Recupera 1 de cada 5 contactos dormidos.
+
+Nuevo lead cuesta más. Tu base dormida es oro.
+
+Mira cómo se hace 👇
+Mario · LexHouse`,
+    ctaText: "Reactivar mi base",
+    ctaUrl: "https://lexhouse-ai.com",
+    ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: guía de reactivación",
+    bonusUrl: `${REGALOS}/guia-reactivacion-clientes.html`,
+  },
+  {
+    id: "directo-video-ia",
+    categoria: "Directos (cortos con CTA)",
+    plataforma: "LexHouse · Video IA inmobiliario",
+    badge: "Video IA · Reels",
+    brandColor: "#F59E0B",
+    dolor: "Propiedades invisibles",
+    subject: "Videos para inmobiliarias con IA — {{empresa}}",
+    body: `Hola {{nombre}},
+
+¿Tus propiedades no se ven? En redes, ya nadie mira fotos como foto.
+
+Video IA para inmobiliarias de LexHouse:
+- Reels automatizados desde tus fotos con IA.
+- Tours 2.5D y clips de 15–30 segundos.
+- Publica en tiempo récord, lista para subir en redes.
+
+Tus propiedades, en video, hoy mismo 👇
+Mario · LexHouse`,
+    ctaText: "Ver ejemplos de video",
+    ctaUrl: "https://lexhouse-ai.com",
+    ganchos: [
+      "las propiedades se publican pero casi no generan consultas",
+      "grabar y editar un buen video de cada propiedad toma más tiempo del que hay",
+      "las publicaciones pasan desapercibidas en redes y no generan visitas",
+    ],
+    bonusText: "Regalo: 10 ganchos para reels",
+    bonusUrl: `${REGALOS}/guia-reels-inmobiliarios.html`,
+  },
+  {
+    id: "directo-marketing",
+    categoria: "Directos (cortos con CTA)",
+    plataforma: "LexHouse · Marketing digital",
+    badge: "Marketing · Crecimiento",
+    brandColor: "#0EA5E9",
+    dolor: "Sin presencia ni crecimiento digital",
+    subject: "Marketing digital para corredoras — {{empresa}}",
+    body: `Hola {{nombre}},
+
+¿Tus propiedades se publican pero nadie las ve?
+
+Marketing digital de LexHouse para corredoras de {{ciudad}}:
+- Publicación automática en más de 12 portales en minutos.
+- Estrategia en redes con reels + posts con IA.
+- Campañas que traen leads calificados a tu CRM.
+
+Crecimiento digital en piloto automático 👇
+
+Un saludo,
+Mario · LexHouse`,
+    ctaText: "Impulsar mi marketing",
+    ctaUrl: "https://lexhouse-ai.com",
+    ganchos: GANCHOS_DOLOR,
+    bonusText: "Regalo: sistema anti-fuga",
+    bonusUrl: `${REGALOS}/sistema-anti-fuga-leads.html`,
+  },
 ];
