@@ -134,12 +134,71 @@ function detectarPais(digits: string): string | null {
 // Busca si el string (pais/ciudad/region) contiene alguna clave conocida.
 function buscarClave(raw: string): string | null {
   const s = raw.toLowerCase();
-  // Coincidencia exacta primero
   if (PAIS_CODIGO[s]) return PAIS_CODIGO[s];
-  // Substring: si "Madrid, España" contiene "españa"
   for (const [k, v] of Object.entries(PAIS_CODIGO)) {
     if (k.length >= 2 && s.includes(k)) return v;
   }
+  return null;
+}
+
+// Ciudades → código ISO para detectar país cuando solo hay ciudad.
+const CIUDAD_PAIS: Record<string, string> = {
+  // España
+  madrid: "es", barcelona: "es", valencia: "es", sevilla: "es", zaragoza: "es",
+  málaga: "es", malaga: "es", murcia: "es", palma: "es", bilbao: "es",
+  alicante: "es", córdoba: "es", cordoba: "es", valladolid: "es", vigo: "es",
+  gijón: "es", gijon: "es", granada: "es", oviedo: "es", santander: "es",
+  pamplona: "es", san_sebastián: "es", "san sebastián": "es", "san sebastian": "es",
+  burgos: "es", salamanca: "es", toledo: "es", santiago: "es", lugo: "es",
+  marbella: "es", ibiza: "es", menorca: "es", tenerife: "es", "las palmas": "es",
+  // Chile
+  "la serena": "cl", coquimbo: "cl", santiago: "cl", viña: "cl", "viña del mar": "cl",
+  valparaíso: "cl", valparaiso: "cl", concepción: "cl", concepcion: "cl",
+  antofagasta: "cl", iquique: "cl", temuco: "cl", "puerto montt": "cl",
+  // México
+  "ciudad de méxico": "mx", "ciudad de mexico": "mx", guadalajara: "mx",
+  monterrey: "mx", puebla: "mx", tijuana: "mx", cancún: "mx", cancun: "mx",
+  mérida: "mx", merida: "mx", querétaro: "mx", queretaro: "mx",
+  // Argentina
+  "buenos aires": "ar", córdoba: "ar", rosario: "ar", mendoza: "ar", "la plata": "ar",
+  "mar del plata": "ar", tucumán: "ar", tucuman: "ar",
+  // Colombia
+  bogotá: "co", bogota: "co", medellín: "co", medellin: "co", cali: "co",
+  barranquilla: "co", cartagena: "co", bucaramanga: "co",
+  // Perú
+  lima: "pe", arequipa: "pe", cusco: "pe", trujillo: "pe",
+  // Uruguay
+  montevideo: "uy", punta: "uy",
+  // Panamá
+  "panamá": "pa", "panama": "pa",
+  // Costa Rica
+  "san josé": "cr", "san jose": "cr",
+  // Ecuador
+  quito: "ec", guayaquil: "ec", cuenca: "ec",
+};
+
+function buscarCiudad(raw: string): string | null {
+  const s = raw.toLowerCase().replace(/[^a-záéíóúüñ\s]/g, "").trim();
+  if (CIUDAD_PAIS[s]) return PAIS_CODIGO[CIUDAD_PAIS[s]] || null;
+  for (const [ciudad, iso] of Object.entries(CIUDAD_PAIS)) {
+    if (ciudad.length >= 4 && s.includes(ciudad)) return PAIS_CODIGO[iso] || null;
+  }
+  return null;
+}
+
+// Heurística por longitud y primer dígito cuando no se detecta el país.
+function heuristicaPais(digits: string): string | null {
+  const len = digits.length;
+  const first = digits[0];
+  // 9 dígitos empezando con 6 o 7 → España
+  if (len === 9 && (first === "6" || first === "7")) return "es";
+  // 9 dígitos empezando con 9 → Chile
+  if (len === 9 && first === "9") return "cl";
+  // 10 dígitos empezando con 1 → posible México/Argentina/Colombia (40 casos)
+  if (len === 10 && first === "1") return "mx";
+  // 8 dígitos → varios países (Brasil, Perú...), sin suficiente info
+  // 11 dígitos empezando con 1 → USA/Canadá
+  if (len === 11 && first === "1") return "us";
   return null;
 }
 
@@ -153,12 +212,16 @@ export function normalizePhone(tel: string, pais?: string | null): string {
   if (detectarPais(digits)) return digits;
   // 10+ dígitos y no empieza con 0 local → probablemente ya internacional
   if (digits.length >= 10 && !digits.startsWith("0")) return digits;
-  // Intentar detectar el país desde el campo pais/region/ciudad
-  const buscar = pais ? buscarClave(pais) : null;
-  if (buscar) {
-    return digits.startsWith("0") ? buscar + digits.slice(1) : buscar + digits;
+  // 1. Detectar desde el campo pais/region/ciudad
+  if (pais) {
+    const code = buscarClave(pais) || buscarCiudad(pais);
+    if (code) return digits.startsWith("0") ? code + digits.slice(1) : code + digits;
   }
-  // Sin país detectable → devolver tal cual (el usuario corregirá manualmente)
+  // 2. Heurística por patrón del número
+  const iso = heuristicaPais(digits);
+  const fallback = iso ? PAIS_CODIGO[iso] : null;
+  if (fallback) return fallback + digits;
+  // Sin país detectable → devolver sin modificar
   return digits;
 }
 
