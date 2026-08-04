@@ -64,14 +64,16 @@ type Props = {
 
 export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoChange, onNotasChange }: Props) {
   const [notasDraft, setNotasDraft] = useState("");
-  const initialWaText = lead.mensaje_whatsapp || pickIcebreaker(
-    lead.id || lead.telefono || lead.nombre || "x",
-    { nombre: lead.nombre, ciudad: lead.ciudad, empresa: lead.nombre },
-  );
+  const initialWaText = lead
+    ? (lead.mensaje_whatsapp || pickIcebreaker(
+        lead.id || lead.telefono || lead.nombre || "x",
+        { nombre: lead.nombre, ciudad: lead.ciudad, empresa: lead.nombre },
+      ))
+    : "";
   const [waDraft, setWaDraft] = useState(initialWaText);
   // Reset del borrador cuando cambia el lead visible.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setWaDraft(initialWaText); }, [lead.id, lead.mensaje_whatsapp]);
+  useEffect(() => { setWaDraft(initialWaText); }, [lead?.id, lead?.mensaje_whatsapp]);
   if (!lead) return null;
   const wa = waLink(lead);
   const persisted = Boolean(lead.id);
