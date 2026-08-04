@@ -48,33 +48,118 @@ const ICEBREAKERS_EN: string[] = [
 
 export const ICEBREAKERS = { es: ICEBREAKERS_ES, en: ICEBREAKERS_EN } as const;
 
-// Mapa de países a código internacional. Si un número llega sin prefijo se le
-// antepone el código según el país del lead.
+// Mapa de países a código internacional. Claves en minúsculas: nombres
+// en español, inglés e ISO 3166-1 alpha-2. Si un número llega sin prefijo
+// se le antepone el código según el país del lead.
 const PAIS_CODIGO: Record<string, string> = {
-  chile: "56", españa: "34", spain: "34", mexico: "52", méxico: "52",
-  argentina: "54", colombia: "57", peru: "51", perú: "51",
-  ecuador: "593", bolivia: "591", paraguay: "595", uruguay: "598",
-  brasil: "55", brazil: "55", portugal: "351",
-  "estados unidos": "1", "ee.uu.": "1", "eeuu": "1", usa: "1",
-  canadá: "1", canada: "1", italia: "39", italy: "39",
-  francia: "33", france: "33", alemania: "49", germany: "49",
-    "reino unido": "44", uk: "44", australia: "61",
+  // Chile
+  chile: "56", cl: "56", chi: "56",
+  // España
+  españa: "34", spain: "34", es: "34", esp: "34",
+  // México
+  mexico: "52", méxico: "52", mx: "52", mex: "52",
+  // Argentina
+  argentina: "54", ar: "54", arg: "54",
+  // Colombia
+  colombia: "57", co: "57", col: "57",
+  // Perú
+  peru: "51", perú: "51", pe: "51", per: "51",
+  // Ecuador
+  ecuador: "593", ec: "593", ecu: "593",
+  // Bolivia
+  bolivia: "591", bo: "591", bol: "591",
+  // Paraguay
+  paraguay: "595", py: "595", pry: "595",
+  // Uruguay
+  uruguay: "598", uy: "598", ury: "598",
+  // Brasil
+  brasil: "55", brazil: "55", br: "55", bra: "55",
+  // Portugal
+  portugal: "351", pt: "351", prt: "351",
+  // Estados Unidos / Canadá
+  "estados unidos": "1", "ee.uu.": "1", "eeuu": "1", usa: "1", us: "1", "united states": "1",
+  canadá: "1", canada: "1", ca: "1", can: "1",
+  // Italia
+  italia: "39", italy: "39", it: "39", ita: "39",
+  // Francia
+  francia: "33", france: "33", fr: "33", fra: "33",
+  // Alemania
+  alemania: "49", germany: "49", de: "49", deu: "49",
+  // Reino Unido
+  "reino unido": "44", uk: "44", gb: "44", gbr: "44",
+  // Australia
+  australia: "61", au: "61", aus: "61",
+  // Costa Rica
+  "costa rica": "506", cr: "506", cri: "506",
+  // Panamá
+  panama: "507", panamá: "507", pa: "507", pan: "507",
+  // República Dominicana
+  "república dominicana": "1", "republica dominicana": "1", do: "1", dom: "1",
+  // Venezuela
+  venezuela: "58", ve: "58", ven: "58",
+  // Guatemala
+  guatemala: "502", gt: "502", gtm: "502",
+  // Cuba
+  cuba: "53", cu: "53", cub: "53",
+  // Honduras
+  honduras: "504", hn: "504", hnd: "504",
+  // El Salvador
+  "el salvador": "503", sv: "503", slv: "503",
+  // Nicaragua
+  nicaragua: "505", ni: "505", nic: "505",
+  // Puerto Rico
+  "puerto rico": "1", pr: "1", pri: "1",
 };
 
 function cleanDigits(tel: string): string {
   return tel.split("@")[0].replace(/[^\d]/g, "");
 }
 
-// Si el número empieza por "00" o ya parece internacional (≥10 dígitos
-// y no empieza por 0 local), se respeta. Si no, se antepone el código
-// correspondiente al país.
+// Prefijos internacionales más comunes → código ISO (para detectar país desde el número).
+const PREFIJO_PAIS: [string, string][] = [
+  ["593", "ec"], ["591", "bo"], ["595", "py"], ["598", "uy"], ["507", "pa"],
+  ["506", "cr"], ["502", "gt"], ["504", "hn"], ["503", "sv"], ["505", "ni"],
+  ["58", "ve"], ["57", "co"], ["56", "cl"], ["55", "br"], ["54", "ar"],
+  ["53", "cu"], ["52", "mx"], ["51", "pe"], ["49", "de"], ["44", "gb"],
+  ["39", "it"], ["34", "es"], ["33", "fr"], ["351", "pt"], ["1", "us"],
+];
+
+function detectarPais(digits: string): string | null {
+  for (const [pref, iso] of PREFIJO_PAIS) {
+    if (digits.startsWith(pref) && digits.length - pref.length >= 7) return iso;
+  }
+  return null;
+}
+
+// Busca si el string (pais/ciudad/region) contiene alguna clave conocida.
+function buscarClave(raw: string): string | null {
+  const s = raw.toLowerCase();
+  // Coincidencia exacta primero
+  if (PAIS_CODIGO[s]) return PAIS_CODIGO[s];
+  // Substring: si "Madrid, España" contiene "españa"
+  for (const [k, v] of Object.entries(PAIS_CODIGO)) {
+    if (k.length >= 2 && s.includes(k)) return v;
+  }
+  return null;
+}
+
+// Normaliza un teléfono agregando código de país si es necesario.
+// Detecta el país desde: el propio número (prefijo), el campo pais,
+// o buscando en el texto de pais/region/ciudad.
 export function normalizePhone(tel: string, pais?: string | null): string {
   const digits = cleanDigits(tel);
   if (digits.length < 8) return digits;
-  if (digits.length >= 10 && !digits.startsWith("0")) return digits; // ya internacional
-  const p = (pais || "").trim().toLowerCase();
-  const code = PAIS_CODIGO[p] || PAIS_CODIGO["chile"]; // fallback Chile
-  return digits.startsWith("0") ? code + digits.slice(1) : code + digits;
+  // Si ya tiene prefijo internacional conocido, respetar
+  if (detectarPais(digits)) return digits;
+  // 10+ dígitos y no empieza con 0 local → probablemente ya internacional
+  if (digits.length >= 10 && !digits.startsWith("0")) return digits;
+  // Intentar detectar el país desde el campo pais/region/ciudad
+  const buscar = pais ? buscarClave(pais) : null;
+  if (buscar) {
+    return digits.startsWith("0") ? buscar + digits.slice(1) : buscar + digits;
+  }
+  // Sin país detectable → devolver tal cual (el usuario corregirá manualmente)
+  return digits;
 }
 
 function fill(text: string, v: IcebreakerVars): string {
