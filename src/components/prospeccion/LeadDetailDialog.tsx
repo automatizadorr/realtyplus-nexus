@@ -1,5 +1,5 @@
 import { Copy, MessageCircle, Mail as MailIcon, Globe, MapPin, Instagram, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { pickIcebreaker } from "@/lib/icebreakers";
 
 export type Lead = {
   id?: string;
@@ -63,6 +64,14 @@ type Props = {
 
 export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoChange, onNotasChange }: Props) {
   const [notasDraft, setNotasDraft] = useState("");
+  const initialWaText = lead.mensaje_whatsapp || pickIcebreaker(
+    lead.id || lead.telefono || lead.nombre || "x",
+    { nombre: lead.nombre, ciudad: lead.ciudad, empresa: lead.nombre },
+  );
+  const [waDraft, setWaDraft] = useState(initialWaText);
+  // Reset del borrador cuando cambia el lead visible.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setWaDraft(initialWaText); }, [lead.id, lead.mensaje_whatsapp]);
   if (!lead) return null;
   const wa = waLink(lead);
   const persisted = Boolean(lead.id);
@@ -116,22 +125,22 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoCha
           )}
 
           {/* Mensajes listos */}
-          {lead.mensaje_whatsapp && (
+          {waDraft && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Mensaje de WhatsApp</Label>
                 <div className="flex gap-2">
-                  <CopyBtn text={lead.mensaje_whatsapp} label="Mensaje WhatsApp copiado" />
+                  <CopyBtn text={waDraft} label="Mensaje WhatsApp copiado" />
                   {wa && (
                     <Button asChild size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-                      <a href={`${wa}?text=${encodeURIComponent(lead.mensaje_whatsapp)}`} target="_blank" rel="noreferrer">
+                      <a href={`${wa}?text=${encodeURIComponent(waDraft)}`} target="_blank" rel="noreferrer">
                         <MessageCircle className="h-3.5 w-3.5" /> Abrir
                       </a>
                     </Button>
                   )}
                 </div>
               </div>
-              <Textarea readOnly value={lead.mensaje_whatsapp} className="min-h-[90px] text-sm" />
+              <Textarea value={waDraft} onChange={(e) => setWaDraft(e.target.value)} className="min-h-[90px] text-sm" />
             </div>
           )}
           {lead.mensaje_email && (

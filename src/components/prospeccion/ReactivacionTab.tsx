@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { orderTags } from "@/lib/permanentTags";
+import { waLinkWithIcebreaker } from "@/lib/icebreakers";
 
 type Tag = { id: string; nombre: string; color: string; es_permanente?: boolean | null };
 type LeadRow = {
@@ -37,6 +38,10 @@ type Filters = {
   respondido: string; incluirArchivados: boolean; soloConEmail: boolean;
 };
 
+// Arma el link de WhatsApp con un icebreaker variado (determinístico por lead).
+const waIcebreaker = (l: LeadRow): string | null =>
+  waLinkWithIcebreaker(l.telefono || "", { nombre: l.nombre, ciudad: l.pais, empresa: l.nombre });
+
 // Aplica los filtros a un query builder de leads_campana.
 // Compartido por la tabla paginada y por la carga a Correos (una sola fuente de verdad).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,7 +59,6 @@ function applyFilters(query: any, f: Filters): any {
 }
 
 const digits = (t?: string | null) => (t ?? "").split("@")[0].replace(/\D/g, "");
-const waHref = (t?: string | null) => { const d = digits(t); return d.length >= 8 ? `https://wa.me/${d}` : null; };
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—");
 
 // Estados del log de correos (correo_envios) para la columna "Último correo".
@@ -402,7 +406,7 @@ export default function ReactivacionTab() {
                   </TableCell></TableRow>
                 ) : (
                   rows.map((l) => {
-                    const wa = waHref(l.telefono);
+                    const wa = waIcebreaker(l);
                     return (
                       <TableRow key={l.id}>
                         <TableCell>
