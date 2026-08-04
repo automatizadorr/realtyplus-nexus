@@ -584,10 +584,10 @@ export default function Scanner() {
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur supports-[backdrop-filter]:bg-muted/40 [&_th]:h-9 [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide">
                       <TableRow className="hover:bg-transparent">
-                        <TableHead>ID</TableHead>
+                        <TableHead className="hidden sm:table-cell">ID</TableHead>
                         <TableHead>Nombre</TableHead>
                         <TableHead>Teléfono</TableHead>
-                        <TableHead>Correo</TableHead>
+                        <TableHead className="hidden sm:table-cell">Correo</TableHead>
                         <TableHead>País</TableHead>
                         <TableHead className="w-10"></TableHead>
                       </TableRow>
@@ -595,10 +595,10 @@ export default function Scanner() {
                     <TableBody>
                       {contacts.map((c, i) => (
                         <TableRow key={i} className="even:bg-muted/20">
-                          <TableCell className="font-mono text-xs text-muted-foreground">{c.id_contacto || "—"}</TableCell>
+                          <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">{c.id_contacto || "—"}</TableCell>
                           <TableCell className="font-medium">{c.nombre}</TableCell>
                           <TableCell className="tabular-nums">{c.telefono}</TableCell>
-                          <TableCell className="text-sm">{c.email || <span className="text-muted-foreground">—</span>}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm">{c.email || <span className="text-muted-foreground">—</span>}</TableCell>
                           <TableCell>
                             <span className="mr-1">{COUNTRY_FLAGS[c.pais] || "🌍"}</span>
                             <span className="text-xs">{c.pais}</span>

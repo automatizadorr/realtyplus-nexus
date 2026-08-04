@@ -732,7 +732,7 @@ export default function Index() {
                   <span className="font-mono text-[11px] tracking-wide text-slate-600">CRM inmobiliario · sobre WhatsApp</span>
                 </div>
 
-                <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2.6rem] sm:text-6xl" style={{ color: INK }}>
+                <h1 id="hero-heading" className="font-display font-extrabold leading-[1.02] tracking-tight text-[2rem] sm:text-5xl lg:text-6xl" style={{ color: INK }}>
                   <span className="lh-hero-item block" style={{ "--lh-d": heroDelays[1] } as CSSProperties}>
                     De un{" "}
                     <span className="font-serif italic font-medium tracking-normal text-[1.06em]" style={{ color: SIGNAL }}>

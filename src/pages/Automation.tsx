@@ -210,7 +210,7 @@ function ConversationsTab() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-220px)] min-h-[500px] border rounded-lg overflow-hidden bg-card">
+    <div className="flex h-[calc(100vh-3.5rem)] min-h-[500px] border rounded-lg overflow-hidden bg-card">
       {/* Sidebar */}
       <div className="w-full md:w-80 border-r flex flex-col bg-card">
         <div className="p-3 border-b space-y-2">

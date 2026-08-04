@@ -514,8 +514,8 @@ export default function CorreosPersonalizados() {
                   <TableRow>
                     <TableHead className="min-w-[220px]">Correo</TableHead>
                     <TableHead className="min-w-[140px]">Nombre</TableHead>
-                    <TableHead className="min-w-[150px]">Empresa</TableHead>
-                    <TableHead className="min-w-[120px]">Ciudad</TableHead>
+                    <TableHead className="hidden sm:table-cell min-w-[150px]">Empresa</TableHead>
+                    <TableHead className="hidden sm:table-cell min-w-[120px]">Ciudad</TableHead>
                     <TableHead className="min-w-[240px]">Gancho (dolor)</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
@@ -530,8 +530,8 @@ export default function CorreosPersonalizados() {
                       <TableCell>
                         <Input value={r.nombre ?? ""} onChange={(e) => updateRow(i, "nombre", e.target.value)} placeholder="Nombre contacto" />
                       </TableCell>
-                      <TableCell><Input value={r.empresa} onChange={(e) => updateRow(i, "empresa", e.target.value)} placeholder="Nombre corredora" /></TableCell>
-                      <TableCell><Input value={r.ciudad} onChange={(e) => updateRow(i, "ciudad", e.target.value)} placeholder="Ciudad" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Input value={r.empresa} onChange={(e) => updateRow(i, "empresa", e.target.value)} placeholder="Nombre corredora" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Input value={r.ciudad} onChange={(e) => updateRow(i, "ciudad", e.target.value)} placeholder="Ciudad" /></TableCell>
                       <TableCell><Input value={r.gancho} onChange={(e) => updateRow(i, "gancho", e.target.value)} placeholder="p.ej. leads dispersos sin CRM" /></TableCell>
                       <TableCell>
                         <Button type="button" variant="ghost" size="icon" onClick={() => removeRow(i)} aria-label="Quitar">

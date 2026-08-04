@@ -520,7 +520,7 @@ export default function Dashboard() {
       </Suspense>
 
       <Dialog open={!!selectedCountry} onOpenChange={(o) => !o && setSelectedCountry(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>{selectedCountry && countryFlag(selectedCountry.pais)}</span>

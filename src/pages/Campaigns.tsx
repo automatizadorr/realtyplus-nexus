@@ -178,9 +178,9 @@ export default function Campaigns() {
                     <TableHead>Canal</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Leads</TableHead>
-                    <TableHead className="text-right">Contactados</TableHead>
-                    <TableHead className="text-right">Respondidos</TableHead>
-                    <TableHead className="text-right">Convertidos</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">Contactados</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">Respondidos</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">Convertidos</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Acción</TableHead>
                   </TableRow>
@@ -199,9 +199,9 @@ export default function Campaigns() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{c.total_leads ?? 0}</TableCell>
-                        <TableCell className="text-right tabular-nums">{(c.contacted_whatsapp ?? 0) + (c.contacted_email ?? 0)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{c.responded ?? 0}</TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{c.converted ?? 0}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right tabular-nums">{(c.contacted_whatsapp ?? 0) + (c.contacted_email ?? 0)}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right tabular-nums">{c.responded ?? 0}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-right font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{c.converted ?? 0}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {c.created_at ? new Date(c.created_at).toLocaleDateString("es-ES") : "—"}
                         </TableCell>
