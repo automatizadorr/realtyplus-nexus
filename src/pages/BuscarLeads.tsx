@@ -114,6 +114,11 @@ export default function BuscarLeads() {
   const [tab, setTab] = useState("buscar");
   const [historial, setHistorial] = useState<Busqueda[] | null>(null);
   const [histLoading, setHistLoading] = useState(false);
+  const [expandedBusquedaId, setExpandedBusquedaId] = useState<string | null>(null);
+  const [expandedLeads, setExpandedLeads] = useState<Lead[] | null>(null);
+  const [expandedLoading, setExpandedLoading] = useState(false);
+  // Selección dentro de la búsqueda expandida
+  const [expSelected, setExpSelected] = useState<Set<string>>(new Set());
 
   // Filtros + selección de la tabla de resultados
   const [tipoFilter, setTipoFilter] = useState("all");
@@ -313,6 +318,55 @@ export default function BuscarLeads() {
     setTab("buscar");
   };
 
+  const toggleExpandBusqueda = async (b: Busqueda) => {
+    if (expandedBusquedaId === b.id) {
+      setExpandedBusquedaId(null);
+      setExpandedLeads(null);
+      setExpSelected(new Set());
+      return;
+    }
+    setExpandedBusquedaId(b.id);
+    setExpandedLoading(true);
+    setExpSelected(new Set());
+    try {
+      const { data, error: err } = await sb
+        .from("prospeccion_leads")
+        .select("*")
+        .eq("busqueda_id", b.id)
+        .order("score", { ascending: false });
+      if (err) throw err;
+      setExpandedLeads((data ?? []) as Lead[]);
+    } catch (e) {
+      toast({ title: "Error al cargar leads", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+      setExpandedBusquedaId(null);
+    } finally {
+      setExpandedLoading(false);
+    }
+  };
+
+  const expLeadKey = (l: Lead) => l.id ?? `${(l.nombre || "").trim().toLowerCase()}|${(l.ciudad || "").trim().toLowerCase()}`;
+  const expSelectedLeads = useMemo(
+    () => (expandedLeads ?? []).filter((l) => expSelected.has(expLeadKey(l))),
+    [expandedLeads, expSelected],
+  );
+  const toggleExpSel = (l: Lead) => {
+    const k = expLeadKey(l);
+    setExpSelected((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  };
+  const toggleExpAll = () => {
+    const list = expandedLeads ?? [];
+    setExpSelected((s) => {
+      const n = new Set(s);
+      if (list.length && list.every((l) => n.has(expLeadKey(l)))) {
+        list.forEach((l) => n.delete(expLeadKey(l)));
+      } else {
+        list.forEach((l) => n.add(expLeadKey(l)));
+      }
+      return n;
+    });
+  };
+  const expAllChecked = (expandedLeads ?? []).length > 0 && (expandedLeads ?? []).every((l) => expSelected.has(expLeadKey(l)));
+
   const borrarBusqueda = async (id: string) => {
     const { error } = await sb.from("prospeccion_busquedas").delete().eq("id", id);
     if (error) { toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" }); return; }
@@ -326,6 +380,7 @@ export default function BuscarLeads() {
     if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
     setLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, estado_gestion: estado } : l)));
     setDetail((d) => (d && d.id === lead.id ? { ...d, estado_gestion: estado } : d));
+    setExpandedLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, estado_gestion: estado } : l)));
   };
 
   const guardarNotas = async (lead: Lead, notas: string) => {
@@ -333,6 +388,7 @@ export default function BuscarLeads() {
     const { error } = await sb.from("prospeccion_leads").update({ notas }).eq("id", lead.id);
     if (error) { toast({ title: "No se pudieron guardar las notas", description: error.message, variant: "destructive" }); return; }
     setLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, notas } : l)));
+    setExpandedLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, notas } : l)));
     toast({ title: "Notas guardadas" });
   };
 
@@ -673,28 +729,165 @@ export default function BuscarLeads() {
                 <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando…</div>
               ) : !historial || historial.length === 0 ? (
                 <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-                  Aún no hay búsquedas guardadas. Haz tu primera búsqueda en la pestaña “Buscar”.
+                  Aún no hay búsquedas guardadas. Haz tu primera búsqueda en la pestaña "Buscar".
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {historial.map((b) => (
-                    <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-                      <button type="button" onClick={() => abrirBusqueda(b)} className="min-w-0 flex-1 text-left">
-                        <div className="truncate font-medium">{b.nicho} · {b.ciudad}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(b.created_at).toLocaleString("es-CL")} · {b.total_leads} guardados
-                          {b.contactados ? ` · ${b.contactados} contactados` : ""}
-                          {b.clientes ? ` · ${b.clientes} clientes` : ""}
+                  {historial.map((b) => {
+                    const isExpanded = expandedBusquedaId === b.id;
+                    return (
+                      <div key={b.id} className="rounded-lg border">
+                        {/* Card header */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandBusqueda(b)}
+                            className="min-w-0 flex-1 text-left"
+                          >
+                            <div className="truncate font-medium">{b.nicho} · {b.ciudad}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(b.created_at).toLocaleString("es-CL")} · {b.total_leads} guardados
+                              {b.contactados ? ` · ${b.contactados} contactados` : ""}
+                              {b.clientes ? ` · ${b.clientes} clientes` : ""}
+                            </div>
+                          </button>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">score {b.estadisticas?.score_promedio ?? "—"}</Badge>
+                            <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); abrirBusqueda(b); }} className="gap-1 text-[#003DA5]">
+                              <Search className="h-3.5 w-3.5" /> Ver en Buscar
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); borrarBusqueda(b.id); }} className="text-muted-foreground hover:text-red-600">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">score {b.estadisticas?.score_promedio ?? "—"}</Badge>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => borrarBusqueda(b.id)} className="text-muted-foreground hover:text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+
+                        {/* Expanded leads */}
+                        {isExpanded && (
+                          <div className="border-t">
+                            {expandedLoading ? (
+                              <div className="flex items-center gap-2 px-3 py-6 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Cargando leads…
+                              </div>
+                            ) : !expandedLeads?.length ? (
+                              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                                Sin leads en esta búsqueda.
+                              </div>
+                            ) : (
+                              <>
+                                {/* Acciones masivas */}
+                                <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+                                  <label className="flex items-center gap-1.5 text-xs">
+                                    <input type="checkbox" checked={expAllChecked} onChange={toggleExpAll} className="h-3.5 w-3.5 rounded accent-[#003DA5]" />
+                                    Todos
+                                  </label>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {expSelected.size > 0 ? `${expSelected.size} seleccionados` : `${expandedLeads.length} leads`}
+                                  </span>
+                                  <div className="ml-auto flex flex-wrap gap-1.5">
+                                    <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-[11px]"
+                                      onClick={() => copiarWa(expSelectedLeads)} disabled={expSelected.size === 0}>
+                                      <MessageCircle className="h-3 w-3" /> Copiar WA
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-[11px]"
+                                      onClick={() => usarEnCorreos(expSelectedLeads.length ? expSelectedLeads : expandedLeads)}
+                                      disabled={(expandedLeads ?? []).filter((l) => (l.email || "").trim()).length === 0}>
+                                      <MailIcon className="h-3 w-3" /> Enviar correos
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-[11px]"
+                                      onClick={async () => {
+                                        const ids = expSelectedLeads.map((l) => l.id).filter(Boolean) as string[];
+                                        if (!ids.length) { toast({ title: "Selecciona leads", variant: "destructive" }); return; }
+                                        await sb.from("prospeccion_leads").update({ estado_gestion: "contactado" }).in("id", ids);
+                                        setExpandedLeads((ls) => (ls ?? []).map((l) => l.id && ids.includes(l.id) ? { ...l, estado_gestion: "contactado" } : l));
+                                        setExpSelected(new Set());
+                                        toast({ title: `${ids.length} marcados como contactados` });
+                                      }} disabled={expSelected.size === 0}>
+                                      <CheckCircle2 className="h-3 w-3" /> Marcar contactado
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Tabla de leads */}
+                                <div className="max-h-[60vh] overflow-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="w-8"></TableHead>
+                                        <TableHead>Negocio</TableHead>
+                                        <TableHead className="hidden sm:table-cell">Tipo</TableHead>
+                                        <TableHead className="hidden md:table-cell">Contacto</TableHead>
+                                        <TableHead className="hidden lg:table-cell w-16">Score</TableHead>
+                                        <TableHead className="w-20"></TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {expandedLeads.map((l, i) => (
+                                        <TableRow
+                                          key={l.id ?? `ex-${i}`}
+                                          className="cursor-pointer"
+                                          onClick={() => abrirDetalle(l)}
+                                        >
+                                          <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                              type="checkbox"
+                                              checked={expSelected.has(expLeadKey(l))}
+                                              onChange={() => toggleExpSel(l)}
+                                              className="h-3.5 w-3.5 rounded accent-[#003DA5]"
+                                            />
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="truncate font-medium text-sm max-w-[180px]">
+                                              {l.nombre || "—"}
+                                            </div>
+                                            <div className="text-[11px] text-muted-foreground">{l.ciudad || "—"}</div>
+                                          </TableCell>
+                                          <TableCell className="hidden sm:table-cell">
+                                            {l.tipo_lead ? (
+                                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${tipoBadge(l.tipo_lead)}`}>
+                                                {TIPO_SHORT[l.tipo_lead] || l.tipo_lead}
+                                              </span>
+                                            ) : (
+                                              <span className="text-[11px] text-muted-foreground">—</span>
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="hidden md:table-cell">
+                                            <div className="flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                                              {l.email && <span className="inline-flex items-center gap-0.5"><MailIcon className="h-2.5 w-2.5" /> {l.email}</span>}
+                                              {(l.telefono || l.whatsapp) && (
+                                                <span className="inline-flex items-center gap-0.5">
+                                                  <MessageCircle className="h-2.5 w-2.5 text-emerald-600" /> {l.telefono || l.whatsapp}
+                                                </span>
+                                              )}
+                                              {!l.email && !l.telefono && !l.whatsapp && "—"}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="hidden lg:table-cell">
+                                            <span className="font-mono text-xs">{l.score ?? "—"}</span>
+                                          </TableCell>
+                                          <TableCell>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              className="gap-1 text-[#003DA5]"
+                                              onClick={(e) => { e.stopPropagation(); abrirDetalle(l); }}
+                                            >
+                                              <Sparkles className="h-3.5 w-3.5" /> Mensaje
+                                            </Button>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
