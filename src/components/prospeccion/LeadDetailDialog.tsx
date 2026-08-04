@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { pickIcebreaker } from "@/lib/icebreakers";
+import { pickIcebreaker, normalizePhone } from "@/lib/icebreakers";
 
 export type Lead = {
   id?: string;
-  nombre?: string; ciudad?: string; region?: string; web?: string;
+  nombre?: string; ciudad?: string; region?: string; pais?: string; web?: string;
   telefono?: string; whatsapp?: string; email?: string; instagram?: string;
   direccion?: string; google_maps?: string; fuente?: string;
   score?: number; nivel?: string; tipo_lead?: string; problemas?: string[];
@@ -26,12 +26,14 @@ const ESTADO_LABEL: Record<string, string> = {
   nuevo: "Nuevo", contactado: "Contactado", respondio: "Respondió", cliente: "Cliente", descartado: "Descartado",
 };
 
-// Construye el link de WhatsApp: usa el campo whatsapp si ya es URL, si no arma wa.me con el teléfono.
+// Construye el link de WhatsApp con código de país normalizado.
 export function waLink(l: Lead): string | null {
   const w = (l.whatsapp || "").trim();
   if (w.startsWith("http")) return w;
-  const digits = (w || l.telefono || "").replace(/[^\d]/g, "");
-  return digits.length >= 8 ? `https://wa.me/${digits}` : null;
+  const raw = (w || l.telefono || "").replace(/[^\d]/g, "");
+  if (raw.length < 8) return null;
+  const digits = normalizePhone(raw, l.pais || l.region || l.ciudad);
+  return `https://wa.me/${digits}`;
 }
 
 function CopyBtn({ text, label }: { text: string; label: string }) {
@@ -67,7 +69,7 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoCha
   const initialWaText = lead
     ? (lead.mensaje_whatsapp || pickIcebreaker(
         lead.id || lead.telefono || lead.nombre || "x",
-        { nombre: lead.nombre, ciudad: lead.ciudad, empresa: lead.nombre },
+        { nombre: lead.nombre, ciudad: lead.ciudad, empresa: lead.nombre, pais: lead.pais || lead.region },
       ))
     : "";
   const [waDraft, setWaDraft] = useState(initialWaText);

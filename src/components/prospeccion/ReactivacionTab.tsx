@@ -40,7 +40,7 @@ type Filters = {
 
 // Arma el link de WhatsApp con un icebreaker variado (determinístico por lead).
 const waIcebreaker = (l: LeadRow): string | null =>
-  waLinkWithIcebreaker(l.telefono || "", { nombre: l.nombre, ciudad: l.pais, empresa: l.nombre });
+  waLinkWithIcebreaker(l.telefono || "", { nombre: l.nombre, ciudad: l.pais, empresa: l.nombre, pais: l.pais });
 
 // Aplica los filtros a un query builder de leads_campana.
 // Compartido por la tabla paginada y por la carga a Correos (una sola fuente de verdad).

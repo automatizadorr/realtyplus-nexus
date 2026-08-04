@@ -11,6 +11,7 @@ export type IcebreakerVars = {
   nombre?: string | null;
   ciudad?: string | null;
   empresa?: string | null;
+  pais?: string | null;
 };
 
 // Set de variantes ES (prospección inmobiliarias — focus IA/software).
@@ -47,6 +48,35 @@ const ICEBREAKERS_EN: string[] = [
 
 export const ICEBREAKERS = { es: ICEBREAKERS_ES, en: ICEBREAKERS_EN } as const;
 
+// Mapa de países a código internacional. Si un número llega sin prefijo se le
+// antepone el código según el país del lead.
+const PAIS_CODIGO: Record<string, string> = {
+  chile: "56", españa: "34", spain: "34", mexico: "52", méxico: "52",
+  argentina: "54", colombia: "57", peru: "51", perú: "51",
+  ecuador: "593", bolivia: "591", paraguay: "595", uruguay: "598",
+  brasil: "55", brazil: "55", portugal: "351",
+  "estados unidos": "1", "ee.uu.": "1", "eeuu": "1", usa: "1",
+  canadá: "1", canada: "1", italia: "39", italy: "39",
+  francia: "33", france: "33", alemania: "49", germany: "49",
+    "reino unido": "44", uk: "44", australia: "61",
+};
+
+function cleanDigits(tel: string): string {
+  return tel.split("@")[0].replace(/[^\d]/g, "");
+}
+
+// Si el número empieza por "00" o ya parece internacional (≥10 dígitos
+// y no empieza por 0 local), se respeta. Si no, se antepone el código
+// correspondiente al país.
+export function normalizePhone(tel: string, pais?: string | null): string {
+  const digits = cleanDigits(tel);
+  if (digits.length < 8) return digits;
+  if (digits.length >= 10 && !digits.startsWith("0")) return digits; // ya internacional
+  const p = (pais || "").trim().toLowerCase();
+  const code = PAIS_CODIGO[p] || PAIS_CODIGO["chile"]; // fallback Chile
+  return digits.startsWith("0") ? code + digits.slice(1) : code + digits;
+}
+
 function fill(text: string, v: IcebreakerVars): string {
   const nombre = (v.nombre || "").trim();
   return text
@@ -71,13 +101,13 @@ export function pickIcebreaker(seed: string, vars: IcebreakerVars, idioma: "es" 
   return fill(pool[idx], vars);
 }
 
-// Construye el link de WhatsApp con el icebreaker pre-cargado.
+// Construye el link de WhatsApp con el icebreaker pre-cargado y código de país.
 export function waLinkWithIcebreaker(
   telefono: string,
   vars: IcebreakerVars,
   opts: { seed?: string; idioma?: "es" | "en" } = {},
 ): string | null {
-  const digits = (telefono || "").split("@")[0].replace(/[^\d]/g, "");
+  const digits = normalizePhone(telefono, vars.pais);
   if (digits.length < 8) return null;
   const seed = opts.seed || (telefono || "") + (vars.nombre || "");
   const msg = pickIcebreaker(seed, vars, opts.idioma || "es");
