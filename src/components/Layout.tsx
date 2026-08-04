@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { UserAvatar } from "@/components/UserAvatar";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 
 interface LayoutProps {
@@ -57,6 +58,7 @@ export function Layout({ children }: LayoutProps) {
           <main className="app-main flex-1 overflow-auto">{children}</main>
         </div>
       </div>
+      <OnboardingTour />
     </SidebarProvider>
   );
 }
