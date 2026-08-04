@@ -1,11 +1,11 @@
-// Icebreakers de WhatsApp para reactivación de leads (prospección).
-// Mensajes VARIados (nunca iguales) que posicionan a LexHouse AI como
-// desarrollador de sistemas de IA y software para inmobiliarias, probados,
-// con retorno de inversión rápido y resultados medibles.
+// Icebreakers de WhatsApp para prospección inmobiliaria.
+// Cada mensaje presenta el ecosistema LexHouse AI — CRM enterprise,
+// extracción/activación/reactivación de leads (RealtyPlus Nexus) y
+// generador de reels automatizados (3+ min) — con ROI comprobado.
+// Rotación determinística por id del lead para que el mismo lead siempre
+// reciba el mismo variant.
 //
-// `pickIcebreaker` rota deterministicamente por id del lead para que el mismo
-// lead siempre reciba el mismo variant (evita enviar 2 icebreakers distintos al
-// mismo contacto en sesiones distintas).
+// Variables: {nombre}, {empresa}, {ciudad}, {pais}
 
 export type IcebreakerVars = {
   nombre?: string | null;
@@ -14,36 +14,33 @@ export type IcebreakerVars = {
   pais?: string | null;
 };
 
-// Set de variantes ES (prospección inmobiliarias — focus IA/software).
-// Marca a respetar: AI-MaX Intelligence. Tone: ICEBREAKER, corto, directo, pregunta abierta.
-// Sin signos raros que rompan wa.me. Sin URLs largas (wa.me limita ~2048 chars en ?text=).
 const ICEBREAKERS_ES: string[] = [
-  `Hola {nombre} 👋 Soy Mario de LexHouse AI. Desarrollamos sistemas de IA para inmobiliarias que ya están generando retorno de inversión en corredoras reales: atienden WhatsApp 24/7, califican leads y agendan visitas. En menos de un mes pagan el setup con los cierres que generan. ¿Te muestro uno funcionando en 5 min?`,
+  `Hola {nombre} 👋 soy Mario de LexHouse AI. Hemos construido un ecosistema completo de IA para inmobiliarias que ya está operando: CRM nivel enterprise, extracción automática de leads, reactivación de contactos fríos y un generador de reels de 3+ minutos que se arma solo con tus propiedades. Todo medible, todo con ROI desde el primer mes. ¿Te muestro el sistema en 5 minutos?`,
 
-  `Buenas, {nombre}. Te escribo de LexHouse AI. Somos una software factory especializada en inmobiliarias. Nuestro sistema de IA —probado y corriendo en corredoras— responde cada consulta de WhatsApp al instante y no deja leads enfriarse. Los clientes recuperan la inversión en semanas con las ventas adicionales que captura. ¿Lo probamos con tus contactos esta semana?`,
+  `{nombre}, buenas. Mario de LexHouse AI. Nuestro CRM con IA —RealtyPlus Nexus— extrae leads de portales y redes, los activa automáticamente y reactiva a los que dejaste de hablar hace meses. A eso súmale un generador de reels que produce videos de 3+ minutos sin que muevas un dedo. Varias corredoras ya lo usan y recuperaron la inversión en semanas. ¿Lo ves conmigo en una demo rápida?`,
 
-  `Hola {nombre}, Mario de LexHouse AI 👋. Creamos sistemas de IA para inmobiliarias que ya operan con resultados comprobados: atención automática, clasificación de leads, recordatorios. Cada cliente nuestro ve retorno en el primer mes. Me gustaría que lo veas en acción. ¿Te paso un demo corto?`,
+  `Hola {nombre}, Mario de LexHouse AI 👋. Te cuento lo que hacemos: un CRM enterprise con inteligencia artificial que no solo gestiona tu cartera —extrae leads nuevos, activa los que llegan y revive a los inactivos automáticamente— más un motor de reels que te arma videos profesionales de más de 3 minutos para cada propiedad. Retorno comprobado en menos de 30 días. ¿Quieres verlo funcionando?`,
 
-  `Hola {nombre}. Soy Mario de LexHouse AI. Desarrollamos software e IA para inmobiliarias con sistemas probados: un asistente que contesta tus WhatsApp, califica y agenda visitas sin que toques el teléfono. La inversión se paga sola con los cierres extra que genera desde el primer mes. ¿Te muestro cómo trabaja en vivo?`,
+  `Buenas {nombre}. Soy Mario de LexHouse AI. Imagina un CRM que hace triple trabajo: extrae leads sin que los busques, los activa con secuencias inteligentes y reactiva a los que tenías olvidados. Eso es RealtyPlus Nexus. Y como bonus, un generador de reels automatizado que crea videos inmobiliarios de +3 minutos con música, voz y texto. Todo integrado y corriendo ya. ¿Te enseño cómo funciona con tus propios leads?`,
 
-  `Buenas {nombre} — Mario de LexHouse AI. Desarrollamos sistemas de IA para inmobiliarias con resultados comprobados: atienden leads a cualquier hora, los filtran y reservan la visita. Varias corredoras ya recuperaron su inversión en semanas. ¿Te animas a probarlo con 2 o 3 de tus leads?`,
+  `Hola {nombre} 👋 Mario de LexHouse AI. Nuestro ecosistema de IA para inmobiliarias cubre todo el ciclo del lead: CRM enterprise, extracción automatizada, activación inmediata, reactivación de cartera fría y contenido —reels de 3+ minutos generados solos para tus propiedades. Cada módulo ya está probado y generando retorno. ¿Hacemos una videollamada de 10 min para que lo veas?`,
 
-  `Hola {nombre} 👋 Mario de LexHouse AI. Construimos software e IA para inmobiliarias. Nuestro sistema probado responde WhatsApp por ti, califica al lead y agenda la visita automáticamente. Retorno de inversión rápido y medible desde el primer mes. ¿Te paso una prueba de 10 minutos?`,
+  `{nombre}, soy Mario de LexHouse AI. Hemos integrado tres motores de IA en un solo CRM enterprise: extracción de leads desde portales, activación con secuencias automáticas y reactivación de leads que no respondían hace meses. Y además, el generador de reels te produce videos de +3 minutos para Instagram y TikTok sin editar nada. Resultados medibles desde la primera semana. ¿Probamos con un par de tus propiedades?`,
 
-  `Hola {nombre}, Mario de LexHouse AI. Somos una software factory de IA para inmobiliarias. Nuestro sistema ya probado se hace cargo de tus leads de WhatsApp de principio a fin, con métricas de conversión reales que pagan el servicio en el primer mes. ¿Te gustaría verlo correr con un caso real?`,
+  `Buenas {nombre} — Mario de LexHouse AI. Te resumo el ecosistema LexHouse: un CRM enterprise con IA que extrae, activa y reactiva leads por ti, más un generador de reels que convierte tus fotos de propiedades en videos de 3+ minutos automáticamente. No es un bot, es un sistema probado con ROI en semanas. ¿Te interesa verlo con tus propios datos?`,
 
-  `Buenas {nombre}. Soy Mario de LexHouse AI. Nos dedicamos a crear sistemas de IA para inmobiliarias que ya están corriendo en corredoras con retorno de inversión comprobado. Atienden WhatsApp, califican y agendan visitas sin intervención humana, y se financian solos con los cierres que generan. ¿Probamos uno con tus próximos leads?`,
+  `Hola {nombre}, Mario de LexHouse AI. RealtyPlus Nexus es nuestro CRM con IA para inmobiliarias: extrae leads automáticamente, los califica, activa campañas y reactiva contactos inactivos sin que intervengas. Y el generador de reels te crea contenido de +3 minutos listo para publicar. Todo el ecosistema trabaja junto y se paga solo con los cierres extra. ¿Quieres que te lo demuestre en vivo?`,
 
-  `Hola {nombre} 👋 Soy Mario de LexHouse AI. Desarrollamos sistemas de IA para inmobiliarias con resultados medibles y ROI rápido. El sistema atiende WhatsApp, clasifica y agenda, y nuestros clientes recuperan la inversión en el primer mes. Me gustaría enseñarte una demo viva. ¿Cuándo te viene bien?`,
+  `{nombre} 👋 Mario de LexHouse AI. Construimos el ecosistema de IA más completo para inmobiliarias: CRM enterprise, extracción de leads 24/7, activación y reactivación automática con RealtyPlus Nexus, y un generador de reels que produce videos de 3+ minutos con tus propiedades. ROI rápido, resultados comprobados. ¿Vemos juntos cómo aplicarlo a tu operación?`,
 
-  `Hola {nombre}. Mario de LexHouse AI. Creamos software e IA para inmobiliarias con sistemas probados y retorno de inversión inmediato: capturan y atienden tus leads de WhatsApp sin que enfríen, pagan el setup con los primeros cierres. Ya estamos dándole resultado a otras corredoras. ¿Te paso una prueba rápida?`,
+  `Hola {nombre}, Mario de LexHouse AI. Nuestro ecosistema de IA une CRM enterprise + extracción de leads + activación inmediata + reactivación de cartera fría + reels automatizados de 3+ minutos. Todo en un solo sistema que ya está funcionando en corredoras reales y genera retorno desde el primer mes. ¿Te muestro el panel y el generador de reels ahora mismo?`,
 ];
 
-// Set EN (mismo espíritu, por si la prospección es hispano/americana mixed).
+// English variants — same ecosystem pitch for international leads.
 const ICEBREAKERS_EN: string[] = [
-  `Hi {nombre} 👋 Mario from LexHouse AI here. We build AI systems for real estate agencies that are already generating ROI in production: 24/7 WhatsApp response, lead qualification and automated bookings. Our clients recover the investment in weeks with the extra deals closed. Want a 5-min live demo?`,
+  `Hi {nombre} 👋 Mario from LexHouse AI. We built a full AI ecosystem for real estate: enterprise CRM, automated lead extraction, cold-lead reactivation, and a reel generator that creates 3+ minute property videos automatically. Proven ROI in weeks. Want a 5-min demo?`,
 
-  `Hi {nombre}, Mario from LexHouse AI 👋. We're a software factory specialized in real estate. Our proven AI system replies to every WhatsApp instantly and keeps leads warm — pays for itself in the first month with the additional sales it captures. Shall we try it with a few of your leads this week?`,
+  `{nombre}, hey — Mario from LexHouse AI. Our AI-powered CRM (RealtyPlus Nexus) extracts leads from portals, activates them instantly, and reactivates dormant contacts. Plus an auto reel generator that turns property photos into 3+ minute videos. Agencies are already getting ROI in under a month. Shall we run a quick demo?`,
 ];
 
 export const ICEBREAKERS = { es: ICEBREAKERS_ES, en: ICEBREAKERS_EN } as const;
@@ -229,8 +226,9 @@ function fill(text: string, v: IcebreakerVars): string {
   const nombre = (v.nombre || "").trim();
   return text
     .replace(/\{nombre\}/g, nombre || "👋")
+    .replace(/\{empresa\}/g, (v.empresa || "").trim())
     .replace(/\{ciudad\}/g, (v.ciudad || "").trim())
-    .replace(/\{empresa\}/g, (v.empresa || "").trim());
+    .replace(/\{pais\}/g, (v.pais || "").trim());
 }
 
 // Hash determinístico simple → índice estable por id del lead.
