@@ -12,7 +12,25 @@ export const corsHeaders = {
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const TZ = "America/Santiago";
-export const LIMITE_DIA = 100; // Resend gratis: 100 correos/día.
+export const LIMITE_DIA = 200; // 2 cuentas Resend gratis: 100 + 100 = 200 correos/día.
+
+export function resendKeyFor(i: number): { key: string; index: number; domain: string } {
+  const k1 = Deno.env.get("RESEND_API_KEY_1");
+  const k2 = Deno.env.get("RESEND_API_KEY_2");
+  const fallback = Deno.env.get("RESEND_API_KEY");
+  const key1 = k1 || fallback;
+  if (!key1) throw new Error("Falta RESEND_API_KEY_1 o RESEND_API_KEY (fallback)");
+  if (!k2) return { key: key1, index: 0, domain: "send.lexhouse-ai.com" };
+  return i % 2 === 0
+    ? { key: key1, index: 0, domain: "send.lexhouse-ai.com" }
+    : { key: k2, index: 1, domain: "lexhouse-ai.online" };
+}
+
+export function applyDomain(email: string, domain: string): string {
+  const at = email.indexOf("@");
+  if (at < 0) return email;
+  return email.slice(0, at + 1) + domain;
+}
 
 // Escapa HTML para evitar inyección en los correos renderizados.
 export function esc(s: string): string {

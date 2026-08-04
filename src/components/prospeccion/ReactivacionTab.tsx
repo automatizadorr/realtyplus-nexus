@@ -30,7 +30,7 @@ type LeadRow = {
 
 const PAGE_SIZE = 25;
 const MAX_ENVIO = 200; // tope de destinatarios por campaña en send-personalized-campaign
-const LOTES = [50, 100, MAX_ENVIO]; // tandas de correos (Resend gratis: 100 correos/día)
+const LOTES = [50, 100, 200, MAX_ENVIO]; // tandas de correos (Resend gratis: 200 correos/día — 2 cuentas)
 const LEADS_IMPORT_KEY = "prospeccion_leads_import";
 
 type Filters = {
@@ -205,7 +205,7 @@ export default function ReactivacionTab() {
   useEffect(() => { setTanda((t) => Math.min(t, totalTandas)); }, [totalTandas]);
 
   // Carga UNA tanda del filtro (con email, deduplicados) hacia Correos Personalizados.
-  // Las tandas existen para respetar el límite de Resend gratis (100 correos/día).
+  // Las tandas existen para respetar el límite de Resend gratis (200 correos/día — 2 cuentas).
   const cargarEnCorreos = async () => {
     setCargando(true);
     try {
@@ -241,7 +241,7 @@ export default function ReactivacionTab() {
       toast({
         title: `${recips.length} leads cargados (tanda ${tanda} de ${totalTandas})`,
         description: totalTandas > 1
-          ? `Resend gratis envía 100 correos/día. Tanda ${tanda} de ${totalTandas}; quedan ${totalTandas - tanda} para los próximos días.`
+          ? `Resend gratis envía 200 correos/día (2 cuentas). Tanda ${tanda} de ${totalTandas}; quedan ${totalTandas - tanda} para los próximos días.`
           : "Revisa y envía en Correos Personalizados.",
       });
       navigate("/correos-personalizados");

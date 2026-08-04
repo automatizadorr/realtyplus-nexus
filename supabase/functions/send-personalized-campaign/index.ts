@@ -2,7 +2,7 @@
 // Requiere caller autenticado con rol admin (misma política que send-n8n-webhook).
 // El secreto RESEND_API_KEY se guarda en los secrets del proyecto Supabase.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, TZ, zonedToUtc } from "../_shared/correo.ts";
+import { applyDomain, corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, resendKeyFor, TZ, zonedToUtc } from "../_shared/correo.ts";
 
 type Recipient = {
   email: string;
@@ -21,10 +21,10 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-    if (!RESEND_API_KEY) {
-      return new Response(JSON.stringify({ error: "RESEND_API_KEY no configurado en el proyecto" }), {
+    try { resendKeyFor(0); } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return new Response(JSON.stringify({ error: msg }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -90,7 +90,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const from = `${fromName} <${fromEmail}>`;
     const results: { email: string; ok: boolean; id?: string; error?: string; programado?: boolean }[] = [];
     // Filas para el log de seguimiento (correo_envios).
     const logRows: Record<string, unknown>[] = [];
@@ -102,17 +101,18 @@ Deno.serve(async (req) => {
     const excedente = valid.slice(LIMITE_DIA);
 
     for (const r of hoy) {
+      const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(sent + failed);
       const subject = fillTemplate(subjectTpl, r);
       const payload: Record<string, unknown> = {
-        from,
+        from: applyDomain(`${fromName} <${fromEmail}>`, keyDomain),
         to: [r.email],
         subject,
       };
-      if (replyTo) payload.reply_to = replyTo;
+      const replyToDomain = replyTo ? applyDomain(replyTo, keyDomain) : undefined;
+      if (replyToDomain) payload.reply_to = replyToDomain;
       if (htmlTpl.trim()) payload.html = fillTemplate(htmlTpl, r);
       if (textTpl.trim()) payload.text = fillTemplate(textTpl, r);
-      // List-Unsubscribe: mejora la reputación/entregabilidad (baja 1 clic por email).
-      const unsubTo = replyTo || fromEmail;
+      const unsubTo = replyToDomain || applyDomain(fromEmail, keyDomain);
       payload.headers = {
         "List-Unsubscribe": `<mailto:${unsubTo}?subject=baja>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
@@ -131,21 +131,20 @@ Deno.serve(async (req) => {
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.id) {
           results.push({ email: r.email, ok: true, id: data.id });
-          logRows.push({ resend_id: data.id, email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "enviado" });
+          logRows.push({ resend_id: data.id, email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "enviado", resend_key_index: keyIdx });
           sent++;
         } else {
           const errMsg = data?.message || data?.error || `HTTP ${res.status}`;
           results.push({ email: r.email, ok: false, error: String(errMsg) });
-          logRows.push({ email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "fallido", error: String(errMsg).slice(0, 300) });
+          logRows.push({ email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "fallido", error: String(errMsg).slice(0, 300), resend_key_index: keyIdx });
           failed++;
         }
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : String(e);
         results.push({ email: r.email, ok: false, error: errMsg });
-        logRows.push({ email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "fallido", error: errMsg.slice(0, 300) });
+        logRows.push({ email: r.email, nombre: r.nombre ?? null, empresa: r.empresa ?? null, pais: pickPais(r) || null, asunto: subject, enviado_por: userId, estado: "fallido", error: errMsg.slice(0, 300), resend_key_index: keyIdx });
         failed++;
       }
-      // Pequeña pausa para respetar el rate limit de Resend (~2 req/s).
       await new Promise((r) => setTimeout(r, 550));
     }
 

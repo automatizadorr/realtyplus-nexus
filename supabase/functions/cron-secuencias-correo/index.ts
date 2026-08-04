@@ -9,9 +9,9 @@
 // Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o CRON_SECRET).
 // En config.toml: verify_jwt = false (lo llama pg_cron, no el navegador).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { corsHeaders, EMAIL_RE, esc, fillTemplate, pickPais } from "../_shared/correo.ts";
+import { applyDomain, corsHeaders, EMAIL_RE, esc, fillTemplate, pickPais, resendKeyFor } from "../_shared/correo.ts";
 
-const MAX_POR_CORRIDA = 50;
+const MAX_POR_CORRIDA = 100;
 
 // HTML simple y con marca (azul #003DA5, CTA a la guía), compatible con clientes de correo.
 function buildHtml(body: string, ctaTexto: string, ctaUrl: string): string {
@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
-      return new Response(JSON.stringify({ error: "RESEND_API_KEY no configurado" }), {
+    try { resendKeyFor(0); } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return new Response(JSON.stringify({ error: msg }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -84,12 +84,15 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(enviados + fallidos);
+
       const subject = fillTemplate(row.asunto ?? "", row);
       const rawHtml = typeof row.html === "string" && row.html.trim()
         ? fillTemplate(row.html, row)
         : buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
       const html = rawHtml.trim() ? rawHtml : buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
-      const from = `${row.from_name ?? "Mario · LexHouse"} <${row.from_email ?? "no-reply@send.lexhouse-ai.com"}>`;
+      const rawFrom = `${row.from_name ?? "Mario · LexHouse"} <${row.from_email ?? "no-reply@send.lexhouse-ai.com"}>`;
+      const from = applyDomain(rawFrom, keyDomain);
       const payload: Record<string, unknown> = {
         from,
         to: [email],
@@ -98,9 +101,9 @@ Deno.serve(async (req) => {
       };
       const replyTo = row.reply_to as string | null;
       if (replyTo && EMAIL_RE.test(replyTo)) {
-        payload.reply_to = replyTo;
+        payload.reply_to = applyDomain(replyTo, keyDomain);
         payload.headers = {
-          "List-Unsubscribe": `<mailto:${replyTo}?subject=baja>`,
+          "List-Unsubscribe": `<mailto:${applyDomain(replyTo, keyDomain)}?subject=baja>`,
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         };
       }
@@ -109,7 +112,7 @@ Deno.serve(async (req) => {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
@@ -128,6 +131,7 @@ Deno.serve(async (req) => {
             estado: "enviado",
             secuencia_nombre: row.secuencia_nombre ?? null,
             secuencia_paso: row.paso ?? null,
+            resend_key_index: keyIdx,
           });
           await svc.from("secuencia_envios_programados")
             .update({ estado: "enviado", enviado_at: new Date().toISOString(), resend_id: data.id, error: null })

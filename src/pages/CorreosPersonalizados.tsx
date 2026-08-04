@@ -362,7 +362,7 @@ export default function CorreosPersonalizados() {
         description: data?.failed
           ? `${data.failed} fallaron. Revisa el detalle abajo.`
           : programados > 0
-            ? `Hoy se enviaron ${data?.sent ?? 0}. Los otros ${programados} quedaron agendados para los próximos días (límite diario Resend: 100).`
+            ? `Hoy se enviaron ${data?.sent ?? 0}. Los otros ${programados} quedaron agendados para los próximos días (límite diario Resend: 200 (2 cuentas)).`
             : "Todos entregados a Resend.",
         variant: data?.failed ? "destructive" : "default",
       });
