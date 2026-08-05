@@ -321,7 +321,9 @@ export default function CorreosPersonalizados() {
   };
 
   // Trae el nombre de contacto desde la hoja (leads_sheet vía edge sheets-leads),
-  // matcheando por email. Rellena solo los destinatarios con nombre vacío.
+  // matcheando por email, con fallback por teléfono (últimos 8 dígitos, igual
+  // que el enriquecimiento de Scanner). Rellena solo los destinatarios con
+  // nombre vacío.
   const [loadingNombres, setLoadingNombres] = useState(false);
   const rellenarNombres = async () => {
     const sinNombre = recipients.filter((r) => isEmail(r.email) && !(r.nombre || "").trim());
@@ -333,29 +335,63 @@ export default function CorreosPersonalizados() {
     try {
       const { data, error } = await supabase.functions.invoke("sheets-leads", { body: {} });
       if (error) throw error;
-      const leads: Array<{ email?: string; nombres?: string }> = data?.leads || [];
+      const leads: Array<{ email?: string; nombres?: string; telefono?: string }> = data?.leads || [];
+
+      // Índice por email (exacto, case-insensitive).
       const byEmail = new Map<string, string>();
+      // Índice por sufijo de teléfono (últimos 8 dígitos) → nombre.
+      // Si dos leads comparten sufijo, gana el primero (mismo criterio que Scanner).
+      const byPhoneSuffix = new Map<string, string>();
+      const normPhone = (p: string) => (p || "").replace(/\D/g, "");
       for (const l of leads) {
-        const em = (l.email || "").trim().toLowerCase();
         const nm = (l.nombres || "").trim();
-        if (em && nm && !byEmail.has(em)) byEmail.set(em, nm);
+        if (!nm) continue;
+        const em = (l.email || "").trim().toLowerCase();
+        if (em && !byEmail.has(em)) byEmail.set(em, nm);
+        const ph = normPhone(l.telefono || "");
+        if (ph.length >= 8) {
+          const suf = ph.slice(-8);
+          if (!byPhoneSuffix.has(suf)) byPhoneSuffix.set(suf, nm);
+        }
       }
-      let filled = 0, noMatch = 0;
+
+      let byEmailHits = 0, byPhoneHits = 0, noMatch = 0;
       setRecipients((prev) =>
         prev.map((r) => {
           if (!isEmail(r.email) || (r.nombre || "").trim()) return r;
-          const nm = byEmail.get(r.email.toLowerCase());
-          if (nm) { filled++; return { ...r, nombre: nm }; }
+          // 1) Match por email exacto.
+          const em = r.email.toLowerCase();
+          const byEm = byEmail.get(em);
+          if (byEm) { byEmailHits++; return { ...r, nombre: byEm }; }
+          // 2) Fallback por teléfono (últimos 8 dígitos) desde datos.telefono/whatsapp.
+          const d = r.datos ?? {};
+          const telRaw = d.telefono || d.whatsapp || d.telefono_contacto || d.celular || d.movil || "";
+          const ph = normPhone(telRaw);
+          if (ph.length >= 8) {
+            const byPh = byPhoneSuffix.get(ph.slice(-8));
+            if (byPh) { byPhoneHits++; return { ...r, nombre: byPh }; }
+          }
           noMatch++;
           return r;
         }),
       );
+
+      const filled = byEmailHits + byPhoneHits;
       if (filled === 0) {
-        toast({ title: "Sin coincidencias", description: "Ningún destinatario matcheó por email con la hoja.", variant: "destructive" });
+        toast({
+          title: "Sin coincidencias",
+          description: "Ningún destinatario matcheó por email ni por teléfono con la hoja. Verifica que la hoja tenga los emails/telefonos o completa el nombre a mano.",
+          variant: "destructive",
+        });
       } else {
+        const detalle: string[] = [];
+        if (byEmailHits > 0) detalle.push(`${byEmailHits} por email`);
+        if (byPhoneHits > 0) detalle.push(`${byPhoneHits} por teléfono`);
         toast({
           title: `${filled} nombre(s) traído(s) de la hoja`,
-          description: noMatch > 0 ? `${noMatch} no se encontraron por email. Puedes completarlos a mano.` : "Todos los nombres vacíos fueron rellenados.",
+          description: noMatch > 0
+            ? `Matchearon ${detalle.join(" + ")}. ${noMatch} sin coincidencia — complétalos a mano.`
+            : `Matchearon ${detalle.join(" + ")}. Todos los nombres vacíos fueron rellenados.`,
         });
       }
     } catch (e) {
