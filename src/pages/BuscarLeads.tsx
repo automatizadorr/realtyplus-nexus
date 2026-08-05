@@ -100,6 +100,7 @@ export default function BuscarLeads() {
   const [servicio, setServicio] = useState(DEFAULT_SERVICIO);
   const [cantidad, setCantidad] = useState(15);
   const [excluirRepetidos, setExcluirRepetidos] = useState(true);
+  const [soloWhatsapp, setSoloWhatsapp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [leads, setLeads] = useState<Lead[] | null>(null);
@@ -200,7 +201,7 @@ export default function BuscarLeads() {
     setSearchError(null); setRawRespuesta(null); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke("buscar-leads", {
-        body: { nicho, ciudad, servicio, cantidad, excluir_repetidos: excluirRepetidos },
+        body: { nicho, ciudad, servicio, cantidad, excluir_repetidos: excluirRepetidos, solo_whatsapp: soloWhatsapp },
       });
       if (error) throw error;
       if (data?.error && !data?.leads?.length) {
@@ -447,10 +448,19 @@ export default function BuscarLeads() {
                   </select>
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={excluirRepetidos} onCheckedChange={setExcluirRepetidos} />
-                Excluir negocios que ya están en mi historial (no volver a prospectar)
-              </label>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch checked={excluirRepetidos} onCheckedChange={setExcluirRepetidos} />
+                  Excluir negocios que ya están en mi historial (no volver a prospectar)
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch checked={soloWhatsapp} onCheckedChange={setSoloWhatsapp} />
+                  <span className="flex items-center gap-1.5">
+                    <MessageCircle className="h-4 w-4 text-emerald-600" />
+                    Solo con WhatsApp
+                  </span>
+                </label>
+              </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" onClick={buscar} disabled={loading} className="gap-2 bg-[#003DA5] hover:bg-[#003DA5]/90">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
