@@ -190,10 +190,11 @@ Deno.serve(async (req) => {
       .filter(Boolean);
 
     // --- Llamada a Perplexity Sonar (búsqueda web + análisis en una sola llamada) ---
-    // El tope de tokens de salida se ESCALA con la cantidad: cada lead lleva
-    // propuesta + mensaje WhatsApp + mensaje email + problemas (~450-600 tokens).
-    // Con 8000 fijos el JSON se truncaba a mitad para 15-30 leads → "no parseable".
-    const maxTokens = Math.min(3000 + cantidad * 600, 24000); // 15→12k, 30→21k
+    // Cuando solo_whatsapp=true pedimos el doble al LLM para compensar la poda posterior
+    // (aprox. el 40-60% de leads tiene teléfono visible). Luego recortamos al `cantidad`
+    // pedido por el usuario. Los tokens se escalan con la cantidad REAL solicitada al LLM.
+    const cantidadLLM = soloWhatsapp ? Math.min(cantidad * 2, 30) : cantidad;
+    const maxTokens = Math.min(3000 + cantidadLLM * 600, 24000);
     const pplxRes = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
@@ -206,7 +207,7 @@ Deno.serve(async (req) => {
         temperature: 0.2,
         messages: [
           { role: "system", content: "Eres un prospector experto que responde EXCLUSIVAMENTE con un array JSON válido (sin markdown, sin texto antes ni después). Solo usas datos reales verificados con la búsqueda web; nunca inventas negocios, teléfonos, webs ni correos." },
-          { role: "user", content: buildPrompt(nicho, ciudad, servicio, cantidad, nombresPrevios, soloWhatsapp) },
+          { role: "user", content: buildPrompt(nicho, ciudad, servicio, cantidadLLM, nombresPrevios, soloWhatsapp) },
         ],
       }),
       signal: AbortSignal.timeout(230000),
@@ -238,8 +239,10 @@ Deno.serve(async (req) => {
 
     // Filtro de respaldo: si el usuario pidió solo WhatsApp, descartar los que no tienen
     // teléfono/whatsapp aunque Perplexity los haya incluido igualmente.
+    // Luego recortamos al `cantidad` pedido (pedimos el doble al LLM para compensar la poda).
     if (soloWhatsapp) {
       parsed = parsed.filter((l) => (l.telefono ?? "").toString().trim() || (l.whatsapp ?? "").toString().trim());
+      parsed = parsed.slice(0, cantidad);
     }
 
     // --- Deduplicación contra el historial ---
