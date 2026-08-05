@@ -154,10 +154,15 @@ export default function BuscarLeads() {
     if (estadoFilter !== "all") list = list.filter((l) => (l.estado_gestion || "nuevo") === estadoFilter);
     if (soloEmail) list = list.filter((l) => (l.email || "").trim());
     if (ocultarDescartar) list = list.filter((l) => !(l.tipo_lead || "").trim().toLowerCase().includes("descart"));
-    return [...list].sort((a, b) =>
-      ordenScore === "desc" ? (b.score ?? 0) - (a.score ?? 0) : (a.score ?? 0) - (b.score ?? 0)
-    );
-  }, [leads, tipoFilter, estadoFilter, soloEmail, ocultarDescartar, ordenScore]);
+    return [...list].sort((a, b) => {
+      const scoreSort = ordenScore === "desc" ? (b.score ?? 0) - (a.score ?? 0) : (a.score ?? 0) - (b.score ?? 0);
+      if (!soloWhatsapp) return scoreSort;
+      const aWa = Boolean((a.whatsapp || a.telefono || "").trim());
+      const bWa = Boolean((b.whatsapp || b.telefono || "").trim());
+      if (aWa !== bWa) return aWa ? -1 : 1;
+      return scoreSort;
+    });
+  }, [leads, tipoFilter, estadoFilter, soloEmail, ocultarDescartar, ordenScore, soloWhatsapp]);
 
   const conEmailFiltrado = filtered.filter((l) => (l.email || "").trim()).length;
 

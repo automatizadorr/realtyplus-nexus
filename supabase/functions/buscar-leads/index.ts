@@ -68,14 +68,11 @@ function dedupKey(l: Lead): string {
   return `${(l.nombre ?? "").trim().toLowerCase()}|${(l.ciudad ?? "").trim().toLowerCase()}`;
 }
 
-function buildPrompt(nicho: string, ciudad: string, servicio: string, cantidad: number, evitar: string[], soloWhatsapp = false): string {
+function buildPrompt(nicho: string, ciudad: string, servicio: string, cantidad: number, evitar: string[]): string {
   const evitarTxt = evitar.length
     ? `\n\nNO incluyas estos negocios (ya fueron prospectados): ${evitar.slice(0, 60).join("; ")}.`
     : "";
-  const waTxt = soloWhatsapp
-    ? `\n\nFILTRO OBLIGATORIO: incluye ÚNICAMENTE negocios que tengan un número de teléfono o WhatsApp visible y verificable en internet. Si no encuentras un número para un negocio, descártalo y busca otro. Los campos "telefono" y/o "whatsapp" NO pueden quedar vacíos en ningún resultado.`
-    : "";
-  return `Eres un prospector experto. Busca en internet ${cantidad} negocios REALES del rubro "${nicho}" ubicados en "${ciudad}" (Chile salvo que la ciudad indique otro país).${waTxt}
+  return `Eres un prospector experto. Busca en internet ${cantidad} negocios REALES del rubro "${nicho}" ubicados en "${ciudad}" (Chile salvo que la ciudad indique otro país).
 
 REGLA FUNDAMENTAL: solo datos reales y verificados con la búsqueda web. Nunca inventes negocios, teléfonos, webs ni correos. Si un dato no lo encuentras, déjalo como cadena vacía "".
 
@@ -163,7 +160,7 @@ Deno.serve(async (req) => {
     const ciudad = (body?.ciudad ?? "").toString().trim();
     const servicio = (body?.servicio ?? "CRM inmobiliario con captación de leads y automatización de WhatsApp").toString().trim();
     const excluirRepetidos = body?.excluir_repetidos !== false; // default: true
-    const soloWhatsapp = body?.solo_whatsapp === true;
+
     let cantidad = parseInt(body?.cantidad, 10);
     if (!Number.isFinite(cantidad)) cantidad = 15;
     cantidad = Math.min(Math.max(cantidad, 5), 30);
@@ -190,11 +187,7 @@ Deno.serve(async (req) => {
       .filter(Boolean);
 
     // --- Llamada a Perplexity Sonar (búsqueda web + análisis en una sola llamada) ---
-    // Cuando solo_whatsapp=true pedimos el doble al LLM para compensar la poda posterior
-    // (aprox. el 40-60% de leads tiene teléfono visible). Luego recortamos al `cantidad`
-    // pedido por el usuario. Los tokens se escalan con la cantidad REAL solicitada al LLM.
-    const cantidadLLM = soloWhatsapp ? Math.min(cantidad * 2, 30) : cantidad;
-    const maxTokens = Math.min(3000 + cantidadLLM * 600, 24000);
+    const maxTokens = Math.min(3000 + cantidad * 600, 24000);
     const pplxRes = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
@@ -207,7 +200,7 @@ Deno.serve(async (req) => {
         temperature: 0.2,
         messages: [
           { role: "system", content: "Eres un prospector experto que responde EXCLUSIVAMENTE con un array JSON válido (sin markdown, sin texto antes ni después). Solo usas datos reales verificados con la búsqueda web; nunca inventas negocios, teléfonos, webs ni correos." },
-          { role: "user", content: buildPrompt(nicho, ciudad, servicio, cantidadLLM, nombresPrevios, soloWhatsapp) },
+          { role: "user", content: buildPrompt(nicho, ciudad, servicio, cantidad, nombresPrevios) },
         ],
       }),
       signal: AbortSignal.timeout(230000),
@@ -224,7 +217,7 @@ Deno.serve(async (req) => {
     // Respuesta OpenAI-compatible: choices[0].message.content.
     const text = (data?.choices?.[0]?.message?.content ?? "").toString();
     const finishReason = (data?.choices?.[0]?.finish_reason ?? "").toString();
-    let parsed = extractLeadObjects(text) as Lead[];
+    const parsed = extractLeadObjects(text) as Lead[];
     if (parsed.length === 0) {
       // finish_reason "length" = la respuesta se cortó por tokens (subir cantidad/tokens).
       const trunc = finishReason === "length";
@@ -235,14 +228,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: msg, leads: [], finish_reason: finishReason, raw: text.slice(0, 2000) }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    // Filtro de respaldo: si el usuario pidió solo WhatsApp, descartar los que no tienen
-    // teléfono/whatsapp aunque Perplexity los haya incluido igualmente.
-    // Luego recortamos al `cantidad` pedido (pedimos el doble al LLM para compensar la poda).
-    if (soloWhatsapp) {
-      parsed = parsed.filter((l) => (l.telefono ?? "").toString().trim() || (l.whatsapp ?? "").toString().trim());
-      parsed = parsed.slice(0, cantidad);
     }
 
     // --- Deduplicación contra el historial ---
