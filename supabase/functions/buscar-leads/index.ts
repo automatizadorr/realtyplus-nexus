@@ -28,31 +28,40 @@ type Lead = {
   repetido?: boolean;
 };
 
-// Extrae el primer array JSON de objetos ([{...}]) con corchetes balanceados.
-function extractFirstJsonArray(text: string): unknown[] | null {
-  const m = text.match(/\[\s*\{/);
-  if (!m || m.index === undefined) return null;
-  const start = m.index;
-  let depth = 0, inStr = false, esc = false, quote = "";
-  for (let i = start; i < text.length; i++) {
+// Extrae los objetos JSON ({...}) del primer array [{...}] de la respuesta.
+// TOLERANTE a fallos comunes de los LLM de búsqueda (Perplexity):
+//  - texto/prosa, ```json fences o citas [1][2] antes/después del array
+//  - TRUNCACIÓN: si la respuesta se cortó por max_tokens y el array quedó a
+//    medias, rescata todos los objetos que SÍ alcanzaron a cerrarse (en vez de
+//    perder los 15-30 leads por un único objeto incompleto al final).
+// Nota: solo trata la comilla doble como delimitador (JSON válido). Los apóstrofos
+// (p. ej. región "O'Higgins") van dentro de strings dobles y no rompen el parseo.
+function extractLeadObjects(text: string): Record<string, unknown>[] {
+  const startArr = text.search(/\[\s*\{/);
+  if (startArr === -1) return [];
+  const objs: Record<string, unknown>[] = [];
+  let depth = 0, objStart = -1, inStr = false, esc = false;
+  for (let i = startArr; i < text.length; i++) {
     const c = text[i];
     if (inStr) {
       if (esc) esc = false;
       else if (c === "\\") esc = true;
-      else if (c === quote) inStr = false;
+      else if (c === '"') inStr = false;
       continue;
     }
-    if (c === '"' || c === "'") { inStr = true; quote = c; continue; }
-    if (c === "[") depth++;
-    else if (c === "]") {
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{") { if (depth === 0) objStart = i; depth++; }
+    else if (c === "}") {
       depth--;
-      if (depth === 0) {
-        try { const a = JSON.parse(text.slice(start, i + 1)); return Array.isArray(a) ? a : null; }
-        catch { return null; }
+      if (depth === 0 && objStart !== -1) {
+        try { objs.push(JSON.parse(text.slice(objStart, i + 1))); } catch { /* objeto corrupto, se ignora */ }
+        objStart = -1;
       }
+    } else if (c === "]" && depth === 0) {
+      break; // fin del array de nivel superior
     }
   }
-  return null;
+  return objs;
 }
 
 function dedupKey(l: Lead): string {
@@ -177,6 +186,10 @@ Deno.serve(async (req) => {
       .filter(Boolean);
 
     // --- Llamada a Perplexity Sonar (búsqueda web + análisis en una sola llamada) ---
+    // El tope de tokens de salida se ESCALA con la cantidad: cada lead lleva
+    // propuesta + mensaje WhatsApp + mensaje email + problemas (~450-600 tokens).
+    // Con 8000 fijos el JSON se truncaba a mitad para 15-30 leads → "no parseable".
+    const maxTokens = Math.min(3000 + cantidad * 600, 24000); // 15→12k, 30→21k
     const pplxRes = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
@@ -185,7 +198,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 8000,
+        max_tokens: maxTokens,
         temperature: 0.2,
         messages: [
           { role: "system", content: "Eres un prospector experto que responde EXCLUSIVAMENTE con un array JSON válido (sin markdown, sin texto antes ni después). Solo usas datos reales verificados con la búsqueda web; nunca inventas negocios, teléfonos, webs ni correos." },
@@ -205,9 +218,16 @@ Deno.serve(async (req) => {
 
     // Respuesta OpenAI-compatible: choices[0].message.content.
     const text = (data?.choices?.[0]?.message?.content ?? "").toString();
-    const parsed = (extractFirstJsonArray(text) ?? []) as Lead[];
+    const finishReason = (data?.choices?.[0]?.finish_reason ?? "").toString();
+    const parsed = extractLeadObjects(text) as Lead[];
     if (parsed.length === 0) {
-      return new Response(JSON.stringify({ success: false, error: "Perplexity no devolvió un dataset parseable", leads: [], raw: text.slice(0, 2000) }), {
+      // finish_reason "length" = la respuesta se cortó por tokens (subir cantidad/tokens).
+      const trunc = finishReason === "length";
+      const msg = trunc
+        ? "Perplexity cortó la respuesta por longitud antes de devolver leads. Reduce la cantidad e inténtalo de nuevo."
+        : "Perplexity no devolvió un dataset parseable";
+      console.error("buscar-leads parse-empty:", { finishReason, textPreview: text.slice(0, 300) });
+      return new Response(JSON.stringify({ success: false, error: msg, leads: [], finish_reason: finishReason, raw: text.slice(0, 2000) }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
