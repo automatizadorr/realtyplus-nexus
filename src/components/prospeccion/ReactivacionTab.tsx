@@ -104,6 +104,7 @@ export default function ReactivacionTab() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [cargando, setCargando] = useState(false);
+  const [cargandoSin, setCargandoSin] = useState(false);
 
   // Tandas de envío a Correos: tamaño (50/100/200) y cuál se envía hoy.
   const [lote, setLote] = useState(100);
@@ -252,6 +253,58 @@ export default function ReactivacionTab() {
     }
   };
 
+  // Carga los leads con email que NUNCA recibieron un correo (sin entrada en correo_envios).
+  // Útil para el primer contacto masivo sin re-contactar a los que ya están en seguimiento.
+  const cargarSinCorreoEnCorreos = async () => {
+    setCargandoSin(true);
+    try {
+      const { data: enviados } = await sb
+        .from("correo_envios")
+        .select("email")
+        .not("estado", "eq", "fallido")
+        .limit(10000);
+      const yaEnviados = new Set(
+        (enviados ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean),
+      );
+
+      // Traemos un bloque grande para tener margen tras excluir los ya enviados
+      let query = supabase
+        .from("leads_campana")
+        .select("nombre, email, pais, resumen_ia")
+        .not("email", "is", null)
+        .neq("email", "");
+      query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
+      query = query
+        .order("dias_reales", { ascending: false, nullsFirst: false })
+        .limit(Math.min(lote * 5, 2000));
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const seen = new Set<string>();
+      const recips: { email: string; empresa: string; ciudad: string; gancho: string }[] = [];
+      for (const l of (data ?? []) as Pick<LeadRow, "nombre" | "email" | "pais" | "resumen_ia">[]) {
+        if (recips.length >= lote) break;
+        const email = (l.email || "").trim().toLowerCase();
+        if (!email || seen.has(email) || yaEnviados.has(email)) continue;
+        seen.add(email);
+        recips.push({ email, empresa: l.nombre || "", ciudad: l.pais || "", gancho: l.resumen_ia || "" });
+      }
+
+      if (!recips.length) {
+        toast({ title: "Sin leads nuevos", description: "Todos los leads con email del filtro ya recibieron al menos un correo.", variant: "destructive" });
+        return;
+      }
+      sessionStorage.setItem(LEADS_IMPORT_KEY, JSON.stringify(recips));
+      toast({ title: `${recips.length} leads sin correo previo cargados`, description: "Revisa y envía en Correos Personalizados." });
+      navigate("/correos-personalizados");
+    } catch (e) {
+      toast({ title: "Error al cargar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setCargandoSin(false);
+    }
+  };
+
   const desde = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const hasta = Math.min(total, page * PAGE_SIZE + rows.length);
 
@@ -372,9 +425,13 @@ export default function ReactivacionTab() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" size="sm" onClick={cargarEnCorreos} disabled={loading || cargando || total === 0} className="gap-1.5">
+              <Button type="button" size="sm" onClick={cargarEnCorreos} disabled={loading || cargando || cargandoSin || total === 0} className="gap-1.5">
                 {cargando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Cargar tanda {tanda} en Correos
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={cargarSinCorreoEnCorreos} disabled={loading || cargando || cargandoSin || total === 0} className="gap-1.5">
+                {cargandoSin ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailIcon className="h-4 w-4" />}
+                Sin correo previo
               </Button>
             </span>
           </CardTitle>
