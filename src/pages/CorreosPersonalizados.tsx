@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, Eye, Loader2, CheckCircle2, XCircle, MailCheck, ArrowLeft, ArrowRight, CalendarClock } from "lucide-react";
+import { Mail, Send, Sparkles, Trash2, Plus, UserPlus, User, Eye, Loader2, CheckCircle2, XCircle, MailCheck, ArrowLeft, ArrowRight, CalendarClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -320,6 +320,52 @@ export default function CorreosPersonalizados() {
     }
   };
 
+  // Trae el nombre de contacto desde la hoja (leads_sheet vía edge sheets-leads),
+  // matcheando por email. Rellena solo los destinatarios con nombre vacío.
+  const [loadingNombres, setLoadingNombres] = useState(false);
+  const rellenarNombres = async () => {
+    const sinNombre = recipients.filter((r) => isEmail(r.email) && !(r.nombre || "").trim());
+    if (sinNombre.length === 0) {
+      toast({ title: "Nada que rellenar", description: "Todos los destinatarios ya tienen nombre." });
+      return;
+    }
+    setLoadingNombres(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sheets-leads", { body: {} });
+      if (error) throw error;
+      const leads: Array<{ email?: string; nombres?: string }> = data?.leads || [];
+      const byEmail = new Map<string, string>();
+      for (const l of leads) {
+        const em = (l.email || "").trim().toLowerCase();
+        const nm = (l.nombres || "").trim();
+        if (em && nm && !byEmail.has(em)) byEmail.set(em, nm);
+      }
+      let filled = 0, noMatch = 0;
+      setRecipients((prev) =>
+        prev.map((r) => {
+          if (!isEmail(r.email) || (r.nombre || "").trim()) return r;
+          const nm = byEmail.get(r.email.toLowerCase());
+          if (nm) { filled++; return { ...r, nombre: nm }; }
+          noMatch++;
+          return r;
+        }),
+      );
+      if (filled === 0) {
+        toast({ title: "Sin coincidencias", description: "Ningún destinatario matcheó por email con la hoja.", variant: "destructive" });
+      } else {
+        toast({
+          title: `${filled} nombre(s) traído(s) de la hoja`,
+          description: noMatch > 0 ? `${noMatch} no se encontraron por email. Puedes completarlos a mano.` : "Todos los nombres vacíos fueron rellenados.",
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: "Error al traer nombres", description: msg, variant: "destructive" });
+    } finally {
+      setLoadingNombres(false);
+    }
+  };
+
   const updateRow = (i: number, field: keyof Recipient, value: string) => {
     setRecipients((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
   };
@@ -494,6 +540,12 @@ export default function CorreosPersonalizados() {
                   ))}
                 </select>
               </div>
+              <Button type="button" variant="outline" onClick={rellenarNombres} disabled={loadingNombres} className="gap-2">
+                {loadingNombres ? <Loader2 className="h-4 w-4 animate-spin" /> : <User className="h-4 w-4" />}
+                Traer nombres de la hoja
+                {recipients.filter((r) => isEmail(r.email) && !(r.nombre || "").trim()).length > 0 &&
+                  <Badge variant="secondary">{recipients.filter((r) => isEmail(r.email) && !(r.nombre || "").trim()).length}</Badge>}
+              </Button>
               <Button type="button" variant="outline" onClick={rellenarGanchos} className="gap-2">
                 <Sparkles className="h-4 w-4" /> Rellenar ganchos vacíos
                 {recipients.filter((r) => !(r.gancho || "").trim()).length > 0 &&
