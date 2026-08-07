@@ -33,7 +33,35 @@ const ICEBREAKERS_ES: string[] = [
 
   `{nombre} 👋 Mario de LexHouse AI. Construimos el ecosistema de IA más completo para inmobiliarias: CRM enterprise, extracción de leads 24/7, activación y reactivación automática con RealtyPlus Nexus, y un generador de reels que produce videos de 3+ minutos con tus propiedades. ROI rápido, resultados comprobados. ¿Vemos juntos cómo aplicarlo a tu operación?`,
 
-  `Hola {nombre}, Mario de LexHouse AI. Nuestro ecosistema de IA une CRM enterprise + extracción de leads + activación inmediata + reactivación de cartera fría + reels automatizados de 3+ minutos. Todo en un solo sistema que ya está funcionando en corredoras reales y genera retorno desde el primer mes. ¿Te muestro el panel y el generador de reels ahora mismo?`,
+  `Hola {nombre} 👋, Mario de LexHouse AI. Un solo mensaje y una sola idea: un sistema que extrae leads, revive los que se enfriaron y arma reels de 3+ minutos con tus propiedades, todo automáticamente. ¿Te muestro un caso real en 5 minutos?`,
+
+  `{nombre}, buenas. Mario de LexHouse AI. La mayoría de las agencias pierde leads por falta de velocidad, no por falta de trabajo. Nuestro sistema actúa al instante, todos los días: CRM, reactivación automática y reels de +3 minutos sin mover un dedo. ¿Vemos juntos la demo rápida?`,
+
+  `Hola {nombre} 👋. Mensaje corto, resultado concreto: RealtyPlus Nexus extrae leads de portales, los activa y reactiva tu cartera fría mientras duermes. Y de regalo, un generador de reels que arma videos de 3+ minutos con tus fotos. ¿Hablamos 3 minutos hoy?`,
+
+  `{nombre}, una pregunta honesta: ¿cuántos leads de tu cartera no responden desde hace más de un mes? La IA de LexHouse los reactiva solos, mientras el CRM extrae nuevos. Extracción, activación, reactivación y reels: todo operando en semanas, no en años. ¿Te cuento cómo funciona?`,
+
+  `Buenas {nombre}, Mario de LexHouse AI. No te vengo a vender otra herramienta que tienes que aprender: te ofrezco el sistema que trabaja por ti. Captura leads, los activa, reactiva a los que se enfriaron y arma reels promocionales con tus propiedades. ¿Lo vemos funcionando ahora?`,
+
+  `Hola {nombre}, soy Mario. Un dato que cambia el juego: hoy un CRM con IA puede responder, clasificar y reactivar leads por ti, y un generador de reels crea videos de 3+ minutos sin editar nada. Eso es LexHouse AI y está operando en corredoras reales. ¿Te lo muestro esta semana?`,
+
+  `{nombre} 👋, Mario de LexHouse AI. Una corredora nos dijo: "nunca más quiero una hoja de cálculo". Ahora su CRM extrae, actúa y reactiva sin que ella intervenga, y sus propiedades tienen reels de 3+ minutos. ¿Quieres lo mismo? Te lo enseño en una llamada corta, sin compromiso.`,
+
+  `Hola {nombre}, directo al grano: extracción de leads 24/7, activación inmediata, reactivación de cartera y generador de reels integrado en un solo CRM. Sin instalaciones complicadas, sin hacer malabares. ¿Te muestro el panel y un caso de una agencia similar a la tuya?`,
+
+  `Muy buenas {nombre}, Mario de LexHouse AI. ¿Qué hicieron las corredoras que dejaron de perseguir leads? Automatizan todo el ciclo: captura, contacto, reactivación y contenido. Los reels de 3+ minutos se hacen solos con cada propiedad. ¿En 5 minutos vemos si encaja con tu agencia?`,
+
+  `¡Hola {nombre}! Lo que antes requería horas y una persona dedicada (perseguir leads, dar seguimiento, crear videos) hoy lo hace LexHouse AI: CRM con IA, extracción automática, reactivación y reels de 3+ minutos medibles. ¿Te hago una demo ahora, sin compromiso?`,
+
+  `Hola {nombre}, Mario de LexHouse AI. Te cuento qué hacemos para que no te quedes con dudas: un ecosistema de IA completo para inmobiliarias, con CRM enterprise, extracción de leads desde portales y redes 24/7, activación inmediata y reactivación de la cartera fría. A eso se suma un generador de reels que produce videos de 3+ minutos con tus propiedades. Ya está corriendo en corredoras reales, con retorno comprobado desde el primer mes. ¿Te paso una demo rápida para verlo juntos?`,
+
+  `Buenas {nombre}, Mario de LexHouse AI. Nuestro ecosistema de IA hace todo el trabajo en una sola plataforma: extrae leads nuevos automáticamente, los activa con secuencias de contacto, reactiva a los que se enfriaron y produce reels de 3+ minutos por cada propiedad, sin que muevas un dedo. Incluye también un CRM enterprise donde cada lead, cada conversación y cada resultado está medido. Ya opera en corredoras reales y funciona desde que lo conectas. ¿Te muestro el panel en vivo ahora?`,
+
+  `Hola {nombre}, Mario de LexHouse AI. Te resumo en un punto y aparte lo que hacemos: un CRM enterprise que captura leads en portales y redes, los activa con secuencias automáticas, revive a los que no respondían hace meses y, además, arma reels de 3+ minutos con tus propias propiedades. Todo integrado y funcionando, sin que tengas que configurar nada. El retorno se mide desde la primera semana. ¿Vemos juntos cómo funcionaría con tus leads?`,
+
+  `{nombre}, oye, Mario de LexHouse AI. Quiero mostrarte una sola plataforma que resuelve todo el ciclo: extracción de leads automatizada, activación inmediata del primer contacto, reactivación de tu cartera fría y un CRM enterprise con reportes. De extra, un generador de reels que produce videos de 3+ minutos para Instagram y TikTok con tus fotos. Corredoras reales ya lo usan y recuperan la inversión en semanas. ¿Te enseño una demo breve?`,
+
+  `Hola {nombre} 👋, Mario de LexHouse AI. El ecosistema LexHouse une en un solo sistema todo lo que tu agencia necesita: CRM enterprise con IA, extracción automática de leads, activación y seguimiento, reactivación de contactos fríos y reels de 3+ minutos generados solos. Nada de configuración, nada que aprender: ya funciona y el ROI se ve desde el primer mes. ¿Coordinamos una breve de 10 minutos con tu equipo esta semana?`,
 ];
 
 // English variants — same ecosystem pitch for international leads.
@@ -41,6 +69,22 @@ const ICEBREAKERS_EN: string[] = [
   `Hi {nombre} 👋 Mario from LexHouse AI. We built a full AI ecosystem for real estate: enterprise CRM, automated lead extraction, cold-lead reactivation, and a reel generator that creates 3+ minute property videos automatically. Proven ROI in weeks. Want a 5-min demo?`,
 
   `{nombre}, hey — Mario from LexHouse AI. Our AI-powered CRM (RealtyPlus Nexus) extracts leads from portals, activates them instantly, and reactivates dormant contacts. Plus an auto reel generator that turns property photos into 3+ minute videos. Agencies are already getting ROI in under a month. Shall we run a quick demo?`,
+
+  `Hi {nombre} 👋, Mario from LexHouse AI. One message, one idea: a system that extracts leads, revives the ones gone cold, and builds 3+ minute reels from your property photos. All automatic. Want me to show you a real case in 5 minutes?`,
+
+  `Hey {nombre}, real estate runs on speed. Our AI answers the moment a lead lands, warms up dormant contacts, and keeps everything in one CRM — plus auto reels of 3+ minutes. Want a quick demo?`,
+
+  `Hi {nombre} — Mario. No promises, just a working system: enterprise CRM, 24/7 lead extraction, instant activation, cold-lead reactivation, and an AI that turns your photos into 3+ minute reels. Agencies are seeing ROI in a few weeks. 15-minute call today?`,
+
+  `{nombre}, honest question: how many leads on your list haven't replied in two months? LexHouse AI reactivates them automatically while the CRM captures new ones. And the reel generator works while you sleep. Curious? It takes two minutes to show.`,
+
+  `Hey {nombre} 👋. We built LexHouse AI for agents who hate chasing leads: extraction, activation, reactivation, and property reels — fully automatic, in one workspace. Results you can measure in the first month. Quick walkthrough?`,
+
+  `{nombre}, Mario here. Imagine the perfect day: your CRM captures every lead, replies instantly, revives old ones — and your properties get 3+ minute cinematic reels without you touching a camera. That's live today. Can I show you how?`,
+
+  `Hi {nombre}. One agency moved from spreadsheets to our AI stack — now leads move on their own and the reels do the marketing. That's the LexHouse model. Would 10 minutes be enough for you to check if it fits your operation?`,
+
+  `{nombre}, short one: leads don't get lost when a system never sleeps. Ours handles extraction, activation, reactivation, and self-made reels — proven in real agencies with ROI in weeks. Free for a quick demo this week?`,
 ];
 
 export const ICEBREAKERS = { es: ICEBREAKERS_ES, en: ICEBREAKERS_EN } as const;
