@@ -128,15 +128,6 @@ export default function ReactivacionTab() {
   // Al cambiar cualquier filtro, volvemos a la página 0
   useEffect(() => { setPage(0); }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, soloSinCorreo]);
 
-  // Emails que ya recibieron algún correo (desde correo_envios), para el filtro.
-  const emailsConCorreo = async (): Promise<Set<string> | null> => {
-    if (!soloConCorreo && !soloSinCorreo) return null;
-    const { data } = await sb.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(10000);
-    return new Set(
-      (data ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean),
-    );
-  };
-
   // Último correo + nº de envíos por email de la página visible.
   const enriquecerCorreos = async (rows: LeadRow[]): Promise<Record<string, { estado: string; enviado_at: string | null; count: number }>> => {
     const emails = rows.map((r) => (r.email || "").trim().toLowerCase()).filter(Boolean);
@@ -162,23 +153,20 @@ export default function ReactivacionTab() {
     const run = async () => {
       setLoading(true);
       try {
-        let query = supabase
-          .from("leads_campana")
+        // El filtro por correo se resuelve en la base (vistas), no con miles de
+        // emails en la URL del GET — eso revienta el límite de PostgREST.
+        const base = soloSinCorreo
+          ? "leads_campana_sin_correo"
+          : soloConCorreo
+            ? "leads_campana_con_correo"
+            : "leads_campana";
+        let query = sb
+          .from(base)
           .select(
             "id, nombre, telefono, email, pais, estado, puntuacion, dias_reales, ha_respondido, archivado, tag_ids, ultimo_contacto_at, resumen_ia",
             { count: "exact" }
           );
         query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
-        const setE = await emailsConCorreo();
-        if (cancel) return;
-        if (setE && !setE.size) { setRows([]); setTotal(0); setCorreosMap({}); return; }
-        if (soloSinCorreo) {
-          // Emails que NUNCA recibieron correo: excluir los que están en correo_envios.
-          if (setE) query = query.not("email", "is", null).neq("email", "").not("email", "in", [...setE]);
-          else query = query.not("email", "is", null).neq("email", "");
-        } else if (setE) {
-          query = query.in("email", [...setE]);
-        }
         query = query
           .order("dias_reales", { ascending: false, nullsFirst: false })
           .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -190,7 +178,11 @@ export default function ReactivacionTab() {
         setTotal(count ?? 0);
         setCorreosMap(await enriquecerCorreos((data ?? []) as LeadRow[]));
       } catch (e) {
-        if (!cancel) toast({ title: "Error al filtrar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+        if (!cancel) toast({
+          title: "Error al filtrar",
+          description: e instanceof Error ? e.message : JSON.stringify(e),
+          variant: "destructive",
+        });
       } finally {
         if (!cancel) setLoading(false);
       }
@@ -215,17 +207,13 @@ export default function ReactivacionTab() {
   const cargarEnCorreos = async () => {
     setCargando(true);
     try {
-      let query = supabase.from("leads_campana").select("nombre, email, pais, resumen_ia");
+      const base = soloSinCorreo
+        ? "leads_campana_sin_correo"
+        : soloConCorreo
+          ? "leads_campana_con_correo"
+          : "leads_campana";
+      let query = sb.from(base).select("nombre, email, pais, resumen_ia");
       query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
-      const setE = await emailsConCorreo();
-      if (setE) {
-        if (!setE.size) {
-          setCargando(false);
-          toast({ title: "Sin correos en el filtro", description: "Ningún lead del filtro recibió correo aún.", variant: "destructive" });
-          return;
-        }
-        query = query.in("email", [...setE]);
-      }
       query = query
         .not("email", "is", null).neq("email", "")
         .order("dias_reales", { ascending: false, nullsFirst: false })
