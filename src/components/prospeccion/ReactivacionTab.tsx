@@ -95,6 +95,7 @@ export default function ReactivacionTab() {
   const [incluirArchivados, setIncluirArchivados] = useState(false);
   const [soloConEmail, setSoloConEmail] = useState(false);
   const [soloConCorreo, setSoloConCorreo] = useState(false);
+  const [soloSinCorreo, setSoloSinCorreo] = useState(false);
   // email → último envío de correo conocido (estado, fecha, nº de envíos).
   const [correosMap, setCorreosMap] = useState<Record<string, { estado: string; enviado_at: string | null; count: number }>>({});
 
@@ -125,11 +126,11 @@ export default function ReactivacionTab() {
   }, []);
 
   // Al cambiar cualquier filtro, volvemos a la página 0
-  useEffect(() => { setPage(0); }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo]);
+  useEffect(() => { setPage(0); }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, soloSinCorreo]);
 
   // Emails que ya recibieron algún correo (desde correo_envios), para el filtro.
   const emailsConCorreo = async (): Promise<Set<string> | null> => {
-    if (!soloConCorreo) return null;
+    if (!soloConCorreo && !soloSinCorreo) return null;
     const { data } = await sb.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(10000);
     return new Set(
       (data ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean),
@@ -170,8 +171,12 @@ export default function ReactivacionTab() {
         query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
         const setE = await emailsConCorreo();
         if (cancel) return;
-        if (setE) {
-          if (!setE.size) { setRows([]); setTotal(0); setCorreosMap({}); return; }
+        if (setE && !setE.size) { setRows([]); setTotal(0); setCorreosMap({}); return; }
+        if (soloSinCorreo) {
+          // Emails que NUNCA recibieron correo: excluir los que están en correo_envios.
+          if (setE) query = query.not("email", "is", null).neq("email", "").not("email", "in", [...setE]);
+          else query = query.not("email", "is", null).neq("email", "");
+        } else if (setE) {
           query = query.in("email", [...setE]);
         }
         query = query
@@ -193,11 +198,11 @@ export default function ReactivacionTab() {
     run();
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, page]);
+  }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, soloSinCorreo, page]);
 
   const resetFiltros = () => {
     setQ(""); setTagId("all"); setPais("all"); setEstado("all");
-    setRespondido("all"); setIncluirArchivados(false); setSoloConEmail(false); setSoloConCorreo(false);
+    setRespondido("all"); setIncluirArchivados(false); setSoloConEmail(false); setSoloConCorreo(false); setSoloSinCorreo(false);
     setCorreosMap({});
   };
 
@@ -389,7 +394,10 @@ export default function ReactivacionTab() {
               <Switch checked={incluirArchivados} onCheckedChange={setIncluirArchivados} /> Incluir archivados
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <Switch checked={soloConCorreo} onCheckedChange={setSoloConCorreo} /> Solo con correo enviado
+              <Switch checked={soloConCorreo} onCheckedChange={(v) => { setSoloConCorreo(v); if (v) setSoloSinCorreo(false); }} /> Solo con correo enviado
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={soloSinCorreo} onCheckedChange={(v) => { setSoloSinCorreo(v); if (v) setSoloConCorreo(false); }} /> Solo con correo <span className="font-semibold text-red-600">NO</span> enviado
             </label>
             <Button type="button" variant="ghost" size="sm" onClick={resetFiltros} className="ml-auto gap-1.5 text-muted-foreground">
               <RotateCcw className="h-3.5 w-3.5" /> Limpiar
