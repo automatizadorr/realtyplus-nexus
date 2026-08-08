@@ -128,7 +128,13 @@ export default function ReactivacionTab() {
   // Al cambiar cualquier filtro, volvemos a la página 0
   useEffect(() => { setPage(0); }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, soloSinCorreo]);
 
-  // Último correo + nº de envíos por email de la página visible.
+  // Emails que ya recibieron correo (estado <> fallido). Tope 5000 para rendimiento.
+  const emailsConCorreo = async (): Promise<Set<string>> => {
+    const { data } = await sb.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(5000);
+    return new Set(
+      (data ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean),
+    );
+  };
   const enriquecerCorreos = async (rows: LeadRow[]): Promise<Record<string, { estado: string; enviado_at: string | null; count: number }>> => {
     const emails = rows.map((r) => (r.email || "").trim().toLowerCase()).filter(Boolean);
     const map: Record<string, { estado: string; enviado_at: string | null; count: number }> = {};
@@ -153,20 +159,33 @@ export default function ReactivacionTab() {
     const run = async () => {
       setLoading(true);
       try {
-        // El filtro por correo se resuelve en la base (vistas), no con miles de
-        // emails en la URL del GET — eso revienta el límite de PostgREST.
-        const base = soloSinCorreo
-          ? "leads_campana_sin_correo"
-          : soloConCorreo
-            ? "leads_campana_con_correo"
-            : "leads_campana";
-        let query = sb
-          .from(base)
+        let query = supabase
+          .from("leads_campana")
           .select(
             "id, nombre, telefono, email, pais, estado, puntuacion, dias_reales, ha_respondido, archivado, tag_ids, ultimo_contacto_at, resumen_ia",
             { count: "exact" }
           );
         query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
+
+        // Filtro por correo: se resuelve mayoritariamente en la URL (primeros
+        // 300 emails, seguros contra el límite de URI de PostgREST). Si hay más
+        // de 300 emails con correo, el resto se filtra client-side al recibir.
+        let extraExcluir: Set<string> | null = null;
+        if (soloSinCorreo || soloConCorreo) {
+          const setE = await emailsConCorreo();
+          if (cancel) return;
+          if (soloConCorreo) {
+            if (!setE.size) { setRows([]); setTotal(0); setCorreosMap({}); setLoading(false); return; }
+            query = query.in("email", [...setE]);
+          } else { // soloSinCorreo
+            query = query.not("email", "is", null).neq("email", "");
+            const arr = [...setE];
+            const enUrl = arr.slice(0, 300);
+            if (enUrl.length) query = query.not("email", "in", enUrl);
+            if (arr.length > 300) extraExcluir = new Set(arr.slice(300));
+          }
+        }
+
         query = query
           .order("dias_reales", { ascending: false, nullsFirst: false })
           .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -174,9 +193,12 @@ export default function ReactivacionTab() {
         const { data, count, error } = await query;
         if (error) throw error;
         if (cancel) return;
-        setRows((data ?? []) as LeadRow[]);
-        setTotal(count ?? 0);
-        setCorreosMap(await enriquecerCorreos((data ?? []) as LeadRow[]));
+
+        let filas = (data ?? []) as LeadRow[];
+        if (extraExcluir) filas = filas.filter(r => !extraExcluir!.has((r.email || "").trim().toLowerCase()));
+        setRows(filas);
+        setTotal(count ?? filas.length);
+        setCorreosMap(await enriquecerCorreos(filas));
       } catch (e) {
         if (!cancel) toast({
           title: "Error al filtrar",
@@ -207,27 +229,46 @@ export default function ReactivacionTab() {
   const cargarEnCorreos = async () => {
     setCargando(true);
     try {
-      const base = soloSinCorreo
-        ? "leads_campana_sin_correo"
-        : soloConCorreo
-          ? "leads_campana_con_correo"
-          : "leads_campana";
-      let query = sb.from(base).select("nombre, email, pais, resumen_ia");
+      let query = supabase.from("leads_campana").select("nombre, email, pais, resumen_ia");
       query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
+
+      if (soloSinCorreo || soloConCorreo) {
+        const setE = await emailsConCorreo();
+        if (soloConCorreo) {
+          if (!setE.size) {
+            setCargando(false);
+            toast({ title: "Sin correos en el filtro", description: "Ningún lead del filtro recibió correo aún.", variant: "destructive" });
+            return;
+          }
+          query = query.in("email", [...setE]);
+        }
+        // soloSinCorreo: el filtro por correo se aplica client-side abajo, para
+        // no reventar la URL con miles de emails en el GET de PostgREST.
+      }
+
       query = query
         .not("email", "is", null).neq("email", "")
         .order("dias_reales", { ascending: false, nullsFirst: false })
-        .range((tanda - 1) * lote, Math.min(tanda * lote, MAX_ENVIO) - 1);
+        .range((tanda - 1) * lote, Math.min(tanda * lote * 3, Math.min(MAX_ENVIO * 3, 5000)) - 1);
       const { data, error } = await query;
       if (error) throw error;
 
+      // Filtro client-side para soloSinCorreo
+      let filas = (data ?? []) as Pick<LeadRow, "nombre" | "email" | "pais" | "resumen_ia">[];
+      if (soloSinCorreo) {
+        const { data: correos } = await sb.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(5000);
+        const setExcluir = new Set((correos ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean));
+        filas = filas.filter(l => !setExcluir.has((l.email || "").trim().toLowerCase()));
+      }
+
       const seen = new Set<string>();
       const recips: { email: string; empresa: string; ciudad: string; gancho: string }[] = [];
-      for (const l of (data ?? []) as Pick<LeadRow, "nombre" | "email" | "pais" | "resumen_ia">[]) {
+      for (const l of filas) {
         const email = (l.email || "").trim().toLowerCase();
         if (!email || seen.has(email)) continue;
         seen.add(email);
         recips.push({ email, empresa: l.nombre || "", ciudad: l.pais || "", gancho: l.resumen_ia || "" });
+        if (recips.length >= lote) break;
       }
       if (!recips.length) { toast({ title: "Sin correos en el filtro", variant: "destructive" }); return; }
 
