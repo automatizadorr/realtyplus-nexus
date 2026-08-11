@@ -1,11 +1,18 @@
-// Icebreakers de WhatsApp para prospección inmobiliaria.
-// Cada mensaje presenta el ecosistema LexHouse AI — CRM enterprise,
-// extracción/activación/reactivación de leads (RealtyPlus Nexus) y
-// generador de reels automatizados (3+ min) — con ROI comprobado.
+// Icebreakers de WhatsApp para prospección en frío B2B (captar corredores).
+// Objetivo: PRIMER contacto que genere RESPUESTA, no una venta de golpe.
+// Reglas (playbook LexHouse — MODO OUTBOUND):
+//  - Abrir con el DOLOR real del corredor (WhatsApp que no da abasto, leads que
+//    se enfrían), no con la herramienta ni presentándose como bot.
+//  - UN solo foco: la IA que atiende su WhatsApp 24/7, califica y agenda visitas.
+//    Nada de listar features (reels/CRM/etc.); eso es cross-sell posterior.
+//  - Corto (2-3 líneas), humano, trato de "tú", máx 1 emoji, sin markdown.
+//  - CTA BLANDO (pregunta de sí/no o demo de 20 min). Sin presión.
+//  - PROHIBIDO (Ley 19.496): cifras, %, "ROI", "recuperar inversión",
+//    rentabilidades o resultados garantizados. Sin precios en frío.
 // Rotación determinística por id del lead para que el mismo lead siempre
 // reciba el mismo variant.
 //
-// Variables: {nombre}, {empresa}, {ciudad}, {pais}
+// Variables: {nombre} (nombre del negocio/corredor), {empresa}, {ciudad}, {pais}
 
 export type IcebreakerVars = {
   nombre?: string | null;
@@ -15,76 +22,72 @@ export type IcebreakerVars = {
 };
 
 const ICEBREAKERS_ES: string[] = [
-  `Hola {nombre} 👋 soy Camil-AI de LexHouse AI. CRM con IA que extrae, activa y reactiva leads por ti, más reels automáticos de 3+ min con tus propiedades. ROI desde el primer mes. ¿Te muestro una demo de 5 min?`,
+  `Hola {nombre} 👋 ¿cuántas consultas de tus propiedades se te enfrían por no alcanzar a responder a tiempo? Con LexHouse AI una IA atiende tu WhatsApp 24/7, califica el lead y te agenda la visita. ¿Te muestro cómo quedaría con tus propiedades?`,
 
-  `{nombre}, buenas. Camil-AI de LexHouse AI. RealtyPlus Nexus extrae, activa y reactiva leads, y arma reels de 3+ min sin que muevas un dedo. Corredoras ya recuperaron la inversión en semanas. ¿Vemos una demo rápida?`,
+  `{nombre}, una pregunta honesta: ¿respondes tú mismo cada mensaje de WhatsApp de tus avisos? Hay una IA (LexHouse AI) que lo hace por ti 24/7 y te agenda las visitas ya calificadas. ¿Te cuento cómo en una llamada corta?`,
 
-  `Hola {nombre}, Camil-AI de LexHouse AI 👋. CRM enterprise con IA que extrae leads nuevos, activa los que llegan y revive a los inactivos, más reels de 3+ min para cada propiedad. Retorno en menos de 30 días. ¿Quieres verlo funcionando?`,
+  `Hola {nombre}. El lead que no respondes en minutos casi siempre se va a otro corredor. LexHouse AI contesta tu WhatsApp al instante, de día y de noche, y te agenda la visita. ¿Te muestro un ejemplo con tus propiedades?`,
 
-  `Buenas {nombre}. Soy Camil-AI de LexHouse AI. RealtyPlus Nexus hace triple trabajo: extrae, activa y reactiva leads, más reels de +3 min con música, voz y texto. Todo integrado y corriendo ya. ¿Te enseño cómo funciona?`,
+  `Buenas {nombre} 👋 ¿te gustaría dejar de vivir pegado al WhatsApp? Una IA de LexHouse AI atiende tus consultas 24/7, filtra a los curiosos y te pasa solo los leads listos para visita. ¿Vemos una demo de 20 min?`,
 
-  `Hola {nombre} 👋 Camil-AI de LexHouse AI. Ecosistema de IA que cubre todo el ciclo del lead: CRM, extracción, activación, reactivación y reels de 3+ min. Cada módulo probado y con retorno. ¿Hacemos una videollamada de 10 min?`,
+  `{nombre}, buena parte del día se te va respondiendo consultas y persiguiendo leads, ¿cierto? LexHouse AI hace ese trabajo por ti: atiende tu WhatsApp, califica y agenda. ¿Te muestro cómo funciona?`,
 
-  `{nombre}, soy Camil-AI de LexHouse AI. Tres motores de IA en un CRM: extracción de leads, activación con secuencias y reactivación de contactos fríos, más reels de +3 min para Instagram y TikTok. ¿Probamos con un par de tus propiedades?`,
+  `Hola {nombre} 👋 ¿te ha pasado que un buen lead te escribe un domingo y lo ves el lunes… tarde? LexHouse AI responde tu WhatsApp al instante todos los días y te agenda la visita. ¿Te cuento cómo?`,
 
-  `Buenas {nombre} — Camil-AI de LexHouse AI. CRM con IA que extrae, activa y reactiva leads, más reels que convierten tus fotos en videos de 3+ min. No es un bot, es un sistema probado. ¿Te interesa verlo con tus datos?`,
+  `{nombre}, ¿tienes cientos de contactos antiguos que nunca retomaste? LexHouse AI reactiva esa cartera por WhatsApp sin que muevas un dedo y te avisa cuando alguien vuelve a interesarse. ¿Te muestro cómo?`,
 
-  `Hola {nombre}, Camil-AI de LexHouse AI. RealtyPlus Nexus: CRM con IA que extrae, califica, activa y reactiva contactos sin que intervengas, más reels de +3 min listos para publicar. ¿Te lo demuestro en vivo?`,
+  `Buenas {nombre}. No te escribo para venderte otra "app más". LexHouse AI es una IA que responde tu WhatsApp, califica los leads y agenda tus visitas sola. ¿Te muestro un ejemplo real con tus propiedades?`,
 
-  `{nombre} 👋 Camil-AI de LexHouse AI. Ecosistema de IA completo: CRM enterprise, extracción 24/7, activación y reactivación automática, y reels de 3+ min con tus propiedades. ROI rápido y comprobado. ¿Vemos cómo aplicarlo?`,
+  `Hola {nombre} 👋 imagina abrir el celular y tener las visitas de la semana ya agendadas, sin haber respondido un solo mensaje. Eso hace LexHouse AI con tu WhatsApp. ¿Vemos una demo corta?`,
 
-  `Hola {nombre} 👋, Camil-AI de LexHouse AI. Un sistema que extrae leads, revive los fríos y arma reels de 3+ min, todo automático. ¿Te muestro un caso real en 5 min?`,
+  `{nombre}, ¿cuánto vale un lead que se enfría porque nadie respondió a tiempo? LexHouse AI contesta tu WhatsApp 24/7 y agenda la visita antes de que se vaya a otro corredor. ¿Te muestro cómo?`,
 
-  `{nombre}, buenas. Camil-AI de LexHouse AI. La mayoría pierde leads por velocidad. Nuestro sistema actúa al instante: CRM, reactivación automática y reels de +3 min. ¿Vemos la demo rápida?`,
+  `Hola {nombre}. Los compradores escriben a varios corredores a la vez; suele ganar el que responde primero. LexHouse AI responde por ti al instante y agenda la visita. ¿Te muestro en 20 min?`,
 
-  `Hola {nombre} 👋. Mensaje corto, resultado concreto: RealtyPlus Nexus extrae, activa y reactiva leads, y arma reels de 3+ min con tus fotos. ¿Hablamos 3 min hoy?`,
+  `Buenas {nombre} 👋 ¿y si tu WhatsApp trabajara solo mientras estás en una propiedad o durmiendo? LexHouse AI atiende, califica y agenda por ti. ¿Te cuento cómo en una llamada corta?`,
 
-  `{nombre}, una pregunta honesta: ¿cuántos leads de tu cartera no responden desde hace más de un mes? La IA de LexHouse los reactiva, mientras el CRM extrae nuevos. ¿Te cuento cómo funciona?`,
+  `{nombre}, a muchos corredores se les escapan ventas por seguimiento lento, no por malas propiedades. LexHouse AI responde y da seguimiento por WhatsApp de forma automática. ¿Te muestro cómo se vería con tu cartera?`,
 
-  `Buenas {nombre}, Camil-AI de LexHouse AI. No te vendo una herramienta: te ofrezco el sistema que trabaja por ti. Captura, activa, reactiva leads y arma reels con tus propiedades. ¿Lo vemos funcionando ahora?`,
+  `Hola {nombre} 👋 ¿te imaginas no volver a perder una consulta por estar ocupado? LexHouse AI atiende tu WhatsApp 24/7 y te entrega los leads ya calificados y agendados. ¿Vemos una demo?`,
 
-  `Hola {nombre}, soy Camil-AI. Un CRM con IA que responde, clasifica y reactiva leads, y un generador de reels de 3+ min sin editar nada. Eso es LexHouse AI. ¿Te lo muestro esta semana?`,
+  `{nombre}, si tuvieras un asistente que respondiera cada mensaje al segundo y agendara tus visitas, ¿lo probarías? Eso es LexHouse AI, conectado a tu propio WhatsApp. ¿Te muestro en 20 min?`,
 
-  `{nombre} 👋, Camil-AI de LexHouse AI. Una corredora nos dijo: "nunca más quiero una hoja de cálculo". Ahora su CRM extrae, actúa y reactiva solo, con reels de 3+ min. ¿Quieres lo mismo? Te lo enseño en una llamada corta.`,
+  `Buenas {nombre}. Sé que el WhatsApp de un corredor no para. LexHouse AI lo atiende por ti: responde, filtra curiosos y agenda solo a los interesados de verdad. ¿Te cuento cómo funciona?`,
 
-  `Hola {nombre}, directo al grano: extracción de leads 24/7, activación inmediata, reactivación de cartera y reels integrados en un solo CRM. ¿Te muestro el panel y un caso similar?`,
+  `Hola {nombre} 👋 te escribo directo: una IA que contesta tu WhatsApp 24/7, califica los leads y te llena la agenda de visitas. Es LexHouse AI. ¿Te muestro un ejemplo con tus propiedades?`,
 
-  `Muy buenas {nombre}, Camil-AI de LexHouse AI. Las corredoras que dejaron de perseguir leads automatizan todo: captura, contacto, reactivación y reels de 3+ min. ¿En 5 min vemos si encaja?`,
+  `{nombre}, ¿qué harías con las horas que hoy gastas respondiendo y coordinando visitas? LexHouse AI se encarga de eso por WhatsApp para que tú solo cierres. ¿Vemos una demo corta?`,
 
-  `¡Hola {nombre}! Lo que antes requería horas, hoy lo hace LexHouse AI: CRM con IA, extracción, reactivación y reels de 3+ min medibles. ¿Te hago una demo ahora?`,
+  `Hola {nombre}. Cada consulta sin responder es una visita que no ocurre. LexHouse AI responde tu WhatsApp al instante y agenda la visita en tu calendario. ¿Te muestro cómo en 20 min?`,
 
-  `Hola {nombre}, Camil-AI de LexHouse AI. Ecosistema de IA completo: CRM enterprise, extracción 24/7, activación inmediata, reactivación de cartera fría y reels de 3+ min. Ya corre en corredoras reales. ¿Te paso una demo rápida?`,
+  `Buenas {nombre} 👋 ¿alcanzas a responder todos los mensajes el mismo día? LexHouse AI lo hace en segundos, califica y agenda. ¿Te cuento cómo se adaptaría a tu operación?`,
 
-  `Buenas {nombre}, Camil-AI de LexHouse AI. Una plataforma que extrae leads, los activa, reactiva los fríos y produce reels de 3+ min, con todo medido en un CRM enterprise. ¿Te muestro el panel en vivo?`,
+  `{nombre}, hoy los clientes esperan respuesta inmediata y a toda hora. LexHouse AI le da eso a tu WhatsApp sin que tú estés pendiente, y te agenda las visitas. ¿Te muestro cómo?`,
 
-  `Hola {nombre}, Camil-AI de LexHouse AI. CRM enterprise que captura, activa y revive leads, y arma reels de 3+ min con tus propiedades. Sin que configure nada, retorno desde la primera semana. ¿Vemos cómo funcionaría?`,
-
-  `{nombre}, oye, Camil-AI de LexHouse AI. Una plataforma que resuelve todo el ciclo: extracción, activación, reactivación y CRM con reportes, más reels de 3+ min. Corredoras ya lo usan. ¿Te enseño una demo breve?`,
-
-  `Hola {nombre} 👋, Camil-AI de LexHouse AI. Un solo sistema para tu agencia: CRM con IA, extracción, activación, reactivación y reels de 3+ min generados solos. El ROI se ve desde el primer mes. ¿Coordinamos 10 min con tu equipo?`,
+  `Hola {nombre} 👋 mensaje corto: una IA responde tu WhatsApp, separa a los curiosos de los compradores reales y te agenda las visitas. Se llama LexHouse AI. ¿Te muestro un ejemplo?`,
 ];
 
-// English variants — same ecosystem pitch for international leads.
+// English variants — same pain-first WhatsApp angle for international leads.
 const ICEBREAKERS_EN: string[] = [
-  `Hi {nombre} 👋 Camil-AI from LexHouse AI. Full AI ecosystem for real estate: CRM, lead extraction, cold-lead reactivation, and 3+ min auto reels. Proven ROI in weeks. Want a 5-min demo?`,
+  `Hi {nombre} 👋 how many WhatsApp enquiries about your listings go cold before you can reply? LexHouse AI answers your WhatsApp 24/7, qualifies each lead and books the viewing. Want a quick 20-min demo?`,
 
-  `{nombre}, hey — Camil-AI from LexHouse AI. Our AI-powered CRM (RealtyPlus Nexus) extracts, activates and reactivates leads, plus auto reels of 3+ min. Agencies see ROI in under a month. Shall we run a quick demo?`,
+  `{nombre}, honest question: do you reply to every WhatsApp from your listings yourself? LexHouse AI does it for you 24/7 and books qualified viewings. Can I show you how?`,
 
-  `Hi {nombre} 👋, Camil-AI from LexHouse AI. One system that extracts leads, revives the cold ones, and builds 3+ min reels from your photos. All automatic. Want me to show a real case in 5 min?`,
+  `Hi {nombre}. The lead you don't answer in minutes usually goes to another agent. LexHouse AI replies to your WhatsApp instantly, day or night, and books the viewing. Want an example with your listings?`,
 
-  `Hey {nombre}, real estate runs on speed. Our AI answers the moment a lead lands, warms up cold contacts, and keeps everything in one CRM — plus 3+ min auto reels. Want a quick demo?`,
+  `Hey {nombre} 👋 what if your WhatsApp worked on its own while you're out at a property or asleep? LexHouse AI answers, qualifies and books for you. Fancy a short demo?`,
 
-  `Hi {nombre} — Camil-AI. No promises, just a working system: enterprise CRM, 24/7 lead extraction, instant activation, and AI reels of 3+ min. Agencies see ROI in weeks. 15-min call today?`,
+  `{nombre}, a big chunk of an agent's day goes into replying and following up. LexHouse AI handles that on your WhatsApp — answers, qualifies, books. Can I show you how it works?`,
 
-  `{nombre}, honest question: how many leads on your list haven't replied in two months? LexHouse AI reactivates them while the CRM captures new ones, and the reel generator works while you sleep. Curious?`,
+  `Hi {nombre} 👋 got hundreds of old contacts you never followed up? LexHouse AI re-engages them over WhatsApp automatically and flags anyone who's interested again. Want to see how?`,
 
-  `Hey {nombre} 👋. We built LexHouse AI for agents who hate chasing leads: extraction, activation, reactivation, and property reels — fully automatic, in one workspace. Quick walkthrough?`,
+  `{nombre}, buyers message several agents at once — the fastest reply usually wins. LexHouse AI replies for you instantly and books the viewing. Shall I show you in 20 min?`,
 
-  `{nombre}, Camil-AI here. Imagine: your CRM captures every lead, replies instantly, revives old ones, and your properties get 3+ min cinematic reels without touching a camera. That's live today. Can I show you how?`,
+  `Hey {nombre}. I'm not pitching another app. LexHouse AI is an AI that answers your WhatsApp, qualifies leads and books your viewings. Want a real example with your listings?`,
 
-  `Hi {nombre}. One agency moved from spreadsheets to our AI stack — now leads move on their own and reels do the marketing. That's the LexHouse model. Would 10 min be enough to check if it fits?`,
+  `Hi {nombre} 👋 imagine opening your phone to a week of viewings already booked, without replying to a single message. That's LexHouse AI on your WhatsApp. Up for a quick demo?`,
 
-  `{nombre}, short one: leads don't get lost when a system never sleeps. Ours handles extraction, activation, reactivation, and self-made reels — proven in real agencies with ROI in weeks. Free for a quick demo?`,
+  `{nombre}, what would you do with the hours you spend replying and coordinating viewings? LexHouse AI takes that over on WhatsApp so you just close. Want a short demo?`,
 ];
 
 export const ICEBREAKERS = { es: ICEBREAKERS_ES, en: ICEBREAKERS_EN } as const;
