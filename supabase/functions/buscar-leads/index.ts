@@ -82,9 +82,9 @@ Para cada negocio, con la información pública que encuentres:
 - Clasifica "tipo_lead" en exactamente uno de: "Oportunidad caliente" (activo, con WhatsApp/email visible, sin automatización), "Reactivar" (parece cliente antiguo o cuenta inactiva/solo Instagram), "Nuevo" (sin evidencia previa), "Descartar" (franquicia con CRM corporativo).
 - Lista 2-3 "problemas" concretos detectados (frases cortas, reales). El primero debe servir como gancho de venta.
 - "fuente": dónde encontraste el negocio (p. ej. "Google Business", "directorio", "Instagram", "web propia").
-- "propuesta_valor": 1 frase de cómo "${servicio}" resuelve su principal problema (concreta, con el dato real detectado).
-- "mensaje_whatsapp": mensaje breve (3-4 líneas) de primer contacto por WhatsApp, personalizado con el nombre del negocio y el problema real. Tono cercano, sin presión, con una pregunta o CTA suave al final. NO menciones precios.
-- "mensaje_email": versión email (5-6 líneas máximo) del mismo mensaje, un poco más formal. NO menciones precios.
+- "propuesta_valor": 1 frase de cómo "${servicio}" resuelve su principal problema (concreta, con el dato real detectado). Posiciónalo como un SISTEMA INTEGRADO, no una herramienta suelta.
+- "mensaje_whatsapp": mensaje breve (3-4 líneas) de primer contacto por WhatsApp, personalizado con el nombre del negocio y el problema real. ÁNGULO DE DIFERENCIACIÓN (obligatorio): hoy "una IA que responde WhatsApp" la ofrece cualquiera y NO es diferencia; abre contrastando que "${servicio}" no es un bot ni una app suelta, sino el ecosistema completo que cubre todo el flujo del negocio (captar, atender, publicar/comercializar y dar seguimiento). Ancla esa amplitud con SOLO 2-3 capacidades concretas, nunca una lista larga (eso es feature-dump y hunde la respuesta). Escribe como una persona (NO te presentes como IA), tono cercano, sin presión, con una pregunta o CTA suave al final (ofrecer una demo corta). NO menciones precios. NO inventes cifras, %, "ROI", "recuperar inversión" ni resultados garantizados.
+- "mensaje_email": versión email (5-6 líneas máximo) del mismo mensaje con el MISMO ángulo de ecosistema (no un bot suelto), un poco más formal. NO menciones precios. NO inventes cifras ni resultados.
 
 Devuelve EXCLUSIVAMENTE un array JSON válido (sin texto antes ni después, sin markdown) con este formato exacto por elemento:
 {"nombre":"","ciudad":"","region":"","web":"","telefono":"","whatsapp":"","email":"","instagram":"","direccion":"","google_maps":"","fuente":"","score":0,"nivel":"Alta|Media|Baja","tipo_lead":"Oportunidad caliente|Reactivar|Nuevo|Descartar","problemas":["",""],"propuesta_valor":"","mensaje_whatsapp":"","mensaje_email":""}
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const nicho = (body?.nicho ?? "").toString().trim();
     const ciudad = (body?.ciudad ?? "").toString().trim();
-    const servicio = (body?.servicio ?? "CRM inmobiliario con captación de leads y automatización de WhatsApp").toString().trim();
+    const servicio = (body?.servicio ?? "el ecosistema LexHouse AI para corredores de propiedades: no un bot ni una app suelta, sino un sistema integrado que capta y califica leads, atiende el WhatsApp 24/7, publica los avisos en +12 portales, hace seguimiento y genera reels de las propiedades — todo en un solo lugar").toString().trim();
     const excluirRepetidos = body?.excluir_repetidos !== false; // default: true
 
     let cantidad = parseInt(body?.cantidad, 10);
