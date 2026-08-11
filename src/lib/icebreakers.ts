@@ -1,12 +1,14 @@
 // Icebreakers de WhatsApp para prospección en frío B2B (captar corredores).
 // Objetivo: PRIMER contacto que genere RESPUESTA, no una venta de golpe.
-// Reglas (playbook LexHouse — MODO OUTBOUND):
-//  - Abrir con el DOLOR real del corredor (WhatsApp que no da abasto, leads que
-//    se enfrían), no con la herramienta ni presentándose como bot.
-//  - UN solo foco: la IA que atiende su WhatsApp 24/7, califica y agenda visitas.
-//    Nada de listar features (reels/CRM/etc.); eso es cross-sell posterior.
+// Ángulo (playbook LexHouse — MODO OUTBOUND): DIFERENCIACIÓN POR ECOSISTEMA.
+//  - Hoy "una IA que responde WhatsApp" la tiene cualquiera; NO es diferencia.
+//    Abrir con el CONTRASTE: no es un bot suelto, es el ecosistema completo del
+//    corredor (capta, atiende, publica, comercializa y hace seguimiento).
+//  - Anclar la amplitud con SOLO 2-3 piezas concretas (WhatsApp 24/7, publicador
+//    +12 portales, reels, CRM con scoring, agente de voz). NUNCA listar las 12
+//    → eso es feature-dump y hunde la respuesta.
 //  - Corto (2-3 líneas), humano, trato de "tú", máx 1 emoji, sin markdown.
-//  - CTA BLANDO (pregunta de sí/no o demo de 20 min). Sin presión.
+//  - CTA BLANDO (demo de 20 min o "¿te muestro?"). Sin presión.
 //  - PROHIBIDO (Ley 19.496): cifras, %, "ROI", "recuperar inversión",
 //    rentabilidades o resultados garantizados. Sin precios en frío.
 // Rotación determinística por id del lead para que el mismo lead siempre
@@ -22,72 +24,72 @@ export type IcebreakerVars = {
 };
 
 const ICEBREAKERS_ES: string[] = [
-  `Hola {nombre} 👋 ¿cuántas consultas de tus propiedades se te enfrían por no alcanzar a responder a tiempo? Con LexHouse AI una IA atiende tu WhatsApp 24/7, califica el lead y te agenda la visita. ¿Te muestro cómo quedaría con tus propiedades?`,
+  `Hola {nombre} 👋 hoy cualquiera te instala un chatbot de WhatsApp. Lo que nadie te da es el resto: captar el lead, publicar tu aviso en 12 portales y armarte los reels. LexHouse AI es el ecosistema completo, no una IA suelta. ¿Te muestro cómo se ve todo junto?`,
 
-  `{nombre}, una pregunta honesta: ¿respondes tú mismo cada mensaje de WhatsApp de tus avisos? Hay una IA (LexHouse AI) que lo hace por ti 24/7 y te agenda las visitas ya calificadas. ¿Te cuento cómo en una llamada corta?`,
+  `{nombre}, están saliendo mil "agentes IA" que solo responden mensajes. LexHouse AI no es eso: atiende tu WhatsApp, publica tus propiedades y hace tu marketing, todo integrado. ¿Te muestro la diferencia en 20 min?`,
 
-  `Hola {nombre}. El lead que no respondes en minutos casi siempre se va a otro corredor. LexHouse AI contesta tu WhatsApp al instante, de día y de noche, y te agenda la visita. ¿Te muestro un ejemplo con tus propiedades?`,
+  `Hola {nombre}. Un bot de WhatsApp lo tiene cualquiera. Un sistema que además capta leads, los califica, publica tus avisos y te arma los videos, no. Eso es LexHouse AI. ¿Te muestro cómo funcionaría con tus propiedades?`,
 
-  `Buenas {nombre} 👋 ¿te gustaría dejar de vivir pegado al WhatsApp? Una IA de LexHouse AI atiende tus consultas 24/7, filtra a los curiosos y te pasa solo los leads listos para visita. ¿Vemos una demo de 20 min?`,
+  `Buenas {nombre} 👋 la diferencia no es tener una IA que conteste; es tener todo el trabajo del corredor resuelto en un solo lugar: WhatsApp, publicación, seguimiento y reels. Eso es LexHouse AI. ¿Vemos una demo corta?`,
 
-  `{nombre}, buena parte del día se te va respondiendo consultas y persiguiendo leads, ¿cierto? LexHouse AI hace ese trabajo por ti: atiende tu WhatsApp, califica y agenda. ¿Te muestro cómo funciona?`,
+  `{nombre}, ¿otra IA de WhatsApp? No. LexHouse AI es un ecosistema para corredores: atiende, califica y agenda, publica tus propiedades y te genera el marketing. ¿Te cuento cómo encaja en tu día?`,
 
-  `Hola {nombre} 👋 ¿te ha pasado que un buen lead te escribe un domingo y lo ves el lunes… tarde? LexHouse AI responde tu WhatsApp al instante todos los días y te agenda la visita. ¿Te cuento cómo?`,
+  `Hola {nombre} 👋 los chatbots contestan y ahí quedan. LexHouse AI se hace cargo de todo el ciclo: capta el lead, lo atiende por WhatsApp, publica el aviso y hace el seguimiento. ¿Te muestro el sistema completo?`,
 
-  `{nombre}, ¿tienes cientos de contactos antiguos que nunca retomaste? LexHouse AI reactiva esa cartera por WhatsApp sin que muevas un dedo y te avisa cuando alguien vuelve a interesarse. ¿Te muestro cómo?`,
+  `{nombre}, te habrán ofrecido varias "IA que responde WhatsApp". La diferencia de LexHouse AI es que es el ecosistema entero: CRM, publicador en 12 portales, reels y agente de voz, integrados. ¿Te muestro cómo se ve?`,
 
-  `Buenas {nombre}. No te escribo para venderte otra "app más". LexHouse AI es una IA que responde tu WhatsApp, califica los leads y agenda tus visitas sola. ¿Te muestro un ejemplo real con tus propiedades?`,
+  `Buenas {nombre}. No te ofrezco un bot más. LexHouse AI es la plataforma completa del corredor: atiende tu WhatsApp, publica tus avisos y arma tus videos, todo conectado. ¿Te muestro un ejemplo real con tus propiedades?`,
 
-  `Hola {nombre} 👋 imagina abrir el celular y tener las visitas de la semana ya agendadas, sin haber respondido un solo mensaje. Eso hace LexHouse AI con tu WhatsApp. ¿Vemos una demo corta?`,
+  `Hola {nombre} 👋 tener una IA que conteste ya no es diferencia; hoy la tiene cualquiera. La diferencia es tener también captación, publicación, reels y seguimiento en un solo sistema. Eso es LexHouse AI. ¿Vemos una demo?`,
 
-  `{nombre}, ¿cuánto vale un lead que se enfría porque nadie respondió a tiempo? LexHouse AI contesta tu WhatsApp 24/7 y agenda la visita antes de que se vaya a otro corredor. ¿Te muestro cómo?`,
+  `{nombre}, la mayoría te vende una pieza suelta (un bot, o un CRM, o reels). LexHouse AI te da las piezas juntas y trabajando entre sí, hechas para corredores. ¿Te muestro cómo cambia tu operación?`,
 
-  `Hola {nombre}. Los compradores escriben a varios corredores a la vez; suele ganar el que responde primero. LexHouse AI responde por ti al instante y agenda la visita. ¿Te muestro en 20 min?`,
+  `Hola {nombre}. Un chatbot atiende; un ecosistema vende. LexHouse AI capta el lead, lo atiende por WhatsApp, publica tu propiedad en 12 portales y le hace seguimiento. ¿Te muestro en 20 min?`,
 
-  `Buenas {nombre} 👋 ¿y si tu WhatsApp trabajara solo mientras estás en una propiedad o durmiendo? LexHouse AI atiende, califica y agenda por ti. ¿Te cuento cómo en una llamada corta?`,
+  `Buenas {nombre} 👋 ¿por qué armar tu operación con 5 apps distintas si LexHouse AI ya integra WhatsApp IA, CRM, publicador, reels y agente de voz en uno solo? ¿Te muestro cómo se ve todo junto?`,
 
-  `{nombre}, a muchos corredores se les escapan ventas por seguimiento lento, no por malas propiedades. LexHouse AI responde y da seguimiento por WhatsApp de forma automática. ¿Te muestro cómo se vería con tu cartera?`,
+  `{nombre}, lo fácil es instalar un bot de WhatsApp; lo que de verdad mueve la aguja es tener todo el flujo integrado. Eso construimos en LexHouse AI. ¿Te cuento cómo?`,
 
-  `Hola {nombre} 👋 ¿te imaginas no volver a perder una consulta por estar ocupado? LexHouse AI atiende tu WhatsApp 24/7 y te entrega los leads ya calificados y agendados. ¿Vemos una demo?`,
+  `Hola {nombre} 👋 no es "una IA más": es un ecosistema para corredores que atiende tu WhatsApp, publica tus avisos, reactiva tu cartera dormida y te arma los reels. ¿Te muestro cómo funcionaría contigo?`,
 
-  `{nombre}, si tuvieras un asistente que respondiera cada mensaje al segundo y agendara tus visitas, ¿lo probarías? Eso es LexHouse AI, conectado a tu propio WhatsApp. ¿Te muestro en 20 min?`,
+  `{nombre}, si ya viste chatbots y no te convencieron, es porque un chatbot solo no basta. LexHouse AI suma CRM, publicación, marketing y reels alrededor de ese WhatsApp. ¿Te muestro la diferencia?`,
 
-  `Buenas {nombre}. Sé que el WhatsApp de un corredor no para. LexHouse AI lo atiende por ti: responde, filtra curiosos y agenda solo a los interesados de verdad. ¿Te cuento cómo funciona?`,
+  `Buenas {nombre}. Todos prometen "IA para inmobiliarias". LexHouse AI lo respalda con un ecosistema real: WhatsApp 24/7, publicador en 12 portales, reels y hasta análisis de contratos. ¿Vemos una demo corta?`,
 
-  `Hola {nombre} 👋 te escribo directo: una IA que contesta tu WhatsApp 24/7, califica los leads y te llena la agenda de visitas. Es LexHouse AI. ¿Te muestro un ejemplo con tus propiedades?`,
+  `Hola {nombre} 👋 la pregunta ya no es si quieres una IA, sino si quieres una pieza suelta o el sistema completo. LexHouse AI es el sistema completo del corredor. ¿Te muestro qué incluye con tus propiedades?`,
 
-  `{nombre}, ¿qué harías con las horas que hoy gastas respondiendo y coordinando visitas? LexHouse AI se encarga de eso por WhatsApp para que tú solo cierres. ¿Vemos una demo corta?`,
+  `{nombre}, un bot te ahorra responder; un ecosistema te ahorra el día entero. LexHouse AI cubre WhatsApp, publicación, seguimiento y reels en un solo lugar. ¿Te cuento cómo?`,
 
-  `Hola {nombre}. Cada consulta sin responder es una visita que no ocurre. LexHouse AI responde tu WhatsApp al instante y agenda la visita en tu calendario. ¿Te muestro cómo en 20 min?`,
+  `Hola {nombre}. Puedes juntar 4 herramientas y pelearte con las integraciones, o usar LexHouse AI donde WhatsApp IA, CRM, publicador y reels ya vienen conectados. ¿Te muestro cómo se ve?`,
 
-  `Buenas {nombre} 👋 ¿alcanzas a responder todos los mensajes el mismo día? LexHouse AI lo hace en segundos, califica y agenda. ¿Te cuento cómo se adaptaría a tu operación?`,
+  `Buenas {nombre} 👋 lo que hace único a LexHouse AI no es la IA de WhatsApp (esa la tienen muchos), sino que capta, publica, comercializa y da seguimiento por ti, todo integrado. ¿Vemos una demo?`,
 
-  `{nombre}, hoy los clientes esperan respuesta inmediata y a toda hora. LexHouse AI le da eso a tu WhatsApp sin que tú estés pendiente, y te agenda las visitas. ¿Te muestro cómo?`,
+  `{nombre}, no te sumo otra app a las que ya tienes: LexHouse AI las reemplaza con un solo ecosistema (WhatsApp, CRM, publicador, reels, voz) pensado para corredores. ¿Te muestro cómo?`,
 
-  `Hola {nombre} 👋 mensaje corto: una IA responde tu WhatsApp, separa a los curiosos de los compradores reales y te agenda las visitas. Se llama LexHouse AI. ¿Te muestro un ejemplo?`,
+  `Hola {nombre} 👋 mensaje corto: no es un bot, es el ecosistema completo del corredor — atiende tu WhatsApp, publica tus avisos y arma tus reels, todo junto. Se llama LexHouse AI. ¿Te muestro un ejemplo?`,
 ];
 
-// English variants — same pain-first WhatsApp angle for international leads.
+// English variants — same ecosystem-contrast angle for international leads.
 const ICEBREAKERS_EN: string[] = [
-  `Hi {nombre} 👋 how many WhatsApp enquiries about your listings go cold before you can reply? LexHouse AI answers your WhatsApp 24/7, qualifies each lead and books the viewing. Want a quick 20-min demo?`,
+  `Hi {nombre} 👋 anyone can set up a WhatsApp chatbot these days. What nobody gives you is the rest: capturing the lead, listing your property across portals and building the reels. LexHouse AI is the full ecosystem, not a standalone bot. Want to see it all together?`,
 
-  `{nombre}, honest question: do you reply to every WhatsApp from your listings yourself? LexHouse AI does it for you 24/7 and books qualified viewings. Can I show you how?`,
+  `{nombre}, another "AI that answers WhatsApp"? That's not us. LexHouse AI handles the whole flow for agents: it answers, qualifies and books, lists your properties and builds your marketing. Want to see the difference in 20 min?`,
 
-  `Hi {nombre}. The lead you don't answer in minutes usually goes to another agent. LexHouse AI replies to your WhatsApp instantly, day or night, and books the viewing. Want an example with your listings?`,
+  `Hi {nombre}. A chatbot just replies; an ecosystem sells. LexHouse AI captures the lead, answers your WhatsApp, lists your property and follows up. Want me to show you with your listings?`,
 
-  `Hey {nombre} 👋 what if your WhatsApp worked on its own while you're out at a property or asleep? LexHouse AI answers, qualifies and books for you. Fancy a short demo?`,
+  `Hey {nombre} 👋 the edge isn't having an AI that replies — everyone has that now. It's having capture, listing, reels and follow-up in one system. That's LexHouse AI. Fancy a short demo?`,
 
-  `{nombre}, a big chunk of an agent's day goes into replying and following up. LexHouse AI handles that on your WhatsApp — answers, qualifies, books. Can I show you how it works?`,
+  `{nombre}, most people sell you one piece (a bot, or a CRM, or reels). LexHouse AI gives you the pieces working together, built for agents. Want to see how it changes your day?`,
 
-  `Hi {nombre} 👋 got hundreds of old contacts you never followed up? LexHouse AI re-engages them over WhatsApp automatically and flags anyone who's interested again. Want to see how?`,
+  `Hi {nombre} 👋 why run your business on 5 separate apps when LexHouse AI already bundles WhatsApp AI, CRM, listing and reels into one? Want to see it all together?`,
 
-  `{nombre}, buyers message several agents at once — the fastest reply usually wins. LexHouse AI replies for you instantly and books the viewing. Shall I show you in 20 min?`,
+  `Hey {nombre}. I'm not offering another bot. LexHouse AI is the agent's full platform: it answers your WhatsApp, lists your properties and makes your videos, all connected. Want a real example with your listings?`,
 
-  `Hey {nombre}. I'm not pitching another app. LexHouse AI is an AI that answers your WhatsApp, qualifies leads and books your viewings. Want a real example with your listings?`,
+  `Hi {nombre} 👋 a bot saves you replying; an ecosystem saves your whole day. LexHouse AI covers WhatsApp, listing, follow-up and reels in one place. Can I show you how?`,
 
-  `Hi {nombre} 👋 imagine opening your phone to a week of viewings already booked, without replying to a single message. That's LexHouse AI on your WhatsApp. Up for a quick demo?`,
+  `{nombre}, if chatbots left you unconvinced, it's because a bot alone isn't enough. LexHouse AI adds CRM, listing, marketing and reels around that WhatsApp. Want to see the difference?`,
 
-  `{nombre}, what would you do with the hours you spend replying and coordinating viewings? LexHouse AI takes that over on WhatsApp so you just close. Want a short demo?`,
+  `Hi {nombre} 👋 short one: it's not a bot, it's the agent's full ecosystem — answers your WhatsApp, lists your properties and builds your reels, all together. It's LexHouse AI. Want an example?`,
 ];
 
 export const ICEBREAKERS = { es: ICEBREAKERS_ES, en: ICEBREAKERS_EN } as const;
