@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { AnimatedNumber, kpiGrid, kpiItem } from "@/components/AnimatedNumber";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -310,7 +310,7 @@ export default function Campaigns() {
                 e.preventDefault();
                 setN8nFiring(true);
                 try {
-                  await fetch("https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/4b7dff80-2d0e-42f9-8eae-1adbcaa07eff", {
+                  await fetch("https://n8n.lexhouse-ai.online/webhook/4b7dff80-2d0e-42f9-8eae-1adbcaa07eff", {
                     method: "POST",
                     mode: "no-cors",
                     headers: { "Content-Type": "application/json" },

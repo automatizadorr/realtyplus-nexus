@@ -1,4 +1,4 @@
-// CRON de CLASIFICACIÓN IA - WhatsApp Segmentado.
+﻿// CRON de CLASIFICACIÓN IA - WhatsApp Segmentado.
 //
 // Pensado para correr en AUTOMÁTICO una vez al día a las 06:00 de Madrid (DST-proof).
 // 1. Busca leads con actividad reciente (mensajes en la ventana, default 24h).
@@ -37,7 +37,7 @@ const json = (body: unknown, status = 200) =>
 // por env (N8N_CLASIFICACION_URL) por si cambia el path.
 const N8N_CLASIFICACION_URL =
   Deno.env.get("N8N_CLASIFICACION_URL") ??
-  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/etiquetas-leads-nuevos";
+  "https://n8n.lexhouse-ai.online/webhook/etiquetas-leads-nuevos";
 
 // Etiquetas que NO se envían al webhook: el lead sigue en campaña, pendiente de que
 // conteste. Situación 6 del protocolo = "Sigue en campaña" (el lead no respondió; el

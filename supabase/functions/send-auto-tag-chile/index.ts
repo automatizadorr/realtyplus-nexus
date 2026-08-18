@@ -1,4 +1,4 @@
-// Envía un evento de lead al webhook de auto-etiquetado de n8n (/auto-tag-chile),
+﻿// Envía un evento de lead al webhook de auto-etiquetado de n8n (/auto-tag-chile),
 // adjuntando SIEMPRE el catálogo COMPLETO y actualizado de etiquetas (lead_tags).
 //
 // Se lee lead_tags con la service role (server-side), así que el envío trae todas
@@ -31,7 +31,7 @@ const json = (body: unknown, status = 200) =>
 // URL del webhook en n8n. Configurable por env; con fallback a la instancia conocida.
 const N8N_AUTO_TAG_URL =
   Deno.env.get("N8N_AUTO_TAG_URL") ??
-  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/auto-tag-chile";
+  "https://n8n.lexhouse-ai.online/webhook/auto-tag-chile";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

@@ -1,4 +1,4 @@
-// Clasificación inteligente de leads con DeepSeek para el flujo n8n
+﻿// Clasificación inteligente de leads con DeepSeek para el flujo n8n
 // "Clasificacion IA - WhatsApp Segmentado" (webhook /etiquetas-leads-nuevos).
 //
 // A diferencia de `etiquetar-ia` (que decide el ESTADO de ciclo de vida del lead,
@@ -36,7 +36,7 @@ const DEEPSEEK_MODEL = "deepseek-chat";
 // Webhook n8n al que se notifica la situación de cada lead (para disparar los
 // comportamientos del protocolo). Configurable por env; fallback al de etiquetas.
 const N8N_SITUACION_URL = Deno.env.get("N8N_SITUACION_URL") ??
-  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/etiquetas-leads-nuevos";
+  "https://n8n.lexhouse-ai.online/webhook/etiquetas-leads-nuevos";
 
 // Las 6 SITUACIONES del lead (doc "TRATAMIENTO DE LEADS EN CHAT IA"). El modelo elige
 // EXACTAMENTE UNA (grupo `situacion_lead` en tag-lead). Las situaciones 1–5 llevan

@@ -1,11 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_KEY     = Deno.env.get("ANTHROPIC_API_KEY")!;
 const N8N_SECRET        = Deno.env.get("N8N_WEBHOOK_SECRET") ?? "";
 const CRON_SECRET       = Deno.env.get("CRON_SECRET") ?? "";
-const N8N_URL           = "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/webhook";
+const N8N_URL           = "https://n8n.lexhouse-ai.online/webhook/webhook";
 const WINDOW_HOURS      = 5;
 
 const corsHeaders = {

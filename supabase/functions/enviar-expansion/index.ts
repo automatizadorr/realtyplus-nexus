@@ -1,4 +1,4 @@
-// Envío CONSOLIDADO a n8n /expansion (reporte a jefatura), pensado para correr en
+﻿// Envío CONSOLIDADO a n8n /expansion (reporte a jefatura), pensado para correr en
 // AUTOMÁTICO cada 24h desde pg_cron. Junta los leads de la ventana (default 24h) por
 // UNIÓN de dos criterios: (A) etiquetados/actualizados en la ventana (updated_at) y
 // (B) con actividad de mensajes en la ventana. Arma UN solo payload agrupado por
@@ -34,7 +34,7 @@ const json = (body: unknown, status = 200) =>
 // resumen de reactivación). Configurable por env; fallback = /auto-tag-chile.
 const N8N_EXPANSION_URL =
   Deno.env.get("N8N_EXPANSION_URL") ??
-  "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/auto-tag-chile";
+  "https://n8n.lexhouse-ai.online/webhook/auto-tag-chile";
 
 // Estado que NO va a expansión: el lead aún no contestó, sigue en campaña.
 const ETIQUETA_NO_ENVIAR = "Sigue en campaña";

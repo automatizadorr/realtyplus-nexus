@@ -1,4 +1,4 @@
-// Proxies n8n webhook calls. Requires authenticated admin caller.
+﻿// Proxies n8n webhook calls. Requires authenticated admin caller.
 // Adds X-Webhook-Secret header so n8n can reject unauthenticated callers.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
@@ -9,12 +9,12 @@ const corsHeaders = {
 };
 
 const WEBHOOKS: Record<string, string> = {
-  crmrp: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/crmrp",
-  oportunidades: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/oportunidades",
-  campanas_segmentadas: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/camapañas_segmentadas",
-  primer_contacto: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/primer_contacto",
-  expansion: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/expansion",
-  auto_tag_chile: "https://lex-house-ai-n8n.7u9ufb.easypanel.host/webhook/auto-tag-chile",
+  crmrp: "https://n8n.lexhouse-ai.online/webhook/crmrp",
+  oportunidades: "https://n8n.lexhouse-ai.online/webhook/oportunidades",
+  campanas_segmentadas: "https://n8n.lexhouse-ai.online/webhook/camapañas_segmentadas",
+  primer_contacto: "https://n8n.lexhouse-ai.online/webhook/primer_contacto",
+  expansion: "https://n8n.lexhouse-ai.online/webhook/expansion",
+  auto_tag_chile: "https://n8n.lexhouse-ai.online/webhook/auto-tag-chile",
 };
 
 Deno.serve(async (req) => {
