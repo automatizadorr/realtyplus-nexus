@@ -12,8 +12,8 @@ const WEBHOOKS: Record<string, string> = {
   crmrp: "https://n8n.lexhouse-ai.online/webhook/crmrp",
   oportunidades: "https://n8n.lexhouse-ai.online/webhook/oportunidades",
   campanas_segmentadas: "https://n8n.lexhouse-ai.online/webhook/camapañas_segmentadas",
-  primer_contacto: "https://n8n.lexhouse-ai.online/webhook/primer_contacto",
-  expansion: "https://n8n.lexhouse-ai.online/webhook/expansion",
+  primer_contacto: "https://n8n.lexhouse-ai.online/webhook/oportunidades",
+  expansion: "https://n8n.lexhouse-ai.online/webhook/auto-tag-chile",
   auto_tag_chile: "https://n8n.lexhouse-ai.online/webhook/auto-tag-chile",
 };
 

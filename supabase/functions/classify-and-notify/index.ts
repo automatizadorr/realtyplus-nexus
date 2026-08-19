@@ -5,7 +5,7 @@ const SERVICE_KEY       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_KEY     = Deno.env.get("ANTHROPIC_API_KEY")!;
 const N8N_SECRET        = Deno.env.get("N8N_WEBHOOK_SECRET") ?? "";
 const CRON_SECRET       = Deno.env.get("CRON_SECRET") ?? "";
-const N8N_URL           = "https://n8n.lexhouse-ai.online/webhook/webhook";
+const N8N_URL           = "https://n8n.lexhouse-ai.online/webhook/etiquetas-leads-nuevos";
 const WINDOW_HOURS      = 5;
 
 const corsHeaders = {
