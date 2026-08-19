@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch } from "lucide-react";
 import { useState } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
@@ -52,8 +52,9 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     ],
   },
   {
-    label: "CRM Realty Web-AI",
+    label: "Herramientas IA",
     items: [
+      { title: "Analizar Contrato IA", url: "/analizar-contrato", icon: FileSearch },
       { title: "CRM Realty Web-AI", url: "/voice-crm", icon: Mic },
     ],
   },
