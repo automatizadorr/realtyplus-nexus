@@ -1,12 +1,12 @@
 // Fase B del pipeline de vendedor: Camil-AI (n8n) llama esto cuando un lead de
 // leads_campana responde/califica, para entregarlo a un vendedor humano.
-// Auth: header X-Webhook-Secret (mismo secreto que N8N_WEBHOOK_SECRET, igual
-// que tag-lead / send-n8n-webhook).
+// Auth: header X-Webhook-Secret (secreto dedicado BOT_HANDOFF_SECRET, distinto
+// del N8N_WEBHOOK_SECRET que usan tag-lead/send-n8n-webhook, para no acoplar
+// este flujo a esos otros).
 //
-// NO SE ACTIVA SOLA: hay que agregar un nodo HTTP Request en el workflow n8n
-// de Camil-AI (localhost:5678/workflow/ouf0maiCEFpDc60d) que llame a esta URL
-// cuando el bot detecte que el lead respondió/calificó. Bloqueado hasta que
-// ese flujo esté operativo (hoy caído por Redis/Postgres, ver memoria).
+// Conectado desde el workflow "Canil-AI" (n8n, localhost:5678, id
+// ouf0maiCEFpDc60d) en la rama "🚨 ¿Escalar a Humano?" → nodo HTTP Request
+// "🎯 Entregar a Vendedor (Nexus)", en paralelo a "📥 Registrar Escalación".
 //
 // Body:
 //   telefono: string   (requerido) — mismo formato que usa Camil-AI para el lead
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const WEBHOOK_SECRET = Deno.env.get("N8N_WEBHOOK_SECRET");
+    const WEBHOOK_SECRET = Deno.env.get("BOT_HANDOFF_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 

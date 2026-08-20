@@ -35,6 +35,9 @@ verify_jwt = true
 [functions.tag-lead]
 verify_jwt = false
 
+[functions.bot-handoff-vendedor]
+verify_jwt = false
+
 [functions.etiquetar-ia]
 verify_jwt = false
 
