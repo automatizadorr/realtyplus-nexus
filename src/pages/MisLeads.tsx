@@ -38,23 +38,35 @@ function LeadCard({
   const [notasDraft, setNotasDraft] = useState(lead.notas || "");
   const [waPlantilla, setWaPlantilla] = useState("");
   const [emailPlantilla, setEmailPlantilla] = useState("");
+  const [waPreview, setWaPreview] = useState("");
+  const [emailAsuntoPreview, setEmailAsuntoPreview] = useState("");
+  const [emailCuerpoPreview, setEmailCuerpoPreview] = useState("");
   const wa = waLink(lead);
 
-  const enviarWa = () => {
+  // Al elegir una plantilla, se precarga el preview (editable) con las variables ya rellenadas.
+  useEffect(() => {
     const p = plantillasWa.find((x) => x.id === waPlantilla);
-    if (!p || !wa) return;
-    const msg = fillTemplate(p.contenido, lead);
-    window.open(`${wa}?text=${encodeURIComponent(msg)}`, "_blank", "noreferrer");
-    onEnviado(lead, "whatsapp", p.id, msg);
+    setWaPreview(p ? fillTemplate(p.contenido, lead) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waPlantilla]);
+
+  useEffect(() => {
+    const p = plantillasEmail.find((x) => x.id === emailPlantilla);
+    setEmailAsuntoPreview(p ? fillTemplate(p.asunto, lead) : "");
+    setEmailCuerpoPreview(p ? fillTemplate(p.cuerpo_text || p.cuerpo_html, lead) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailPlantilla]);
+
+  const enviarWa = () => {
+    if (!waPlantilla || !wa || !waPreview.trim()) return;
+    window.open(`${wa}?text=${encodeURIComponent(waPreview)}`, "_blank", "noreferrer");
+    onEnviado(lead, "whatsapp", waPlantilla, waPreview);
   };
 
   const enviarEmail = () => {
-    const p = plantillasEmail.find((x) => x.id === emailPlantilla);
-    if (!p || !lead.email) return;
-    const asunto = fillTemplate(p.asunto, lead);
-    const cuerpo = fillTemplate(p.cuerpo_text || p.cuerpo_html, lead);
-    window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
-    onEnviado(lead, "email", p.id, `${asunto}\n\n${cuerpo}`);
+    if (!emailPlantilla || !lead.email || !emailCuerpoPreview.trim()) return;
+    window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(emailAsuntoPreview)}&body=${encodeURIComponent(emailCuerpoPreview)}`;
+    onEnviado(lead, "email", emailPlantilla, `${emailAsuntoPreview}\n\n${emailCuerpoPreview}`);
   };
 
   return (
@@ -111,27 +123,50 @@ function LeadCard({
           className="min-h-[56px] text-sm"
         />
 
-        {/* Contactar */}
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-          <Select value={waPlantilla} onValueChange={setWaPlantilla}>
-            <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Plantilla WhatsApp" /></SelectTrigger>
-            <SelectContent>
-              {plantillasWa.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button type="button" size="sm" disabled={!waPlantilla || !wa} onClick={enviarWa} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-            <MessageCircle className="h-3.5 w-3.5" /> Enviar WhatsApp
-          </Button>
+        {/* Contactar — WhatsApp */}
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={waPlantilla} onValueChange={setWaPlantilla}>
+              <SelectTrigger className="h-8 w-[190px] text-xs"><SelectValue placeholder="Plantilla WhatsApp" /></SelectTrigger>
+              <SelectContent>
+                {plantillasWa.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {!wa && <span className="text-[11px] text-muted-foreground">Este lead no tiene WhatsApp/teléfono.</span>}
+          </div>
+          {waPlantilla && (
+            <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2.5">
+              <Label className="text-[11px] text-muted-foreground">Vista previa (editable)</Label>
+              <Textarea value={waPreview} onChange={(e) => setWaPreview(e.target.value)} className="min-h-[80px] bg-background text-sm" />
+              <Button type="button" size="sm" disabled={!wa || !waPreview.trim()} onClick={enviarWa} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+                <MessageCircle className="h-3.5 w-3.5" /> Enviar WhatsApp
+              </Button>
+            </div>
+          )}
+        </div>
 
-          <Select value={emailPlantilla} onValueChange={setEmailPlantilla}>
-            <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Plantilla email" /></SelectTrigger>
-            <SelectContent>
-              {plantillasEmail.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button type="button" size="sm" variant="outline" disabled={!emailPlantilla || !lead.email} onClick={enviarEmail} className="gap-1.5">
-            <MailIcon className="h-3.5 w-3.5" /> Enviar email
-          </Button>
+        {/* Contactar — Email */}
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={emailPlantilla} onValueChange={setEmailPlantilla}>
+              <SelectTrigger className="h-8 w-[190px] text-xs"><SelectValue placeholder="Plantilla email" /></SelectTrigger>
+              <SelectContent>
+                {plantillasEmail.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {!lead.email && <span className="text-[11px] text-muted-foreground">Este lead no tiene email.</span>}
+          </div>
+          {emailPlantilla && (
+            <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2.5">
+              <Label className="text-[11px] text-muted-foreground">Asunto</Label>
+              <Textarea value={emailAsuntoPreview} onChange={(e) => setEmailAsuntoPreview(e.target.value)} className="min-h-[36px] bg-background text-sm" />
+              <Label className="text-[11px] text-muted-foreground">Vista previa del cuerpo (editable)</Label>
+              <Textarea value={emailCuerpoPreview} onChange={(e) => setEmailCuerpoPreview(e.target.value)} className="min-h-[100px] bg-background text-sm" />
+              <Button type="button" size="sm" variant="outline" disabled={!lead.email || !emailCuerpoPreview.trim()} onClick={enviarEmail} className="gap-1.5">
+                <MailIcon className="h-3.5 w-3.5" /> Enviar email
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
