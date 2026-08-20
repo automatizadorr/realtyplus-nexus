@@ -13,9 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/hooks/use-is-admin";
+import { PAISES_PROSPECCION } from "@/lib/paises";
 import LeadDetailDialog, { type Lead, waLink } from "@/components/prospeccion/LeadDetailDialog";
 import ReactivacionTab from "@/components/prospeccion/ReactivacionTab";
 
@@ -94,6 +97,7 @@ function download(name: string, content: string, mime = "text/csv;charset=utf-8"
 export default function BuscarLeads() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { canWrite } = useRole();
 
   const [nicho, setNicho] = useState("Inmobiliarias / corredoras de propiedades");
   const [ciudad, setCiudad] = useState("");
@@ -128,6 +132,8 @@ export default function BuscarLeads() {
   const [ocultarDescartar, setOcultarDescartar] = useState(false);
   const [ordenScore, setOrdenScore] = useState<"desc" | "asc">("desc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkPais, setBulkPais] = useState("");
+  const [bulkPaisExp, setBulkPaisExp] = useState("");
 
   // Las tablas prospeccion_* aún no están en el types.ts generado (se regenera desde
   // Lovable). Accesor sin tipos solo para esas tablas/RPC nuevas.
@@ -293,6 +299,33 @@ export default function BuscarLeads() {
     setDetail((d) => (d && d.id && idSet.has(d.id) ? { ...d, estado_gestion: "contactado" } : d));
     toast({ title: `${ids.length} marcados como contactados` });
     setSelected(new Set());
+  };
+
+  // Publica (o despublica) leads para el equipo de vendedores: setea país + en_campana.
+  const publicarLeads = async (ids: string[], pais: string, enCampana = true) => {
+    if (!ids.length) {
+      toast({ title: "Sin leads guardados", description: "Los seleccionados aún no están en el historial.", variant: "destructive" });
+      return;
+    }
+    if (enCampana && !pais) {
+      toast({ title: "Elige un país", variant: "destructive" });
+      return;
+    }
+    const patch = enCampana ? { pais, en_campana: true } : { en_campana: false };
+    const { error } = await sb.from("prospeccion_leads").update(patch).in("id", ids);
+    if (error) { toast({ title: "No se pudo publicar", description: error.message, variant: "destructive" }); return; }
+    const idSet = new Set(ids);
+    const apply = (l: Lead) => (l.id && idSet.has(l.id) ? { ...l, ...patch } : l);
+    setLeads((ls) => (ls ?? []).map(apply));
+    setExpandedLeads((ls) => (ls ?? []).map(apply));
+    setDetail((d) => (d && d.id && idSet.has(d.id) ? { ...d, ...patch } : d));
+    toast({ title: enCampana ? `${ids.length} publicados para ${pais}` : `${ids.length} despublicados` });
+  };
+
+  // Publicar/despublicar desde el diálogo de detalle (un solo lead).
+  const cambiarCampana = async (lead: Lead, pais: string, enCampana: boolean) => {
+    if (!lead.id) return;
+    await publicarLeads([lead.id], pais, enCampana);
   };
 
   // --- Historial ---
@@ -629,6 +662,23 @@ export default function BuscarLeads() {
                     <Button type="button" size="sm" onClick={() => usarEnCorreos(selectedLeads)} className="gap-1.5">
                       <Send className="h-3.5 w-3.5" /> Enviar a Correos
                     </Button>
+                    {canWrite && (
+                      <>
+                        <Select value={bulkPais} onValueChange={setBulkPais}>
+                          <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="País" /></SelectTrigger>
+                          <SelectContent>
+                            {PAISES_PROSPECCION.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button" size="sm" variant="outline" disabled={!bulkPais}
+                          onClick={() => publicarLeads(selectedLeads.map((l) => l.id).filter(Boolean) as string[], bulkPais)}
+                          className="gap-1.5"
+                        >
+                          <Users className="h-3.5 w-3.5" /> Publicar a vendedores
+                        </Button>
+                      </>
+                    )}
                     <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="gap-1.5 text-muted-foreground">
                       <X className="h-3.5 w-3.5" /> Limpiar
                     </Button>
@@ -799,7 +849,7 @@ export default function BuscarLeads() {
                                   <span className="text-[11px] text-muted-foreground">
                                     {expSelected.size > 0 ? `${expSelected.size} seleccionados` : `${expandedLeads.length} leads`}
                                   </span>
-                                  <div className="ml-auto flex flex-wrap gap-1.5">
+                                  <div className="ml-auto flex flex-wrap items-center gap-1.5">
                                     <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-[11px]"
                                       onClick={() => copiarWa(expSelectedLeads)} disabled={expSelected.size === 0}>
                                       <MessageCircle className="h-3 w-3" /> Copiar WA
@@ -820,6 +870,23 @@ export default function BuscarLeads() {
                                       }} disabled={expSelected.size === 0}>
                                       <CheckCircle2 className="h-3 w-3" /> Marcar contactado
                                     </Button>
+                                    {canWrite && (
+                                      <>
+                                        <Select value={bulkPaisExp} onValueChange={setBulkPaisExp}>
+                                          <SelectTrigger className="h-7 w-[120px] text-[11px]"><SelectValue placeholder="País" /></SelectTrigger>
+                                          <SelectContent>
+                                            {PAISES_PROSPECCION.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button
+                                          type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-[11px]"
+                                          disabled={expSelected.size === 0 || !bulkPaisExp}
+                                          onClick={() => publicarLeads(expSelectedLeads.map((l) => l.id).filter(Boolean) as string[], bulkPaisExp)}
+                                        >
+                                          <Users className="h-3 w-3" /> Publicar a vendedores
+                                        </Button>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
 
@@ -855,7 +922,14 @@ export default function BuscarLeads() {
                                             <div className="truncate font-medium text-sm max-w-[180px]">
                                               {l.nombre || "—"}
                                             </div>
-                                            <div className="text-[11px] text-muted-foreground">{l.ciudad || "—"}</div>
+                                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                              <span>{l.ciudad || "—"}</span>
+                                              {l.en_campana && (
+                                                <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0 text-[10px] font-medium text-emerald-600">
+                                                  <Users className="h-2.5 w-2.5" /> {l.pais || "vendedores"}
+                                                </span>
+                                              )}
+                                            </div>
                                           </TableCell>
                                           <TableCell className="hidden sm:table-cell">
                                             {l.tipo_lead ? (
@@ -921,6 +995,8 @@ export default function BuscarLeads() {
         onOpenChange={setDetailOpen}
         onEstadoChange={cambiarEstado}
         onNotasChange={guardarNotas}
+        onCampanaChange={cambiarCampana}
+        canPublicar={canWrite}
       />
     </div>
   );

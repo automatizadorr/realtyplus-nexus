@@ -1,4 +1,4 @@
-import { Copy, MessageCircle, Mail as MailIcon, Globe, MapPin, Instagram, Check } from "lucide-react";
+import { Copy, MessageCircle, Mail as MailIcon, Globe, MapPin, Instagram, Check, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { pickIcebreaker, normalizePhone } from "@/lib/icebreakers";
+import { PAISES_PROSPECCION } from "@/lib/paises";
 
 export type Lead = {
   id?: string;
@@ -19,6 +22,7 @@ export type Lead = {
   score?: number; nivel?: string; tipo_lead?: string; problemas?: string[];
   propuesta_valor?: string; mensaje_whatsapp?: string; mensaje_email?: string;
   estado_gestion?: string; notas?: string; repetido?: boolean;
+  en_campana?: boolean;
 };
 
 export const ESTADOS = ["nuevo", "contactado", "respondio", "cliente", "descartado"] as const;
@@ -62,9 +66,14 @@ type Props = {
   // Solo en Historial (leads persistidos): permiten editar estado/notas en BD.
   onEstadoChange?: (lead: Lead, estado: string) => void;
   onNotasChange?: (lead: Lead, notas: string) => void;
+  // Solo admin: publicar/despublicar el lead para el equipo de vendedores.
+  onCampanaChange?: (lead: Lead, pais: string, enCampana: boolean) => void;
+  canPublicar?: boolean;
 };
 
-export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoChange, onNotasChange }: Props) {
+export default function LeadDetailDialog({
+  lead, open, onOpenChange, onEstadoChange, onNotasChange, onCampanaChange, canPublicar,
+}: Props) {
   const [notasDraft, setNotasDraft] = useState("");
   const initialWaText = lead
     ? (lead.mensaje_whatsapp || pickIcebreaker(
@@ -73,9 +82,12 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoCha
       ))
     : "";
   const [waDraft, setWaDraft] = useState(initialWaText);
+  const [paisDraft, setPaisDraft] = useState(lead?.pais || "");
   // Reset del borrador cuando cambia el lead visible.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setWaDraft(initialWaText); }, [lead?.id, lead?.mensaje_whatsapp]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPaisDraft(lead?.pais || ""); }, [lead?.id]);
   if (!lead) return null;
   const wa = waLink(lead);
   const persisted = Boolean(lead.id);
@@ -195,6 +207,38 @@ export default function LeadDetailDialog({ lead, open, onOpenChange, onEstadoCha
                   className="min-h-[60px] text-sm"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Vendedores: publicar el lead con país para que el equipo de ventas lo vea */}
+          {persisted && canPublicar && (
+            <div className="space-y-3 rounded-lg border p-3">
+              <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Users className="h-3.5 w-3.5" /> Vendedores
+              </Label>
+              <div className="flex flex-wrap items-center gap-3">
+                <Select value={paisDraft} onValueChange={setPaisDraft}>
+                  <SelectTrigger className="h-9 w-[180px] text-sm">
+                    <SelectValue placeholder="País del lead" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAISES_PROSPECCION.map((p) => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={Boolean(lead.en_campana)}
+                    disabled={!paisDraft}
+                    onCheckedChange={(checked) => onCampanaChange?.(lead, paisDraft, checked)}
+                  />
+                  {lead.en_campana ? "Publicado a vendedores" : "Publicar a vendedores"}
+                </label>
+              </div>
+              {!paisDraft && (
+                <p className="text-[11px] text-muted-foreground">Elige el país antes de publicar.</p>
+              )}
             </div>
           )}
         </div>
