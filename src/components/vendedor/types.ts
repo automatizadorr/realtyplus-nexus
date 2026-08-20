@@ -16,6 +16,7 @@ export type LeadCampana = {
   fecha_asignacion: string | null;
   fecha_cierre: string | null;
   motivo_cierre: string | null;
+  fecha_proximo_contacto: string | null;
 };
 
 export const ETAPAS = ["nuevo", "contactado", "interesado", "demo", "ganado", "perdido"] as const;

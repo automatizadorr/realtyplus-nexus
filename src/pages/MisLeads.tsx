@@ -17,6 +17,8 @@ type Kpis = {
   ganados: number; perdidos: number; tasa_respuesta_pct: number; dias_promedio_cierre: number | null;
 };
 
+type Ranking = { mi_puesto: number; total_vendedores: number; mis_ganados: number };
+
 function KpiTile({ label, value }: { label: string; value: string | number }) {
   return (
     <Card><CardContent className="p-3">
@@ -30,6 +32,7 @@ export default function MisLeads() {
   const [plantillasWa, setPlantillasWa] = useState<PlantillaWa[]>([]);
   const [plantillasEmail, setPlantillasEmail] = useState<PlantillaEmail[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
+  const [ranking, setRanking] = useState<Ranking | null>(null);
   const [loadingKpis, setLoadingKpis] = useState(true);
 
   const cargarPlantillas = async () => {
@@ -43,8 +46,12 @@ export default function MisLeads() {
 
   const cargarKpis = async () => {
     setLoadingKpis(true);
-    const { data } = await sb.rpc("vendedor_kpis");
-    setKpis((data ?? [])[0] ?? null);
+    const [{ data: kpiData }, { data: rankData }] = await Promise.all([
+      sb.rpc("vendedor_kpis"),
+      sb.rpc("vendedor_ranking"),
+    ]);
+    setKpis((kpiData ?? [])[0] ?? null);
+    setRanking((rankData ?? [])[0] ?? null);
     setLoadingKpis(false);
   };
 
@@ -79,6 +86,12 @@ export default function MisLeads() {
           <KpiTile label="Perdidos" value={kpis.perdidos} />
           <KpiTile label="Días prom. cierre" value={kpis.dias_promedio_cierre ?? "—"} />
         </div>
+      )}
+
+      {ranking && ranking.total_vendedores > 1 && (
+        <p className="text-xs text-muted-foreground">
+          🏆 Estás en el puesto <span className="font-semibold text-foreground">{ranking.mi_puesto}</span> de {ranking.total_vendedores} vendedores por leads ganados ({ranking.mis_ganados}).
+        </p>
       )}
 
       <Tabs defaultValue="pipeline">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, Mail as MailIcon, Plus, Pencil, Trash2, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +15,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { PlantillaEmail, PlantillaWa } from "@/components/vendedor/types";
 
 const VARIABLES_HINT = "Variables: {{nombre}} {{empresa}} {{ciudad}} {{pais}} {{propuesta_valor}} {{gancho}}";
+
+type Stat = { plantilla_id: string; canal: string; usos: number; respondieron: number; tasa_pct: number | null };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -33,6 +35,17 @@ export default function MisPlantillasTab({
   const [editing, setEditing] = useState<PlantillaWa | PlantillaEmail | null>(null);
   const [form, setForm] = useState({ nombre: "", contenido: "", asunto: "", cuerpo_html: "", cuerpo_text: "" });
   const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState<Stat[]>([]);
+
+  useEffect(() => {
+    sb.rpc("plantilla_stats").then(({ data }: { data: Stat[] | null }) => setStats(data ?? []));
+  }, []);
+
+  const statsById = useMemo(() => {
+    const m = new Map<string, Stat>();
+    for (const s of stats) m.set(s.plantilla_id, s);
+    return m;
+  }, [stats]);
 
   const propias = tab === "whatsapp"
     ? plantillasWa.filter((p) => p.creado_por === user?.id)
@@ -122,6 +135,11 @@ export default function MisPlantillasTab({
                           <Badge variant={p.activa ? "secondary" : "outline"} className={p.activa ? "text-emerald-600" : "text-muted-foreground"}>
                             {p.activa ? "Activa" : "Inactiva"}
                           </Badge>
+                          {statsById.get(p.id) && (
+                            <span className="text-[11px] text-muted-foreground">
+                              {statsById.get(p.id)!.usos} usos · {statsById.get(p.id)!.tasa_pct ?? 0}% respondió
+                            </span>
+                          )}
                         </div>
                         <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                           {tab === "whatsapp" ? (p as PlantillaWa).contenido : (p as PlantillaEmail).asunto}
@@ -150,7 +168,14 @@ export default function MisPlantillasTab({
                 {compartidas.map((p) => (
                   <Card key={p.id} className="bg-muted/30">
                     <CardContent className="p-3">
-                      <span className="text-sm font-medium">{p.nombre}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{p.nombre}</span>
+                        {statsById.get(p.id) && (
+                          <span className="text-[11px] text-muted-foreground">
+                            {statsById.get(p.id)!.usos} usos · {statsById.get(p.id)!.tasa_pct ?? 0}% respondió
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                         {tab === "whatsapp" ? (p as PlantillaWa).contenido : (p as PlantillaEmail).asunto}
                       </p>
