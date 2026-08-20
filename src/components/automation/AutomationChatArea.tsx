@@ -75,7 +75,10 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
   const phoneRef = useRef<string>("");
   const realtimeRefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
-  const { isAdmin, canWrite } = useRole();
+  const { isAdmin, canWrite, isVendedor } = useRole();
+  // Un vendedor puede componer/enviar (server-side: send-n8n-webhook valida que
+  // el lead sea suyo), pero NO borrar mensajes — eso sigue siendo solo de admin.
+  const puedeEnviar = canWrite || isVendedor;
 
   useEffect(() => {
     if (!selectedContact?.telefono) {
@@ -750,25 +753,25 @@ export function AutomationChatArea({ selectedContact, onBack, allTags = [] }: Pr
             </div>
           )}
           <div className="flex gap-1 max-w-3xl mx-auto items-end">
-            <QuickRepliesPopover isAdmin={canWrite} onPick={insertText} contactName={selectedContact.nombre || ""} />
+            <QuickRepliesPopover isAdmin={puedeEnviar} onPick={insertText} contactName={selectedContact.nombre || ""} />
             <EmojiPickerButton onPick={insertText} />
-            <AttachmentButton isAdmin={canWrite} onUploaded={(url, type) => setPendingMedia({ url, type })} />
+            <AttachmentButton isAdmin={puedeEnviar} onUploaded={(url, type) => setPendingMedia({ url, type })} />
             <Input
               ref={inputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && canWrite && sendMessage()}
-              placeholder={canWrite ? "Escribe un mensaje... (*negrita* _cursiva_ ~tachado~)" : "Solo lectura"}
-              disabled={!canWrite}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && puedeEnviar && sendMessage()}
+              placeholder={puedeEnviar ? "Escribe un mensaje... (*negrita* _cursiva_ ~tachado~)" : "Solo lectura"}
+              disabled={!puedeEnviar}
               className="flex-1 rounded-xl bg-muted/50 focus-visible:ring-primary focus-visible:bg-background transition-all border-transparent focus-visible:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <motion.div whileHover={{ scale: canWrite ? 1.05 : 1 }} whileTap={{ scale: canWrite ? 0.95 : 1 }}>
+            <motion.div whileHover={{ scale: puedeEnviar ? 1.05 : 1 }} whileTap={{ scale: puedeEnviar ? 0.95 : 1 }}>
               <Button
                 onClick={sendMessage}
-                disabled={(!newMessage.trim() && !pendingMedia) || sending || !canWrite}
+                disabled={(!newMessage.trim() && !pendingMedia) || sending || !puedeEnviar}
                 size="icon"
                 className="rounded-xl h-10 w-10 shadow-md"
-                title={!canWrite ? "Sin permiso de envío" : undefined}
+                title={!puedeEnviar ? "Sin permiso de envío" : undefined}
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>

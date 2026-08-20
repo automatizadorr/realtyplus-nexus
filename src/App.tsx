@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
+import { OportunidadesRoute } from "@/components/OportunidadesRoute";
 import { VendedorRoute } from "@/components/VendedorRoute";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { EcosystemAgentsFab } from "@/components/global/EcosystemAgentsFab";
@@ -135,7 +136,7 @@ const App = () => (
                           <Route path="/seguimiento-correos" element={<AdminRoute><SeguimientoCorreos /></AdminRoute>} />
                           <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />
                           <Route path="/automation" element={<AdminRoute><Automation /></AdminRoute>} />
-                          <Route path="/automation-inbox" element={<AdminRoute><AutomationInbox /></AdminRoute>} />
+                          <Route path="/automation-inbox" element={<OportunidadesRoute><AutomationInbox /></OportunidadesRoute>} />
                           <Route path="/tagged" element={<AdminRoute><TaggedMessages /></AdminRoute>} />
                           <Route path="/tagged/export" element={<AdminRoute><TaggedExport /></AdminRoute>} />
                           <Route path="/etiquetas" element={<AdminRoute><Etiquetas /></AdminRoute>} />
