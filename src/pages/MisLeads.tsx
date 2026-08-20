@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Users, Radar, Kanban, FileText, Loader2 } from "lucide-react";
+import { Users, Radar, Kanban, FileText, Loader2, GraduationCap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import ProspeccionTab from "@/components/vendedor/ProspeccionTab";
 import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
+import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
 import type { PlantillaEmail, PlantillaWa } from "@/components/vendedor/types";
 
 // plantillas_* / RPC vendedor_kpis aún no están en el types.ts generado.
@@ -34,6 +37,7 @@ const TABS_VALIDOS = ["pipeline", "prospeccion", "plantillas"] as const;
 
 export default function MisLeads() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { tab } = useParams<{ tab: string }>();
   const tabActivo = (TABS_VALIDOS as readonly string[]).includes(tab ?? "") ? (tab as string) : "pipeline";
 
@@ -76,17 +80,29 @@ export default function MisLeads() {
   const plantillasWaActivas = plantillasWa.filter((p) => p.activa);
   const plantillasEmailActivas = plantillasEmail.filter((p) => p.activa);
 
+  // Onboarding por rol: se muestra solo una vez (por usuario+rol); si el
+  // usuario está en varios equipos, se usa el rol del primero.
+  const miRol = misEquipos[0]?.rol_equipo;
+  const onboarding = useRoleOnboarding(user?.id, miRol);
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <div className="flex items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#003DA5]/10 text-[#003DA5]">
           <Users className="h-5 w-5" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl font-semibold tracking-tight">Mis Leads</h1>
           <p className="text-sm text-muted-foreground">Tu pipeline de ventas y tus leads de prospección.</p>
         </div>
+        {miRol && (
+          <Button type="button" variant="outline" size="sm" onClick={onboarding.reopen} className="shrink-0 gap-1.5">
+            <GraduationCap className="h-4 w-4" /> <span className="hidden sm:inline">Ver tutorial</span>
+          </Button>
+        )}
       </div>
+
+      {miRol && <RoleOnboarding rol={miRol} open={onboarding.open} onClose={onboarding.close} />}
 
       {misEquipos.length > 0 && (
         <div className="flex flex-wrap gap-2">
