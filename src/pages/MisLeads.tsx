@@ -1,300 +1,105 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Users, Loader2, MapPin, Mail as MailIcon, MessageCircle, Globe, Instagram, RefreshCw,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, Radar, Kanban, FileText, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { waLink, type Lead } from "@/components/prospeccion/LeadDetailDialog";
-import { fillTemplate } from "@/lib/fillTemplate";
+import ProspeccionTab from "@/components/vendedor/ProspeccionTab";
+import PipelineTab from "@/components/vendedor/PipelineTab";
+import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
+import type { PlantillaEmail, PlantillaWa } from "@/components/vendedor/types";
 
-type PlantillaWa = { id: string; nombre: string; contenido: string };
-type PlantillaEmail = { id: string; nombre: string; asunto: string; cuerpo_text: string | null; cuerpo_html: string };
-
-const ESTADOS = ["nuevo", "contactado", "respondio", "cliente", "descartado"] as const;
-const ESTADO_LABEL: Record<string, string> = {
-  nuevo: "Nuevo", contactado: "Contactado", respondio: "Respondió", cliente: "Cliente", descartado: "Descartado",
-};
-
-// prospeccion_leads / plantillas_* aún no están en el types.ts generado.
+// plantillas_* / RPC vendedor_kpis aún no están en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-function LeadCard({
-  lead, plantillasWa, plantillasEmail, onEstadoChange, onNotasChange, onEnviado,
-}: {
-  lead: Lead;
-  plantillasWa: PlantillaWa[];
-  plantillasEmail: PlantillaEmail[];
-  onEstadoChange: (lead: Lead, estado: string) => void;
-  onNotasChange: (lead: Lead, notas: string) => void;
-  onEnviado: (lead: Lead, canal: "whatsapp" | "email", plantillaId: string, mensaje: string) => void;
-}) {
-  const [notasDraft, setNotasDraft] = useState(lead.notas || "");
-  const [waPlantilla, setWaPlantilla] = useState("");
-  const [emailPlantilla, setEmailPlantilla] = useState("");
-  const [waPreview, setWaPreview] = useState("");
-  const [emailAsuntoPreview, setEmailAsuntoPreview] = useState("");
-  const [emailCuerpoPreview, setEmailCuerpoPreview] = useState("");
-  const wa = waLink(lead);
+type Kpis = {
+  asignados: number; contactados: number; interesados: number; demos: number;
+  ganados: number; perdidos: number; tasa_respuesta_pct: number; dias_promedio_cierre: number | null;
+};
 
-  // Al elegir una plantilla, se precarga el preview (editable) con las variables ya rellenadas.
-  useEffect(() => {
-    const p = plantillasWa.find((x) => x.id === waPlantilla);
-    setWaPreview(p ? fillTemplate(p.contenido, lead) : "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waPlantilla]);
-
-  useEffect(() => {
-    const p = plantillasEmail.find((x) => x.id === emailPlantilla);
-    setEmailAsuntoPreview(p ? fillTemplate(p.asunto, lead) : "");
-    setEmailCuerpoPreview(p ? fillTemplate(p.cuerpo_text || p.cuerpo_html, lead) : "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emailPlantilla]);
-
-  const enviarWa = () => {
-    if (!waPlantilla || !wa || !waPreview.trim()) return;
-    window.open(`${wa}?text=${encodeURIComponent(waPreview)}`, "_blank", "noreferrer");
-    onEnviado(lead, "whatsapp", waPlantilla, waPreview);
-  };
-
-  const enviarEmail = () => {
-    if (!emailPlantilla || !lead.email || !emailCuerpoPreview.trim()) return;
-    window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(emailAsuntoPreview)}&body=${encodeURIComponent(emailCuerpoPreview)}`;
-    onEnviado(lead, "email", emailPlantilla, `${emailAsuntoPreview}\n\n${emailCuerpoPreview}`);
-  };
-
+function KpiTile({ label, value }: { label: string; value: string | number }) {
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{lead.nombre || "—"}</span>
-              {typeof lead.score === "number" && <Badge variant="secondary" className="font-mono">score {lead.score}</Badge>}
-              {lead.tipo_lead && <Badge variant="outline">{lead.tipo_lead}</Badge>}
-            </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {lead.ciudad || "—"}{lead.pais ? `, ${lead.pais}` : ""}</span>
-              {lead.web && <a href={lead.web} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#003DA5] hover:underline"><Globe className="h-3 w-3" /> web</a>}
-              {lead.instagram && <span className="inline-flex items-center gap-1"><Instagram className="h-3 w-3" /> {lead.instagram}</span>}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-1 rounded-lg border p-2.5 text-sm sm:grid-cols-2">
-          {lead.email && <div className="flex items-center gap-1.5"><MailIcon className="h-3.5 w-3.5 text-muted-foreground" /> {lead.email}</div>}
-          {(lead.telefono || lead.whatsapp) && <div className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> {lead.telefono || lead.whatsapp}</div>}
-        </div>
-
-        {lead.propuesta_valor && (
-          <div className="rounded-lg border border-[#003DA5]/20 bg-[#003DA5]/5 p-2.5 text-sm">
-            <span className="font-medium">Propuesta: </span>{lead.propuesta_valor}
-          </div>
-        )}
-
-        {/* Estado */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Label className="text-xs text-muted-foreground">Estado</Label>
-          {ESTADOS.map((e) => (
-            <button
-              key={e} type="button"
-              onClick={() => onEstadoChange(lead, e)}
-              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${
-                (lead.estado_gestion || "nuevo") === e ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input hover:bg-muted"
-              }`}
-            >
-              {ESTADO_LABEL[e]}
-            </button>
-          ))}
-        </div>
-
-        {/* Notas */}
-        <Textarea
-          defaultValue={lead.notas || ""}
-          onChange={(e) => setNotasDraft(e.target.value)}
-          onBlur={() => { if (notasDraft !== (lead.notas || "")) onNotasChange(lead, notasDraft); }}
-          placeholder="Notas del contacto…"
-          className="min-h-[56px] text-sm"
-        />
-
-        {/* Contactar — WhatsApp */}
-        <div className="space-y-2 border-t pt-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={waPlantilla} onValueChange={setWaPlantilla}>
-              <SelectTrigger className="h-8 w-[190px] text-xs"><SelectValue placeholder="Plantilla WhatsApp" /></SelectTrigger>
-              <SelectContent>
-                {plantillasWa.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {!wa && <span className="text-[11px] text-muted-foreground">Este lead no tiene WhatsApp/teléfono.</span>}
-          </div>
-          {waPlantilla && (
-            <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2.5">
-              <Label className="text-[11px] text-muted-foreground">Vista previa (editable)</Label>
-              <Textarea value={waPreview} onChange={(e) => setWaPreview(e.target.value)} className="min-h-[80px] bg-background text-sm" />
-              <Button type="button" size="sm" disabled={!wa || !waPreview.trim()} onClick={enviarWa} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-                <MessageCircle className="h-3.5 w-3.5" /> Enviar WhatsApp
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Contactar — Email */}
-        <div className="space-y-2 border-t pt-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={emailPlantilla} onValueChange={setEmailPlantilla}>
-              <SelectTrigger className="h-8 w-[190px] text-xs"><SelectValue placeholder="Plantilla email" /></SelectTrigger>
-              <SelectContent>
-                {plantillasEmail.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {!lead.email && <span className="text-[11px] text-muted-foreground">Este lead no tiene email.</span>}
-          </div>
-          {emailPlantilla && (
-            <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2.5">
-              <Label className="text-[11px] text-muted-foreground">Asunto</Label>
-              <Textarea value={emailAsuntoPreview} onChange={(e) => setEmailAsuntoPreview(e.target.value)} className="min-h-[36px] bg-background text-sm" />
-              <Label className="text-[11px] text-muted-foreground">Vista previa del cuerpo (editable)</Label>
-              <Textarea value={emailCuerpoPreview} onChange={(e) => setEmailCuerpoPreview(e.target.value)} className="min-h-[100px] bg-background text-sm" />
-              <Button type="button" size="sm" variant="outline" disabled={!lead.email || !emailCuerpoPreview.trim()} onClick={enviarEmail} className="gap-1.5">
-                <MailIcon className="h-3.5 w-3.5" /> Enviar email
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <Card><CardContent className="p-3">
+      <div className="text-xl font-semibold">{value}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+    </CardContent></Card>
   );
 }
 
 export default function MisLeads() {
-  const { toast } = useToast();
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [plantillasWa, setPlantillasWa] = useState<PlantillaWa[]>([]);
   const [plantillasEmail, setPlantillasEmail] = useState<PlantillaEmail[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [estadoFilter, setEstadoFilter] = useState("all");
+  const [kpis, setKpis] = useState<Kpis | null>(null);
+  const [loadingKpis, setLoadingKpis] = useState(true);
 
-  const cargar = async () => {
-    setLoading(true);
-    const [{ data: leadsData, error: leadsErr }, { data: waData }, { data: emailData }] = await Promise.all([
-      sb.from("prospeccion_leads").select("*").order("score", { ascending: false }),
-      sb.from("plantillas_whatsapp").select("id,nombre,contenido").eq("activa", true).order("nombre"),
-      sb.from("plantillas_email").select("id,nombre,asunto,cuerpo_text,cuerpo_html").eq("activa", true).order("nombre"),
+  const cargarPlantillas = async () => {
+    const [{ data: wa }, { data: email }] = await Promise.all([
+      sb.from("plantillas_whatsapp").select("id,nombre,contenido,creado_por,activa").order("nombre"),
+      sb.from("plantillas_email").select("id,nombre,asunto,cuerpo_text,cuerpo_html,creado_por,activa").order("nombre"),
     ]);
-    if (leadsErr) {
-      toast({ title: "Error al cargar tus leads", description: leadsErr.message, variant: "destructive" });
-    } else {
-      setLeads((leadsData ?? []) as Lead[]);
-    }
-    setPlantillasWa((waData ?? []) as PlantillaWa[]);
-    setPlantillasEmail((emailData ?? []) as PlantillaEmail[]);
-    setLoading(false);
+    setPlantillasWa((wa ?? []) as PlantillaWa[]);
+    setPlantillasEmail((email ?? []) as PlantillaEmail[]);
   };
 
-  useEffect(() => { cargar(); }, []);
-
-  const filtered = useMemo(() => {
-    if (estadoFilter === "all") return leads;
-    return leads.filter((l) => (l.estado_gestion || "nuevo") === estadoFilter);
-  }, [leads, estadoFilter]);
-
-  const cambiarEstado = async (lead: Lead, estado: string) => {
-    if (!lead.id) return;
-    const { error } = await sb.rpc("vendedor_actualizar_lead", { _lead_id: lead.id, _estado: estado, _notas: lead.notas ?? null });
-    if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
-    setLeads((ls) => ls.map((l) => (l.id === lead.id ? { ...l, estado_gestion: estado } : l)));
+  const cargarKpis = async () => {
+    setLoadingKpis(true);
+    const { data } = await sb.rpc("vendedor_kpis");
+    setKpis((data ?? [])[0] ?? null);
+    setLoadingKpis(false);
   };
 
-  const guardarNotas = async (lead: Lead, notas: string) => {
-    if (!lead.id) return;
-    const { error } = await sb.rpc("vendedor_actualizar_lead", { _lead_id: lead.id, _estado: lead.estado_gestion || "nuevo", _notas: notas });
-    if (error) { toast({ title: "No se pudieron guardar las notas", description: error.message, variant: "destructive" }); return; }
-    setLeads((ls) => ls.map((l) => (l.id === lead.id ? { ...l, notas } : l)));
-    toast({ title: "Notas guardadas" });
-  };
+  useEffect(() => { cargarPlantillas(); cargarKpis(); }, []);
 
-  const registrarEnvio = async (lead: Lead, canal: "whatsapp" | "email", plantillaId: string, mensaje: string) => {
-    if (!lead.id) return;
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData?.user?.id;
-    if (!uid) return;
-    await sb.from("contactos_log").insert({
-      lead_id: lead.id, user_id: uid, canal, plantilla_id: plantillaId, mensaje_final: mensaje,
-    });
-  };
-
-  const conteos = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const l of leads) { const e = l.estado_gestion || "nuevo"; c[e] = (c[e] || 0) + 1; }
-    return c;
-  }, [leads]);
+  // Las plantillas activas (compartidas por admin + las propias activas) son las que
+  // se ofrecen para enviar; en "Mis Plantillas" se ven además las propias inactivas.
+  const plantillasWaActivas = plantillasWa.filter((p) => p.activa);
+  const plantillasEmailActivas = plantillasEmail.filter((p) => p.activa);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#003DA5]/10 text-[#003DA5]">
-            <Users className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">Mis Leads</h1>
-            <p className="text-sm text-muted-foreground">Leads de campaña asignados a tu país. Contacta con las plantillas listas.</p>
-          </div>
+    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+      <div className="flex items-center gap-3">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#003DA5]/10 text-[#003DA5]">
+          <Users className="h-5 w-5" />
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={cargar} className="gap-1.5">
-          <RefreshCw className="h-4 w-4" /> Actualizar
-        </Button>
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Mis Leads</h1>
+          <p className="text-sm text-muted-foreground">Tu pipeline de ventas y tus leads de prospección.</p>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button" onClick={() => setEstadoFilter("all")}
-          className={`rounded-full border px-3 py-1 text-xs font-medium transition ${estadoFilter === "all" ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input hover:bg-muted"}`}
-        >
-          Todos · {leads.length}
-        </button>
-        {ESTADOS.map((e) => (
-          conteos[e] ? (
-            <button
-              key={e} type="button" onClick={() => setEstadoFilter(estadoFilter === e ? "all" : e)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${estadoFilter === e ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input hover:bg-muted"}`}
-            >
-              {ESTADO_LABEL[e]} · {conteos[e]}
-            </button>
-          ) : null
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando…</div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          {leads.length === 0
-            ? "Todavía no tienes leads asignados. Tu administrador publica leads de campaña por país."
-            : "Ningún lead con este estado."}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((l) => (
-            <LeadCard
-              key={l.id}
-              lead={l}
-              plantillasWa={plantillasWa}
-              plantillasEmail={plantillasEmail}
-              onEstadoChange={cambiarEstado}
-              onNotasChange={guardarNotas}
-              onEnviado={registrarEnvio}
-            />
-          ))}
+      {loadingKpis ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando KPIs…</div>
+      ) : kpis && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <KpiTile label="Asignados" value={kpis.asignados} />
+          <KpiTile label="Contactados" value={kpis.contactados} />
+          <KpiTile label="Interesados" value={kpis.interesados} />
+          <KpiTile label="Demos" value={kpis.demos} />
+          <KpiTile label="Ganados" value={kpis.ganados} />
+          <KpiTile label="Perdidos" value={kpis.perdidos} />
+          <KpiTile label="Días prom. cierre" value={kpis.dias_promedio_cierre ?? "—"} />
         </div>
       )}
+
+      <Tabs defaultValue="pipeline">
+        <TabsList>
+          <TabsTrigger value="pipeline" className="gap-1.5"><Kanban className="h-4 w-4" /> Pipeline</TabsTrigger>
+          <TabsTrigger value="prospeccion" className="gap-1.5"><Radar className="h-4 w-4" /> Prospección</TabsTrigger>
+          <TabsTrigger value="plantillas" className="gap-1.5"><FileText className="h-4 w-4" /> Mis Plantillas</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pipeline">
+          <PipelineTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} />
+        </TabsContent>
+
+        <TabsContent value="prospeccion">
+          <ProspeccionTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} />
+        </TabsContent>
+
+        <TabsContent value="plantillas">
+          <MisPlantillasTab plantillasWa={plantillasWa} plantillasEmail={plantillasEmail} onChanged={cargarPlantillas} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
