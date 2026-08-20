@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Users, Radar, Kanban, FileText, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +30,13 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+const TABS_VALIDOS = ["pipeline", "prospeccion", "plantillas"] as const;
+
 export default function MisLeads() {
+  const navigate = useNavigate();
+  const { tab } = useParams<{ tab: string }>();
+  const tabActivo = (TABS_VALIDOS as readonly string[]).includes(tab ?? "") ? (tab as string) : "pipeline";
+
   const [plantillasWa, setPlantillasWa] = useState<PlantillaWa[]>([]);
   const [plantillasEmail, setPlantillasEmail] = useState<PlantillaEmail[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
@@ -116,7 +123,7 @@ export default function MisLeads() {
         </p>
       )}
 
-      <Tabs defaultValue="pipeline">
+      <Tabs value={tabActivo} onValueChange={(v) => navigate(`/mis-leads/${v}`)}>
         <TabsList>
           <TabsTrigger value="pipeline" className="gap-1.5"><Kanban className="h-4 w-4" /> Pipeline</TabsTrigger>
           <TabsTrigger value="prospeccion" className="gap-1.5"><Radar className="h-4 w-4" /> Prospección</TabsTrigger>

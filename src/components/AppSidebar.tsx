@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban } from "lucide-react";
 import { useState } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
@@ -22,8 +22,16 @@ import {
 
 const vendedorGroups: { label?: string; items: { title: string; url: string; icon: React.ElementType }[] }[] = [
   {
+    label: "Ventas",
     items: [
-      { title: "Mis Leads", url: "/mis-leads", icon: Radar },
+      { title: "Pipeline", url: "/mis-leads/pipeline", icon: Kanban },
+      { title: "Prospección", url: "/mis-leads/prospeccion", icon: Radar },
+    ],
+  },
+  {
+    label: "Herramientas",
+    items: [
+      { title: "Mis Plantillas", url: "/mis-leads/plantillas", icon: FileText },
     ],
   },
   {

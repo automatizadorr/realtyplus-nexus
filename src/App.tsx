@@ -1,6 +1,6 @@
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -127,7 +127,8 @@ const App = () => (
                           <Route path="/campaigns" element={<AdminRoute><Campaigns /></AdminRoute>} />
                           <Route path="/buscar-leads" element={<AdminRoute><BuscarLeads /></AdminRoute>} />
                           <Route path="/plantillas" element={<AdminRoute><Plantillas /></AdminRoute>} />
-                          <Route path="/mis-leads" element={<VendedorRoute><MisLeads /></VendedorRoute>} />
+                          <Route path="/mis-leads" element={<Navigate to="/mis-leads/pipeline" replace />} />
+                          <Route path="/mis-leads/:tab" element={<VendedorRoute><MisLeads /></VendedorRoute>} />
                           <Route path="/correos-personalizados" element={<AdminRoute><CorreosPersonalizados /></AdminRoute>} />
                           <Route path="/seguimiento-correos" element={<AdminRoute><SeguimientoCorreos /></AdminRoute>} />
                           <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />

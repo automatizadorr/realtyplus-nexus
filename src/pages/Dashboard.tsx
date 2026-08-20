@@ -99,7 +99,7 @@ export default function Dashboard() {
   // Los vendedores no tienen acceso al dashboard general del CRM (RLS lo dejaría
   // vacío/roto); se los manda directo a su vista de leads.
   useEffect(() => {
-    if (!roleLoading && isVendedor) navigate("/mis-leads", { replace: true });
+    if (!roleLoading && isVendedor) navigate("/mis-leads/pipeline", { replace: true });
   }, [roleLoading, isVendedor, navigate]);
 
   const [kpis, setKpis] = useState<KPIs | null>(null);
