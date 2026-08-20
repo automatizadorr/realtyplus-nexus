@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Users, Radar, Kanban, FileText, Loader2, GraduationCap } from "lucide-react";
+import { Users, Radar, Kanban, FileText, Loader2, GraduationCap, RotateCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ProspeccionTab from "@/components/vendedor/ProspeccionTab";
 import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
+import ReactivacionTab from "@/components/prospeccion/ReactivacionTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
 import type { PlantillaEmail, PlantillaWa, RolVenta } from "@/components/vendedor/types";
 
@@ -32,7 +33,7 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["pipeline", "prospeccion", "plantillas"] as const;
+const TABS_VALIDOS = ["pipeline", "prospeccion", "reactivacion", "plantillas"] as const;
 
 export default function MisLeads() {
   const navigate = useNavigate();
@@ -133,6 +134,7 @@ export default function MisLeads() {
         <TabsList>
           <TabsTrigger value="pipeline" className="gap-1.5"><Kanban className="h-4 w-4" /> Pipeline</TabsTrigger>
           <TabsTrigger value="prospeccion" className="gap-1.5"><Radar className="h-4 w-4" /> Prospección</TabsTrigger>
+          <TabsTrigger value="reactivacion" className="gap-1.5"><RotateCcw className="h-4 w-4" /> Reactivación</TabsTrigger>
           <TabsTrigger value="plantillas" className="gap-1.5"><FileText className="h-4 w-4" /> Mis Plantillas</TabsTrigger>
         </TabsList>
 
@@ -142,6 +144,10 @@ export default function MisLeads() {
 
         <TabsContent value="prospeccion">
           <ProspeccionTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} />
+        </TabsContent>
+
+        <TabsContent value="reactivacion">
+          <ReactivacionTab />
         </TabsContent>
 
         <TabsContent value="plantillas">

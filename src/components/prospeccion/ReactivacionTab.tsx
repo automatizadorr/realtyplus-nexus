@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useRole } from "@/hooks/use-is-admin";
 import { orderTags } from "@/lib/permanentTags";
 import { waLinkWithIcebreaker } from "@/lib/icebreakers";
 
@@ -76,6 +77,7 @@ const fmtFechaHora = (iso: string | null) =>
 
 export default function ReactivacionTab() {
   const { toast } = useToast();
+  const { canWrite } = useRole();
   const navigate = useNavigate();
 
   // RPC de facets (país) no está en el types.ts generado.
@@ -524,18 +526,22 @@ export default function ReactivacionTab() {
           {selected.size > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#003DA5]/30 bg-[#003DA5]/5 p-2">
               <Badge variant="secondary">{selected.size} seleccionados</Badge>
-              <Select value={vendedorAsignar} onValueChange={setVendedorAsignar}>
-                <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Elegir vendedor" /></SelectTrigger>
-                <SelectContent>
-                  {vendedores.map((v) => (
-                    <SelectItem key={v.user_id} value={v.user_id}>{v.nombre_display || v.user_id}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" size="sm" disabled={!vendedorAsignar || asignando} onClick={enviarAVendedor} className="gap-1.5">
-                {asignando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-                Enviar a vendedor
-              </Button>
+              {canWrite && (
+                <>
+                  <Select value={vendedorAsignar} onValueChange={setVendedorAsignar}>
+                    <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Elegir vendedor" /></SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map((v) => (
+                        <SelectItem key={v.user_id} value={v.user_id}>{v.nombre_display || v.user_id}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" size="sm" disabled={!vendedorAsignar || asignando} onClick={enviarAVendedor} className="gap-1.5">
+                    {asignando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+                    Enviar a vendedor
+                  </Button>
+                </>
+              )}
               <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="text-muted-foreground">Limpiar</Button>
             </div>
           )}

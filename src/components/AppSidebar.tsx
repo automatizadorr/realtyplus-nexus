@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2 } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
@@ -26,6 +26,7 @@ const vendedorGroups: { label?: string; items: { title: string; url: string; ico
     items: [
       { title: "Pipeline", url: "/mis-leads/pipeline", icon: Kanban },
       { title: "Prospección", url: "/mis-leads/prospeccion", icon: Radar },
+      { title: "Reactivación", url: "/mis-leads/reactivacion", icon: RotateCcw },
       { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: MessagesSquare },
     ],
   },

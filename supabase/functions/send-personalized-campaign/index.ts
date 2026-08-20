@@ -1,5 +1,7 @@
 // Envío de correos personalizados vía Resend.
-// Requiere caller autenticado con rol admin (misma política que send-n8n-webhook).
+// Admin: sin restricción de destinatarios. Vendedor: SOLO puede mandar a
+// emails que sean de SUS leads_campana asignados (se filtran server-side,
+// nunca confiando en el cliente) — mismo criterio que send-n8n-webhook.
 // El secreto RESEND_API_KEY se guarda en los secrets del proyecto Supabase.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { applyDomain, corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, resendKeyFor, TZ, zonedToUtc } from "../_shared/correo.ts";
@@ -49,10 +51,20 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await svc.rpc("has_role", {
       _user_id: userData.user.id, _role: "admin",
     });
+    let emailsPropios: Set<string> | null = null; // null = sin restricción (admin)
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden: se requiere rol admin" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const { data: isVendedor } = await svc.rpc("has_role", { _user_id: userData.user.id, _role: "vendedor" });
+      if (!isVendedor) {
+        return new Response(JSON.stringify({ error: "Forbidden: se requiere rol admin o vendedor" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: misLeads } = await svc
+        .from("leads_campana")
+        .select("email")
+        .eq("vendedor_id", userData.user.id)
+        .not("email", "is", null);
+      emailsPropios = new Set((misLeads ?? []).map((l: { email: string | null }) => (l.email ?? "").trim().toLowerCase()).filter(Boolean));
     }
 
     // --- Payload ---
@@ -72,15 +84,24 @@ Deno.serve(async (req) => {
     }
     // Destinatarios válidos y deduplicados.
     const seen = new Set<string>();
-    const valid = recipients.filter((r) => {
+    let valid = recipients.filter((r) => {
       const e = (r?.email ?? "").trim().toLowerCase();
       if (!e || !EMAIL_RE.test(e) || seen.has(e)) return false;
       seen.add(e);
       r.email = e;
       return true;
     });
+
+    // Vendedor: filtra a solo los emails que son de sus propios leads.
+    let omitidosAjenos = 0;
+    if (emailsPropios) {
+      const antes = valid.length;
+      valid = valid.filter((r) => emailsPropios!.has(r.email));
+      omitidosAjenos = antes - valid.length;
+    }
+
     if (valid.length === 0) {
-      return new Response(JSON.stringify({ error: "No hay destinatarios válidos" }), {
+      return new Response(JSON.stringify({ error: omitidosAjenos > 0 ? "Ninguno de esos destinatarios es un lead tuyo" : "No hay destinatarios válidos" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -202,9 +223,11 @@ Deno.serve(async (req) => {
       success: true,
       sent, failed, programados,
       total: valid.length,
-      aviso: programados > 0
-        ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${LIMITE_DIA}/día).`
-        : undefined,
+      omitidos_ajenos: omitidosAjenos || undefined,
+      aviso: [
+        programados > 0 ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${LIMITE_DIA}/día).` : null,
+        omitidosAjenos > 0 ? `${omitidosAjenos} destinatario(s) se omitieron por no ser leads tuyos.` : null,
+      ].filter(Boolean).join(" ") || undefined,
       results,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
