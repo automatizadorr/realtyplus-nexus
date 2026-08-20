@@ -10,7 +10,7 @@ import ProspeccionTab from "@/components/vendedor/ProspeccionTab";
 import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
-import type { PlantillaEmail, PlantillaWa } from "@/components/vendedor/types";
+import type { PlantillaEmail, PlantillaWa, RolVenta } from "@/components/vendedor/types";
 
 // plantillas_* / RPC vendedor_kpis aún no están en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,7 +22,6 @@ type Kpis = {
 };
 
 type Ranking = { mi_puesto: number; total_vendedores: number; mis_ganados: number };
-type MiEquipo = { equipo_id: string; rol_equipo: "setter" | "closer"; equipos_venta: { nombre: string } | null };
 
 function KpiTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -45,7 +44,7 @@ export default function MisLeads() {
   const [plantillasEmail, setPlantillasEmail] = useState<PlantillaEmail[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [ranking, setRanking] = useState<Ranking | null>(null);
-  const [misEquipos, setMisEquipos] = useState<MiEquipo[]>([]);
+  const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
   const [loadingKpis, setLoadingKpis] = useState(true);
 
   const cargarPlantillas = async () => {
@@ -60,16 +59,16 @@ export default function MisLeads() {
   const cargarKpis = async () => {
     setLoadingKpis(true);
     const { data: userData } = await supabase.auth.getUser();
-    const [{ data: kpiData }, { data: rankData }, { data: equiposData }] = await Promise.all([
+    const [{ data: kpiData }, { data: rankData }, { data: perfil }] = await Promise.all([
       sb.rpc("vendedor_kpis"),
       sb.rpc("vendedor_ranking"),
       userData?.user
-        ? sb.from("equipo_miembros").select("equipo_id, rol_equipo, equipos_venta(nombre)").eq("user_id", userData.user.id)
-        : Promise.resolve({ data: [] }),
+        ? sb.from("vendedores").select("rol_venta").eq("user_id", userData.user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
     setKpis((kpiData ?? [])[0] ?? null);
     setRanking((rankData ?? [])[0] ?? null);
-    setMisEquipos((equiposData ?? []) as MiEquipo[]);
+    setMiRol((perfil?.rol_venta as RolVenta | undefined) ?? undefined);
     setLoadingKpis(false);
   };
 
@@ -80,9 +79,7 @@ export default function MisLeads() {
   const plantillasWaActivas = plantillasWa.filter((p) => p.activa);
   const plantillasEmailActivas = plantillasEmail.filter((p) => p.activa);
 
-  // Onboarding por rol: se muestra solo una vez (por usuario+rol); si el
-  // usuario está en varios equipos, se usa el rol del primero.
-  const miRol = misEquipos[0]?.rol_equipo;
+  // Onboarding por rol: se muestra solo una vez (por usuario+rol).
   const onboarding = useRoleOnboarding(user?.id, miRol);
 
   return (
@@ -104,19 +101,12 @@ export default function MisLeads() {
 
       {miRol && <RoleOnboarding rol={miRol} open={onboarding.open} onClose={onboarding.close} />}
 
-      {misEquipos.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {misEquipos.map((m) => (
-            <span key={m.equipo_id} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs">
-              <span className="font-medium">{m.equipos_venta?.nombre ?? "Equipo"}</span>
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                m.rol_equipo === "setter" ? "bg-blue-500/15 text-blue-600" : "bg-violet-500/15 text-violet-600"
-              }`}>
-                {m.rol_equipo === "setter" ? "Setter" : "Closer"}
-              </span>
-            </span>
-          ))}
-        </div>
+      {miRol && (
+        <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
+          miRol === "setter" ? "bg-blue-500/15 text-blue-600" : miRol === "closer" ? "bg-violet-500/15 text-violet-600" : "bg-emerald-500/15 text-emerald-600"
+        }`}>
+          {miRol === "setter" ? "Setter" : miRol === "closer" ? "Closer" : "Setter + Closer"}
+        </span>
       )}
 
       {loadingKpis ? (
@@ -135,7 +125,7 @@ export default function MisLeads() {
 
       {ranking && ranking.total_vendedores > 1 && (
         <p className="text-xs text-muted-foreground">
-          🏆 Tu equipo está en el puesto <span className="font-semibold text-foreground">{ranking.mi_puesto}</span> de {ranking.total_vendedores} equipos por leads ganados ({ranking.mis_ganados}).
+          🏆 Estás en el puesto <span className="font-semibold text-foreground">{ranking.mi_puesto}</span> de {ranking.total_vendedores} vendedores por leads ganados ({ranking.mis_ganados}).
         </p>
       )}
 

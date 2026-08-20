@@ -17,7 +17,7 @@ export type LeadCampana = {
   fecha_cierre: string | null;
   motivo_cierre: string | null;
   fecha_proximo_contacto: string | null;
-  equipo_id: string | null;
+  vendedor_id: string | null;
 };
 
 export const ETAPAS = ["nuevo", "contactado", "interesado", "demo", "ganado", "perdido"] as const;
@@ -32,11 +32,12 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
   perdido: "Perdido",
 };
 
-export type RolEquipo = "setter" | "closer";
+export type RolVenta = "setter" | "closer" | "ambos";
 
 // Etapas que cada rol puede asignar como destino al mover un lead
 // (debe coincidir con el chequeo del lado servidor en vendedor_mover_etapa).
-export const ETAPAS_PERMITIDAS: Record<RolEquipo, Etapa[]> = {
+export const ETAPAS_PERMITIDAS: Record<RolVenta, Etapa[]> = {
   setter: ["contactado", "interesado", "perdido"],
   closer: ["interesado", "demo", "ganado", "perdido"],
+  ambos: ["contactado", "interesado", "demo", "ganado", "perdido"],
 };

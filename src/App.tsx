@@ -24,6 +24,7 @@ const CorreosPersonalizados = lazy(() => import("./pages/CorreosPersonalizados")
 const SeguimientoCorreos = lazy(() => import("./pages/SeguimientoCorreos"));
 const BuscarLeads  = lazy(() => import("./pages/BuscarLeads"));
 const Plantillas   = lazy(() => import("./pages/Plantillas"));
+const AdminVendedores = lazy(() => import("./pages/AdminVendedores"));
 const MisLeads     = lazy(() => import("./pages/MisLeads"));
 const Inbox        = lazy(() => import("./pages/Inbox"));
 const Automation   = lazy(() => import("./pages/Automation"));
@@ -127,6 +128,7 @@ const App = () => (
                           <Route path="/campaigns" element={<AdminRoute><Campaigns /></AdminRoute>} />
                           <Route path="/buscar-leads" element={<AdminRoute><BuscarLeads /></AdminRoute>} />
                           <Route path="/plantillas" element={<AdminRoute><Plantillas /></AdminRoute>} />
+                          <Route path="/vendedores" element={<AdminRoute><AdminVendedores /></AdminRoute>} />
                           <Route path="/mis-leads" element={<Navigate to="/mis-leads/pipeline" replace />} />
                           <Route path="/mis-leads/:tab" element={<VendedorRoute><MisLeads /></VendedorRoute>} />
                           <Route path="/correos-personalizados" element={<AdminRoute><CorreosPersonalizados /></AdminRoute>} />

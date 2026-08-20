@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2 } from "lucide-react";
 import { useState } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
@@ -84,6 +84,7 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   {
     label: "Sistema",
     items: [
+      { title: "Vendedores", url: "/vendedores", icon: Users2 },
       { title: "Configuración", url: "/settings", icon: Settings2 },
     ],
   },

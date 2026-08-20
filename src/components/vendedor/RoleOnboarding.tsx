@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X, UserPlus, Handshake, MessageCircle, AlarmClock, CalendarClock, FileText,
-  Trophy, Kanban, Target, ChevronRight, ChevronLeft,
+  Trophy, Kanban, Target, Zap, ChevronRight, ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { RolEquipo } from "@/components/vendedor/types";
+import type { RolVenta } from "@/components/vendedor/types";
 
 // ---------------------------------------------------------------------
 // Contenido por rol. Cada paso enseña una pantalla/gesto real de la app
@@ -13,10 +13,10 @@ import type { RolEquipo } from "@/components/vendedor/types";
 // ---------------------------------------------------------------------
 type Paso = { eyebrow: string; titulo: string; cuerpo: string; icon: React.ElementType };
 
-const PASOS: Record<RolEquipo, Paso[]> = {
+const PASOS: Record<RolVenta, Paso[]> = {
   setter: [
     {
-      eyebrow: "Tu lugar en el equipo",
+      eyebrow: "Tu parte del proceso",
       titulo: "Vos abrís la puerta.",
       cuerpo: "Trabajás los leads nuevos: los contactás primero, calificás si hay interés real y los dejás listos para que el closer cierre.",
       icon: UserPlus,
@@ -30,13 +30,13 @@ const PASOS: Record<RolEquipo, Paso[]> = {
     {
       eyebrow: "Cuándo pasás la posta",
       titulo: "De Interesado en adelante, es del closer",
-      cuerpo: "Cuando un lead confirma interés real, movelo a Interesado — ahí lo toma el closer de tu equipo. Si no es un buen fit, movelo a Perdido (te va a pedir el motivo). Podés crear tus propias plantillas en Mis Plantillas.",
+      cuerpo: "Cuando un lead confirma interés real, movelo a Interesado — ahí lo toma el closer. Si no es un buen fit, movelo a Perdido (te va a pedir el motivo). Podés crear tus propias plantillas en Mis Plantillas.",
       icon: Handshake,
     },
   ],
   closer: [
     {
-      eyebrow: "Tu lugar en el equipo",
+      eyebrow: "Tu parte del proceso",
       titulo: "A vos te toca cerrar.",
       cuerpo: "Recibís los leads que ya mostraron interés real — el setter los calificó, o Camil-AI los entregó directo — y los llevás hasta la venta.",
       icon: Trophy,
@@ -44,21 +44,50 @@ const PASOS: Record<RolEquipo, Paso[]> = {
     {
       eyebrow: "Tu día a día",
       titulo: "Pipeline y contacto",
-      cuerpo: "Tus leads aparecen en Interesado. Arrastralos a Demo cuando agendes la reunión, y a Ganado o Perdido al resolver. Para escribirles, tocá Contactar: misma lógica que el setter, elegís plantilla, revisás y enviás.",
+      cuerpo: "Tus leads aparecen en Interesado. Arrastralos a Demo cuando agendes la reunión, y a Ganado o Perdido al resolver. Para escribirles, tocá Contactar: elegís plantilla, revisás y enviás.",
       icon: Kanban,
     },
     {
       eyebrow: "Al cerrar",
       titulo: "Ganado, Perdido, y tu ranking",
-      cuerpo: "Si cerrás la venta, movelo a Ganado. Si se cae, a Perdido — te va a pedir el motivo (ayuda a entender por qué se pierden ventas). Arriba de tu Pipeline vas a ver tus KPIs y el puesto de tu equipo frente a los demás.",
+      cuerpo: "Si cerrás la venta, movelo a Ganado. Si se cae, a Perdido — te va a pedir el motivo (ayuda a entender por qué se pierden ventas). Arriba de tu Pipeline vas a ver tus KPIs y tu puesto frente a los demás.",
       icon: Target,
+    },
+  ],
+  ambos: [
+    {
+      eyebrow: "Tu parte del proceso",
+      titulo: "Hacés las dos partes.",
+      cuerpo: "Contactás al lead desde el primer mensaje y lo llevás vos mismo hasta el cierre, sin pasárselo a nadie.",
+      icon: Zap,
+    },
+    {
+      eyebrow: "Tu día a día",
+      titulo: "Pipeline y contacto",
+      cuerpo: "En Pipeline arrastrás cada lead por toda la secuencia. El badge rojo \"Sin contactar hace Xh\" marca a quién priorizar, y \"Solo hoy\" te muestra lo urgente. Para escribir, tocá Contactar: elegís plantilla, revisás y enviás.",
+      icon: Kanban,
+    },
+    {
+      eyebrow: "De punta a punta",
+      titulo: "De Nuevo a Ganado, todo tuyo",
+      cuerpo: "Vos decidís cuándo pasa de Contactado a Interesado, cuándo agendar la Demo, y cerrás en Ganado o Perdido (te va a pedir el motivo). Podés crear tus propias plantillas en Mis Plantillas.",
+      icon: Handshake,
     },
   ],
 };
 
-const CTA_FINAL: Record<RolEquipo, string> = {
+const CTA_FINAL: Record<RolVenta, string> = {
   setter: "Entendido, a contactar",
   closer: "Entendido, a cerrar",
+  ambos: "Entendido, a vender",
+};
+
+const ROL_LABEL: Record<RolVenta, string> = { setter: "Setter", closer: "Closer", ambos: "Setter + Closer" };
+
+const COLOR: Record<RolVenta, { texto: string; bg: string; solido: string; hover: string }> = {
+  setter: { texto: "text-blue-600", bg: "bg-blue-600/10", solido: "bg-blue-600", hover: "hover:bg-blue-700" },
+  closer: { texto: "text-violet-600", bg: "bg-violet-600/10", solido: "bg-violet-600", hover: "hover:bg-violet-700" },
+  ambos: { texto: "text-emerald-600", bg: "bg-emerald-600/10", solido: "bg-emerald-600", hover: "hover:bg-emerald-700" },
 };
 
 const ETAPAS_VISUAL = [
@@ -70,15 +99,21 @@ const ETAPAS_VISUAL = [
 ] as const;
 
 // Zona de cada rol dentro de la secuencia real del pipeline (ver vendedor_mover_etapa).
-const ZONA: Record<RolEquipo, Set<string>> = {
+const ZONA: Record<RolVenta, Set<string>> = {
   setter: new Set(["nuevo", "contactado", "interesado"]),
   closer: new Set(["interesado", "demo", "ganado"]),
+  ambos: new Set(["nuevo", "contactado", "interesado", "demo", "ganado"]),
 };
 
-function RelayTrack({ rol }: { rol: RolEquipo }) {
+const ZONA_TEXTO: Record<RolVenta, string> = {
+  setter: "Tu tramo termina en Interesado — ahí entra el closer.",
+  closer: "Tu tramo empieza en Interesado — ahí te lo entregan (setter o Camil-AI).",
+  ambos: "Trabajás el tramo completo, de punta a punta.",
+};
+
+function RelayTrack({ rol }: { rol: RolVenta }) {
   const miZona = ZONA[rol];
-  const colorActivo = rol === "setter" ? "bg-blue-600 border-blue-600 text-white" : "bg-violet-600 border-violet-600 text-white";
-  const colorLinea = rol === "setter" ? "bg-blue-600" : "bg-violet-600";
+  const c = COLOR[rol];
 
   return (
     <div className="w-full">
@@ -90,7 +125,7 @@ function RelayTrack({ rol }: { rol: RolEquipo }) {
             <div key={e.id} className="relative z-10 flex flex-col items-center gap-1">
               <div
                 className={`grid h-8 w-8 place-items-center rounded-full border-2 text-[10px] font-bold sm:h-10 sm:w-10 ${
-                  activa ? colorActivo : "border-border bg-background text-muted-foreground"
+                  activa ? `${c.solido} border-transparent text-white` : "border-border bg-background text-muted-foreground"
                 }`}
               >
                 {e.id === "interesado" ? <Handshake className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
@@ -102,23 +137,18 @@ function RelayTrack({ rol }: { rol: RolEquipo }) {
           );
         })}
       </div>
-      <p className="mt-3 text-center text-[11px] text-muted-foreground">
-        {rol === "setter"
-          ? "Tu tramo termina en Interesado — ahí entra el closer."
-          : "Tu tramo empieza en Interesado — ahí te lo entrega el setter (o Camil-AI)."}
-      </p>
+      <p className="mt-3 text-center text-[11px] text-muted-foreground">{ZONA_TEXTO[rol]}</p>
     </div>
   );
 }
 
-export default function RoleOnboarding({ rol, open, onClose }: { rol: RolEquipo; open: boolean; onClose: () => void }) {
+export default function RoleOnboarding({ rol, open, onClose }: { rol: RolVenta; open: boolean; onClose: () => void }) {
   const [paso, setPaso] = useState(0);
   const pasos = PASOS[rol];
   const esUltimo = paso === pasos.length - 1;
   const actual = pasos[paso];
   const Icon = actual.icon;
-  const acento = rol === "setter" ? "text-blue-600" : "text-violet-600";
-  const acentoBg = rol === "setter" ? "bg-blue-600/10" : "bg-violet-600/10";
+  const c = COLOR[rol];
 
   useEffect(() => { if (open) setPaso(0); }, [open]);
 
@@ -137,8 +167,8 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolEquipo;
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${acentoBg} ${acento}`}>
-              {rol === "setter" ? "Onboarding · Setter" : "Onboarding · Closer"}
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${c.bg} ${c.texto}`}>
+              Onboarding · {ROL_LABEL[rol]}
             </span>
             <button type="button" onClick={onClose} aria-label="Cerrar" className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted">
               <X className="h-4 w-4" />
@@ -159,10 +189,10 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolEquipo;
                 initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className={`mb-3 grid h-11 w-11 place-items-center rounded-xl ${acentoBg} ${acento}`}>
+                <div className={`mb-3 grid h-11 w-11 place-items-center rounded-xl ${c.bg} ${c.texto}`}>
                   <Icon className="h-5 w-5" />
                 </div>
-                <p className={`mb-1 text-xs font-semibold uppercase tracking-wide ${acento}`}>{actual.eyebrow}</p>
+                <p className={`mb-1 text-xs font-semibold uppercase tracking-wide ${c.texto}`}>{actual.eyebrow}</p>
                 <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">{actual.titulo}</h2>
                 <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground sm:text-[15px]">{actual.cuerpo}</p>
               </motion.div>
@@ -181,7 +211,7 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolEquipo;
                 ))}
               </div>
             )}
-            {paso === 2 && rol === "setter" && (
+            {paso === 2 && (
               <div className="mt-5 flex items-center gap-2 rounded-lg border p-2.5 text-xs">
                 <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> Mis Plantillas: creá y guardá tus propios mensajes
               </div>
@@ -192,7 +222,7 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolEquipo;
           <div className="flex items-center justify-between gap-3 border-t px-5 py-4 sm:px-6">
             <div className="flex gap-1.5">
               {pasos.map((_, i) => (
-                <span key={i} className={`h-1.5 rounded-full transition-all ${i === paso ? `w-5 ${rol === "setter" ? "bg-blue-600" : "bg-violet-600"}` : "w-1.5 bg-border"}`} />
+                <span key={i} className={`h-1.5 rounded-full transition-all ${i === paso ? `w-5 ${c.solido}` : "w-1.5 bg-border"}`} />
               ))}
             </div>
             <div className="flex items-center gap-2">
@@ -204,7 +234,7 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolEquipo;
               <Button
                 type="button" size="sm"
                 onClick={() => (esUltimo ? onClose() : setPaso((p) => p + 1))}
-                className={`gap-1 ${rol === "setter" ? "bg-blue-600 hover:bg-blue-700" : "bg-violet-600 hover:bg-violet-700"}`}
+                className={`gap-1 text-white ${c.solido} ${c.hover}`}
               >
                 {esUltimo ? CTA_FINAL[rol] : "Siguiente"}
                 {!esUltimo && <ChevronRight className="h-4 w-4" />}
@@ -221,7 +251,7 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolEquipo;
 // Persistencia: se muestra solo, una vez, por usuario+rol. "Ver tutorial"
 // en Mis Leads lo puede reabrir en cualquier momento.
 // ---------------------------------------------------------------------
-export function useRoleOnboarding(userId: string | undefined, rol: RolEquipo | undefined) {
+export function useRoleOnboarding(userId: string | undefined, rol: RolVenta | undefined) {
   const [open, setOpen] = useState(false);
   const key = userId && rol ? `onboarding_${rol}_${userId}` : null;
 
