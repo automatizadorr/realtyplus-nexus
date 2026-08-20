@@ -1,8 +1,8 @@
 // Fase B del pipeline de vendedor: Camil-AI (n8n) llama esto cuando un lead de
-// leads_campana responde/califica, para entregarlo a un vendedor humano.
-// Auth: header X-Webhook-Secret (secreto dedicado BOT_HANDOFF_SECRET, distinto
-// del N8N_WEBHOOK_SECRET que usan tag-lead/send-n8n-webhook, para no acoplar
-// este flujo a esos otros).
+// leads_campana responde/califica, para entregarlo a un EQUIPO (setter+closer)
+// humano. Auth: header X-Webhook-Secret (secreto dedicado BOT_HANDOFF_SECRET,
+// distinto del N8N_WEBHOOK_SECRET que usan tag-lead/send-n8n-webhook, para no
+// acoplar este flujo a esos otros).
 //
 // Conectado desde el workflow "Canil-AI" (n8n, localhost:5678, id
 // ouf0maiCEFpDc60d) en la rama "🚨 ¿Escalar a Humano?" → nodo HTTP Request
@@ -12,13 +12,15 @@
 //   telefono: string   (requerido) — mismo formato que usa Camil-AI para el lead
 //   motivo?: string    contexto opcional para el log de etapa
 //
-// Efecto si hay vendedor disponible para el país del lead:
-//   - vendedor_id = el elegido (round-robin por menor carga, elegir_vendedor_para)
-//   - etapa_venta = 'interesado', fecha_asignacion = now()
-//   - bot_activo = false (para que Camil-AI no le siga escribiendo a la vez)
+// Efecto si hay un equipo disponible para el país del lead:
+//   - equipo_id = el elegido (round-robin por menor carga, elegir_equipo_para)
+//   - etapa_venta = 'interesado' (el bot ya calificó; queda listo para el closer,
+//     aunque cualquier miembro del equipo lo ve)
+//   - fecha_asignacion = now(), bot_activo = false (para que Camil-AI no le
+//     siga escribiendo a la vez que el equipo)
 //   - log en leads_campana_etapa_log
-// Si el lead ya tenía vendedor_id (idempotente, reintentos de n8n no lo reasignan)
-// o no hay vendedor activo para su país, no toca nada y devuelve success:false
+// Si el lead ya tenía equipo_id (idempotente, reintentos de n8n no lo reasignan)
+// o no hay equipo activo para su país, no toca nada y devuelve success:false
 // con la razón — así el workflow puede decidir (dejar el bot activo, avisar a Mario).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
@@ -53,29 +55,29 @@ Deno.serve(async (req) => {
 
     const { data: lead, error: leadErr } = await supabase
       .from("leads_campana")
-      .select("id, pais, vendedor_id, etapa_venta")
+      .select("id, pais, equipo_id, etapa_venta")
       .or(`telefono.eq.${telefono},telefono.like.${telefono}@%`)
       .maybeSingle();
     if (leadErr) throw leadErr;
     if (!lead) return json({ success: false, error: `Lead no encontrado para teléfono: ${telefono}` }, 404);
 
-    if (lead.vendedor_id) {
-      return json({ success: false, skipped: true, reason: "El lead ya tiene vendedor asignado", lead_id: lead.id });
+    if (lead.equipo_id) {
+      return json({ success: false, skipped: true, reason: "El lead ya tiene equipo asignado", lead_id: lead.id });
     }
     if (!lead.pais) {
-      return json({ success: false, reason: "El lead no tiene país, no se puede elegir vendedor", lead_id: lead.id });
+      return json({ success: false, reason: "El lead no tiene país, no se puede elegir equipo", lead_id: lead.id });
     }
 
-    const { data: vendedorId, error: elegirErr } = await supabase.rpc("elegir_vendedor_para", { _pais: lead.pais });
+    const { data: equipoId, error: elegirErr } = await supabase.rpc("elegir_equipo_para", { _pais: lead.pais });
     if (elegirErr) throw elegirErr;
-    if (!vendedorId) {
-      return json({ success: false, reason: `Sin vendedor activo para el país "${lead.pais}"`, lead_id: lead.id });
+    if (!equipoId) {
+      return json({ success: false, reason: `Sin equipo activo para el país "${lead.pais}"`, lead_id: lead.id });
     }
 
     const { error: updateErr } = await supabase
       .from("leads_campana")
       .update({
-        vendedor_id: vendedorId,
+        equipo_id: equipoId,
         etapa_venta: "interesado",
         fecha_asignacion: new Date().toISOString(),
         bot_activo: false,
@@ -90,7 +92,7 @@ Deno.serve(async (req) => {
       etapa_nueva: "interesado",
     });
 
-    return json({ success: true, lead_id: lead.id, vendedor_id: vendedorId, motivo });
+    return json({ success: true, lead_id: lead.id, equipo_id: equipoId, motivo });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("bot-handoff-vendedor error:", msg);

@@ -26,7 +26,7 @@ type LeadRow = {
   pais: string | null; estado: string | null; puntuacion: number | null;
   dias_reales: number | null; ha_respondido: boolean | null; archivado: boolean | null;
   tag_ids: string[] | null; ultimo_contacto_at: string | null; resumen_ia: string | null;
-  vendedor_id: string | null; etapa_venta: string | null;
+  equipo_id: string | null; etapa_venta: string | null;
 };
 
 const PAGE_SIZE = 25;
@@ -85,11 +85,11 @@ export default function ReactivacionTab() {
   // Catálogos
   const [tags, setTags] = useState<Tag[]>([]);
   const [paises, setPaises] = useState<{ pais: string; n: number }[]>([]);
-  const [vendedores, setVendedores] = useState<{ user_id: string; nombre_display: string | null }[]>([]);
+  const [equipos, setEquipos] = useState<{ id: string; nombre: string }[]>([]);
 
-  // Selección para "Asignar a vendedor"
+  // Selección para "Asignar a equipo"
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [vendedorAsignar, setVendedorAsignar] = useState("");
+  const [equipoAsignar, setEquipoAsignar] = useState("");
   const [asignando, setAsignando] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
 
@@ -130,9 +130,9 @@ export default function ReactivacionTab() {
     sb.rpc("leads_campana_paises").then(({ data }: { data: { pais: string; n: number }[] | null }) => {
       if (data) setPaises(data);
     });
-    sb.from("vendedores").select("user_id, nombre_display").eq("activo", true).order("nombre_display")
-      .then(({ data }: { data: { user_id: string; nombre_display: string | null }[] | null }) => {
-        if (data) setVendedores(data);
+    sb.from("equipos_venta").select("id, nombre").eq("activo", true).order("nombre")
+      .then(({ data }: { data: { id: string; nombre: string }[] | null }) => {
+        if (data) setEquipos(data);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -153,16 +153,16 @@ export default function ReactivacionTab() {
     });
   };
 
-  const asignarVendedor = async () => {
-    if (!vendedorAsignar || selected.size === 0) return;
+  const asignarEquipo = async () => {
+    if (!equipoAsignar || selected.size === 0) return;
     setAsignando(true);
     try {
       const { error } = await supabase
         .from("leads_campana")
-        .update({ vendedor_id: vendedorAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo" })
+        .update({ equipo_id: equipoAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo" })
         .in("id", [...selected]);
       if (error) throw error;
-      toast({ title: `${selected.size} leads asignados` });
+      toast({ title: `${selected.size} leads asignados al equipo` });
       setSelected(new Set());
       setRefreshTick((t) => t + 1);
     } catch (e) {
@@ -209,7 +209,7 @@ export default function ReactivacionTab() {
         let query = supabase
           .from("leads_campana")
           .select(
-            "id, nombre, telefono, email, pais, estado, puntuacion, dias_reales, ha_respondido, archivado, tag_ids, ultimo_contacto_at, resumen_ia, vendedor_id, etapa_venta",
+            "id, nombre, telefono, email, pais, estado, puntuacion, dias_reales, ha_respondido, archivado, tag_ids, ultimo_contacto_at, resumen_ia, equipo_id, etapa_venta",
             { count: "exact" }
           );
         query = applyFilters(query, { q: qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail });
@@ -524,17 +524,17 @@ export default function ReactivacionTab() {
           {selected.size > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#003DA5]/30 bg-[#003DA5]/5 p-2">
               <Badge variant="secondary">{selected.size} seleccionados</Badge>
-              <Select value={vendedorAsignar} onValueChange={setVendedorAsignar}>
-                <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Elegir vendedor" /></SelectTrigger>
+              <Select value={equipoAsignar} onValueChange={setEquipoAsignar}>
+                <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Elegir equipo" /></SelectTrigger>
                 <SelectContent>
-                  {vendedores.map((v) => (
-                    <SelectItem key={v.user_id} value={v.user_id}>{v.nombre_display || v.user_id}</SelectItem>
+                  {equipos.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" size="sm" disabled={!vendedorAsignar || asignando} onClick={asignarVendedor} className="gap-1.5">
+              <Button type="button" size="sm" disabled={!equipoAsignar || asignando} onClick={asignarEquipo} className="gap-1.5">
                 {asignando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-                Asignar a vendedor
+                Asignar a equipo
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="text-muted-foreground">Limpiar</Button>
             </div>
@@ -586,7 +586,7 @@ export default function ReactivacionTab() {
                           </div>
                           <div className="mt-0.5 flex flex-wrap gap-1">
                             {l.ha_respondido && <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">respondió</span>}
-                            {l.vendedor_id && <span className="inline-block rounded-full border border-[#003DA5]/30 bg-[#003DA5]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#003DA5]">asignado</span>}
+                            {l.equipo_id && <span className="inline-block rounded-full border border-[#003DA5]/30 bg-[#003DA5]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#003DA5]">asignado</span>}
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-xs">{l.pais || "—"}</TableCell>

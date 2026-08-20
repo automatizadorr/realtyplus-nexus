@@ -20,7 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
-import { ETAPAS, ETAPA_LABEL, type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa } from "@/components/vendedor/types";
+import {
+  ETAPAS, ETAPA_LABEL, ETAPAS_PERMITIDAS, type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa, type RolEquipo,
+} from "@/components/vendedor/types";
 
 // leads_campana con las columnas nuevas aún no está en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -178,9 +180,9 @@ function Seguimiento({ lead, onProgramado }: { lead: LeadCampana; onProgramado: 
   );
 }
 
-function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado }: {
+function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado, miRol }: {
   lead: LeadCampana; plantillasWa: PlantillaWa[]; plantillasEmail: PlantillaEmail[]; onEnviado: () => void;
-  onProgramado: (leadId: string, fecha: string) => void;
+  onProgramado: (leadId: string, fecha: string) => void; miRol: RolEquipo | undefined;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
@@ -206,6 +208,13 @@ function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado
             </div>
             {lead.ha_respondido && <Badge variant="secondary" className="shrink-0 text-[10px] text-emerald-600">respondió</Badge>}
           </div>
+          {miRol && (
+            <span className={`inline-block w-fit rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+              miRol === "setter" ? "bg-blue-500/15 text-blue-600" : "bg-violet-500/15 text-violet-600"
+            }`}>
+              {miRol === "setter" ? "Setter" : "Closer"}
+            </span>
+          )}
 
           {slaVencido && (
             <span className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
@@ -258,17 +267,24 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const [perdidoDialog, setPerdidoDialog] = useState<{ leadId: string } | null>(null);
   const [motivo, setMotivo] = useState("");
   const [soloHoy, setSoloHoy] = useState(false);
+  const [misRoles, setMisRoles] = useState<Map<string, RolEquipo>>(new Map());
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const cargar = async () => {
     setLoading(true);
-    const { data, error } = await sb
-      .from("leads_campana")
-      .select("id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto")
-      .order("fecha_asignacion", { ascending: false });
+    const [{ data, error }, { data: miembros }] = await Promise.all([
+      sb
+        .from("leads_campana")
+        .select("id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, equipo_id")
+        .order("fecha_asignacion", { ascending: false }),
+      supabase.auth.getUser().then(({ data: u }) =>
+        u?.user ? sb.from("equipo_miembros").select("equipo_id, rol_equipo").eq("user_id", u.user.id) : { data: [] as { equipo_id: string; rol_equipo: RolEquipo }[] },
+      ),
+    ]);
     if (error) toast({ title: "Error al cargar el pipeline", description: error.message, variant: "destructive" });
     else setLeads((data ?? []) as LeadCampana[]);
+    setMisRoles(new Map((miembros ?? []).map((m: { equipo_id: string; rol_equipo: RolEquipo }) => [m.equipo_id, m.rol_equipo])));
     setLoading(false);
   };
 
@@ -306,6 +322,19 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     if (!etapa) return;
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.etapa_venta === etapa) return;
+
+    const rol = lead.equipo_id ? misRoles.get(lead.equipo_id) : undefined;
+    if (!rol || !ETAPAS_PERMITIDAS[rol].includes(etapa)) {
+      toast({
+        title: "No permitido",
+        description: rol
+          ? `Como ${rol === "setter" ? "setter" : "closer"} no puedes mover un lead a "${ETAPA_LABEL[etapa]}".`
+          : "No perteneces al equipo de este lead.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (etapa === "perdido") { setPerdidoDialog({ leadId }); setMotivo(""); return; }
     moverEtapa(leadId, etapa);
   };
@@ -343,7 +372,11 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
             {ETAPAS.map((etapa) => (
               <Column key={etapa} etapa={etapa} leads={porEtapa.get(etapa) ?? []}>
                 {(porEtapa.get(etapa) ?? []).map((l) => (
-                  <LeadCard key={l.id} lead={l} plantillasWa={plantillasWa} plantillasEmail={plantillasEmail} onEnviado={() => {}} onProgramado={onProgramado} />
+                  <LeadCard
+                    key={l.id} lead={l} plantillasWa={plantillasWa} plantillasEmail={plantillasEmail}
+                    onEnviado={() => {}} onProgramado={onProgramado}
+                    miRol={l.equipo_id ? misRoles.get(l.equipo_id) : undefined}
+                  />
                 ))}
               </Column>
             ))}

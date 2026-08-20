@@ -18,6 +18,7 @@ type Kpis = {
 };
 
 type Ranking = { mi_puesto: number; total_vendedores: number; mis_ganados: number };
+type MiEquipo = { equipo_id: string; rol_equipo: "setter" | "closer"; equipos_venta: { nombre: string } | null };
 
 function KpiTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -33,6 +34,7 @@ export default function MisLeads() {
   const [plantillasEmail, setPlantillasEmail] = useState<PlantillaEmail[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [ranking, setRanking] = useState<Ranking | null>(null);
+  const [misEquipos, setMisEquipos] = useState<MiEquipo[]>([]);
   const [loadingKpis, setLoadingKpis] = useState(true);
 
   const cargarPlantillas = async () => {
@@ -46,12 +48,17 @@ export default function MisLeads() {
 
   const cargarKpis = async () => {
     setLoadingKpis(true);
-    const [{ data: kpiData }, { data: rankData }] = await Promise.all([
+    const { data: userData } = await supabase.auth.getUser();
+    const [{ data: kpiData }, { data: rankData }, { data: equiposData }] = await Promise.all([
       sb.rpc("vendedor_kpis"),
       sb.rpc("vendedor_ranking"),
+      userData?.user
+        ? sb.from("equipo_miembros").select("equipo_id, rol_equipo, equipos_venta(nombre)").eq("user_id", userData.user.id)
+        : Promise.resolve({ data: [] }),
     ]);
     setKpis((kpiData ?? [])[0] ?? null);
     setRanking((rankData ?? [])[0] ?? null);
+    setMisEquipos((equiposData ?? []) as MiEquipo[]);
     setLoadingKpis(false);
   };
 
@@ -74,6 +81,21 @@ export default function MisLeads() {
         </div>
       </div>
 
+      {misEquipos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {misEquipos.map((m) => (
+            <span key={m.equipo_id} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs">
+              <span className="font-medium">{m.equipos_venta?.nombre ?? "Equipo"}</span>
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                m.rol_equipo === "setter" ? "bg-blue-500/15 text-blue-600" : "bg-violet-500/15 text-violet-600"
+              }`}>
+                {m.rol_equipo === "setter" ? "Setter" : "Closer"}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+
       {loadingKpis ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando KPIs…</div>
       ) : kpis && (
@@ -90,7 +112,7 @@ export default function MisLeads() {
 
       {ranking && ranking.total_vendedores > 1 && (
         <p className="text-xs text-muted-foreground">
-          🏆 Estás en el puesto <span className="font-semibold text-foreground">{ranking.mi_puesto}</span> de {ranking.total_vendedores} vendedores por leads ganados ({ranking.mis_ganados}).
+          🏆 Tu equipo está en el puesto <span className="font-semibold text-foreground">{ranking.mi_puesto}</span> de {ranking.total_vendedores} equipos por leads ganados ({ranking.mis_ganados}).
         </p>
       )}
 
