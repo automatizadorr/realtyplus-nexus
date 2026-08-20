@@ -20,6 +20,20 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+const vendedorGroups: { label?: string; items: { title: string; url: string; icon: React.ElementType }[] }[] = [
+  {
+    items: [
+      { title: "Mis Leads", url: "/mis-leads", icon: Radar },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { title: "Configuración", url: "/settings", icon: Settings2 },
+    ],
+  },
+];
+
 const groups: { label?: string; items: { title: string; url: string; icon: React.ElementType }[] }[] = [
   {
     items: [
@@ -74,7 +88,8 @@ export function AppSidebar() {
   const { setOpenMobile, isMobile } = useSidebar();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { isAdmin, isSubAdmin, loading: roleLoading } = useRole();
+  const { isAdmin, isSubAdmin, isVendedor, loading: roleLoading } = useRole();
+  const visibleGroups = isVendedor ? vendedorGroups : groups;
   const [avatarDialog, setAvatarDialog] = useState(false);
   const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) || undefined;
 
@@ -119,7 +134,7 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {groups.map((group, gIdx) => (
+        {visibleGroups.map((group, gIdx) => (
           <SidebarGroup key={group.label || `g-${gIdx}`}>
             {group.label && (
               <SidebarGroupLabel className="flex items-center gap-2 px-2 font-mono text-[10px] font-medium uppercase tracking-[0.2em]">
@@ -195,7 +210,7 @@ export function AppSidebar() {
           >
             <span
               className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-sidebar-primary/20 text-xs font-bold text-sidebar-primary-foreground ring-1 transition-colors ${
-                isAdmin ? "ring-sidebar-primary/70" : isSubAdmin ? "ring-blue-500/70" : "ring-sidebar-border"
+                isAdmin ? "ring-sidebar-primary/70" : isSubAdmin ? "ring-blue-500/70" : isVendedor ? "ring-emerald-500/70" : "ring-sidebar-border"
               }`}
             >
               {avatarUrl ? (
@@ -212,10 +227,10 @@ export function AppSidebar() {
             {!roleLoading && (
               <span
                 className={`absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full ring-2 ring-sidebar ${
-                  isAdmin ? "bg-sidebar-primary text-white" : isSubAdmin ? "bg-blue-500 text-white" : "bg-sidebar-accent text-sidebar-foreground"
+                  isAdmin ? "bg-sidebar-primary text-white" : isSubAdmin ? "bg-blue-500 text-white" : isVendedor ? "bg-emerald-500 text-white" : "bg-sidebar-accent text-sidebar-foreground"
                 }`}
               >
-                {isAdmin ? <ShieldCheck className="h-2 w-2" /> : isSubAdmin ? <ShieldCheck className="h-2 w-2" /> : <User className="h-2 w-2" />}
+                {isAdmin || isSubAdmin || isVendedor ? <ShieldCheck className="h-2 w-2" /> : <User className="h-2 w-2" />}
               </span>
             )}
           </button>
@@ -231,10 +246,12 @@ export function AppSidebar() {
                       ? "bg-sidebar-primary/25 text-sidebar-primary-foreground ring-1 ring-sidebar-primary/40"
                       : isSubAdmin
                       ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/40"
+                      : isVendedor
+                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/40"
                       : "bg-sidebar-accent/60 text-sidebar-foreground/70"
                   }`}
                 >
-                  {isAdmin ? "Admin" : isSubAdmin ? "Sub-admin" : "Agente"}
+                  {isAdmin ? "Admin" : isSubAdmin ? "Sub-admin" : isVendedor ? "Vendedor" : "Agente"}
                 </span>
               )}
             </div>

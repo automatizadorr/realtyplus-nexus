@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/integrations/supabase/lazy";
 import { useAuth } from "@/contexts/AuthContext";
 
-type AppRole = "admin" | "sub_admin" | null;
+type AppRole = "admin" | "sub_admin" | "vendedor" | null;
 
 interface UseRoleResult {
   role: AppRole;
   isAdmin: boolean;
   isSubAdmin: boolean;
+  /** true para el rol vendedor (acceso acotado a leads en_campana de sus países) */
+  isVendedor: boolean;
   /** true para admin Y sub_admin (puede ver datos del CRM) */
   hasCrmAccess: boolean;
   /** true solo para admin (puede enviar, borrar, disparar webhooks) */
@@ -34,7 +36,7 @@ export function useRole(): UseRoleResult {
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .in("role", ["admin", "sub_admin"])
+        .in("role", ["admin", "sub_admin", "vendedor"])
         .maybeSingle()
         .then(({ data }: { data: { role: string } | null }) => {
           if (!active) return;
@@ -49,10 +51,12 @@ export function useRole(): UseRoleResult {
 
   const isAdmin = role === "admin";
   const isSubAdmin = role === "sub_admin";
+  const isVendedor = role === "vendedor";
   return {
     role,
     isAdmin,
     isSubAdmin,
+    isVendedor,
     hasCrmAccess: isAdmin || isSubAdmin,
     canWrite: isAdmin,
     loading,

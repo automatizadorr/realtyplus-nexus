@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
+import { VendedorRoute } from "@/components/VendedorRoute";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { EcosystemAgentsFab } from "@/components/global/EcosystemAgentsFab";
 
@@ -23,6 +24,7 @@ const CorreosPersonalizados = lazy(() => import("./pages/CorreosPersonalizados")
 const SeguimientoCorreos = lazy(() => import("./pages/SeguimientoCorreos"));
 const BuscarLeads  = lazy(() => import("./pages/BuscarLeads"));
 const Plantillas   = lazy(() => import("./pages/Plantillas"));
+const MisLeads     = lazy(() => import("./pages/MisLeads"));
 const Inbox        = lazy(() => import("./pages/Inbox"));
 const Automation   = lazy(() => import("./pages/Automation"));
 const AutomationInbox = lazy(() => import("./pages/AutomationInbox"));
@@ -125,6 +127,7 @@ const App = () => (
                           <Route path="/campaigns" element={<AdminRoute><Campaigns /></AdminRoute>} />
                           <Route path="/buscar-leads" element={<AdminRoute><BuscarLeads /></AdminRoute>} />
                           <Route path="/plantillas" element={<AdminRoute><Plantillas /></AdminRoute>} />
+                          <Route path="/mis-leads" element={<VendedorRoute><MisLeads /></VendedorRoute>} />
                           <Route path="/correos-personalizados" element={<AdminRoute><CorreosPersonalizados /></AdminRoute>} />
                           <Route path="/seguimiento-correos" element={<AdminRoute><SeguimientoCorreos /></AdminRoute>} />
                           <Route path="/inbox" element={<AdminRoute><Inbox /></AdminRoute>} />

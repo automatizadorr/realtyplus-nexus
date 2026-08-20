@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AnimatedNumber, kpiGrid, kpiItem } from "@/components/AnimatedNumber";
 import { supabase } from "@/integrations/supabase/client";
+import { useRole } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -93,6 +94,14 @@ interface LeadRow {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { isVendedor, loading: roleLoading } = useRole();
+
+  // Los vendedores no tienen acceso al dashboard general del CRM (RLS lo dejaría
+  // vacío/roto); se los manda directo a su vista de leads.
+  useEffect(() => {
+    if (!roleLoading && isVendedor) navigate("/mis-leads", { replace: true });
+  }, [roleLoading, isVendedor, navigate]);
+
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [messagesByDay, setMessagesByDay] = useState<MessagesByDay[]>([]);
   const [countries, setCountries] = useState<CountryKPI[]>([]);
