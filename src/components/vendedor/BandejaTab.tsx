@@ -21,9 +21,9 @@ type LeadEnBandeja = {
   pais: string | null; fecha_asignacion: string | null;
 };
 
-// Se trae de a 30 (no toda la bandeja de una), para no volver lenta la
+// Se trae de a 25 (no toda la bandeja de una), para no volver lenta la
 // plataforma cuando a un vendedor le asignan lotes grandes de golpe.
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 25;
 
 function waLink(l: LeadEnBandeja): string | null {
   const raw = (l.telefono || "").replace(/[^\d]/g, "");
