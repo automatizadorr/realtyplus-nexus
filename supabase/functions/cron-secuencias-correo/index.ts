@@ -91,8 +91,9 @@ Deno.serve(async (req) => {
         ? fillTemplate(row.html, row)
         : buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
       const html = rawHtml.trim() ? rawHtml : buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
-      const rawFrom = `${row.from_name ?? "Mario · LexHouse"} <${row.from_email ?? "no-reply@send.lexhouse-ai.com"}>`;
-      const from = applyDomain(rawFrom, keyDomain);
+      const fromName = row.from_name ?? "Mario · LexHouse";
+      const fromEmail = row.from_email ?? "no-reply@send.lexhouse-ai.com";
+      const from = `${fromName} <${applyDomain(fromEmail, keyDomain)}>`;
       const payload: Record<string, unknown> = {
         from,
         to: [email],

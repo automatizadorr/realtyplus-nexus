@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
       const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(sent + failed);
       const subject = fillTemplate(subjectTpl, r);
       const payload: Record<string, unknown> = {
-        from: applyDomain(`${fromName} <${fromEmail}>`, keyDomain),
+        from: `${fromName} <${applyDomain(fromEmail, keyDomain)}>`,
         to: [r.email],
         subject,
       };
