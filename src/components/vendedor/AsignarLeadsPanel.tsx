@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Loader2, UserPlus, ChevronLeft, ChevronRight, Users2 } from "lucide-react";
+import { Search, Loader2, UserPlus, ChevronLeft, ChevronRight, Users2, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 const sb = supabase as any;
 
 const PAGE_SIZE = 15;
+const LOTES = [100, 200, 300, 500, 600, 700, 800, 900];
 
 type LeadRow = {
   id: string; nombre: string | null; telefono: string | null; email: string | null;
@@ -42,6 +43,8 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [vendedorAsignar, setVendedorAsignar] = useState("");
   const [asignando, setAsignando] = useState(false);
+  const [loteCantidad, setLoteCantidad] = useState("100");
+  const [enviandoLote, setEnviandoLote] = useState(false);
 
   const vendedorMap = useMemo(() => new Map(vendedores.map((v) => [v.user_id, v.nombre_display])), [vendedores]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -123,6 +126,29 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     }
   };
 
+  const enviarLote = async () => {
+    if (!vendedorAsignar) return;
+    setEnviandoLote(true);
+    try {
+      const { data, error } = await sb.rpc("admin_asignar_leads", {
+        _vendedor_id: vendedorAsignar,
+        _cantidad: loteCantidad === "todos" ? null : Number(loteCantidad),
+        _pais: pais,
+        _solo_sin_asignar: soloSinAsignar,
+        _busqueda: qDebounced.trim() || null,
+      });
+      if (error) throw error;
+      const asignados = (data ?? [])[0]?.asignados ?? 0;
+      toast({ title: `${asignados} leads enviados`, description: asignados === 0 ? "No había leads que calzaran con el filtro." : undefined });
+      setSelected(new Set());
+      setRefreshTick((t) => t + 1);
+    } catch (e) {
+      toast({ title: "No se pudo enviar el lote", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setEnviandoLote(false);
+    }
+  };
+
   const desde = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const hasta = Math.min(total, page * PAGE_SIZE + rows.length);
 
@@ -133,7 +159,7 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
           <Users2 className="h-4 w-4 text-[#003DA5]" /> Asignar leads a un vendedor
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Único lugar del sistema donde se envían leads de campaña a un vendedor. Selecciona filas y elige a quién se las mandas.
+          Único lugar del sistema donde se envían leads de campaña a un vendedor. Selecciona filas para enviar puntual, o usa "Enviar por lote" para mandar 100, 200… hasta todos los que calcen con el filtro.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -156,24 +182,46 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
           </label>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Vendedor a asignar:</span>
+          <Select value={vendedorAsignar} onValueChange={setVendedorAsignar}>
+            <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Elegir vendedor" /></SelectTrigger>
+            <SelectContent>
+              {vendedores.map((v) => (
+                <SelectItem key={v.user_id} value={v.user_id}>{v.nombre_display || v.user_id}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {selected.size > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#003DA5]/30 bg-[#003DA5]/5 p-2">
             <Badge variant="secondary">{selected.size} seleccionados</Badge>
-            <Select value={vendedorAsignar} onValueChange={setVendedorAsignar}>
-              <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Elegir vendedor" /></SelectTrigger>
-              <SelectContent>
-                {vendedores.map((v) => (
-                  <SelectItem key={v.user_id} value={v.user_id}>{v.nombre_display || v.user_id}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Button type="button" size="sm" disabled={!vendedorAsignar || asignando} onClick={enviarAVendedor} className="gap-1.5">
               {asignando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-              Enviar a vendedor
+              Enviar seleccionados
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="text-muted-foreground">Limpiar</Button>
           </div>
         )}
+
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border p-2">
+          <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Enviar por lote (según el filtro actual):</span>
+          <Select value={loteCantidad} onValueChange={setLoteCantidad}>
+            <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {LOTES.map((n) => (
+                <SelectItem key={n} value={String(n)}>{n} leads</SelectItem>
+              ))}
+              <SelectItem value="todos">Todos los filtrados</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button type="button" size="sm" variant="outline" disabled={!vendedorAsignar || enviandoLote} onClick={enviarLote} className="gap-1.5">
+            {enviandoLote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+            Enviar lote a vendedor
+          </Button>
+        </div>
 
         <div className="overflow-x-auto rounded-lg border">
           <Table>
