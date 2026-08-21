@@ -32,6 +32,23 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
   perdido: "Perdido",
 };
 
+export type VendedorKpis = {
+  asignados: number; contactados: number; interesados: number; demos: number;
+  ganados: number; perdidos: number; tasa_respuesta_pct: number; dias_promedio_cierre: number | null;
+};
+
+export type CorreosResumen = {
+  cupo_diario: number;
+  enviados_hoy: number;
+  total_30d: number;
+  enviado_30d: number;
+  entregado_30d: number;
+  abierto_30d: number;
+  click_30d: number;
+  rebotado_30d: number;
+  fallido_30d: number;
+};
+
 export type RolVenta = "setter" | "closer" | "ambos";
 
 // Etapas que cada rol puede asignar como destino al mover un lead

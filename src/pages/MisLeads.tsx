@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Users, Radar, Kanban, FileText, Loader2, GraduationCap, RotateCcw } from "lucide-react";
+import { Users, Radar, Kanban, FileText, Loader2, GraduationCap, RotateCcw, PieChart } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -9,18 +9,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import ProspeccionTab from "@/components/vendedor/ProspeccionTab";
 import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
+import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
 import ReactivacionTab from "@/components/prospeccion/ReactivacionTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
-import type { PlantillaEmail, PlantillaWa, RolVenta } from "@/components/vendedor/types";
+import type { CorreosResumen, PlantillaEmail, PlantillaWa, RolVenta, VendedorKpis } from "@/components/vendedor/types";
 
 // plantillas_* / RPC vendedor_kpis aún no están en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-type Kpis = {
-  asignados: number; contactados: number; interesados: number; demos: number;
-  ganados: number; perdidos: number; tasa_respuesta_pct: number; dias_promedio_cierre: number | null;
-};
+type Kpis = VendedorKpis;
 
 type Ranking = { mi_puesto: number; total_vendedores: number; mis_ganados: number };
 
@@ -33,7 +31,7 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["pipeline", "prospeccion", "reactivacion", "plantillas"] as const;
+const TABS_VALIDOS = ["pipeline", "prospeccion", "reactivacion", "plantillas", "estadisticas"] as const;
 
 export default function MisLeads() {
   const navigate = useNavigate();
@@ -45,6 +43,7 @@ export default function MisLeads() {
   const [plantillasEmail, setPlantillasEmail] = useState<PlantillaEmail[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [ranking, setRanking] = useState<Ranking | null>(null);
+  const [correos, setCorreos] = useState<CorreosResumen | null>(null);
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
   const [loadingKpis, setLoadingKpis] = useState(true);
 
@@ -60,15 +59,17 @@ export default function MisLeads() {
   const cargarKpis = async () => {
     setLoadingKpis(true);
     const { data: userData } = await supabase.auth.getUser();
-    const [{ data: kpiData }, { data: rankData }, { data: perfil }] = await Promise.all([
+    const [{ data: kpiData }, { data: rankData }, { data: correosData }, { data: perfil }] = await Promise.all([
       sb.rpc("vendedor_kpis"),
       sb.rpc("vendedor_ranking"),
+      sb.rpc("vendedor_correos_resumen"),
       userData?.user
         ? sb.from("vendedores").select("rol_venta").eq("user_id", userData.user.id).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
     setKpis((kpiData ?? [])[0] ?? null);
     setRanking((rankData ?? [])[0] ?? null);
+    setCorreos((correosData ?? [])[0] ?? null);
     setMiRol((perfil?.rol_venta as RolVenta | undefined) ?? undefined);
     setLoadingKpis(false);
   };
@@ -136,6 +137,7 @@ export default function MisLeads() {
           <TabsTrigger value="prospeccion" className="gap-1.5"><Radar className="h-4 w-4" /> Prospección</TabsTrigger>
           <TabsTrigger value="reactivacion" className="gap-1.5"><RotateCcw className="h-4 w-4" /> Reactivación</TabsTrigger>
           <TabsTrigger value="plantillas" className="gap-1.5"><FileText className="h-4 w-4" /> Mis Plantillas</TabsTrigger>
+          <TabsTrigger value="estadisticas" className="gap-1.5"><PieChart className="h-4 w-4" /> Estadísticas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pipeline">
@@ -152,6 +154,10 @@ export default function MisLeads() {
 
         <TabsContent value="plantillas">
           <MisPlantillasTab plantillasWa={plantillasWa} plantillasEmail={plantillasEmail} onChanged={cargarPlantillas} />
+        </TabsContent>
+
+        <TabsContent value="estadisticas">
+          <EstadisticasTab kpis={kpis} correos={correos} />
         </TabsContent>
       </Tabs>
     </div>
