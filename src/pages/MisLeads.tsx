@@ -12,7 +12,7 @@ import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
 import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
 import BandejaTab from "@/components/vendedor/BandejaTab";
-import ReactivacionTab from "@/components/prospeccion/ReactivacionTab";
+import ReactivacionChatTab from "@/components/vendedor/ReactivacionChatTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
 import type { CorreosResumen, PlantillaEmail, PlantillaWa, RolVenta, VendedorKpis } from "@/components/vendedor/types";
 
@@ -162,7 +162,7 @@ export default function MisLeads() {
         </TabsContent>
 
         <TabsContent value="reactivacion">
-          <ReactivacionTab />
+          <ReactivacionChatTab />
         </TabsContent>
 
         <TabsContent value="plantillas">

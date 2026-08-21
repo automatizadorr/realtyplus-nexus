@@ -55,7 +55,10 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
   const hasMoreOlderRef = useRef(true);
   const phoneBaseRef = useRef<string>("");
   const { toast } = useToast();
-  const { isAdmin, canWrite } = useRole();
+  const { isAdmin, canWrite, isVendedor } = useRole();
+  // El vendedor puede escribir/leer su propio lead (RLS lo acota), pero
+  // borrar mensajes sigue siendo solo admin (canWrite).
+  const puedeEscribir = canWrite || isVendedor;
 
   const PAGE_SIZE = 50;
 
@@ -277,11 +280,18 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
     }
   }, [searchIdx, matchIds]);
 
+  // El vendedor no tiene UPDATE genérico en leads_campana (todo pasa por RPC
+  // angostas); admin sí, vía la policy "Admins update leads".
+  const setBotActivo = (leadId: string, activo: boolean) =>
+    isAdmin
+      ? supabase.from("leads_campana").update({ bot_activo: activo }).eq("id", leadId)
+      : (supabase as any).rpc("vendedor_toggle_bot", { _lead_id: leadId, _activo: activo });
+
   const toggleBot = async () => {
     if (!selectedContact) return;
     setTogglingBot(true);
     const newVal = !selectedContact.bot_activo;
-    const { error } = await supabase.from("leads_campana").update({ bot_activo: newVal }).eq("id", selectedContact.id);
+    const { error } = await setBotActivo(selectedContact.id, newVal);
     if (!error && onContactUpdate) onContactUpdate({ ...selectedContact, bot_activo: newVal });
     setTogglingBot(false);
   };
@@ -355,7 +365,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
 
     try {
       if (selectedContact.bot_activo) {
-        await supabase.from("leads_campana").update({ bot_activo: false }).eq("id", selectedContact.id);
+        await setBotActivo(selectedContact.id, false);
         if (onContactUpdate) onContactUpdate({ ...selectedContact, bot_activo: false });
       }
 
@@ -496,7 +506,7 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
             <Switch
               checked={!!selectedContact.bot_activo}
               onCheckedChange={toggleBot}
-              disabled={togglingBot}
+              disabled={togglingBot || !puedeEscribir}
               className="scale-90 data-[state=checked]:bg-emerald-500"
             />
           </div>
@@ -750,25 +760,25 @@ export function ChatArea({ selectedContact, onContactUpdate, onBack, allTags, on
             </div>
           )}
           <div className="flex gap-1 max-w-3xl mx-auto items-end">
-            <QuickRepliesPopover isAdmin={canWrite} onPick={insertText} contactName={selectedContact.nombre} />
+            <QuickRepliesPopover isAdmin={puedeEscribir} onPick={insertText} contactName={selectedContact.nombre} />
             <EmojiPickerButton onPick={insertText} />
-            <AttachmentButton isAdmin={canWrite} onUploaded={(url, type) => setPendingMedia({ url, type })} />
+            <AttachmentButton isAdmin={puedeEscribir} onUploaded={(url, type) => setPendingMedia({ url, type })} />
             <Input
               ref={inputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && canWrite && sendMessage()}
-              placeholder={canWrite ? "Escribe un mensaje... (*negrita* _cursiva_ ~tachado~)" : "Solo lectura"}
-              disabled={!canWrite}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && puedeEscribir && sendMessage()}
+              placeholder={puedeEscribir ? "Escribe un mensaje... (*negrita* _cursiva_ ~tachado~)" : "Solo lectura"}
+              disabled={!puedeEscribir}
               className="flex-1 rounded-xl bg-muted/50 focus-visible:ring-primary focus-visible:bg-background transition-all border-transparent focus-visible:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <motion.div whileHover={{ scale: canWrite ? 1.05 : 1 }} whileTap={{ scale: canWrite ? 0.95 : 1 }}>
+            <motion.div whileHover={{ scale: puedeEscribir ? 1.05 : 1 }} whileTap={{ scale: puedeEscribir ? 0.95 : 1 }}>
               <Button
                 onClick={sendMessage}
-                disabled={(!newMessage.trim() && !pendingMedia) || sending || !canWrite}
+                disabled={(!newMessage.trim() && !pendingMedia) || sending || !puedeEscribir}
                 size="icon"
                 className="rounded-xl h-10 w-10 shadow-md"
-                title={!canWrite ? "Sin permiso de envío" : undefined}
+                title={!puedeEscribir ? "Sin permiso de envío" : undefined}
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>

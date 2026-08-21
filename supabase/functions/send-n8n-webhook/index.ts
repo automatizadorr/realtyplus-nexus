@@ -60,18 +60,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Un vendedor (setter/closer/ambos) puede usar ÚNICAMENTE el target
-    // "oportunidades" (Mensajes · Oportunidades), y solo para un teléfono
-    // que sea de UNO DE SUS leads asignados — nunca para otros targets ni
-    // para leads ajenos. Verificación server-side, no confiar en el cliente.
+    // Un vendedor (setter/closer/ambos) puede usar ÚNICAMENTE los targets
+    // "oportunidades" (Mensajes · Oportunidades) y "crmrp" (Reactivación,
+    // el chat de Camil-AI), y solo para un teléfono que sea de UNO DE SUS
+    // leads asignados — nunca para otros targets ni para leads ajenos.
+    // Verificación server-side, no confiar en el cliente.
+    const TARGETS_VENDEDOR = new Set(["oportunidades", "crmrp"]);
     if (!isAdmin) {
       const { data: isVendedor } = await svc.rpc("has_role", { _user_id: userData.user.id, _role: "vendedor" });
       const telefonoRaw = (payload as Record<string, unknown>)?.telefono;
       const telefono = typeof telefonoRaw === "string" ? telefonoRaw.replace(/\D/g, "") : "";
-      const esOportunidades = target === "oportunidades" && telefono.length >= 8;
+      const esTargetPermitido = TARGETS_VENDEDOR.has(target) && telefono.length >= 8;
 
       let puedeVender = false;
-      if (isVendedor && esOportunidades) {
+      if (isVendedor && esTargetPermitido) {
         const { data: leads } = await svc
           .from("leads_campana")
           .select("id, telefono")
@@ -79,8 +81,8 @@ Deno.serve(async (req) => {
         puedeVender = (leads ?? []).some((l: { telefono: string | null }) => (l.telefono ?? "").replace(/\D/g, "") === telefono);
       }
 
-      if (!isVendedor || !esOportunidades || !puedeVender) {
-        return new Response(JSON.stringify({ error: "Forbidden: admin role required (o vendedor sobre su propio lead, target oportunidades)" }), {
+      if (!isVendedor || !esTargetPermitido || !puedeVender) {
+        return new Response(JSON.stringify({ error: "Forbidden: admin role required (o vendedor sobre su propio lead, target oportunidades/crmrp)" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
