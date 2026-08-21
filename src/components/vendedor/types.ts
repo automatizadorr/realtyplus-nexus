@@ -2,6 +2,17 @@ export type PlantillaWa = { id: string; nombre: string; contenido: string; cread
 export type PlantillaEmail = {
   id: string; nombre: string; asunto: string; cuerpo_text: string | null; cuerpo_html: string;
   creado_por?: string | null; activa?: boolean;
+  // Diseño visual (mismo compositor que Correos Personalizados del admin):
+  // cuerpo_text es el CUERPO fuente que alimenta el compositor; cuerpo_html
+  // es el HTML final ya compilado (el que usan Bandeja/Pipeline al enviar).
+  design_mode?: "personal" | "pro" | "texto";
+  titulo?: string | null;
+  cta_text?: string | null;
+  cta_url?: string | null;
+  brand_color?: string | null;
+  logo_url?: string | null;
+  avatar_url?: string | null;
+  footer_text?: string | null;
 };
 
 export type LeadCampana = {
