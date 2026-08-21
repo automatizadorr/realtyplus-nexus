@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw } from "lucide-react";
+import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +20,10 @@ type LeadEnBandeja = {
   pais: string | null; fecha_asignacion: string | null;
 };
 
+// Se trae de a 30 (no toda la bandeja de una), para no volver lenta la
+// plataforma cuando a un vendedor le asignan lotes grandes de golpe.
+const PAGE_SIZE = 30;
+
 function waLink(l: LeadEnBandeja): string | null {
   const raw = (l.telefono || "").replace(/[^\d]/g, "");
   if (raw.length < 8) return null;
@@ -33,6 +37,8 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
 }) {
   const { toast } = useToast();
   const [leads, setLeads] = useState<LeadEnBandeja[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [waPlantillaId, setWaPlantillaId] = useState("");
@@ -41,24 +47,29 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
   const [enviandoCorreos, setEnviandoCorreos] = useState(false);
   const [liberando, setLiberando] = useState(false);
 
-  const cargar = async () => {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const cargar = async (p: number = page) => {
     setLoading(true);
-    const { data, error } = await sb
+    const { data, count, error } = await sb
       .from("leads_campana")
-      .select("id, nombre, telefono, email, pais, fecha_asignacion")
+      .select("id, nombre, telefono, email, pais, fecha_asignacion", { count: "exact" })
       .is("primer_contacto_at", null)
-      .order("fecha_asignacion", { ascending: true });
+      .order("fecha_asignacion", { ascending: true })
+      .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1);
     if (error) toast({ title: "Error al cargar la bandeja", description: error.message, variant: "destructive" });
     else {
       const filas = (data ?? []) as LeadEnBandeja[];
       setLeads(filas);
+      setTotal(count ?? 0);
       setSelected(new Set(filas.map((l) => l.id)));
     }
     setWaEnviados(new Set());
     setLoading(false);
   };
 
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => { cargar(page); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [page]);
+  useEffect(() => { setPage((p) => Math.min(p, totalPages - 1)); }, [totalPages]);
 
   const toggleSel = (id: string) => {
     setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -95,8 +106,9 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
       const { data, error } = await sb.rpc("vendedor_liberar_a_pipeline", { _lead_ids: ids });
       if (error) throw error;
       const n = (data ?? [])[0]?.liberados ?? 0;
-      setLeads((ls) => ls.filter((l) => !ids.includes(l.id)));
-      setSelected((s) => { const n2 = new Set(s); ids.forEach((id) => n2.delete(id)); return n2; });
+      // Al liberar, la ventana (offset/limit) actual corre sola: se vuelve a
+      // pedir la misma página y entran los siguientes de la bandeja.
+      await cargar(page);
       onLiberados?.();
       return n;
     } finally {
@@ -148,6 +160,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
       <p className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
         Estos leads te fueron asignados pero todavía <span className="font-semibold text-foreground">no aparecen en tu Pipeline</span>.
         Elige una plantilla de WhatsApp y/o email, contáctalos, y pásalos al Pipeline cuando quieras — así no se te acumulan todos de golpe.
+        {total > PAGE_SIZE && ` Se muestran de a ${PAGE_SIZE} a la vez (tienes ${total.toLocaleString("es-CL")} en total).`}
       </p>
 
       <Card>
@@ -258,6 +271,20 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">
+          {total === 0 ? "Bandeja vacía" : `Página ${page + 1} de ${totalPages} · ${total.toLocaleString("es-CL")} en bandeja`}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" className="gap-1" disabled={loading || page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            <ChevronLeft className="h-4 w-4" /> Anterior
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="gap-1" disabled={loading || page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            Siguiente <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
