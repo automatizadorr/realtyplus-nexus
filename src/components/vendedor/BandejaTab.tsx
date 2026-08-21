@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight, Star, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +30,18 @@ function waLink(l: LeadEnBandeja): string | null {
   return `https://wa.me/${normalizePhone(raw, l.pais)}`;
 }
 
+type Canal = "whatsapp" | "email";
+const favKey = (canal: Canal, id: string) => `${canal}:${id}`;
+
+// Favoritas primero (mismo orden relativo entre ellas y entre el resto).
+function ordenarPorFavorito<T extends { id: string }>(items: T[], canal: Canal, favoritos: Set<string>): T[] {
+  return [...items].sort((a, b) => {
+    const favA = favoritos.has(favKey(canal, a.id)) ? 0 : 1;
+    const favB = favoritos.has(favKey(canal, b.id)) ? 0 : 1;
+    return favA - favB;
+  });
+}
+
 export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados }: {
   plantillasWa: PlantillaWa[];
   plantillasEmail: PlantillaEmail[];
@@ -46,8 +58,29 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
   const [waEnviados, setWaEnviados] = useState<Set<string>>(new Set());
   const [enviandoCorreos, setEnviandoCorreos] = useState(false);
   const [liberando, setLiberando] = useState(false);
+  const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    sb.from("plantilla_favoritos").select("canal, plantilla_id").then(({ data }: { data: { canal: Canal; plantilla_id: string }[] | null }) => {
+      if (data) setFavoritos(new Set(data.map((f) => favKey(f.canal, f.plantilla_id))));
+    });
+  }, []);
+
+  const toggleFavorito = async (canal: Canal, plantillaId: string) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) return;
+    const key = favKey(canal, plantillaId);
+    const eraFavorita = favoritos.has(key);
+    setFavoritos((s) => { const n = new Set(s); eraFavorita ? n.delete(key) : n.add(key); return n; });
+    if (eraFavorita) {
+      await sb.from("plantilla_favoritos").delete().eq("user_id", uid).eq("canal", canal).eq("plantilla_id", plantillaId);
+    } else {
+      await sb.from("plantilla_favoritos").insert({ user_id: uid, canal, plantilla_id: plantillaId });
+    }
+  };
 
   const cargar = async (p: number = page) => {
     setLoading(true);
@@ -79,6 +112,23 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
 
   const waPlantilla = plantillasWa.find((p) => p.id === waPlantillaId);
   const emailPlantilla = plantillasEmail.find((p) => p.id === emailPlantillaId);
+
+  const plantillasWaOrdenadas = useMemo(() => ordenarPorFavorito(plantillasWa, "whatsapp", favoritos), [plantillasWa, favoritos]);
+  const plantillasEmailOrdenadas = useMemo(() => ordenarPorFavorito(plantillasEmail, "email", favoritos), [plantillasEmail, favoritos]);
+
+  // Ejemplo para la previsualización: el primer lead seleccionado (en el
+  // orden en que aparece en la tabla).
+  const leadEjemplo = leads.find((l) => selected.has(l.id));
+
+  const waPreview = waPlantilla && leadEjemplo
+    ? fillTemplate(waPlantilla.contenido, { nombre: leadEjemplo.nombre || undefined, pais: leadEjemplo.pais || undefined })
+    : null;
+  const emailPreview = emailPlantilla && leadEjemplo
+    ? {
+        asunto: fillTemplate(emailPlantilla.asunto, { nombre: leadEjemplo.nombre || undefined, pais: leadEjemplo.pais || undefined }),
+        cuerpo: fillTemplate(emailPlantilla.cuerpo_text || emailPlantilla.cuerpo_html, { nombre: leadEjemplo.nombre || undefined, pais: leadEjemplo.pais || undefined }),
+      }
+    : null;
 
   const registrarContacto = async (leadId: string, canal: "whatsapp" | "email", plantillaId: string, mensaje: string) => {
     const { data: userData } = await supabase.auth.getUser();
@@ -168,17 +218,64 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Plantilla WhatsApp</label>
-              <Select value={waPlantillaId} onValueChange={setWaPlantillaId}>
-                <SelectTrigger><SelectValue placeholder="Elegir plantilla" /></SelectTrigger>
-                <SelectContent>{plantillasWa.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="flex items-center gap-1.5">
+                <Select value={waPlantillaId} onValueChange={setWaPlantillaId}>
+                  <SelectTrigger><SelectValue placeholder="Elegir plantilla" /></SelectTrigger>
+                  <SelectContent>
+                    {plantillasWaOrdenadas.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {favoritos.has(favKey("whatsapp", p.id)) ? "★ " : ""}{p.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0"
+                  disabled={!waPlantillaId} onClick={() => waPlantillaId && toggleFavorito("whatsapp", waPlantillaId)}
+                  aria-label="Marcar como favorita"
+                >
+                  <Star className={`h-4 w-4 ${waPlantillaId && favoritos.has(favKey("whatsapp", waPlantillaId)) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
+                </Button>
+              </div>
+              {waPlantillaId && (
+                <div className="flex items-start gap-1.5 rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                  <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {waPreview ? <p className="whitespace-pre-wrap">{waPreview}</p> : <p>Selecciona al menos un lead para previsualizar.</p>}
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Plantilla email</label>
-              <Select value={emailPlantillaId} onValueChange={setEmailPlantillaId}>
-                <SelectTrigger><SelectValue placeholder="Elegir plantilla" /></SelectTrigger>
-                <SelectContent>{plantillasEmail.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="flex items-center gap-1.5">
+                <Select value={emailPlantillaId} onValueChange={setEmailPlantillaId}>
+                  <SelectTrigger><SelectValue placeholder="Elegir plantilla" /></SelectTrigger>
+                  <SelectContent>
+                    {plantillasEmailOrdenadas.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {favoritos.has(favKey("email", p.id)) ? "★ " : ""}{p.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0"
+                  disabled={!emailPlantillaId} onClick={() => emailPlantillaId && toggleFavorito("email", emailPlantillaId)}
+                  aria-label="Marcar como favorita"
+                >
+                  <Star className={`h-4 w-4 ${emailPlantillaId && favoritos.has(favKey("email", emailPlantillaId)) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
+                </Button>
+              </div>
+              {emailPlantillaId && (
+                <div className="flex items-start gap-1.5 rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                  <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {emailPreview ? (
+                    <div>
+                      <p className="font-medium text-foreground">{emailPreview.asunto}</p>
+                      <p className="whitespace-pre-wrap">{emailPreview.cuerpo}</p>
+                    </div>
+                  ) : <p>Selecciona al menos un lead para previsualizar.</p>}
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  X, UserPlus, Handshake, MessageCircle, AlarmClock, CalendarClock, FileText,
-  Trophy, Kanban, Target, Zap, ChevronRight, ChevronLeft,
+  X, UserPlus, Handshake, MessageCircle, CalendarClock, FileText,
+  Trophy, Kanban, Target, Zap, ChevronRight, ChevronLeft, Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { RolVenta } from "@/components/vendedor/types";
@@ -23,9 +23,9 @@ const PASOS: Record<RolVenta, Paso[]> = {
     },
     {
       eyebrow: "Tu día a día",
-      titulo: "Pipeline y contacto",
-      cuerpo: "En Pipeline arrastrás cada lead a la etapa que corresponde. El badge rojo \"Sin contactar hace Xh\" marca a quién priorizar, y el filtro \"Solo hoy\" te muestra solo lo urgente. Para escribirle, tocá Contactar: elegís una plantilla, la revisás y recién ahí se envía.",
-      icon: Kanban,
+      titulo: "Bandeja primero, después Pipeline",
+      cuerpo: "Los leads nuevos llegan a tu Bandeja: ahí elegís plantilla de WhatsApp y/o email, la previsualizás y contactás. Recién al liberarlos pasan al Pipeline, ya en Contactado. Ahí seguís el seguimiento con el filtro \"Solo hoy\" para lo urgente.",
+      icon: Inbox,
     },
     {
       eyebrow: "Cuándo pasás la posta",
@@ -63,13 +63,13 @@ const PASOS: Record<RolVenta, Paso[]> = {
     },
     {
       eyebrow: "Tu día a día",
-      titulo: "Pipeline y contacto",
-      cuerpo: "En Pipeline arrastrás cada lead por toda la secuencia. El badge rojo \"Sin contactar hace Xh\" marca a quién priorizar, y \"Solo hoy\" te muestra lo urgente. Para escribir, tocá Contactar: elegís plantilla, revisás y enviás.",
-      icon: Kanban,
+      titulo: "Bandeja primero, después Pipeline",
+      cuerpo: "Los leads nuevos llegan a tu Bandeja: elegís plantilla de WhatsApp y/o email, la previsualizás y contactás. Al liberarlos entran al Pipeline en Contactado, y ahí arrastrás cada lead por toda la secuencia. \"Solo hoy\" te muestra lo urgente.",
+      icon: Inbox,
     },
     {
       eyebrow: "De punta a punta",
-      titulo: "De Nuevo a Ganado, todo tuyo",
+      titulo: "De la Bandeja a Ganado, todo tuyo",
       cuerpo: "Vos decidís cuándo pasa de Contactado a Interesado, cuándo agendar la Demo, y cerrás en Ganado o Perdido (te va a pedir el motivo). Podés crear tus propias plantillas en Mis Plantillas.",
       icon: Handshake,
     },
@@ -91,18 +91,20 @@ const COLOR: Record<RolVenta, { texto: string; bg: string; solido: string; hover
 };
 
 const ETAPAS_VISUAL = [
-  { id: "nuevo", label: "Nuevo" },
+  { id: "bandeja", label: "Bandeja" },
   { id: "contactado", label: "Contactado" },
   { id: "interesado", label: "Interesado" },
   { id: "demo", label: "Demo" },
   { id: "ganado", label: "Ganado" },
 ] as const;
 
-// Zona de cada rol dentro de la secuencia real del pipeline (ver vendedor_mover_etapa).
+// Zona de cada rol dentro de la secuencia real (Bandeja + pipeline, ver
+// vendedor_liberar_a_pipeline / vendedor_mover_etapa). "Bandeja" ya no es una
+// etapa del Pipeline: es el paso previo donde se elige plantilla y se contacta.
 const ZONA: Record<RolVenta, Set<string>> = {
-  setter: new Set(["nuevo", "contactado", "interesado"]),
+  setter: new Set(["bandeja", "contactado", "interesado"]),
   closer: new Set(["interesado", "demo", "ganado"]),
-  ambos: new Set(["nuevo", "contactado", "interesado", "demo", "ganado"]),
+  ambos: new Set(["bandeja", "contactado", "interesado", "demo", "ganado"]),
 };
 
 const ZONA_TEXTO: Record<RolVenta, string> = {
@@ -129,6 +131,7 @@ function RelayTrack({ rol }: { rol: RolVenta }) {
                 }`}
               >
                 {e.id === "interesado" ? <Handshake className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
+                {e.id === "bandeja" ? <Inbox className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
               </div>
               <span className={`w-14 text-center text-[9px] leading-tight sm:w-16 sm:text-[10px] ${activa ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
                 {e.label}
@@ -201,9 +204,9 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolVenta; 
             {paso === 1 && (
               <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                 {[
-                  { icon: AlarmClock, label: "SLA de contacto" },
+                  { icon: Inbox, label: "Bandeja + plantillas" },
                   { icon: CalendarClock, label: "Seguimientos" },
-                  { icon: MessageCircle, label: "Plantillas listas" },
+                  { icon: MessageCircle, label: "Favoritas ⭐" },
                 ].map(({ icon: I, label }) => (
                   <div key={label} className="flex items-center gap-2 rounded-lg border p-2.5 text-xs">
                     <I className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> {label}

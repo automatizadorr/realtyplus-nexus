@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
-import { Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, AlarmClock, CalendarClock } from "lucide-react";
+import { Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
 import {
-  ETAPAS, ETAPA_LABEL, ETAPAS_PERMITIDAS, type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa, type RolVenta,
+  ETAPAS_PIPELINE, ETAPA_LABEL, ETAPAS_PERMITIDAS, type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa, type RolVenta,
 } from "@/components/vendedor/types";
 
 // leads_campana con las columnas nuevas aún no está en el types.ts generado.
@@ -39,20 +39,10 @@ function diasDesde(iso: string | null): number | null {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
 }
 
-const SLA_HORAS_SIN_CONTACTAR = 24;
-
-function horasDesde(iso: string | null): number | null {
-  if (!iso) return null;
-  return (Date.now() - new Date(iso).getTime()) / 3600000;
-}
-
-// Un lead pide atención "hoy" si: (a) sigue en "nuevo" y ya se pasó el SLA de
-// primer contacto, o (b) tiene un seguimiento programado para hoy o antes.
+// Un lead pide atención "hoy" si tiene un seguimiento programado para hoy o
+// antes. El SLA de primer contacto (antes ligado a la etapa "nuevo") ahora lo
+// cubre la Bandeja: un lead solo entra al Pipeline cuando ya fue contactado.
 function requiereHoy(l: LeadCampana): boolean {
-  if (l.etapa_venta === "nuevo") {
-    const h = horasDesde(l.fecha_asignacion);
-    if (h !== null && h >= SLA_HORAS_SIN_CONTACTAR) return true;
-  }
   if (l.fecha_proximo_contacto) {
     const finDeHoy = new Date(); finDeHoy.setHours(23, 59, 59, 999);
     if (new Date(l.fecha_proximo_contacto).getTime() <= finDeHoy.getTime()) return true;
@@ -187,13 +177,11 @@ function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   const dias = diasDesde(lead.fecha_asignacion);
-  const horasSinContactar = lead.etapa_venta === "nuevo" ? horasDesde(lead.fecha_asignacion) : null;
-  const slaVencido = horasSinContactar !== null && horasSinContactar >= SLA_HORAS_SIN_CONTACTAR;
   const seguimientoVencido = lead.fecha_proximo_contacto && new Date(lead.fecha_proximo_contacto).getTime() <= Date.now();
 
   return (
     <div ref={setNodeRef} style={style} className={isDragging ? "z-50 opacity-60" : undefined}>
-      <Card className={`mb-2 ${slaVencido ? "border-red-400" : ""}`}>
+      <Card className="mb-2">
         <CardContent className="space-y-2 p-3">
           <div className="flex items-start gap-1.5">
             <button type="button" {...listeners} {...attributes} className="mt-0.5 cursor-grab touch-none text-muted-foreground active:cursor-grabbing">
@@ -209,11 +197,6 @@ function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado
             {lead.ha_respondido && <Badge variant="secondary" className="shrink-0 text-[10px] text-emerald-600">respondió</Badge>}
           </div>
 
-          {slaVencido && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
-              <AlarmClock className="h-2.5 w-2.5" /> Sin contactar hace {Math.floor(horasSinContactar!)}h
-            </span>
-          )}
           {lead.fecha_proximo_contacto && (
             <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${
               seguimientoVencido ? "border-amber-400/40 bg-amber-500/10 text-amber-700" : "border-input text-muted-foreground"
@@ -270,6 +253,9 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       sb
         .from("leads_campana")
         .select("id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id")
+        // Los que siguen en la Bandeja (primer_contacto_at IS NULL) no
+        // aparecen acá — recién entran cuando el vendedor los libera.
+        .not("primer_contacto_at", "is", null)
         .order("fecha_asignacion", { ascending: false }),
       supabase.auth.getUser().then(({ data: u }) =>
         u?.user ? sb.from("vendedores").select("rol_venta").eq("user_id", u.user.id).maybeSingle() : { data: null },
@@ -287,11 +273,11 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
 
   const porEtapa = useMemo(() => {
     const m = new Map<Etapa, LeadCampana[]>();
-    for (const e of ETAPAS) m.set(e, []);
+    for (const e of ETAPAS_PIPELINE) m.set(e, []);
     const fuente = soloHoy ? leads.filter(requiereHoy) : leads;
     for (const l of fuente) {
-      const e = (l.etapa_venta as Etapa) || "nuevo";
-      (m.get(e) ?? m.get("nuevo")!).push(l);
+      const e = (l.etapa_venta as Etapa) || "contactado";
+      (m.get(e) ?? m.get("contactado")!).push(l);
     }
     return m;
   }, [leads, soloHoy]);
@@ -361,7 +347,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {ETAPAS.map((etapa) => (
+            {ETAPAS_PIPELINE.map((etapa) => (
               <Column key={etapa} etapa={etapa} leads={porEtapa.get(etapa) ?? []}>
                 {(porEtapa.get(etapa) ?? []).map((l) => (
                   <LeadCard

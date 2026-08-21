@@ -1,8 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Cell, Pie, PieChart } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { supabase } from "@/integrations/supabase/client";
 import { ETAPA_LABEL, type CorreosResumen, type VendedorKpis } from "@/components/vendedor/types";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
+
+// Paleta cíclica para las plantillas más usadas (no hay un color fijo por
+// plantilla, a diferencia de las otras donas que sí tienen semántica).
+const PALETA_PLANTILLAS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#f43f5e", "#06b6d4", "#a78bfa", "#84cc16"];
 
 type Segmento = { key: string; label: string; value: number; color: string; detalle: string };
 
@@ -158,6 +166,27 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
     return out;
   }, [correos]);
 
+  const [plantillasUsadas, setPlantillasUsadas] = useState<{ plantilla_id: string; canal: string; nombre: string | null; usos: number }[]>([]);
+  useEffect(() => {
+    sb.rpc("vendedor_plantillas_usadas").then(({ data }: { data: typeof plantillasUsadas | null }) => {
+      if (data) setPlantillasUsadas(data);
+    });
+  }, []);
+
+  const plantillasData: Segmento[] = useMemo(() => {
+    return plantillasUsadas.map((p, i) => {
+      const canalLabel = p.canal === "whatsapp" ? "WhatsApp" : "Email";
+      const nombre = p.nombre || "Plantilla eliminada";
+      return {
+        key: `${p.canal}:${p.plantilla_id}`,
+        value: p.usos,
+        color: PALETA_PLANTILLAS[i % PALETA_PLANTILLAS.length],
+        label: nombre,
+        detalle: `"${nombre}" (${canalLabel}): usada ${p.usos} ${p.usos === 1 ? "vez" : "veces"}.`,
+      };
+    });
+  }, [plantillasUsadas]);
+
   const leadsTratados = kpis ? kpis.contactados + kpis.interesados + kpis.demos + kpis.ganados + kpis.perdidos : 0;
 
   return (
@@ -191,6 +220,13 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
           data={cupoData}
           centro={`${correos?.enviados_hoy ?? 0}/${correos?.cupo_diario ?? 55}`}
           centroLabel="usados hoy"
+        />
+        <Dona
+          titulo="Plantillas más usadas"
+          subtitulo="Tus plantillas de WhatsApp y email con más envíos (Bandeja, Prospección y Pipeline)."
+          data={plantillasData}
+          centro={plantillasData.reduce((acc, d) => acc + d.value, 0)}
+          centroLabel="envíos"
         />
       </div>
     </div>

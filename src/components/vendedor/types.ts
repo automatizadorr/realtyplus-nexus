@@ -23,6 +23,12 @@ export type LeadCampana = {
 export const ETAPAS = ["nuevo", "contactado", "interesado", "demo", "ganado", "perdido"] as const;
 export type Etapa = (typeof ETAPAS)[number];
 
+// Columnas que se muestran en el kanban del Pipeline. "nuevo" ya no se
+// muestra ahí: ese paso ahora lo cubre la Bandeja (donde se elige
+// plantilla y se contacta); al liberar, el lead entra directo a
+// "contactado" (ver vendedor_liberar_a_pipeline).
+export const ETAPAS_PIPELINE = ETAPAS.filter((e): e is Exclude<Etapa, "nuevo"> => e !== "nuevo");
+
 export const ETAPA_LABEL: Record<Etapa, string> = {
   nuevo: "Nuevo",
   contactado: "Contactado",
