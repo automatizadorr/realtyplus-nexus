@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
+import CorreosVendedorTab from "@/components/vendedor/CorreosVendedorTab";
 import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
 import BandejaTab from "@/components/vendedor/BandejaTab";
 import ReactivacionChatTab from "@/components/vendedor/ReactivacionChatTab";
@@ -32,7 +33,7 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "estadisticas"] as const;
+const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "correos", "estadisticas"] as const;
 
 export default function MisLeads() {
   const { user } = useAuth();
@@ -139,8 +140,8 @@ export default function MisLeads() {
       )}
 
       {/* Sin TabsList: la navegación entre secciones vive solo en el sidebar
-          (Bandeja/Pipeline/Leads DataBase/Mis Plantillas/Estadísticas). El valor
-          activo viene de la URL (/mis-leads/:tab). */}
+          (Bandeja/Pipeline/Leads DataBase/Mis Plantillas/Correos Personalizados/
+          Estadísticas). El valor activo viene de la URL (/mis-leads/:tab). */}
       <Tabs value={tabActivo}>
         <TabsContent value="bandeja">
           <BandejaTab
@@ -158,7 +159,11 @@ export default function MisLeads() {
         </TabsContent>
 
         <TabsContent value="plantillas">
-          <MisPlantillasTab plantillasWa={plantillasWa} plantillasEmail={plantillasEmail} onChanged={cargarPlantillas} />
+          <MisPlantillasTab plantillasWa={plantillasWa} onChanged={cargarPlantillas} />
+        </TabsContent>
+
+        <TabsContent value="correos">
+          <CorreosVendedorTab plantillasEmail={plantillasEmail} onChanged={cargarPlantillas} />
         </TabsContent>
 
         <TabsContent value="estadisticas">

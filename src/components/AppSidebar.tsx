@@ -34,6 +34,7 @@ const vendedorGroups: { label?: string; items: { title: string; url: string; ico
     label: "Herramientas",
     items: [
       { title: "Mis Plantillas", url: "/mis-leads/plantillas", icon: FileText },
+      { title: "Correos Personalizados", url: "/mis-leads/correos", icon: Mail },
       { title: "Estadísticas", url: "/mis-leads/estadisticas", icon: PieChart },
     ],
   },

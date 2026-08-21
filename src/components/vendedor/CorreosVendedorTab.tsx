@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { MessageCircle, Plus, Pencil, Trash2, Lock } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Mail, Plus, Pencil, Trash2, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -8,60 +8,53 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import EditarPlantillaDialog from "@/components/vendedor/EditarPlantillaDialog";
-import type { PlantillaWa } from "@/components/vendedor/types";
-
-type Stat = { plantilla_id: string; canal: string; usos: number; respondieron: number; tasa_pct: number | null };
+import PlantillaEmailPreviewDialog from "@/components/vendedor/PlantillaEmailPreviewDialog";
+import type { PlantillaEmail } from "@/components/vendedor/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-// Plantillas de WhatsApp del vendedor. El diseño de correos (HTML, botón,
-// logo, etc.) vive en su propia sección "Correos Personalizados"
-// (CorreosVendedorTab), con su propio ítem en el sidebar.
-export default function MisPlantillasTab({
-  plantillasWa, onChanged,
+// Sección propia (separada de "Mis Plantillas", que quedó solo para
+// WhatsApp): diseño visual de correos, mismo compositor que Correos
+// Personalizados del admin (EmailDesignCard + emailTemplates), pero acotado
+// a las plantillas de email del vendedor.
+export default function CorreosVendedorTab({
+  plantillasEmail, onChanged,
 }: {
-  plantillasWa: PlantillaWa[];
+  plantillasEmail: PlantillaEmail[];
   onChanged: () => void;
 }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PlantillaWa | null>(null);
-  const [stats, setStats] = useState<Stat[]>([]);
+  const [editing, setEditing] = useState<PlantillaEmail | null>(null);
+  const [previewing, setPreviewing] = useState<PlantillaEmail | null>(null);
 
-  useEffect(() => {
-    sb.rpc("plantilla_stats").then(({ data }: { data: Stat[] | null }) => setStats(data ?? []));
-  }, []);
-
-  const statsById = useMemo(() => {
-    const m = new Map<string, Stat>();
-    for (const s of stats) m.set(s.plantilla_id, s);
-    return m;
-  }, [stats]);
-
-  const propias = plantillasWa.filter((p) => p.creado_por === user?.id);
-  const compartidas = plantillasWa.filter((p) => p.creado_por !== user?.id);
+  const propias = useMemo(() => plantillasEmail.filter((p) => p.creado_por === user?.id), [plantillasEmail, user?.id]);
+  const compartidas = useMemo(() => plantillasEmail.filter((p) => p.creado_por !== user?.id), [plantillasEmail, user?.id]);
 
   const abrirNueva = () => { setEditing(null); setDialogOpen(true); };
-  const abrirEditar = (p: PlantillaWa) => { setEditing(p); setDialogOpen(true); };
+  const abrirEditar = (p: PlantillaEmail) => { setEditing(p); setDialogOpen(true); };
 
-  const eliminar = async (p: PlantillaWa) => {
-    const { error } = await sb.from("plantillas_whatsapp").delete().eq("id", p.id);
+  const eliminar = async (p: PlantillaEmail) => {
+    const { error } = await sb.from("plantillas_email").delete().eq("id", p.id);
     if (error) { toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Plantilla borrada" });
     onChanged();
   };
 
-  const toggleActiva = async (p: PlantillaWa, activa: boolean) => {
-    const { error } = await sb.from("plantillas_whatsapp").update({ activa }).eq("id", p.id);
+  const toggleActiva = async (p: PlantillaEmail, activa: boolean) => {
+    const { error } = await sb.from("plantillas_email").update({ activa }).eq("id", p.id);
     if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
     onChanged();
   };
 
-  const Tarjeta = ({ p, esPropia }: { p: PlantillaWa; esPropia: boolean }) => (
+  const excerpt = (p: PlantillaEmail) =>
+    `${p.asunto} — ${(p.cuerpo_text || p.cuerpo_html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()}`;
+
+  const Tarjeta = ({ p, esPropia }: { p: PlantillaEmail; esPropia: boolean }) => (
     <Card key={p.id} className={esPropia ? undefined : "bg-muted/30"}>
-      <CardContent className="flex items-start gap-3 p-3">
+      <CardContent className="flex cursor-pointer items-start gap-3 p-3" onClick={() => setPreviewing(p)}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{p.nombre}</span>
@@ -70,15 +63,10 @@ export default function MisPlantillasTab({
                 {p.activa ? "Activa" : "Inactiva"}
               </Badge>
             )}
-            {statsById.get(p.id) && (
-              <span className="text-[11px] text-muted-foreground">
-                {statsById.get(p.id)!.usos} usos · {statsById.get(p.id)!.tasa_pct ?? 0}% respondió
-              </span>
-            )}
           </div>
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{p.contenido}</p>
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{excerpt(p)}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {esPropia && <Switch checked={!!p.activa} onCheckedChange={(v) => toggleActiva(p, v)} />}
           <Button type="button" variant="ghost" size="sm" onClick={() => abrirEditar(p)}><Pencil className="h-3.5 w-3.5" /></Button>
           {esPropia && (
@@ -91,11 +79,15 @@ export default function MisPlantillasTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight">
-          <MessageCircle className="h-5 w-5 text-[#003DA5]" /> Mis Plantillas · WhatsApp
-        </h2>
-        <Button type="button" size="sm" onClick={abrirNueva} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90">
+      <div className="flex items-center gap-3">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#003DA5]/10 text-[#003DA5]">
+          <Mail className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-xl font-semibold tracking-tight">Correos Personalizados</h2>
+          <p className="text-sm text-muted-foreground">Diseña el HTML de tus correos: título, botón, color de marca, logo y firma.</p>
+        </div>
+        <Button type="button" size="sm" onClick={abrirNueva} className="shrink-0 gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90">
           <Plus className="h-4 w-4" /> Nueva plantilla
         </Button>
       </div>
@@ -123,7 +115,13 @@ export default function MisPlantillasTab({
 
       <EditarPlantillaDialog
         open={dialogOpen} onOpenChange={setDialogOpen}
-        canal="whatsapp" plantilla={editing} onSaved={onChanged}
+        canal="email" plantilla={editing} onSaved={onChanged}
+      />
+
+      <PlantillaEmailPreviewDialog
+        open={!!previewing} onOpenChange={(v) => !v && setPreviewing(null)}
+        plantilla={previewing}
+        onEditar={() => { if (previewing) { setEditing(previewing); setPreviewing(null); setDialogOpen(true); } }}
       />
     </div>
   );
