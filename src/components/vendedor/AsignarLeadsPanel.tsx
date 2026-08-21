@@ -113,7 +113,7 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     try {
       const { error } = await supabase
         .from("leads_campana")
-        .update({ vendedor_id: vendedorAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo" })
+        .update({ vendedor_id: vendedorAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo", primer_contacto_at: null })
         .in("id", [...selected]);
       if (error) throw error;
       toast({ title: `${selected.size} leads enviados` });
