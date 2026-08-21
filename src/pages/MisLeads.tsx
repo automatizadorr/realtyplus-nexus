@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Users, Loader2, GraduationCap } from "lucide-react";
+import { Users, Loader2, GraduationCap, Archive } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
 import BandejaTab from "@/components/vendedor/BandejaTab";
 import ReactivacionChatTab from "@/components/vendedor/ReactivacionChatTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
+import ArchivadosDialog from "@/components/vendedor/ArchivadosDialog";
 import type { CorreosResumen, PlantillaEmail, PlantillaWa, RolVenta, VendedorKpis } from "@/components/vendedor/types";
 
 // plantillas_* / RPC vendedor_kpis aún no están en el types.ts generado.
@@ -45,6 +46,7 @@ export default function MisLeads() {
   const [correos, setCorreos] = useState<CorreosResumen | null>(null);
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
   const [loadingKpis, setLoadingKpis] = useState(true);
+  const [archivadosOpen, setArchivadosOpen] = useState(false);
 
   const cargarPlantillas = async () => {
     const [{ data: wa }, { data: email }] = await Promise.all([
@@ -94,6 +96,11 @@ export default function MisLeads() {
           <p className="text-sm text-muted-foreground">Tu pipeline de ventas.</p>
         </div>
         {miRol && (
+          <Button type="button" variant="outline" size="sm" onClick={() => setArchivadosOpen(true)} className="shrink-0 gap-1.5">
+            <Archive className="h-4 w-4" /> <span className="hidden sm:inline">Archivados</span>
+          </Button>
+        )}
+        {miRol && (
           <Button type="button" variant="outline" size="sm" onClick={onboarding.reopen} className="shrink-0 gap-1.5">
             <GraduationCap className="h-4 w-4" /> <span className="hidden sm:inline">Ver tutorial</span>
           </Button>
@@ -101,6 +108,7 @@ export default function MisLeads() {
       </div>
 
       {miRol && <RoleOnboarding rol={miRol} open={onboarding.open} onClose={onboarding.close} />}
+      <ArchivadosDialog open={archivadosOpen} onClose={() => setArchivadosOpen(false)} />
 
       {miRol && (
         <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
