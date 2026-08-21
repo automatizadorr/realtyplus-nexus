@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Users, Kanban, FileText, Loader2, GraduationCap, RotateCcw, PieChart, Inbox } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Users, Loader2, GraduationCap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,7 +34,6 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
 const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "estadisticas"] as const;
 
 export default function MisLeads() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { tab } = useParams<{ tab: string }>();
   const tabActivo = (TABS_VALIDOS as readonly string[]).includes(tab ?? "") ? (tab as string) : "pipeline";
@@ -45,7 +43,6 @@ export default function MisLeads() {
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [ranking, setRanking] = useState<Ranking | null>(null);
   const [correos, setCorreos] = useState<CorreosResumen | null>(null);
-  const [bandejaCount, setBandejaCount] = useState(0);
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
   const [loadingKpis, setLoadingKpis] = useState(true);
 
@@ -61,11 +58,10 @@ export default function MisLeads() {
   const cargarKpis = async () => {
     setLoadingKpis(true);
     const { data: userData } = await supabase.auth.getUser();
-    const [{ data: kpiData }, { data: rankData }, { data: correosData }, { data: bandejaData }, { data: perfil }] = await Promise.all([
+    const [{ data: kpiData }, { data: rankData }, { data: correosData }, { data: perfil }] = await Promise.all([
       sb.rpc("vendedor_kpis"),
       sb.rpc("vendedor_ranking"),
       sb.rpc("vendedor_correos_resumen"),
-      sb.rpc("vendedor_bandeja_count"),
       userData?.user
         ? sb.from("vendedores").select("rol_venta").eq("user_id", userData.user.id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -73,7 +69,6 @@ export default function MisLeads() {
     setKpis((kpiData ?? [])[0] ?? null);
     setRanking((rankData ?? [])[0] ?? null);
     setCorreos((correosData ?? [])[0] ?? null);
-    setBandejaCount((bandejaData as number | null) ?? 0);
     setMiRol((perfil?.rol_venta as RolVenta | undefined) ?? undefined);
     setLoadingKpis(false);
   };
@@ -135,18 +130,10 @@ export default function MisLeads() {
         </p>
       )}
 
-      <Tabs value={tabActivo} onValueChange={(v) => navigate(`/mis-leads/${v}`)}>
-        <TabsList>
-          <TabsTrigger value="bandeja" className="gap-1.5">
-            <Inbox className="h-4 w-4" /> Bandeja
-            {bandejaCount > 0 && <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">{bandejaCount}</Badge>}
-          </TabsTrigger>
-          <TabsTrigger value="pipeline" className="gap-1.5"><Kanban className="h-4 w-4" /> Pipeline</TabsTrigger>
-          <TabsTrigger value="reactivacion" className="gap-1.5"><RotateCcw className="h-4 w-4" /> Reactivación</TabsTrigger>
-          <TabsTrigger value="plantillas" className="gap-1.5"><FileText className="h-4 w-4" /> Mis Plantillas</TabsTrigger>
-          <TabsTrigger value="estadisticas" className="gap-1.5"><PieChart className="h-4 w-4" /> Estadísticas</TabsTrigger>
-        </TabsList>
-
+      {/* Sin TabsList: la navegación entre secciones vive solo en el sidebar
+          (Bandeja/Pipeline/Reactivación/Mis Plantillas/Estadísticas). El valor
+          activo viene de la URL (/mis-leads/:tab). */}
+      <Tabs value={tabActivo}>
         <TabsContent value="bandeja">
           <BandejaTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} onLiberados={cargarKpis} />
         </TabsContent>
