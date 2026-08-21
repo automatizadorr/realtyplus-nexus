@@ -26,7 +26,7 @@ const vendedorGroups: { label?: string; items: { title: string; url: string; ico
     items: [
       { title: "Bandeja", url: "/mis-leads/bandeja", icon: Inbox },
       { title: "Pipeline", url: "/mis-leads/pipeline", icon: Kanban },
-      { title: "Reactivación", url: "/mis-leads/reactivacion", icon: RotateCcw },
+      { title: "Leads DataBase", url: "/mis-leads/reactivacion", icon: RotateCcw },
       { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: MessagesSquare },
     ],
   },
@@ -70,7 +70,7 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
     ],
   },
   {
-    label: "Reactivación",
+    label: "Leads DataBase",
     items: [
       { title: "Descargas - Expansión", url: "/tagged", icon: FolderDown },
       { title: "Mensajes · Reactivación", url: "/inbox", icon: MessageCircle },

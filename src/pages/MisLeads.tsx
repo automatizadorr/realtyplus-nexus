@@ -131,7 +131,7 @@ export default function MisLeads() {
       )}
 
       {/* Sin TabsList: la navegación entre secciones vive solo en el sidebar
-          (Bandeja/Pipeline/Reactivación/Mis Plantillas/Estadísticas). El valor
+          (Bandeja/Pipeline/Leads DataBase/Mis Plantillas/Estadísticas). El valor
           activo viene de la URL (/mis-leads/:tab). */}
       <Tabs value={tabActivo}>
         <TabsContent value="bandeja">
