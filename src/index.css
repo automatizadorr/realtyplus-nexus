@@ -131,34 +131,19 @@ All colors MUST be HSL.
   }
 
   /* ── "Cyber real estate" aplicado a gráficos (Estadísticas del vendedor) ──
-     Misma identidad que el sidebar (LED azul #7FA8FF + barrido HUD), extendida
-     a las tarjetas de gráficos: borde con pulso de energía + barrido de
-     escaneo horizontal por encima del contenido. */
+     Acento estático (sin parpadeo ni barrido sobre el contenido, para no
+     estorbar la lectura de números/títulos): brillo suave y constante en el
+     borde + línea de acento arriba. Nada de animación en bucle acá. */
   .cyber-chart-card {
     position: relative;
-    overflow: hidden;
-    animation: cyber-border-pulse 3.2s ease-in-out infinite;
-  }
-  @keyframes cyber-border-pulse {
-    0%, 100% { box-shadow: 0 0 0 1px hsl(var(--border)), 0 0 0 rgba(127, 168, 255, 0); }
-    50%      { box-shadow: 0 0 0 1px rgba(127, 168, 255, 0.55), 0 0 14px rgba(127, 168, 255, 0.22); }
+    box-shadow: 0 0 0 1px rgba(127, 168, 255, 0.3), 0 0 16px rgba(127, 168, 255, 0.10);
   }
   .cyber-chart-card::before {
     content: "";
     position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(100deg, transparent 46%, rgba(127, 168, 255, 0.16) 50%, transparent 54%);
-    background-size: 260% 260%;
-    animation: cyber-scan 6s linear infinite;
-  }
-  @keyframes cyber-scan {
-    from { background-position: 140% 0; }
-    to   { background-position: -140% 0; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .cyber-chart-card { animation: none; }
-    .cyber-chart-card::before { animation: none; content: none; }
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #7FA8FF, transparent);
   }
 
   /* Foco accesible y consistente para navegación por teclado */

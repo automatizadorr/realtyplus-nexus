@@ -13,25 +13,27 @@ const sb = supabase as any;
 // plantilla, a diferencia de las otras donas que sí tienen semántica).
 const PALETA_PLANTILLAS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#f43f5e", "#06b6d4", "#a78bfa", "#84cc16"];
 
-// LED azul del sidebar ("cyber real estate"), reutilizado acá para que las
-// tarjetas de Estadísticas se sientan parte del mismo sistema visual.
-function CyberLed() {
+// Punto de acento fijo (sin parpadeo): un brillo constante, no una animación
+// de encendido/apagado.
+function AcentoFijo() {
   return (
     <span
-      className="cyber-led inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#7FA8FF]"
-      style={{ boxShadow: "0 0 6px #7FA8FF, 0 0 2px #7FA8FF" }}
+      className="inline-block h-2 w-2 shrink-0 rounded-full bg-[#7FA8FF]"
+      style={{ boxShadow: "0 0 8px #7FA8FF" }}
       aria-hidden
     />
   );
 }
 
 // Encabezado + "nota" (descripción breve) compartidos por todas las tarjetas.
+// El título va sólido y con buen contraste a propósito: nada de texto con
+// degradado en movimiento, que se leía mal.
 function EncabezadoCyber({ titulo, nota }: { titulo: string; nota: string }) {
   return (
     <CardHeader className="pb-2">
-      <CardTitle className="flex items-center gap-1.5 text-sm font-semibold">
-        <CyberLed />
-        <span className="cyber-label">{titulo}</span>
+      <CardTitle className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-foreground">
+        <AcentoFijo />
+        {titulo}
       </CardTitle>
       <p className="rounded-md border-l-2 border-[#7FA8FF]/50 bg-[#7FA8FF]/5 px-2 py-1 text-[11px] leading-snug text-muted-foreground">
         {nota}
