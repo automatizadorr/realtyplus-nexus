@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
-import { Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock } from "lucide-react";
+import { Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock, Archive } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -185,9 +185,10 @@ function Seguimiento({ lead, onProgramado }: { lead: LeadCampana; onProgramado: 
   );
 }
 
-function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado }: {
+function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado, onArchivar }: {
   lead: LeadCampana; plantillasWa: PlantillaWa[]; plantillasEmail: PlantillaEmail[]; onEnviado: () => void;
   onProgramado: (leadId: string, fecha: string) => void;
+  onArchivar: (leadId: string) => void;
 }) {
   // Se puede agarrar la tarjeta desde cualquier parte (no solo el ícono):
   // los listeners van en el wrapper completo. Los controles interactivos
@@ -236,6 +237,16 @@ function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado
           </div>
           <div onPointerDown={(e) => e.stopPropagation()}>
             <Seguimiento lead={lead} onProgramado={(fecha) => onProgramado(lead.id, fecha)} />
+          </div>
+          <div onPointerDown={(e) => e.stopPropagation()}>
+            <Button
+              type="button" size="sm" variant="ghost"
+              className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-red-600"
+              onClick={() => onArchivar(lead.id)}
+              title="Archivar (ej: número no existe)"
+            >
+              <Archive className="h-3 w-3" /> Archivar
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -296,6 +307,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       .from("leads_campana")
       .select(COLUMNAS, { count: "exact" })
       .not("primer_contacto_at", "is", null)
+      .not("archivado", "is", true)
       .eq("etapa_venta", etapa)
       .order("fecha_asignacion", { ascending: false })
       .range(pagina * PAGE_SIZE, pagina * PAGE_SIZE + PAGE_SIZE - 1);
@@ -321,6 +333,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       .from("leads_campana")
       .select("id", { count: "exact", head: true })
       .not("primer_contacto_at", "is", null)
+      .not("archivado", "is", true)
       .lte("fecha_proximo_contacto", finDeHoyISO());
     setHoyCount(count ?? 0);
   };
@@ -330,6 +343,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       .from("leads_campana")
       .select(COLUMNAS)
       .not("primer_contacto_at", "is", null)
+      .not("archivado", "is", true)
       .lte("fecha_proximo_contacto", finDeHoyISO())
       .order("fecha_proximo_contacto", { ascending: true });
     if (error) { toast({ title: "Error al cargar lo de hoy", description: error.message, variant: "destructive" }); return; }
@@ -412,6 +426,25 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     moverLocal(leadId, etapaOrigen, etapaDestino, motivoCierre);
   };
 
+  // Archivar: para leads con número inexistente/imposible de contactar.
+  // Desaparece del Pipeline (las consultas ya filtran archivado=true).
+  const archivarLead = async (leadId: string) => {
+    const encontrado = buscarLead(leadId);
+    if (!encontrado) return;
+    const { error } = await sb.rpc("vendedor_archivar_lead", { _lead_id: leadId, _archivado: true });
+    if (error) { toast({ title: "No se pudo archivar", description: error.message, variant: "destructive" }); return; }
+    const { etapa } = encontrado;
+    if (hoyLeads) {
+      setHoyLeads((prev) => prev && prev.filter((l) => l.id !== leadId));
+    } else {
+      setCols((prev) => ({
+        ...prev,
+        [etapa]: { ...prev[etapa], leads: prev[etapa].leads.filter((l) => l.id !== leadId), total: Math.max(prev[etapa].total - 1, 0) },
+      }));
+    }
+    toast({ title: "Lead archivado" });
+  };
+
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -479,7 +512,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
                 {vista(etapa).map((l) => (
                   <LeadCard
                     key={l.id} lead={l} plantillasWa={plantillasWa} plantillasEmail={plantillasEmail}
-                    onEnviado={() => {}} onProgramado={onProgramado}
+                    onEnviado={() => {}} onProgramado={onProgramado} onArchivar={archivarLead}
                   />
                 ))}
               </Column>
