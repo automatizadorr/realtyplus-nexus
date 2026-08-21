@@ -135,7 +135,10 @@ export default function MisLeads() {
           activo viene de la URL (/mis-leads/:tab). */}
       <Tabs value={tabActivo}>
         <TabsContent value="bandeja">
-          <BandejaTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} onLiberados={cargarKpis} />
+          <BandejaTab
+            plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas}
+            onLiberados={cargarKpis} onPlantillasChanged={cargarPlantillas}
+          />
         </TabsContent>
 
         <TabsContent value="pipeline">

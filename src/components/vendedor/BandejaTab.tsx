@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight, Star, Eye } from "lucide-react";
+import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight, Star, Eye, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
+import EditarPlantillaDialog from "@/components/vendedor/EditarPlantillaDialog";
 import type { PlantillaEmail, PlantillaWa } from "@/components/vendedor/types";
 
 // leads_campana.primer_contacto_at aún no está en el types.ts generado.
@@ -42,10 +43,11 @@ function ordenarPorFavorito<T extends { id: string }>(items: T[], canal: Canal, 
   });
 }
 
-export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados }: {
+export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados, onPlantillasChanged }: {
   plantillasWa: PlantillaWa[];
   plantillasEmail: PlantillaEmail[];
   onLiberados?: () => void;
+  onPlantillasChanged?: () => void;
 }) {
   const { toast } = useToast();
   const [leads, setLeads] = useState<LeadEnBandeja[]>([]);
@@ -59,6 +61,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
   const [enviandoCorreos, setEnviandoCorreos] = useState(false);
   const [liberando, setLiberando] = useState(false);
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
+  const [editando, setEditando] = useState<{ canal: Canal; plantilla: PlantillaWa | PlantillaEmail } | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -236,6 +239,13 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
                 >
                   <Star className={`h-4 w-4 ${waPlantillaId && favoritos.has(favKey("whatsapp", waPlantillaId)) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
                 </Button>
+                <Button
+                  type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0"
+                  disabled={!waPlantilla} onClick={() => waPlantilla && setEditando({ canal: "whatsapp", plantilla: waPlantilla })}
+                  aria-label="Editar plantilla"
+                >
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                </Button>
               </div>
               {waPlantillaId && (
                 <div className="flex items-start gap-1.5 rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
@@ -263,6 +273,13 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
                   aria-label="Marcar como favorita"
                 >
                   <Star className={`h-4 w-4 ${emailPlantillaId && favoritos.has(favKey("email", emailPlantillaId)) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
+                </Button>
+                <Button
+                  type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0"
+                  disabled={!emailPlantilla} onClick={() => emailPlantilla && setEditando({ canal: "email", plantilla: emailPlantilla })}
+                  aria-label="Editar plantilla"
+                >
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
               {emailPlantillaId && (
@@ -383,6 +400,14 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados 
           </Button>
         </div>
       </div>
+
+      <EditarPlantillaDialog
+        open={!!editando}
+        onOpenChange={(v) => !v && setEditando(null)}
+        canal={editando?.canal ?? "whatsapp"}
+        plantilla={editando?.plantilla ?? null}
+        onSaved={() => onPlantillasChanged?.()}
+      />
     </div>
   );
 }
