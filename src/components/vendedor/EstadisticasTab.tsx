@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Cell, Pie, PieChart } from "recharts";
+import { motion } from "framer-motion";
+import { Bar, BarChart, Cell, Pie, PieChart, XAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,27 +13,64 @@ const sb = supabase as any;
 // plantilla, a diferencia de las otras donas que sí tienen semántica).
 const PALETA_PLANTILLAS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#f43f5e", "#06b6d4", "#a78bfa", "#84cc16"];
 
+// LED azul del sidebar ("cyber real estate"), reutilizado acá para que las
+// tarjetas de Estadísticas se sientan parte del mismo sistema visual.
+function CyberLed() {
+  return (
+    <span
+      className="cyber-led inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#7FA8FF]"
+      style={{ boxShadow: "0 0 6px #7FA8FF, 0 0 2px #7FA8FF" }}
+      aria-hidden
+    />
+  );
+}
+
+// Encabezado + "nota" (descripción breve) compartidos por todas las tarjetas.
+function EncabezadoCyber({ titulo, nota }: { titulo: string; nota: string }) {
+  return (
+    <CardHeader className="pb-2">
+      <CardTitle className="flex items-center gap-1.5 text-sm font-semibold">
+        <CyberLed />
+        <span className="cyber-label">{titulo}</span>
+      </CardTitle>
+      <p className="rounded-md border-l-2 border-[#7FA8FF]/50 bg-[#7FA8FF]/5 px-2 py-1 text-[11px] leading-snug text-muted-foreground">
+        {nota}
+      </p>
+    </CardHeader>
+  );
+}
+
+function TarjetaCyber({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <Card className="cyber-chart-card">{children}</Card>
+    </motion.div>
+  );
+}
+
 type Segmento = { key: string; label: string; value: number; color: string; detalle: string };
 
 function Dona({
-  titulo, subtitulo, data, centro, centroLabel,
+  titulo, nota, data, centro, centroLabel, delay,
 }: {
   titulo: string;
-  subtitulo: string;
+  nota: string;
   data: Segmento[];
   centro: string | number;
   centroLabel: string;
+  delay?: number;
 }) {
   const [activa, setActiva] = useState<string | null>(null);
   const total = data.reduce((acc, d) => acc + d.value, 0);
   const seleccionada = data.find((d) => d.key === activa) ?? null;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">{titulo}</CardTitle>
-        <p className="text-xs text-muted-foreground">{subtitulo}</p>
-      </CardHeader>
+    <TarjetaCyber delay={delay}>
+      <EncabezadoCyber titulo={titulo} nota={nota} />
       <CardContent>
         {total === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Sin datos todavía.</p>
@@ -100,7 +138,39 @@ function Dona({
           </>
         )}
       </CardContent>
-    </Card>
+    </TarjetaCyber>
+  );
+}
+
+type PuntoGanancia = { semana: string; ganados: number };
+
+function BarraGanancias({ data, delay }: { data: PuntoGanancia[]; delay?: number }) {
+  const total = data.reduce((acc, d) => acc + d.ganados, 0);
+  return (
+    <TarjetaCyber delay={delay}>
+      <EncabezadoCyber
+        titulo="Ganancias por semana"
+        nota="Leads que cerraste como Ganado, semana a semana (últimas 8 semanas). Mide tu ritmo de cierre a lo largo del tiempo."
+      />
+      <CardContent>
+        {total === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Todavía no tienes leads ganados.</p>
+        ) : (
+          <>
+            <ChartContainer config={{ ganados: { label: "Ganados", color: "#10b981" } }} className="h-[180px] w-full">
+              <BarChart data={data}>
+                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <XAxis dataKey="semana" tickLine={false} axisLine={false} tickMargin={6} fontSize={10} />
+                <Bar dataKey="ganados" radius={[4, 4, 0, 0]} className="fill-emerald-500" />
+              </BarChart>
+            </ChartContainer>
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              <span className="font-semibold tabular-nums text-foreground">{total}</span> ganado{total === 1 ? "" : "s"} en el período
+            </p>
+          </>
+        )}
+      </CardContent>
+    </TarjetaCyber>
   );
 }
 
@@ -167,25 +237,41 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
   }, [correos]);
 
   const [plantillasUsadas, setPlantillasUsadas] = useState<{ plantilla_id: string; canal: string; nombre: string | null; usos: number }[]>([]);
+  const [ganadosPorSemana, setGanadosPorSemana] = useState<{ semana: string; ganados: number }[]>([]);
+
   useEffect(() => {
     sb.rpc("vendedor_plantillas_usadas").then(({ data }: { data: typeof plantillasUsadas | null }) => {
       if (data) setPlantillasUsadas(data);
     });
+    sb.rpc("vendedor_ganados_por_semana", { _semanas: 8 }).then(({ data }: { data: { semana: string; ganados: number }[] | null }) => {
+      if (data) setGanadosPorSemana(data);
+    });
   }, []);
 
-  const plantillasData: Segmento[] = useMemo(() => {
-    return plantillasUsadas.map((p, i) => {
-      const canalLabel = p.canal === "whatsapp" ? "WhatsApp" : "Email";
-      const nombre = p.nombre || "Plantilla eliminada";
-      return {
-        key: `${p.canal}:${p.plantilla_id}`,
-        value: p.usos,
-        color: PALETA_PLANTILLAS[i % PALETA_PLANTILLAS.length],
-        label: nombre,
-        detalle: `"${nombre}" (${canalLabel}): usada ${p.usos} ${p.usos === 1 ? "vez" : "veces"}.`,
-      };
-    });
-  }, [plantillasUsadas]);
+  const construirDona = (canal: "whatsapp" | "email"): Segmento[] =>
+    plantillasUsadas
+      .filter((p) => p.canal === canal)
+      .map((p, i) => {
+        const nombre = p.nombre || "Plantilla eliminada";
+        return {
+          key: `${p.canal}:${p.plantilla_id}`,
+          value: p.usos,
+          color: PALETA_PLANTILLAS[i % PALETA_PLANTILLAS.length],
+          label: nombre,
+          detalle: `"${nombre}": usada ${p.usos} ${p.usos === 1 ? "vez" : "veces"}.`,
+        };
+      });
+
+  const plantillasWaData = useMemo(() => construirDona("whatsapp"), [plantillasUsadas]);
+  const plantillasEmailData = useMemo(() => construirDona("email"), [plantillasUsadas]);
+
+  const gananciasData: PuntoGanancia[] = useMemo(
+    () => ganadosPorSemana.map((g) => ({
+      semana: new Date(`${g.semana}T00:00:00`).toLocaleDateString("es-CL", { day: "2-digit", month: "short" }),
+      ganados: g.ganados,
+    })),
+    [ganadosPorSemana],
+  );
 
   const leadsTratados = kpis ? kpis.contactados + kpis.interesados + kpis.demos + kpis.ganados + kpis.perdidos : 0;
 
@@ -202,31 +288,44 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Dona
           titulo="Pipeline por etapa"
-          subtitulo="Tus leads de campaña, agrupados por etapa. Toca un segmento o la lista para ver el detalle."
+          nota="Tus leads de campaña, agrupados por etapa. Toca un segmento o la lista para ver el detalle."
           data={pipelineData}
           centro={kpis?.asignados ?? 0}
           centroLabel="asignados"
+          delay={0}
         />
+        <BarraGanancias data={gananciasData} delay={0.05} />
         <Dona
           titulo="Correos enviados (30 días)"
-          subtitulo="Estado de tus envíos por Correos Personalizados."
+          nota="Estado de tus envíos por Correos Personalizados."
           data={correosData}
           centro={correos?.total_30d ?? 0}
           centroLabel="correos"
+          delay={0.1}
         />
         <Dona
           titulo="Cupo diario de correos"
-          subtitulo={`Tu tope es de ${correos?.cupo_diario ?? 55} correos por día.`}
+          nota={`Tu tope es de ${correos?.cupo_diario ?? 55} correos por día.`}
           data={cupoData}
           centro={`${correos?.enviados_hoy ?? 0}/${correos?.cupo_diario ?? 55}`}
           centroLabel="usados hoy"
+          delay={0.15}
         />
         <Dona
-          titulo="Plantillas más usadas"
-          subtitulo="Tus plantillas de WhatsApp y email con más envíos (Bandeja y Pipeline)."
-          data={plantillasData}
-          centro={plantillasData.reduce((acc, d) => acc + d.value, 0)}
+          titulo="Plantillas WhatsApp más usadas"
+          nota="Tus plantillas de WhatsApp con más envíos (Bandeja y Pipeline)."
+          data={plantillasWaData}
+          centro={plantillasWaData.reduce((acc, d) => acc + d.value, 0)}
           centroLabel="envíos"
+          delay={0.2}
+        />
+        <Dona
+          titulo="Plantillas email más usadas"
+          nota="Tus plantillas de email con más envíos (Bandeja, sin contar campañas masivas)."
+          data={plantillasEmailData}
+          centro={plantillasEmailData.reduce((acc, d) => acc + d.value, 0)}
+          centroLabel="envíos"
+          delay={0.25}
         />
       </div>
     </div>
