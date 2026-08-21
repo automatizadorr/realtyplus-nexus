@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
-import { Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock, Archive } from "lucide-react";
+import { Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock, Archive, ListOrdered, ArrowRight, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -185,10 +185,12 @@ function Seguimiento({ lead, onProgramado }: { lead: LeadCampana; onProgramado: 
   );
 }
 
-function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado, onArchivar }: {
+function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado, onArchivar, selected, onToggleSelect }: {
   lead: LeadCampana; plantillasWa: PlantillaWa[]; plantillasEmail: PlantillaEmail[]; onEnviado: () => void;
   onProgramado: (leadId: string, fecha: string) => void;
   onArchivar: (leadId: string) => void;
+  selected: boolean;
+  onToggleSelect: (leadId: string) => void;
 }) {
   // Se puede agarrar la tarjeta desde cualquier parte (no solo el ícono):
   // los listeners van en el wrapper completo. Los controles interactivos
@@ -207,6 +209,13 @@ function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado
       <Card className="mb-2">
         <CardContent className="space-y-2 p-3">
           <div className="flex items-start gap-1.5">
+            <div onPointerDown={(e) => e.stopPropagation()} className="mt-0.5 shrink-0">
+              <input
+                type="checkbox" aria-label={`Seleccionar ${lead.nombre || "lead"}`}
+                className="h-3.5 w-3.5 accent-[#003DA5]"
+                checked={selected} onChange={() => onToggleSelect(lead.id)}
+              />
+            </div>
             <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{lead.nombre || "—"}</div>
@@ -298,6 +307,12 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const [motivo, setMotivo] = useState("");
   const [soloHoy, setSoloHoy] = useState(false);
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
+  // Envío de WhatsApp en cola: selección de tarjetas + una plantilla en
+  // común, igual patrón que la Bandeja. Cada apertura de wa.me pide su
+  // propio clic ("Siguiente") para no chocar con el bloqueo de pop-ups.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [waPlantillaId, setWaPlantillaId] = useState("");
+  const [cola, setCola] = useState<{ ids: string[]; idx: number } | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -445,6 +460,53 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     toast({ title: "Lead archivado" });
   };
 
+  const toggleSelect = (leadId: string) => {
+    setSelected((prev) => { const n = new Set(prev); if (n.has(leadId)) n.delete(leadId); else n.add(leadId); return n; });
+  };
+
+  const registrarContactoWa = async (leadId: string, plantillaId: string, mensaje: string) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) return;
+    await sb.from("contactos_log").insert({
+      lead_id: leadId, user_id: uid, canal: "whatsapp", plantilla_id: plantillaId, mensaje_final: mensaje, origen: "leads_campana",
+    });
+  };
+
+  const enviarWaLead = (lead: LeadCampana) => {
+    const plantilla = plantillasWa.find((p) => p.id === waPlantillaId);
+    const link = waLinkCampana(lead);
+    if (!plantilla || !link) return;
+    const msg = fillTemplate(plantilla.contenido, { nombre: lead.nombre || undefined, pais: lead.pais || undefined });
+    window.open(`${link}?text=${encodeURIComponent(msg)}`, "_blank", "noreferrer");
+    registrarContactoWa(lead.id, plantilla.id, msg);
+  };
+
+  const iniciarCola = () => {
+    if (!waPlantillaId) return;
+    const ids = ETAPAS_PIPELINE.flatMap((etapa) => vista(etapa))
+      .filter((l) => selected.has(l.id) && waLinkCampana(l))
+      .map((l) => l.id);
+    if (ids.length === 0) return;
+    const primero = buscarLead(ids[0])?.lead;
+    if (primero) enviarWaLead(primero);
+    if (ids.length > 1) setCola({ ids, idx: 0 });
+    else toast({ title: "WhatsApp enviado" });
+  };
+
+  const siguienteCola = () => {
+    if (!cola) return;
+    const nextIdx = cola.idx + 1;
+    const siguienteLead = buscarLead(cola.ids[nextIdx])?.lead;
+    if (siguienteLead) enviarWaLead(siguienteLead);
+    if (nextIdx + 1 >= cola.ids.length) {
+      setCola(null);
+      toast({ title: `Cola completa (${cola.ids.length}/${cola.ids.length})` });
+    } else {
+      setCola({ ...cola, idx: nextIdx });
+    }
+  };
+
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -490,6 +552,40 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-2">
+        <Select value={waPlantillaId} onValueChange={setWaPlantillaId}>
+          <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Plantilla WhatsApp" /></SelectTrigger>
+          <SelectContent>{plantillasWa.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}</SelectContent>
+        </Select>
+        <Badge variant="secondary">{selected.size} seleccionados</Badge>
+        <Button
+          type="button" size="sm" variant="outline" disabled={!waPlantillaId || selected.size === 0 || !!cola}
+          onClick={iniciarCola} className="gap-1.5 text-emerald-700"
+        >
+          <ListOrdered className="h-3.5 w-3.5" /> Enviar WhatsApp en cola ({selected.size})
+        </Button>
+        {selected.size > 0 && (
+          <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="gap-1 text-xs text-muted-foreground">
+            Limpiar selección
+          </Button>
+        )}
+        {cola && (
+          <div className="flex w-full flex-wrap items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs">
+            <MessageCircle className="h-3.5 w-3.5 shrink-0 text-emerald-700" />
+            <span>
+              <span className="font-semibold text-foreground">{cola.idx + 1}/{cola.ids.length}</span> enviado(s) ·
+              {" "}Siguiente: <span className="font-medium text-foreground">{buscarLead(cola.ids[cola.idx + 1])?.lead.nombre || "—"}</span>
+            </span>
+            <Button type="button" size="sm" onClick={siguienteCola} className="ml-auto h-7 gap-1 bg-emerald-600 px-2 text-[11px] hover:bg-emerald-700">
+              Siguiente <ArrowRight className="h-3 w-3" />
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setCola(null)} className="h-7 w-7 px-0 text-muted-foreground" aria-label="Cancelar cola">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
+
       {loading ? (
         <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando…</div>
       ) : !soloHoy && totalGeneral === 0 ? (
@@ -513,6 +609,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
                   <LeadCard
                     key={l.id} lead={l} plantillasWa={plantillasWa} plantillasEmail={plantillasEmail}
                     onEnviado={() => {}} onProgramado={onProgramado} onArchivar={archivarLead}
+                    selected={selected.has(l.id)} onToggleSelect={toggleSelect}
                   />
                 ))}
               </Column>

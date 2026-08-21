@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight, Star, Eye, Pencil, ListOrdered, ArrowRight, X } from "lucide-react";
+import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight, Star, Eye, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,10 +62,6 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
   const [liberando, setLiberando] = useState(false);
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
   const [editando, setEditando] = useState<{ canal: Canal; plantilla: PlantillaWa | PlantillaEmail } | null>(null);
-  // Cola de envío WhatsApp: para mandar varios leads seguidos sin que el
-  // navegador bloquee los pop-ups, cada apertura de wa.me requiere su
-  // propio clic ("Siguiente"), nunca se abren todos de una.
-  const [cola, setCola] = useState<{ ids: string[]; idx: number } | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -105,7 +101,6 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
       setSelected(new Set(filas.map((l) => l.id)));
     }
     setWaEnviados(new Set());
-    setCola(null);
     setLoading(false);
   };
 
@@ -155,34 +150,6 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     window.open(`${link}?text=${encodeURIComponent(msg)}`, "_blank", "noreferrer");
     registrarContacto(l.id, "whatsapp", waPlantilla.id, msg);
     setWaEnviados((s) => new Set(s).add(l.id));
-  };
-
-  // Cola de envío: manda el WhatsApp del primer lead seleccionado de
-  // inmediato (mismo gesto del clic en "Enviar en cola") y deja el resto
-  // esperando un clic en "Siguiente" cada uno (WhatsApp exige confirmar el
-  // envío a mano, y los navegadores bloquean varias ventanas abiertas sin
-  // gesto directo del usuario).
-  const iniciarCola = () => {
-    if (!waPlantilla) return;
-    const ids = leads.filter((l) => selected.has(l.id) && waLink(l)).map((l) => l.id);
-    if (ids.length === 0) return;
-    const primero = leads.find((l) => l.id === ids[0]);
-    if (primero) enviarWa(primero);
-    setCola(ids.length > 1 ? { ids, idx: 0 } : null);
-    if (ids.length <= 1) toast({ title: "WhatsApp enviado" });
-  };
-
-  const siguienteCola = () => {
-    if (!cola) return;
-    const nextIdx = cola.idx + 1;
-    const siguienteLead = leads.find((l) => l.id === cola.ids[nextIdx]);
-    if (siguienteLead) enviarWa(siguienteLead);
-    if (nextIdx + 1 >= cola.ids.length) {
-      setCola(null);
-      toast({ title: `Cola completa (${cola.ids.length}/${cola.ids.length})` });
-    } else {
-      setCola({ ...cola, idx: nextIdx });
-    }
   };
 
   const liberarAPipeline = async (ids: string[]) => {
@@ -332,12 +299,6 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
           <div className="flex flex-wrap items-center gap-2 border-t pt-3">
             <Badge variant="secondary">{selected.size} seleccionados</Badge>
             <Button
-              type="button" size="sm" variant="outline" disabled={!waPlantilla || selected.size === 0 || !!cola}
-              onClick={iniciarCola} className="gap-1.5 text-emerald-700"
-            >
-              <ListOrdered className="h-3.5 w-3.5" /> Enviar WhatsApp en cola ({selected.size})
-            </Button>
-            <Button
               type="button" size="sm" disabled={!emailPlantilla || selected.size === 0 || enviandoCorreos || liberando}
               onClick={enviarCorreosYLiberar} className="gap-1.5"
             >
@@ -355,22 +316,6 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
               <RefreshCw className="h-3.5 w-3.5" /> Actualizar
             </Button>
           </div>
-
-          {cola && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs">
-              <MessageCircle className="h-3.5 w-3.5 shrink-0 text-emerald-700" />
-              <span>
-                <span className="font-semibold text-foreground">{cola.idx + 1}/{cola.ids.length}</span> enviado(s) ·
-                {" "}Siguiente: <span className="font-medium text-foreground">{leads.find((l) => l.id === cola.ids[cola.idx + 1])?.nombre || "—"}</span>
-              </span>
-              <Button type="button" size="sm" onClick={siguienteCola} className="ml-auto h-7 gap-1 bg-emerald-600 px-2 text-[11px] hover:bg-emerald-700">
-                Siguiente <ArrowRight className="h-3 w-3" />
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setCola(null)} className="h-7 w-7 px-0 text-muted-foreground" aria-label="Cancelar cola">
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
 
