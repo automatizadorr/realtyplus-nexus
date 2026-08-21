@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, Loader2, RotateCcw, MessageCircle, Mail as MailIcon, Send,
-  ChevronLeft, ChevronRight, Filter, UserPlus,
+  ChevronLeft, ChevronRight, Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,7 +17,6 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useRole } from "@/hooks/use-is-admin";
 import { orderTags } from "@/lib/permanentTags";
 import { waLinkWithIcebreaker } from "@/lib/icebreakers";
 
@@ -77,7 +76,6 @@ const fmtFechaHora = (iso: string | null) =>
 
 export default function ReactivacionTab() {
   const { toast } = useToast();
-  const { canWrite } = useRole();
   const navigate = useNavigate();
 
   // RPC de facets (país) no está en el types.ts generado.
@@ -87,13 +85,6 @@ export default function ReactivacionTab() {
   // Catálogos
   const [tags, setTags] = useState<Tag[]>([]);
   const [paises, setPaises] = useState<{ pais: string; n: number }[]>([]);
-  const [vendedores, setVendedores] = useState<{ user_id: string; nombre_display: string | null }[]>([]);
-
-  // Selección para "Enviar a vendedor"
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [vendedorAsignar, setVendedorAsignar] = useState("");
-  const [asignando, setAsignando] = useState(false);
-  const [refreshTick, setRefreshTick] = useState(0);
 
   // Filtros
   const [q, setQ] = useState("");
@@ -132,47 +123,8 @@ export default function ReactivacionTab() {
     sb.rpc("leads_campana_paises").then(({ data }: { data: { pais: string; n: number }[] | null }) => {
       if (data) setPaises(data);
     });
-    sb.from("vendedores").select("user_id, nombre_display").eq("activo", true).order("nombre_display")
-      .then(({ data }: { data: { user_id: string; nombre_display: string | null }[] | null }) => {
-        if (data) setVendedores(data);
-      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Al cambiar de página o filtros, se limpia la selección (evita asignar filas que ya no se ven).
-  useEffect(() => { setSelected(new Set()); }, [page, qDebounced, tagId, pais, estado, respondido]);
-
-  const toggleSel = (id: string) => {
-    setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  };
-  const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.id));
-  const toggleAll = () => {
-    setSelected((s) => {
-      const n = new Set(s);
-      if (allChecked) rows.forEach((r) => n.delete(r.id));
-      else rows.forEach((r) => n.add(r.id));
-      return n;
-    });
-  };
-
-  const enviarAVendedor = async () => {
-    if (!vendedorAsignar || selected.size === 0) return;
-    setAsignando(true);
-    try {
-      const { error } = await supabase
-        .from("leads_campana")
-        .update({ vendedor_id: vendedorAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo" })
-        .in("id", [...selected]);
-      if (error) throw error;
-      toast({ title: `${selected.size} leads enviados` });
-      setSelected(new Set());
-      setRefreshTick((t) => t + 1);
-    } catch (e) {
-      toast({ title: "No se pudo enviar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
-    } finally {
-      setAsignando(false);
-    }
-  };
 
   // Al cambiar cualquier filtro, volvemos a la página 0
   useEffect(() => { setPage(0); }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, soloSinCorreo]);
@@ -261,7 +213,7 @@ export default function ReactivacionTab() {
     run();
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, soloSinCorreo, page, refreshTick]);
+  }, [qDebounced, tagId, pais, estado, respondido, incluirArchivados, soloConEmail, soloConCorreo, soloSinCorreo, page]);
 
   const resetFiltros = () => {
     setQ(""); setTagId("all"); setPais("all"); setEstado("all");
@@ -523,35 +475,10 @@ export default function ReactivacionTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {selected.size > 0 && (
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#003DA5]/30 bg-[#003DA5]/5 p-2">
-              <Badge variant="secondary">{selected.size} seleccionados</Badge>
-              {canWrite && (
-                <>
-                  <Select value={vendedorAsignar} onValueChange={setVendedorAsignar}>
-                    <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Elegir vendedor" /></SelectTrigger>
-                    <SelectContent>
-                      {vendedores.map((v) => (
-                        <SelectItem key={v.user_id} value={v.user_id}>{v.nombre_display || v.user_id}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" size="sm" disabled={!vendedorAsignar || asignando} onClick={enviarAVendedor} className="gap-1.5">
-                    {asignando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-                    Enviar a vendedor
-                  </Button>
-                </>
-              )}
-              <Button type="button" size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="text-muted-foreground">Limpiar</Button>
-            </div>
-          )}
           <div className="overflow-x-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">
-                    <input type="checkbox" aria-label="Seleccionar todos" className="h-4 w-4 accent-[#003DA5]" checked={allChecked} onChange={toggleAll} />
-                  </TableHead>
                   <TableHead>Lead</TableHead>
                   <TableHead className="hidden sm:table-cell">País</TableHead>
                   <TableHead className="hidden sm:table-cell">Último correo</TableHead>
@@ -563,13 +490,13 @@ export default function ReactivacionTab() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8}>
+                  <TableRow><TableCell colSpan={7}>
                     <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
                     </div>
                   </TableCell></TableRow>
                 ) : rows.length === 0 ? (
-                  <TableRow><TableCell colSpan={8}>
+                  <TableRow><TableCell colSpan={7}>
                     <div className="py-10 text-center text-sm text-muted-foreground">Sin resultados con estos filtros.</div>
                   </TableCell></TableRow>
                 ) : (
@@ -577,13 +504,6 @@ export default function ReactivacionTab() {
                     const wa = waIcebreaker(l);
                     return (
                       <TableRow key={l.id}>
-                        <TableCell>
-                          <input
-                            type="checkbox" aria-label={`Seleccionar ${l.nombre || "lead"}`}
-                            className="h-4 w-4 accent-[#003DA5]"
-                            checked={selected.has(l.id)} onChange={() => toggleSel(l.id)}
-                          />
-                        </TableCell>
                         <TableCell>
                           <div className="font-medium">{l.nombre || "—"}</div>
                           <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
