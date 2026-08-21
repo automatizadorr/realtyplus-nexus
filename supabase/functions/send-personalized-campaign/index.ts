@@ -6,6 +6,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { applyDomain, corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, resendKeyFor, TZ, zonedToUtc } from "../_shared/correo.ts";
 
+// Inicio del día de HOY en la zona horaria del negocio, como instante UTC
+// (para contar cuántos correos ya mandó un vendedor "hoy").
+function inicioDeHoyUTC(): string {
+  const dtf = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+  const ymd = dtf.format(new Date()); // YYYY-MM-DD en TZ
+  return zonedToUtc(ymd, "00:00", TZ);
+}
+
 type Recipient = {
   email: string;
   empresa?: string;
@@ -52,6 +60,7 @@ Deno.serve(async (req) => {
       _user_id: userData.user.id, _role: "admin",
     });
     let emailsPropios: Set<string> | null = null; // null = sin restricción (admin)
+    let cupoVendedorHoy: number | null = null; // null = sin límite personal (admin)
     if (!isAdmin) {
       const { data: isVendedor } = await svc.rpc("has_role", { _user_id: userData.user.id, _role: "vendedor" });
       if (!isVendedor) {
@@ -65,6 +74,18 @@ Deno.serve(async (req) => {
         .eq("vendedor_id", userData.user.id)
         .not("email", "is", null);
       emailsPropios = new Set((misLeads ?? []).map((l: { email: string | null }) => (l.email ?? "").trim().toLowerCase()).filter(Boolean));
+
+      // Límite propio del vendedor (vendedores.limite_mensajes_dia, default 55),
+      // aparte del cupo global compartido de las 2 cuentas Resend (LIMITE_DIA).
+      const { data: perfil } = await svc.from("vendedores").select("limite_mensajes_dia").eq("user_id", userData.user.id).maybeSingle();
+      const limitePersonal = perfil?.limite_mensajes_dia ?? 55;
+      const { count: yaEnviadosHoy } = await svc
+        .from("correo_envios")
+        .select("id", { count: "exact", head: true })
+        .eq("enviado_por", userData.user.id)
+        .neq("estado", "fallido")
+        .gte("enviado_at", inicioDeHoyUTC());
+      cupoVendedorHoy = Math.max(0, limitePersonal - (yaEnviadosHoy ?? 0));
     }
 
     // --- Payload ---
@@ -118,8 +139,12 @@ Deno.serve(async (req) => {
     let sent = 0, failed = 0, programados = 0;
 
     // --- Auto-batching: hoy solo el cupo diario; el resto se agenda. ---
-    const hoy = valid.slice(0, LIMITE_DIA);
-    const excedente = valid.slice(LIMITE_DIA);
+    // Un vendedor además está acotado a su propio límite diario (vendedores.limite_mensajes_dia),
+    // aparte del cupo global compartido de las 2 cuentas Resend (LIMITE_DIA).
+    const cupoHoy = cupoVendedorHoy !== null ? Math.min(LIMITE_DIA, cupoVendedorHoy) : LIMITE_DIA;
+    const hoy = valid.slice(0, cupoHoy);
+    const excedente = valid.slice(cupoHoy);
+    const limitadoPorVendedor = cupoVendedorHoy !== null && excedente.length > 0 && cupoHoy === cupoVendedorHoy;
 
     for (const r of hoy) {
       const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(sent + failed);
@@ -225,7 +250,8 @@ Deno.serve(async (req) => {
       total: valid.length,
       omitidos_ajenos: omitidosAjenos || undefined,
       aviso: [
-        programados > 0 ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${LIMITE_DIA}/día).` : null,
+        programados > 0 && limitadoPorVendedor ? `${programados} programado(s) porque ya usaste tu cupo diario de correos (${cupoVendedorHoy}/día). Se reintenta mañana.` : null,
+        programados > 0 && !limitadoPorVendedor ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${LIMITE_DIA}/día).` : null,
         omitidosAjenos > 0 ? `${omitidosAjenos} destinatario(s) se omitieron por no ser leads tuyos.` : null,
       ].filter(Boolean).join(" ") || undefined,
       results,
