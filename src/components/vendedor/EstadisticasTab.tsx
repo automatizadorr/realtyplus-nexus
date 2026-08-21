@@ -223,7 +223,7 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
         />
         <Dona
           titulo="Plantillas más usadas"
-          subtitulo="Tus plantillas de WhatsApp y email con más envíos (Bandeja, Prospección y Pipeline)."
+          subtitulo="Tus plantillas de WhatsApp y email con más envíos (Bandeja y Pipeline)."
           data={plantillasData}
           centro={plantillasData.reduce((acc, d) => acc + d.value, 0)}
           centroLabel="envíos"

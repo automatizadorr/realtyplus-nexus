@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Users, Radar, Kanban, FileText, Loader2, GraduationCap, RotateCcw, PieChart, Inbox } from "lucide-react";
+import { Users, Kanban, FileText, Loader2, GraduationCap, RotateCcw, PieChart, Inbox } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import ProspeccionTab from "@/components/vendedor/ProspeccionTab";
 import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
 import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
@@ -33,7 +32,7 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["bandeja", "pipeline", "prospeccion", "reactivacion", "plantillas", "estadisticas"] as const;
+const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "estadisticas"] as const;
 
 export default function MisLeads() {
   const navigate = useNavigate();
@@ -97,7 +96,7 @@ export default function MisLeads() {
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl font-semibold tracking-tight">Mis Leads</h1>
-          <p className="text-sm text-muted-foreground">Tu pipeline de ventas y tus leads de prospección.</p>
+          <p className="text-sm text-muted-foreground">Tu pipeline de ventas.</p>
         </div>
         {miRol && (
           <Button type="button" variant="outline" size="sm" onClick={onboarding.reopen} className="shrink-0 gap-1.5">
@@ -143,7 +142,6 @@ export default function MisLeads() {
             {bandejaCount > 0 && <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">{bandejaCount}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="pipeline" className="gap-1.5"><Kanban className="h-4 w-4" /> Pipeline</TabsTrigger>
-          <TabsTrigger value="prospeccion" className="gap-1.5"><Radar className="h-4 w-4" /> Prospección</TabsTrigger>
           <TabsTrigger value="reactivacion" className="gap-1.5"><RotateCcw className="h-4 w-4" /> Reactivación</TabsTrigger>
           <TabsTrigger value="plantillas" className="gap-1.5"><FileText className="h-4 w-4" /> Mis Plantillas</TabsTrigger>
           <TabsTrigger value="estadisticas" className="gap-1.5"><PieChart className="h-4 w-4" /> Estadísticas</TabsTrigger>
@@ -155,10 +153,6 @@ export default function MisLeads() {
 
         <TabsContent value="pipeline">
           <PipelineTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} />
-        </TabsContent>
-
-        <TabsContent value="prospeccion">
-          <ProspeccionTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} />
         </TabsContent>
 
         <TabsContent value="reactivacion">
