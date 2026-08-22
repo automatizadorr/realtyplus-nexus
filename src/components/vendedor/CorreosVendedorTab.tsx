@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Palette, Eye, Loader2, Trash2, Lock } from "lucide-react";
+import { Palette, Eye, Loader2, Trash2, Lock, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,14 +24,12 @@ type Form = {
   nombre: string; asunto: string; cuerpo: string;
   designMode: DesignMode; titulo: string; ctaText: string; ctaUrl: string;
   brandColor: string; avatarUrl: string; footerText: string;
-  cta2Text: string; cta2Url: string; bonusText: string; bonusUrl: string;
 };
 
 const formVacio = (): Form => ({
   nombre: "", asunto: "", cuerpo: "",
   designMode: "pro", titulo: "", ctaText: "", ctaUrl: "",
   brandColor: "#003DA5", avatarUrl: "", footerText: "",
-  cta2Text: "", cta2Url: "", bonusText: "", bonusUrl: "",
 });
 
 const NUEVA = "__nueva__";
@@ -54,6 +52,7 @@ export default function CorreosVendedorTab({
   const [saving, setSaving] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [inicializado, setInicializado] = useState(false);
+  const [enviandoPrueba, setEnviandoPrueba] = useState(false);
 
   const propias = useMemo(() => plantillasEmail.filter((p) => p.creado_por === user?.id), [plantillasEmail, user?.id]);
   const compartidas = useMemo(() => plantillasEmail.filter((p) => p.creado_por !== user?.id), [plantillasEmail, user?.id]);
@@ -77,8 +76,6 @@ export default function CorreosVendedorTab({
       designMode: (actual.design_mode as DesignMode) || "pro",
       titulo: actual.titulo || "", ctaText: actual.cta_text || "", ctaUrl: actual.cta_url || "",
       brandColor: actual.brand_color || "#003DA5", avatarUrl: actual.avatar_url || "", footerText: actual.footer_text || "",
-      cta2Text: actual.cta2_text || "", cta2Url: actual.cta2_url || "",
-      bonusText: actual.bonus_text || "", bonusUrl: actual.bonus_url || "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plantillaId, inicializado]);
@@ -97,14 +94,12 @@ export default function CorreosVendedorTab({
         fromName: nombreRemitente, titulo: form.titulo, body: form.cuerpo,
         ctaText: form.ctaText, ctaUrl: form.ctaUrl, brandColor: form.brandColor,
         logoUrl: LEXHOUSE_LOGO_URL, avatarUrl: form.avatarUrl, footerText: form.footerText,
-        cta2Text: form.cta2Text, cta2Url: form.cta2Url, bonusText: form.bonusText, bonusUrl: form.bonusUrl,
       });
     }
     if (form.designMode === "personal") {
       return buildPlainEmail({
         fromName: nombreRemitente, titulo: form.titulo, body: form.cuerpo,
         ctaText: form.ctaText, ctaUrl: form.ctaUrl, brandColor: form.brandColor,
-        cta2Text: form.cta2Text, cta2Url: form.cta2Url, bonusText: form.bonusText, bonusUrl: form.bonusUrl,
       });
     }
     return bodyToHtml(form.cuerpo);
@@ -124,8 +119,6 @@ export default function CorreosVendedorTab({
         cta_text: form.ctaText || null, cta_url: form.ctaUrl || null,
         brand_color: form.brandColor, logo_url: LEXHOUSE_LOGO_URL,
         avatar_url: form.avatarUrl || null, footer_text: form.footerText || null,
-        cta2_text: form.cta2Text || null, cta2_url: form.cta2Url || null,
-        bonus_text: form.bonusText || null, bonus_url: form.bonusUrl || null,
       };
       if (actual) {
         const { error } = await sb.from("plantillas_email").update(campos).eq("id", actual.id);
@@ -151,6 +144,30 @@ export default function CorreosVendedorTab({
     const { error } = await sb.from("plantillas_email").update({ activa: v }).eq("id", actual.id);
     if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
     onChanged();
+  };
+
+  // Envía el correo real (vía Resend) a la propia casilla del vendedor, para
+  // revisar en Gmail/Outlook si cae en Principal, Promociones o Spam antes
+  // de usarlo con leads de verdad.
+  const enviarPrueba = async () => {
+    if (!user?.email || !form.asunto.trim()) return;
+    setEnviandoPrueba(true);
+    try {
+      const nombreRemitente = await fromName();
+      const { data, error } = await supabase.functions.invoke("send-personalized-campaign", {
+        body: {
+          test: true, testNombre: "Juan Pérez",
+          subject: form.asunto, text: form.cuerpo, html: composeHtml(nombreRemitente),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: `Prueba enviada a ${user.email}`, description: "Revisa Principal, Promociones y Spam para ver dónde cayó." });
+    } catch (e) {
+      toast({ title: "No se pudo enviar la prueba", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setEnviandoPrueba(false);
+    }
   };
 
   const eliminar = async () => {
@@ -237,15 +254,22 @@ export default function CorreosVendedorTab({
         fixedLogo={{ url: LEXHOUSE_LOGO_URL, label: "LexHouse AI" }}
         avatarUrl={form.avatarUrl} setAvatarUrl={(v) => setForm((f) => ({ ...f, avatarUrl: v }))}
         footerText={form.footerText} setFooterText={(v) => setForm((f) => ({ ...f, footerText: v }))}
-        cta2Text={form.cta2Text} setCta2Text={(v) => setForm((f) => ({ ...f, cta2Text: v }))}
-        cta2Url={form.cta2Url} setCta2Url={(v) => setForm((f) => ({ ...f, cta2Url: v }))}
-        bonusText={form.bonusText} setBonusText={(v) => setForm((f) => ({ ...f, bonusText: v }))}
-        bonusUrl={form.bonusUrl} setBonusUrl={(v) => setForm((f) => ({ ...f, bonusUrl: v }))}
       />
+
+      <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+        <strong className="text-foreground">Consejo:</strong> mientras menos botones y menos "look de banner" tenga el correo (un solo botón, colores sobrios, sin exceso de imágenes), más chance tiene de caer en la bandeja Principal en vez de Promociones o Spam. Usa "Enviar prueba" para comprobarlo antes de mandarlo a leads de verdad.
+      </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview((v) => !v)} className="gap-1.5">
           <Eye className="h-4 w-4" /> {showPreview ? "Ocultar vista previa" : "Vista previa"}
+        </Button>
+        <Button
+          type="button" variant="outline" size="sm" onClick={enviarPrueba}
+          disabled={enviandoPrueba || !form.asunto.trim() || !form.cuerpo.trim()}
+          className="gap-1.5"
+        >
+          {enviandoPrueba ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar prueba a mi correo
         </Button>
         <Button type="button" size="sm" onClick={guardar} disabled={saving || !form.nombre.trim()} className="ml-auto gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Guardar diseño

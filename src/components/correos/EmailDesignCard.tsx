@@ -23,12 +23,6 @@ type Props = {
   // Cuando se pasa, el logo NO es editable: se muestra fijo (ej. el logo
   // institucional de LexHouse) y se oculta la subida/URL/quitar.
   fixedLogo?: { url: string; label: string };
-  // Botón secundario y línea de regalo/bonus (opcionales): más
-  // posibilidades de edición, solo se muestran si el padre las pasa.
-  cta2Text?: string; setCta2Text?: (v: string) => void;
-  cta2Url?: string; setCta2Url?: (v: string) => void;
-  bonusText?: string; setBonusText?: (v: string) => void;
-  bonusUrl?: string; setBonusUrl?: (v: string) => void;
 };
 
 const modeBtn = (active: boolean) =>
@@ -163,25 +157,6 @@ export default function EmailDesignCard(p: Props) {
                 )}
               </div>
             </div>
-
-            {(p.setCta2Text || p.setBonusText) && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {p.setCta2Text && (
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5 text-xs"><MousePointerClick className="h-3.5 w-3.5" /> Botón secundario (opcional)</Label>
-                    <Input value={p.cta2Text ?? ""} onChange={(e) => p.setCta2Text?.(e.target.value)} placeholder="Ej: Contactar por WhatsApp" />
-                    <Input value={p.cta2Url ?? ""} onChange={(e) => p.setCta2Url?.(e.target.value)} placeholder="URL del botón secundario" className="mt-1" />
-                  </div>
-                )}
-                {p.setBonusText && (
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5 text-xs"><Link2 className="h-3.5 w-3.5" /> Regalo / enlace extra (opcional)</Label>
-                    <Input value={p.bonusText ?? ""} onChange={(e) => p.setBonusText?.(e.target.value)} placeholder="Ej: Descarga la guía gratis" />
-                    <Input value={p.bonusUrl ?? ""} onChange={(e) => p.setBonusUrl?.(e.target.value)} placeholder="URL del regalo/enlace" className="mt-1" />
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Foto de perfil del remitente (firma con foto) */}
             <div className="space-y-1.5">

@@ -59,15 +59,85 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await svc.rpc("has_role", {
       _user_id: userData.user.id, _role: "admin",
     });
-    let emailsPropios: Set<string> | null = null; // null = sin restricción (admin)
-    let cupoVendedorHoy: number | null = null; // null = sin límite personal (admin)
+    let isVendedor = false;
     if (!isAdmin) {
-      const { data: isVendedor } = await svc.rpc("has_role", { _user_id: userData.user.id, _role: "vendedor" });
+      const { data } = await svc.rpc("has_role", { _user_id: userData.user.id, _role: "vendedor" });
+      isVendedor = Boolean(data);
       if (!isVendedor) {
         return new Response(JSON.stringify({ error: "Forbidden: se requiere rol admin o vendedor" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    }
+
+    // --- Payload ---
+    const body = await req.json();
+    const fromName: string = (body?.fromName ?? "Mario · LexHouse").toString();
+    const fromEmail: string = (body?.fromEmail ?? "no-reply@send.lexhouse-ai.com").toString();
+    const replyTo: string | undefined = body?.replyTo ? body.replyTo.toString() : undefined;
+    const subjectTpl: string = (body?.subject ?? "").toString();
+    const htmlTpl: string = (body?.html ?? "").toString();
+    const textTpl: string = (body?.text ?? "").toString();
+    const recipients: Recipient[] = Array.isArray(body?.recipients) ? body.recipients : [];
+
+    if (!subjectTpl.trim() || (!htmlTpl.trim() && !textTpl.trim())) {
+      return new Response(JSON.stringify({ error: "Falta asunto o cuerpo del correo" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Envío de PRUEBA: manda 1 solo correo a la propia casilla del usuario
+    // logueado (admin o vendedor), para revisar en dónde cae (Principal /
+    // Promociones / Spam). Ignora el filtro "solo tus leads" del vendedor
+    // porque el destinatario siempre es él mismo, nunca un lead ajeno. No
+    // cuenta contra su cupo diario ni queda en el log de campañas reales.
+    if (body?.test === true) {
+      const testEmail = (userData.user.email ?? "").trim().toLowerCase();
+      if (!testEmail) {
+        return new Response(JSON.stringify({ error: "Tu sesión no tiene un correo con el que probar" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const r: Recipient = { email: testEmail, nombre: (body?.testNombre ?? "").toString() || undefined };
+      const { key: apiKey, domain: keyDomain } = resendKeyFor(0);
+      const subject = `[PRUEBA] ${fillTemplate(subjectTpl, r)}`;
+      const payload: Record<string, unknown> = {
+        from: `${fromName} <${applyDomain(fromEmail, keyDomain)}>`,
+        to: [testEmail],
+        subject,
+      };
+      const replyToDomain = replyTo ? applyDomain(replyTo, keyDomain) : undefined;
+      if (replyToDomain) payload.reply_to = replyToDomain;
+      if (htmlTpl.trim()) payload.html = fillTemplate(htmlTpl, r);
+      if (textTpl.trim()) payload.text = fillTemplate(textTpl, r);
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.id) {
+          return new Response(JSON.stringify({ success: true, prueba: true, sent: 1, to: testEmail, id: data.id }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const errMsg = data?.message || data?.error || `HTTP ${res.status}`;
+        return new Response(JSON.stringify({ success: false, error: String(errMsg) }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        return new Response(JSON.stringify({ success: false, error: errMsg }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    let emailsPropios: Set<string> | null = null; // null = sin restricción (admin)
+    let cupoVendedorHoy: number | null = null; // null = sin límite personal (admin)
+    if (isVendedor) {
       const { data: misLeads } = await svc
         .from("leads_campana")
         .select("email")
@@ -86,22 +156,6 @@ Deno.serve(async (req) => {
         .neq("estado", "fallido")
         .gte("enviado_at", inicioDeHoyUTC());
       cupoVendedorHoy = Math.max(0, limitePersonal - (yaEnviadosHoy ?? 0));
-    }
-
-    // --- Payload ---
-    const body = await req.json();
-    const fromName: string = (body?.fromName ?? "Mario · LexHouse").toString();
-    const fromEmail: string = (body?.fromEmail ?? "no-reply@send.lexhouse-ai.com").toString();
-    const replyTo: string | undefined = body?.replyTo ? body.replyTo.toString() : undefined;
-    const subjectTpl: string = (body?.subject ?? "").toString();
-    const htmlTpl: string = (body?.html ?? "").toString();
-    const textTpl: string = (body?.text ?? "").toString();
-    const recipients: Recipient[] = Array.isArray(body?.recipients) ? body.recipients : [];
-
-    if (!subjectTpl.trim() || (!htmlTpl.trim() && !textTpl.trim())) {
-      return new Response(JSON.stringify({ error: "Falta asunto o cuerpo del correo" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
     // Destinatarios válidos y deduplicados.
     const seen = new Set<string>();
