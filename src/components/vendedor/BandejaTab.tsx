@@ -95,6 +95,10 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
       .from("leads_campana")
       .select("id, nombre, telefono, email, pais, fecha_asignacion", { count: "exact" })
       .is("primer_contacto_at", null)
+      // Un lead archivado (duplicado de teléfono, número inmarcable, o archivado
+      // a mano) no debe seguir apareciendo en la bandeja. El Pipeline ya filtraba
+      // esto; la Bandeja no, y por eso los archivados seguían a la vista.
+      .not("archivado", "is", true)
       .order("fecha_asignacion", { ascending: true })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1);
     if (error) toast({ title: "Error al cargar la bandeja", description: error.message, variant: "destructive" });

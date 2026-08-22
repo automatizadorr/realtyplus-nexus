@@ -65,7 +65,10 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
       try {
         let query = supabase
           .from("leads_campana")
-          .select("id, nombre, telefono, email, pais, vendedor_id, fecha_asignacion", { count: "exact" });
+          .select("id, nombre, telefono, email, pais, vendedor_id, fecha_asignacion", { count: "exact" })
+        // Nunca ofrecer para asignar un lead archivado: sería devolverle al
+        // vendedor un duplicado o un número inmarcable que ya se sacó de circulación.
+        .not("archivado", "is", true);
         if (soloSinAsignar) query = query.is("vendedor_id", null);
         if (pais !== "all") query = query.eq("pais", pais);
         const term = qDebounced.trim();
