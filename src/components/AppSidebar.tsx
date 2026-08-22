@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2, RotateCcw, PieChart, Inbox } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2, RotateCcw, PieChart, Inbox, Palette } from "lucide-react";
 import { useState } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
@@ -34,7 +34,7 @@ const vendedorGroups: { label?: string; items: { title: string; url: string; ico
     label: "Herramientas",
     items: [
       { title: "Mis Plantillas", url: "/mis-leads/plantillas", icon: FileText },
-      { title: "Correos Personalizados", url: "/mis-leads/correos", icon: Mail },
+      { title: "Diseño de Correo", url: "/mis-leads/diseno-correo", icon: Palette },
       { title: "Estadísticas", url: "/mis-leads/estadisticas", icon: PieChart },
     ],
   },

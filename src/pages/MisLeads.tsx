@@ -33,7 +33,7 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "correos", "estadisticas"] as const;
+const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "diseno-correo", "estadisticas"] as const;
 
 export default function MisLeads() {
   const { user } = useAuth();
@@ -140,7 +140,7 @@ export default function MisLeads() {
       )}
 
       {/* Sin TabsList: la navegación entre secciones vive solo en el sidebar
-          (Bandeja/Pipeline/Leads DataBase/Mis Plantillas/Correos Personalizados/
+          (Bandeja/Pipeline/Leads DataBase/Mis Plantillas/Diseño de Correo/
           Estadísticas). El valor activo viene de la URL (/mis-leads/:tab). */}
       <Tabs value={tabActivo}>
         <TabsContent value="bandeja">
@@ -162,7 +162,7 @@ export default function MisLeads() {
           <MisPlantillasTab plantillasWa={plantillasWa} onChanged={cargarPlantillas} />
         </TabsContent>
 
-        <TabsContent value="correos">
+        <TabsContent value="diseno-correo">
           <CorreosVendedorTab plantillasEmail={plantillasEmail} onChanged={cargarPlantillas} />
         </TabsContent>
 

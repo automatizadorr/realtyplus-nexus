@@ -20,6 +20,15 @@ type Props = {
   avatarUrl: string; setAvatarUrl: (v: string) => void;
   footerText: string; setFooterText: (v: string) => void;
   userId?: string;
+  // Cuando se pasa, el logo NO es editable: se muestra fijo (ej. el logo
+  // institucional de LexHouse) y se oculta la subida/URL/quitar.
+  fixedLogo?: { url: string; label: string };
+  // Botón secundario y línea de regalo/bonus (opcionales): más
+  // posibilidades de edición, solo se muestran si el padre las pasa.
+  cta2Text?: string; setCta2Text?: (v: string) => void;
+  cta2Url?: string; setCta2Url?: (v: string) => void;
+  bonusText?: string; setBonusText?: (v: string) => void;
+  bonusUrl?: string; setBonusUrl?: (v: string) => void;
 };
 
 const modeBtn = (active: boolean) =>
@@ -121,28 +130,58 @@ export default function EmailDesignCard(p: Props) {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5 text-xs"><Image className="h-3.5 w-3.5" /> Logo (opcional)</Label>
-                <div className="flex items-center gap-2">
-                  {p.logoUrl && (
-                    <span className="grid h-9 w-14 shrink-0 place-items-center overflow-hidden rounded border border-input bg-[#0f1e3a] px-1">
-                      <img src={p.logoUrl} alt="logo" className="max-h-7 max-w-full object-contain" />
+                <Label className="flex items-center gap-1.5 text-xs"><Image className="h-3.5 w-3.5" /> Logo</Label>
+                {p.fixedLogo ? (
+                  <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 px-2 py-1.5">
+                    <span className="grid h-9 w-14 shrink-0 place-items-center overflow-hidden rounded border border-input bg-white px-1">
+                      <img src={p.fixedLogo.url} alt={p.fixedLogo.label} className="max-h-7 max-w-full object-contain" />
                     </span>
-                  )}
-                  <Input value={p.logoUrl} onChange={(e) => p.setLogoUrl(e.target.value)} placeholder="Pega una URL o sube una imagen →" />
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "logo", p.setLogoUrl, setUploading, fileRef, "Logo subido"); }} />
-                  <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={uploading} onClick={() => fileRef.current?.click()}>
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Subir
-                  </Button>
-                  {p.logoUrl && (
-                    <Button type="button" variant="ghost" size="sm" className="shrink-0 text-muted-foreground" onClick={() => p.setLogoUrl("")}>
-                      Quitar
-                    </Button>
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground">PNG/JPG/WEBP, máx 2 MB. Si lo dejas vacío, el encabezado usa el nombre del remitente.</p>
+                    <p className="text-[11px] text-muted-foreground">{p.fixedLogo.label} · fijo, no se puede cambiar ni quitar.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      {p.logoUrl && (
+                        <span className="grid h-9 w-14 shrink-0 place-items-center overflow-hidden rounded border border-input bg-[#0f1e3a] px-1">
+                          <img src={p.logoUrl} alt="logo" className="max-h-7 max-w-full object-contain" />
+                        </span>
+                      )}
+                      <Input value={p.logoUrl} onChange={(e) => p.setLogoUrl(e.target.value)} placeholder="Pega una URL o sube una imagen →" />
+                      <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "logo", p.setLogoUrl, setUploading, fileRef, "Logo subido"); }} />
+                      <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Subir
+                      </Button>
+                      {p.logoUrl && (
+                        <Button type="button" variant="ghost" size="sm" className="shrink-0 text-muted-foreground" onClick={() => p.setLogoUrl("")}>
+                          Quitar
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">PNG/JPG/WEBP, máx 2 MB. Si lo dejas vacío, el encabezado usa el nombre del remitente.</p>
+                  </>
+                )}
               </div>
             </div>
+
+            {(p.setCta2Text || p.setBonusText) && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {p.setCta2Text && (
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-xs"><MousePointerClick className="h-3.5 w-3.5" /> Botón secundario (opcional)</Label>
+                    <Input value={p.cta2Text ?? ""} onChange={(e) => p.setCta2Text?.(e.target.value)} placeholder="Ej: Contactar por WhatsApp" />
+                    <Input value={p.cta2Url ?? ""} onChange={(e) => p.setCta2Url?.(e.target.value)} placeholder="URL del botón secundario" className="mt-1" />
+                  </div>
+                )}
+                {p.setBonusText && (
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-xs"><Link2 className="h-3.5 w-3.5" /> Regalo / enlace extra (opcional)</Label>
+                    <Input value={p.bonusText ?? ""} onChange={(e) => p.setBonusText?.(e.target.value)} placeholder="Ej: Descarga la guía gratis" />
+                    <Input value={p.bonusUrl ?? ""} onChange={(e) => p.setBonusUrl?.(e.target.value)} placeholder="URL del regalo/enlace" className="mt-1" />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Foto de perfil del remitente (firma con foto) */}
             <div className="space-y-1.5">

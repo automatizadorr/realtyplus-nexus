@@ -7,6 +7,10 @@
 const esc = (s: string) =>
   (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+// Logo institucional fijo (URL pública estable, sin hash de build) para el
+// diseño de correo del vendedor: NO es editable, siempre es este archivo.
+export const LEXHOUSE_LOGO_URL = "https://lexhouse-ai.homes/lexhouse-logo-email.png";
+
 // Paleta y tipografía (fuentes web-safe con Segoe UI en Windows/Outlook y Georgia para títulos).
 const NAVY = "#0F1E3A";
 const RED = "#E4002B";

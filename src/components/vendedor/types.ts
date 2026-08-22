@@ -13,6 +13,10 @@ export type PlantillaEmail = {
   logo_url?: string | null;
   avatar_url?: string | null;
   footer_text?: string | null;
+  cta2_text?: string | null;
+  cta2_url?: string | null;
+  bonus_text?: string | null;
+  bonus_url?: string | null;
 };
 
 export type LeadCampana = {

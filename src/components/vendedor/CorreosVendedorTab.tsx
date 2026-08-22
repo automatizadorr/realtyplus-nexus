@@ -1,23 +1,45 @@
-import { useMemo, useState } from "react";
-import { Mail, Plus, Pencil, Trash2, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Palette, Eye, Loader2, Trash2, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import EditarPlantillaDialog from "@/components/vendedor/EditarPlantillaDialog";
-import PlantillaEmailPreviewDialog from "@/components/vendedor/PlantillaEmailPreviewDialog";
+import { fillTemplate } from "@/lib/fillTemplate";
+import { bodyToHtml, buildProEmail, buildPlainEmail, LEXHOUSE_LOGO_URL } from "@/lib/emailTemplates";
+import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
 import type { PlantillaEmail } from "@/components/vendedor/types";
+
+const VARIABLES_HINT = "Variables: {{nombre}} {{empresa}} {{ciudad}} {{pais}} {{propuesta_valor}} {{gancho}}";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-// Sección propia (separada de "Mis Plantillas", que quedó solo para
-// WhatsApp): diseño visual de correos, mismo compositor que Correos
-// Personalizados del admin (EmailDesignCard + emailTemplates), pero acotado
-// a las plantillas de email del vendedor.
+type Form = {
+  nombre: string; asunto: string; cuerpo: string;
+  designMode: DesignMode; titulo: string; ctaText: string; ctaUrl: string;
+  brandColor: string; avatarUrl: string; footerText: string;
+  cta2Text: string; cta2Url: string; bonusText: string; bonusUrl: string;
+};
+
+const formVacio = (): Form => ({
+  nombre: "", asunto: "", cuerpo: "",
+  designMode: "pro", titulo: "", ctaText: "", ctaUrl: "",
+  brandColor: "#003DA5", avatarUrl: "", footerText: "",
+  cta2Text: "", cta2Url: "", bonusText: "", bonusUrl: "",
+});
+
+const NUEVA = "__nueva__";
+
+// Diseño del HTML que se envía en los correos (no es "correo personalizado"
+// por destinatario — es la plantilla/branding que se usa según corresponda:
+// título, colores, botones, firma). Se abre directo en el editor (sin lista
+// intermedia ni diálogo); el logo institucional de LexHouse queda fijo.
 export default function CorreosVendedorTab({
   plantillasEmail, onChanged,
 }: {
@@ -26,103 +48,224 @@ export default function CorreosVendedorTab({
 }) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PlantillaEmail | null>(null);
-  const [previewing, setPreviewing] = useState<PlantillaEmail | null>(null);
+  const [plantillaId, setPlantillaId] = useState<string>(NUEVA);
+  const [form, setForm] = useState<Form>(formVacio());
+  const [showPreview, setShowPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const [inicializado, setInicializado] = useState(false);
 
   const propias = useMemo(() => plantillasEmail.filter((p) => p.creado_por === user?.id), [plantillasEmail, user?.id]);
   const compartidas = useMemo(() => plantillasEmail.filter((p) => p.creado_por !== user?.id), [plantillasEmail, user?.id]);
+  const actual = plantillasEmail.find((p) => p.id === plantillaId) || null;
 
-  const abrirNueva = () => { setEditing(null); setDialogOpen(true); };
-  const abrirEditar = (p: PlantillaEmail) => { setEditing(p); setDialogOpen(true); };
+  // Al entrar, abre directo el editor: la primera plantilla propia si existe,
+  // o el formulario en blanco listo para crear — nunca una lista intermedia.
+  useEffect(() => {
+    if (inicializado) return;
+    if (propias.length > 0) setPlantillaId(propias[0].id);
+    setInicializado(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propias, inicializado]);
 
-  const eliminar = async (p: PlantillaEmail) => {
-    const { error } = await sb.from("plantillas_email").delete().eq("id", p.id);
-    if (error) { toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Plantilla borrada" });
-    onChanged();
+  useEffect(() => {
+    if (!inicializado) return;
+    setShowPreview(false);
+    if (!actual) { setForm(formVacio()); return; }
+    setForm({
+      nombre: actual.nombre, asunto: actual.asunto, cuerpo: actual.cuerpo_text || "",
+      designMode: (actual.design_mode as DesignMode) || "pro",
+      titulo: actual.titulo || "", ctaText: actual.cta_text || "", ctaUrl: actual.cta_url || "",
+      brandColor: actual.brand_color || "#003DA5", avatarUrl: actual.avatar_url || "", footerText: actual.footer_text || "",
+      cta2Text: actual.cta2_text || "", cta2Url: actual.cta2_url || "",
+      bonusText: actual.bonus_text || "", bonusUrl: actual.bonus_url || "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantillaId, inicializado]);
+
+  const fromName = async (): Promise<string> => {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) return "Tu corredora";
+    const { data } = await sb.from("vendedores").select("nombre_display").eq("user_id", uid).maybeSingle();
+    return data?.nombre_display || userData.user?.email || "Tu corredora";
   };
 
-  const toggleActiva = async (p: PlantillaEmail, activa: boolean) => {
-    const { error } = await sb.from("plantillas_email").update({ activa }).eq("id", p.id);
+  const composeHtml = (nombreRemitente: string) => {
+    if (form.designMode === "pro") {
+      return buildProEmail({
+        fromName: nombreRemitente, titulo: form.titulo, body: form.cuerpo,
+        ctaText: form.ctaText, ctaUrl: form.ctaUrl, brandColor: form.brandColor,
+        logoUrl: LEXHOUSE_LOGO_URL, avatarUrl: form.avatarUrl, footerText: form.footerText,
+        cta2Text: form.cta2Text, cta2Url: form.cta2Url, bonusText: form.bonusText, bonusUrl: form.bonusUrl,
+      });
+    }
+    if (form.designMode === "personal") {
+      return buildPlainEmail({
+        fromName: nombreRemitente, titulo: form.titulo, body: form.cuerpo,
+        ctaText: form.ctaText, ctaUrl: form.ctaUrl, brandColor: form.brandColor,
+        cta2Text: form.cta2Text, cta2Url: form.cta2Url, bonusText: form.bonusText, bonusUrl: form.bonusUrl,
+      });
+    }
+    return bodyToHtml(form.cuerpo);
+  };
+
+  const previewHtml = fillTemplate(composeHtml("Tu corredora"), { nombre: "Juan Pérez", pais: "Chile" });
+
+  const guardar = async () => {
+    if (!user || !form.nombre.trim()) return;
+    setSaving(true);
+    try {
+      const nombreRemitente = await fromName();
+      const campos = {
+        nombre: form.nombre, asunto: form.asunto,
+        cuerpo_text: form.cuerpo, cuerpo_html: composeHtml(nombreRemitente),
+        design_mode: form.designMode, titulo: form.titulo || null,
+        cta_text: form.ctaText || null, cta_url: form.ctaUrl || null,
+        brand_color: form.brandColor, logo_url: LEXHOUSE_LOGO_URL,
+        avatar_url: form.avatarUrl || null, footer_text: form.footerText || null,
+        cta2_text: form.cta2Text || null, cta2_url: form.cta2Url || null,
+        bonus_text: form.bonusText || null, bonus_url: form.bonusUrl || null,
+      };
+      if (actual) {
+        const { error } = await sb.from("plantillas_email").update(campos).eq("id", actual.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await sb.from("plantillas_email")
+          .insert({ ...campos, creado_por: user.id, activa: true })
+          .select("id").single();
+        if (error) throw error;
+        if (data?.id) setPlantillaId(data.id);
+      }
+      toast({ title: actual ? "Diseño actualizado" : "Diseño creado" });
+      onChanged();
+    } catch (e) {
+      toast({ title: "No se pudo guardar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActiva = async (v: boolean) => {
+    if (!actual) return;
+    const { error } = await sb.from("plantillas_email").update({ activa: v }).eq("id", actual.id);
     if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
     onChanged();
   };
 
-  const excerpt = (p: PlantillaEmail) =>
-    `${p.asunto} — ${(p.cuerpo_text || p.cuerpo_html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim()}`;
-
-  const Tarjeta = ({ p, esPropia }: { p: PlantillaEmail; esPropia: boolean }) => (
-    <Card key={p.id} className={esPropia ? undefined : "bg-muted/30"}>
-      <CardContent className="flex cursor-pointer items-start gap-3 p-3" onClick={() => setPreviewing(p)}>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{p.nombre}</span>
-            {esPropia && (
-              <Badge variant={p.activa ? "secondary" : "outline"} className={p.activa ? "text-emerald-600" : "text-muted-foreground"}>
-                {p.activa ? "Activa" : "Inactiva"}
-              </Badge>
-            )}
-          </div>
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{excerpt(p)}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          {esPropia && <Switch checked={!!p.activa} onCheckedChange={(v) => toggleActiva(p, v)} />}
-          <Button type="button" variant="ghost" size="sm" onClick={() => abrirEditar(p)}><Pencil className="h-3.5 w-3.5" /></Button>
-          {esPropia && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => eliminar(p)} className="text-muted-foreground hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const eliminar = async () => {
+    if (!actual || actual.creado_por !== user?.id) return;
+    setEliminando(true);
+    const { error } = await sb.from("plantillas_email").delete().eq("id", actual.id);
+    setEliminando(false);
+    if (error) { toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Diseño borrado" });
+    setPlantillaId(NUEVA);
+    onChanged();
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#003DA5]/10 text-[#003DA5]">
-          <Mail className="h-5 w-5" />
+          <Palette className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl font-semibold tracking-tight">Correos Personalizados</h2>
-          <p className="text-sm text-muted-foreground">Diseña el HTML de tus correos: título, botón, color de marca, logo y firma.</p>
+          <h2 className="font-display text-xl font-semibold tracking-tight">Diseño de Correo</h2>
+          <p className="text-sm text-muted-foreground">El HTML que se envía en los correos: título, botones, colores y firma. El logo de LexHouse queda siempre fijo.</p>
         </div>
-        <Button type="button" size="sm" onClick={abrirNueva} className="shrink-0 gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90">
-          <Plus className="h-4 w-4" /> Nueva plantilla
+      </div>
+
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[220px] flex-1 space-y-1.5">
+              <Label className="text-xs">Plantilla que estás editando</Label>
+              <Select value={plantillaId} onValueChange={setPlantillaId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NUEVA}>+ Crear nueva plantilla</SelectItem>
+                  {propias.length > 0 && propias.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
+                  {compartidas.length > 0 && compartidas.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre} (compartida)</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {actual && actual.creado_por === user?.id && (
+              <label className="flex items-center gap-1.5 pb-2 text-sm">
+                <Switch checked={!!actual.activa} onCheckedChange={toggleActiva} /> Activa
+              </label>
+            )}
+            {actual && actual.creado_por === user?.id && (
+              <Button type="button" variant="ghost" size="sm" onClick={eliminar} disabled={eliminando} className="mb-0.5 gap-1.5 text-muted-foreground hover:text-red-600">
+                {eliminando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Borrar
+              </Button>
+            )}
+            {actual && actual.creado_por !== user?.id && (
+              <span className="mb-2.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Lock className="h-3 w-3" /> Compartida por tu equipo</span>
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nombre interno</Label>
+              <Input value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Seguimiento inicial" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Asunto</Label>
+              <Input value={form.asunto} onChange={(e) => setForm((f) => ({ ...f, asunto: e.target.value }))} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cuerpo del mensaje</Label>
+            <Textarea
+              value={form.cuerpo} onChange={(e) => setForm((f) => ({ ...f, cuerpo: e.target.value }))}
+              className="min-h-[120px] text-sm" placeholder={"Hola {{nombre}},\n\nPárrafo…\n\n- Punto uno\n- Punto dos"}
+            />
+            <p className="text-[11px] text-muted-foreground">{VARIABLES_HINT}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <EmailDesignCard
+        userId={user?.id}
+        designMode={form.designMode} setDesignMode={(m) => setForm((f) => ({ ...f, designMode: m }))}
+        titulo={form.titulo} setTitulo={(v) => setForm((f) => ({ ...f, titulo: v }))}
+        ctaText={form.ctaText} setCtaText={(v) => setForm((f) => ({ ...f, ctaText: v }))}
+        ctaUrl={form.ctaUrl} setCtaUrl={(v) => setForm((f) => ({ ...f, ctaUrl: v }))}
+        brandColor={form.brandColor} setBrandColor={(v) => setForm((f) => ({ ...f, brandColor: v }))}
+        logoUrl={LEXHOUSE_LOGO_URL} setLogoUrl={() => {}}
+        fixedLogo={{ url: LEXHOUSE_LOGO_URL, label: "LexHouse AI" }}
+        avatarUrl={form.avatarUrl} setAvatarUrl={(v) => setForm((f) => ({ ...f, avatarUrl: v }))}
+        footerText={form.footerText} setFooterText={(v) => setForm((f) => ({ ...f, footerText: v }))}
+        cta2Text={form.cta2Text} setCta2Text={(v) => setForm((f) => ({ ...f, cta2Text: v }))}
+        cta2Url={form.cta2Url} setCta2Url={(v) => setForm((f) => ({ ...f, cta2Url: v }))}
+        bonusText={form.bonusText} setBonusText={(v) => setForm((f) => ({ ...f, bonusText: v }))}
+        bonusUrl={form.bonusUrl} setBonusUrl={(v) => setForm((f) => ({ ...f, bonusUrl: v }))}
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview((v) => !v)} className="gap-1.5">
+          <Eye className="h-4 w-4" /> {showPreview ? "Ocultar vista previa" : "Vista previa"}
+        </Button>
+        <Button type="button" size="sm" onClick={guardar} disabled={saving || !form.nombre.trim()} className="ml-auto gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Guardar diseño
         </Button>
       </div>
 
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tus plantillas</h3>
-        {propias.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Todavía no creaste ninguna. Usa "Nueva plantilla".</p>
-        ) : (
-          <div className="space-y-2">{propias.map((p) => <Tarjeta key={p.id} p={p} esPropia />)}</div>
-        )}
-      </div>
-
-      <div>
-        <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <Lock className="h-3 w-3" /> Compartidas por tu equipo
-        </h3>
-        <p className="mb-2 text-[11px] text-muted-foreground">Podés editarlas — el cambio se ve para todo el equipo. Solo el dueño puede borrarlas.</p>
-        {compartidas.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin plantillas compartidas activas.</p>
-        ) : (
-          <div className="space-y-2">{compartidas.map((p) => <Tarjeta key={p.id} p={p} esPropia={false} />)}</div>
-        )}
-      </div>
-
-      <EditarPlantillaDialog
-        open={dialogOpen} onOpenChange={setDialogOpen}
-        canal="email" plantilla={editing} onSaved={onChanged}
-      />
-
-      <PlantillaEmailPreviewDialog
-        open={!!previewing} onOpenChange={(v) => !v && setPreviewing(null)}
-        plantilla={previewing}
-        onEditar={() => { if (previewing) { setEditing(previewing); setPreviewing(null); setDialogOpen(true); } }}
-      />
+      {showPreview && (
+        <Card>
+          <CardContent className="space-y-2 p-4">
+            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+              {fillTemplate(form.asunto, { nombre: "Juan Pérez", pais: "Chile" }) || "(sin asunto)"}
+            </p>
+            {form.designMode !== "texto" ? (
+              <iframe title="Vista previa del correo" className={`w-full rounded-md border bg-white ${form.designMode === "pro" ? "h-[520px]" : "h-[280px]"}`} srcDoc={previewHtml} />
+            ) : (
+              <div className="prose prose-sm max-w-none rounded-md border bg-white p-4 text-[14px] [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -123,7 +123,7 @@ export default function MisPlantillasTab({
 
       <EditarPlantillaDialog
         open={dialogOpen} onOpenChange={setDialogOpen}
-        canal="whatsapp" plantilla={editing} onSaved={onChanged}
+        plantilla={editing} onSaved={onChanged}
       />
     </div>
   );
