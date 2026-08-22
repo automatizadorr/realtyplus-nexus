@@ -23,6 +23,7 @@ import { fillTemplate } from "@/lib/fillTemplate";
 import {
   ETAPAS_PIPELINE, ETAPA_LABEL, ETAPAS_PERMITIDAS, type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa, type RolVenta,
 } from "@/components/vendedor/types";
+import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 
 // leads_campana con las columnas nuevas aún no está en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -313,6 +314,9 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [waPlantillaId, setWaPlantillaId] = useState("");
   const [cola, setCola] = useState<{ ids: string[]; idx: number } | null>(null);
+  // Un mismo número no puede recibir el mensaje dos veces aunque esté cargado en
+  // dos leads distintos (a veces con el nombre escrito de otra forma).
+  const guardiaWa = useGuardiaWhatsapp();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -480,13 +484,23 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     const msg = fillTemplate(plantilla.contenido, { nombre: lead.nombre || undefined, pais: lead.pais || undefined });
     window.open(`${link}?text=${encodeURIComponent(msg)}`, "_blank", "noreferrer");
     registrarContactoWa(lead.id, plantilla.id, msg);
+    guardiaWa.registrarEnvio(lead);
   };
 
   const iniciarCola = () => {
     if (!waPlantillaId) return;
-    const ids = ETAPAS_PIPELINE.flatMap((etapa) => vista(etapa))
-      .filter((l) => selected.has(l.id) && waLinkCampana(l))
-      .map((l) => l.id);
+    const elegidos = ETAPAS_PIPELINE.flatMap((etapa) => vista(etapa))
+      .filter((l) => selected.has(l.id) && waLinkCampana(l));
+    // Saca los números repetidos dentro de la tanda y los que ya recibieron el
+    // mensaje desde otro lead: mandarlo de nuevo es spam para quien lo recibe.
+    const { enviar, saltados } = guardiaWa.filtrarTanda(elegidos);
+    if (saltados > 0) {
+      toast({
+        title: `${saltados} lead(s) saltado(s)`,
+        description: "Ese número ya recibió el mensaje (estaba repetido o cargado con otro nombre).",
+      });
+    }
+    const ids = enviar.map((l) => l.id);
     if (ids.length === 0) return;
     const primero = buscarLead(ids[0])?.lead;
     if (primero) enviarWaLead(primero);

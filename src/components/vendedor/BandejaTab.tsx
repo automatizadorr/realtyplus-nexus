@@ -11,6 +11,7 @@ import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
 import EditarPlantillaDialog from "@/components/vendedor/EditarPlantillaDialog";
 import type { PlantillaEmail, PlantillaWa } from "@/components/vendedor/types";
+import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 
 // leads_campana.primer_contacto_at aún no está en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,6 +59,9 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
   const [waPlantillaId, setWaPlantillaId] = useState("");
   const [emailPlantillaId, setEmailPlantillaId] = useState("");
   const [waEnviados, setWaEnviados] = useState<Set<string>>(new Set());
+  // Un mismo número no recibe el mensaje dos veces aunque esté cargado en dos
+  // leads distintos (a veces con el nombre escrito de otra forma).
+  const guardiaWa = useGuardiaWhatsapp();
   const [enviandoCorreos, setEnviandoCorreos] = useState(false);
   const [liberando, setLiberando] = useState(false);
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
@@ -146,9 +150,19 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     if (!waPlantilla) return;
     const link = waLink(l);
     if (!link) return;
+    if (guardiaWa.esDuplicadoYaContactado(l)) {
+      toast({
+        title: "Ese número ya recibió el mensaje",
+        description: "Está cargado en otro lead (a veces con otro nombre). No se envía de nuevo para no generar spam.",
+        variant: "destructive",
+      });
+      setWaEnviados((s) => new Set(s).add(l.id));
+      return;
+    }
     const msg = fillTemplate(waPlantilla.contenido, { nombre: l.nombre || undefined, pais: l.pais || undefined });
     window.open(`${link}?text=${encodeURIComponent(msg)}`, "_blank", "noreferrer");
     registrarContacto(l.id, "whatsapp", waPlantilla.id, msg);
+    guardiaWa.registrarEnvio(l);
     setWaEnviados((s) => new Set(s).add(l.id));
   };
 

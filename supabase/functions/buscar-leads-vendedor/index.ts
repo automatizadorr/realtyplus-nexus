@@ -81,8 +81,86 @@ Negocios:
 ${JSON.stringify(negocios)}`;
 }
 
+// Enriquecimiento determinista, SIN LLM: se usa cuando NVIDIA falla, se cae o se
+// pasa del presupuesto de tiempo. Solo mira datos reales de SerpApi (web, rating,
+// reseñas, teléfono) — no inventa cifras ni datos de contacto.
+function enriquecerFallback(n: Negocio, servicio: string): Record<string, unknown> {
+  const sinWeb = !(n.web ?? "").trim();
+  const reviews = typeof n.reviews === "number" ? n.reviews : 0;
+  const rating = typeof n.rating === "number" ? n.rating : 0;
+  let score = 45;
+  if (sinWeb) score += 20;
+  if (reviews > 0 && reviews < 30) score += 10;
+  else if (reviews >= 30) score += 5;
+  if (rating >= 4) score += 10;
+  score = Math.max(0, Math.min(100, score));
+
+  const problemas: string[] = [];
+  if (sinWeb) problemas.push("No figura con sitio web propio en su ficha de Google Maps.");
+  else problemas.push("Tiene web, pero no se ve captación ni seguimiento automático de contactos.");
+  if (reviews === 0) problemas.push("No tiene reseñas visibles en Google Maps.");
+  else problemas.push(`Tiene ${reviews} reseñas visibles${rating ? ` y ${rating} de valoración` : ""}.`);
+  if (!(n.telefono ?? "").trim()) problemas.push("No publica teléfono de contacto en la ficha.");
+
+  return {
+    idx: n.idx,
+    score,
+    nivel: score >= 70 ? "Alta" : score >= 50 ? "Media" : "Baja",
+    tipo_lead: score >= 70 ? "Oportunidad caliente" : "Nuevo",
+    problemas,
+    propuesta_valor: `${servicio} para que ${n.nombre} capte y responda a más contactos sin hacerlo todo a mano.`,
+    mensaje_whatsapp: `Hola, ¿hablo con alguien de ${n.nombre}?
+Les vi en Google Maps y me llamó la atención lo que hacen.
+Trabajo con ${servicio} y creo que les puede encajar bien.
+¿Te parece si te cuento en un par de minutos y me dices si te sirve?`,
+    mensaje_email: `Hola,
+
+Les escribo porque encontré a ${n.nombre} en Google Maps y me pareció que encajan con lo que hago.
+
+Trabajo con ${servicio}, ayudando a negocios como el suyo a captar contactos y darles seguimiento sin que se pierda ninguno.
+
+Si les interesa, les mando un ejemplo concreto pensado para ${n.nombre}.
+
+¿Se los envío?
+
+Un saludo.`,
+  };
+}
+
+// Un lote chico (5 negocios) por llamada: el modelo gratuito tarda demasiado si
+// tiene que escribir el JSON de 15+ leads de una sola vez (era la causa del
+// "Signal timed out" que tumbaba la búsqueda entera).
+async function enriquecerConNvidia(
+  apiKey: string, lote: Negocio[], servicio: string, timeoutMs: number,
+): Promise<Record<string, unknown>[]> {
+  const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: NVIDIA_MODEL,
+      temperature: 0.3,
+      max_tokens: Math.min(600 + lote.length * 450, 4000),
+      messages: [
+        { role: "system", content: "Eres un experto en prospección B2B para el sector inmobiliario. Respondes EXCLUSIVAMENTE con un array JSON válido (sin markdown, sin texto antes ni después). Nunca inventas datos de contacto; solo copias los que te dan." },
+        { role: "user", content: buildPrompt(lote, servicio) },
+      ],
+    }),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data?.error?.message || data?.error || `HTTP ${res.status}`;
+    throw new Error(`NVIDIA API: ${msg}`);
+  }
+  return extractJsonArray((data?.choices?.[0]?.message?.content ?? "").toString());
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Presupuesto de tiempo: la función tiene un límite de pared, así que SerpApi y
+  // NVIDIA se acotan contra este reloj en vez de contra timeouts fijos y largos.
+  const t0 = Date.now();
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -162,7 +240,7 @@ Deno.serve(async (req) => {
     const vistos = new Set<string>();
     let start = 0;
     // Pagina hasta juntar suficientes candidatos nuevos (máx 3 páginas ~60 resultados).
-    for (let pagina = 0; pagina < 3 && negocios.length < cantidad * 2; pagina++) {
+    for (let pagina = 0; pagina < 3 && negocios.length < cantidad * 2 && Date.now() - t0 < 45000; pagina++) {
       const url = new URL("https://serpapi.com/search.json");
       url.searchParams.set("engine", "google_maps");
       url.searchParams.set("type", "search");
@@ -171,10 +249,22 @@ Deno.serve(async (req) => {
       url.searchParams.set("api_key", SERPAPI_KEY);
       if (start > 0) url.searchParams.set("start", String(start));
 
-      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(30000) });
+      let res: Response;
+      try {
+        res = await fetch(url.toString(), { signal: AbortSignal.timeout(20000) });
+      } catch (e) {
+        // Timeout o corte de red: si ya juntamos negocios seguimos con lo que hay.
+        const m = e instanceof Error ? e.message : String(e);
+        console.error("buscar-leads-vendedor SerpApi fetch:", m);
+        if (negocios.length > 0) break;
+        return new Response(JSON.stringify({ error: `SerpApi no respondió a tiempo (${m}). Reintenta en unos segundos.` }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = data?.error || `HTTP ${res.status}`;
+        if (negocios.length > 0) break;
         return new Response(JSON.stringify({ error: `SerpApi: ${msg}` }), {
           status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -214,37 +304,38 @@ Deno.serve(async (req) => {
     const aProcesar = nuevosCandidatos.filter((n) => !n.repetido);
 
     // --- 2) NVIDIA NIM: scoring + mensajes SOLO sobre los negocios nuevos ---
-    let enriquecidos: Record<string, unknown>[] = [];
+    // En lotes chicos y en paralelo. Un lote que falle NO tumba la búsqueda: esos
+    // negocios se completan con enriquecerFallback() y el usuario igual recibe
+    // los datos de contacto reales de SerpApi.
+    const LOTE = 5;
+    const PRESUPUESTO_MS = 110000;
+    const enriquecidos: Record<string, unknown>[] = [];
     if (aProcesar.length > 0) {
-      const nvRes = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${NVIDIA_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: NVIDIA_MODEL,
-          temperature: 0.3,
-          max_tokens: Math.min(2000 + aProcesar.length * 500, 16000),
-          messages: [
-            { role: "system", content: "Eres un experto en prospección B2B para el sector inmobiliario. Respondes EXCLUSIVAMENTE con un array JSON válido (sin markdown, sin texto antes ni después). Nunca inventas datos de contacto; solo copias los que te dan." },
-            { role: "user", content: buildPrompt(aProcesar, servicio) },
-          ],
-        }),
-        signal: AbortSignal.timeout(120000),
-      });
-      const nvData = await nvRes.json().catch(() => ({}));
-      if (!nvRes.ok) {
-        const msg = nvData?.error?.message || nvData?.error || `HTTP ${nvRes.status}`;
-        return new Response(JSON.stringify({ error: `NVIDIA API: ${msg}` }), {
-          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      const lotes: Negocio[][] = [];
+      for (let i = 0; i < aProcesar.length; i += LOTE) lotes.push(aProcesar.slice(i, i + LOTE));
+      const restanteMs = Math.max(10000, Math.min(50000, PRESUPUESTO_MS - (Date.now() - t0)));
+      const resultados = await Promise.allSettled(
+        lotes.map((l) => enriquecerConNvidia(NVIDIA_API_KEY, l, servicio, restanteMs)),
+      );
+      for (const r of resultados) {
+        if (r.status === "fulfilled") enriquecidos.push(...r.value);
+        else console.error("buscar-leads-vendedor lote NVIDIA falló:", r.reason instanceof Error ? r.reason.message : String(r.reason));
       }
-      const text = (nvData?.choices?.[0]?.message?.content ?? "").toString();
-      enriquecidos = extractJsonArray(text);
     }
     const porIdx = new Map<number, Record<string, unknown>>();
     for (const e of enriquecidos) {
       const idx = typeof e.idx === "number" ? e.idx : Number(e.idx);
       if (Number.isFinite(idx)) porIdx.set(idx, e);
     }
+    // Todo lo que el modelo no devolvió (lote caído, JSON corrupto, negocio saltado)
+    // se rellena con el enriquecimiento determinista.
+    let conFallback = 0;
+    for (const n of aProcesar) {
+      if (!porIdx.has(n.idx)) { porIdx.set(n.idx, enriquecerFallback(n, servicio)); conFallback++; }
+    }
+    const aviso = conFallback > 0
+      ? `${conFallback} de ${aProcesar.length} leads se completaron sin IA (el modelo gratuito no alcanzó a responder). Los datos de contacto son igual de reales; solo el texto sugerido viene de plantilla.`
+      : "";
 
     const marcados: Lead[] = nuevosCandidatos.map((n) => {
       const e = porIdx.get(n.idx) ?? {};
@@ -325,7 +416,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       success: true, busqueda_id: busquedaId,
       count: visibles.length, nuevos: nuevos.length, repetidos: marcados.length - nuevos.length,
-      stats, leads: visibles,
+      stats, leads: visibles, aviso,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

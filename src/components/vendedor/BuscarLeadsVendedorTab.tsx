@@ -16,6 +16,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import LeadDetailDialog, { type Lead, waLink } from "@/components/prospeccion/LeadDetailDialog";
 
+// Saca el mensaje real del cuerpo de la respuesta cuando la edge function
+// devuelve un no-2xx (supabase-js solo entrega un texto genérico).
+async function mensajeDeError(error: unknown): Promise<string> {
+  const ctx = (error as { context?: unknown })?.context;
+  if (ctx instanceof Response) {
+    try {
+      const txt = await ctx.clone().text();
+      try {
+        const j = JSON.parse(txt);
+        if (j?.error) return typeof j.error === "string" ? j.error : JSON.stringify(j.error);
+      } catch { /* no era JSON */ }
+      if (txt.trim()) return txt.trim().slice(0, 400);
+    } catch { /* cuerpo ya consumido */ }
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
+
 // leads_campana con las columnas nuevas aún no está en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -137,7 +155,9 @@ export default function BuscarLeadsVendedorTab() {
       const { data, error } = await supabase.functions.invoke("buscar-leads-vendedor", {
         body: { nicho, ciudad, servicio, cantidad, excluir_repetidos: excluirRepetidos },
       });
-      if (error) throw error;
+      // supabase-js resume cualquier no-2xx como "Edge Function returned a non-2xx
+      // status code" y esconde el motivo real; el cuerpo viene en error.context.
+      if (error) throw new Error(await mensajeDeError(error));
       if (data?.error && !data?.leads?.length) throw new Error(data.error);
       const found: Lead[] = data?.leads ?? [];
       setLeads(found); setStats(data?.stats ?? null); setRepetidos(data?.repetidos ?? 0);
@@ -146,6 +166,7 @@ export default function BuscarLeadsVendedorTab() {
         description: found.length ? `${data?.nuevos ?? found.length} nuevos${data?.repetidos ? ` · ${data.repetidos} ya en tu historial` : ""}. Guardados en tu historial.` : "Prueba con otra ciudad o rubro más amplio.",
         variant: found.length ? "default" : "destructive",
       });
+      if (data?.aviso) toast({ title: "Aviso", description: data.aviso });
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : String(e));
       toast({ title: "Error en la búsqueda", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
