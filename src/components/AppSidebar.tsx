@@ -27,6 +27,7 @@ const vendedorGroups: { label?: string; items: { title: string; url: string; ico
       { title: "Bandeja", url: "/mis-leads/bandeja", icon: Inbox },
       { title: "Pipeline", url: "/mis-leads/pipeline", icon: Kanban },
       { title: "Leads DataBase", url: "/mis-leads/reactivacion", icon: RotateCcw },
+      { title: "Buscar Leads", url: "/mis-leads/buscar-leads", icon: Radar },
       { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: MessagesSquare },
     ],
   },

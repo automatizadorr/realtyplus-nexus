@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import PipelineTab from "@/components/vendedor/PipelineTab";
 import MisPlantillasTab from "@/components/vendedor/MisPlantillasTab";
 import CorreosVendedorTab from "@/components/vendedor/CorreosVendedorTab";
+import BuscarLeadsVendedorTab from "@/components/vendedor/BuscarLeadsVendedorTab";
 import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
 import BandejaTab from "@/components/vendedor/BandejaTab";
 import ReactivacionChatTab from "@/components/vendedor/ReactivacionChatTab";
@@ -33,7 +34,7 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "diseno-correo", "estadisticas"] as const;
+const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "diseno-correo", "buscar-leads", "estadisticas"] as const;
 
 export default function MisLeads() {
   const { user } = useAuth();
@@ -164,6 +165,10 @@ export default function MisLeads() {
 
         <TabsContent value="diseno-correo">
           <CorreosVendedorTab plantillasEmail={plantillasEmail} onChanged={cargarPlantillas} />
+        </TabsContent>
+
+        <TabsContent value="buscar-leads">
+          <BuscarLeadsVendedorTab />
         </TabsContent>
 
         <TabsContent value="estadisticas">
