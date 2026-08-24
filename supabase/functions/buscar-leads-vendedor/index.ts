@@ -4,6 +4,10 @@
 //   1) SerpApi (engine=google_maps) busca negocios REALES del nicho+ciudad y
 //      trae datos estructurados de Google Maps (nombre, dirección, teléfono,
 //      rating, reseñas) — sin que un LLM tenga que "navegar" ni inventar nada.
+//   1b) Opcionalmente busca tambien perfiles de Instagram y paginas de
+//      Facebook del mismo nicho/ciudad (SerpApi engine=google acotado con
+//      site:). Esos leads casi nunca publican telefono, pero si dejan un
+//      perfil con el que se puede abrir conversacion por DM.
 //   2) Un modelo NVIDIA NIM (gratis, build.nvidia.com) SOLO agrega el scoring
 //      y redacta los mensajes de contacto sobre esos datos ya verificados —
 //      nunca inventa nombre/teléfono/dirección (se copian tal cual de SerpApi).
@@ -22,13 +26,25 @@ type Negocio = {
   idx: number;
   nombre: string; direccion?: string; telefono?: string; web?: string;
   rating?: number; reviews?: number; categoria?: string; google_maps?: string;
+  // Redes: solo se llenan cuando el negocio se encontro en Instagram/Facebook.
+  instagram?: string; facebook?: string;
+  /** De donde salio: "Google Maps (SerpApi)" | "Instagram" | "Facebook". */
+  fuente?: string;
+  /** Bio / descripcion del perfil, para que la IA tenga contexto real. */
+  descripcion?: string;
 };
 
 type Lead = Negocio & {
   id?: string; ciudad?: string;
   score?: number; nivel?: string; tipo_lead?: string; problemas?: string[];
   propuesta_valor?: string; mensaje_whatsapp?: string; mensaje_email?: string;
+  mensaje_instagram?: string;
   repetido?: boolean;
+};
+
+type Fuente = "maps" | "instagram" | "facebook";
+const FUENTE_LABEL: Record<Fuente, string> = {
+  maps: "Google Maps (SerpApi)", instagram: "Instagram", facebook: "Facebook",
 };
 
 function dedupKey(nombre: string, ciudad: string): string {
@@ -74,8 +90,11 @@ Para cada uno, agrega estos campos (en español):
 - "propuesta_valor": 1 frase concreta de cómo "${servicio}" ayuda a este negocio puntual.
 - "mensaje_whatsapp": mensaje de primer contacto (3-4 líneas), personalizado con su nombre real, tono cercano y humano (no te presentes como IA), SIN mencionar precios, SIN inventar cifras/porcentajes/ROI/resultados garantizados, con una pregunta o invitación suave a conversar al final.
 - "mensaje_email": versión email (5-6 líneas), mismo tono, sin precios, sin cifras inventadas.
+- "mensaje_instagram": versión para mensaje directo de Instagram/Facebook (2-3 líneas, más informal y corta que la de WhatsApp, sin links, sin precios, terminando con una pregunta simple).
 
 Devuelve EXCLUSIVAMENTE un array JSON válido (sin markdown, sin texto antes ni después) con los ${negocios.length} negocios, en el MISMO orden, sin quitar ni agregar ninguno.
+
+Ten en cuenta que algunos negocios vienen de un perfil de Instagram/Facebook: de esos no hay teléfono ni dirección, solo el nombre, el handle y la descripción del perfil. NO inventes lo que falta — trabaja con lo que hay.
 
 Negocios:
 ${JSON.stringify(negocios)}`;
@@ -124,7 +143,77 @@ Si les interesa, les mando un ejemplo concreto pensado para ${n.nombre}.
 ¿Se los envío?
 
 Un saludo.`,
+    mensaje_instagram: `Hola, ¿cómo están? Los vi por acá y me gustó lo que hacen en ${n.nombre}.
+Trabajo con ${servicio} y creo que les puede encajar.
+¿Les cuento en dos minutos y me dicen si les sirve?`,
   };
+}
+
+// -------------------------------------------------------------------------
+// Busqueda de perfiles en Instagram / Facebook.
+//
+// SerpApi no tiene un motor propio para estas redes, pero el buscador de
+// Google acotado con `site:` devuelve los perfiles publicos del nicho en la
+// ciudad. De ahi salen: nombre visible, handle y la descripcion del perfil —
+// suficiente para escribir un DM con contexto real, sin inventar nada.
+// -------------------------------------------------------------------------
+function handleDesdeUrl(url: string, red: "instagram" | "facebook"): string | null {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes(red)) return null;
+    const partes = u.pathname.split("/").filter(Boolean);
+    if (partes.length === 0) return null;
+    const handle = partes[0];
+    // Rutas que no son perfiles.
+    const reservadas = new Set([
+      "p", "reel", "reels", "explore", "stories", "tv", "accounts", "directory",
+      "watch", "groups", "events", "marketplace", "pages", "sharer", "photo", "media",
+    ]);
+    if (reservadas.has(handle.toLowerCase())) return null;
+    if (!/^[A-Za-z0-9._-]{2,50}$/.test(handle)) return null;
+    return handle;
+  } catch {
+    return null;
+  }
+}
+
+async function buscarEnRed(
+  apiKey: string, red: "instagram" | "facebook", nicho: string, ciudad: string, limite: number, timeoutMs: number,
+): Promise<Negocio[]> {
+  const url = new URL("https://serpapi.com/search.json");
+  url.searchParams.set("engine", "google");
+  url.searchParams.set("q", `site:${red}.com ${nicho} ${ciudad}`);
+  url.searchParams.set("hl", "es");
+  url.searchParams.set("num", String(Math.min(Math.max(limite, 10), 20)));
+  url.searchParams.set("api_key", apiKey);
+
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(timeoutMs) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`SerpApi ${red}: ${data?.error || `HTTP ${res.status}`}`);
+
+  const organicos: Record<string, unknown>[] = Array.isArray(data?.organic_results) ? data.organic_results : [];
+  const salida: Negocio[] = [];
+  for (const r of organicos) {
+    const link = (r.link as string) ?? "";
+    const handle = handleDesdeUrl(link, red);
+    if (!handle) continue;
+    // El title de Google viene como "Nombre (@handle) • Instagram photos..."
+    const titulo = ((r.title as string) ?? "").split(/[|•·]/)[0].replace(/\(@[^)]*\)/, "").trim();
+    const nombre = titulo || handle;
+    salida.push({
+      idx: 0, // se reasigna al fusionar con el resto de las fuentes
+      nombre,
+      web: "",
+      telefono: "",
+      instagram: red === "instagram" ? handle : undefined,
+      facebook: red === "facebook" ? handle : undefined,
+      descripcion: ((r.snippet as string) ?? "").slice(0, 400),
+      fuente: FUENTE_LABEL[red],
+      google_maps: "",
+    });
+    if (salida.length >= limite) break;
+  }
+  return salida;
 }
 
 // Un lote chico (5 negocios) por llamada: el modelo gratuito tarda demasiado si
@@ -214,6 +303,13 @@ Deno.serve(async (req) => {
     const servicio = (body?.servicio ?? "un servicio para hacer crecer su negocio con tecnología e inteligencia artificial").toString().trim();
     const excluirRepetidos = body?.excluir_repetidos !== false;
 
+    // Fuentes elegidas por el vendedor. Sin nada valido se busca en Maps,
+    // que es la que trae datos de contacto duros.
+    const fuentesPedidas: Fuente[] = Array.isArray(body?.fuentes)
+      ? (body.fuentes as unknown[]).filter((f): f is Fuente => f === "maps" || f === "instagram" || f === "facebook")
+      : [];
+    const fuentes: Fuente[] = fuentesPedidas.length ? fuentesPedidas : ["maps"];
+
     let cantidad = parseInt(body?.cantidad, 10);
     if (!Number.isFinite(cantidad)) cantidad = 15;
     cantidad = Math.min(Math.max(cantidad, 5), 30);
@@ -238,9 +334,10 @@ Deno.serve(async (req) => {
     // --- 1) SerpApi: Google Maps, datos estructurados reales ---
     const negocios: Negocio[] = [];
     const vistos = new Set<string>();
+    const avisosFuente: string[] = [];
     let start = 0;
     // Pagina hasta juntar suficientes candidatos nuevos (máx 3 páginas ~60 resultados).
-    for (let pagina = 0; pagina < 3 && negocios.length < cantidad * 2 && Date.now() - t0 < 45000; pagina++) {
+    for (let pagina = 0; fuentes.includes("maps") && pagina < 3 && negocios.length < cantidad * 2 && Date.now() - t0 < 45000; pagina++) {
       const url = new URL("https://serpapi.com/search.json");
       url.searchParams.set("engine", "google_maps");
       url.searchParams.set("type", "search");
@@ -257,6 +354,8 @@ Deno.serve(async (req) => {
         const m = e instanceof Error ? e.message : String(e);
         console.error("buscar-leads-vendedor SerpApi fetch:", m);
         if (negocios.length > 0) break;
+        // Con redes pedidas la busqueda sigue: Maps solo aporta una parte.
+        if (fuentes.some((f) => f !== "maps")) { avisosFuente.push(`Google Maps no respondió (${m}).`); break; }
         return new Response(JSON.stringify({ error: `SerpApi no respondió a tiempo (${m}). Reintenta en unos segundos.` }), {
           status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -265,6 +364,7 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         const msg = data?.error || `HTTP ${res.status}`;
         if (negocios.length > 0) break;
+        if (fuentes.some((f) => f !== "maps")) { avisosFuente.push(`Google Maps: ${msg}.`); break; }
         return new Response(JSON.stringify({ error: `SerpApi: ${msg}` }), {
           status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -287,20 +387,74 @@ Deno.serve(async (req) => {
           reviews: typeof r.reviews === "number" ? r.reviews : undefined,
           categoria: (r.type as string) ?? "",
           google_maps: (r.place_id as string) ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : "",
+          fuente: FUENTE_LABEL.maps,
         });
       }
       start += 20;
     }
 
+    // --- 1b) SerpApi: perfiles de Instagram / Facebook del mismo nicho ---
+    // Van en paralelo entre si: son dos llamadas independientes y cortas.
+    const redes = fuentes.filter((f): f is "instagram" | "facebook" => f !== "maps");
+    if (redes.length > 0 && Date.now() - t0 < 60000) {
+      // Si Maps no se pidio, las redes se reparten toda la cantidad solicitada.
+      const porRed = Math.max(5, Math.ceil((fuentes.includes("maps") ? cantidad : cantidad * 2) / redes.length));
+      const resultados = await Promise.allSettled(
+        redes.map((red) => buscarEnRed(SERPAPI_KEY, red, nicho, ciudad, porRed, 20000)),
+      );
+      for (let i = 0; i < resultados.length; i++) {
+        const r = resultados[i];
+        if (r.status !== "fulfilled") {
+          const m = r.reason instanceof Error ? r.reason.message : String(r.reason);
+          console.error(`buscar-leads-vendedor ${redes[i]}:`, m);
+          avisosFuente.push(`${FUENTE_LABEL[redes[i]]} no devolvió resultados (${m}).`);
+          continue;
+        }
+        for (const n of r.value) {
+          const key = dedupKey(n.nombre, ciudad);
+          if (vistos.has(key)) continue;
+          vistos.add(key);
+          negocios.push({ ...n, idx: negocios.length });
+        }
+      }
+    }
+
+    // Los idx se reasignan al final: son la clave con la que el modelo
+    // devuelve cada negocio enriquecido, y las redes entraron después.
+    for (let i = 0; i < negocios.length; i++) negocios[i].idx = i;
+
     if (negocios.length === 0) {
-      return new Response(JSON.stringify({ success: false, error: "SerpApi no encontró negocios para ese rubro/ciudad. Prueba con otro término.", leads: [] }), {
+      return new Response(JSON.stringify({
+        success: false,
+        error: `No se encontraron negocios para ese rubro/ciudad en ${fuentes.map((f) => FUENTE_LABEL[f]).join(" ni ")}. Prueba con otro término o agrega otra fuente.`,
+        leads: [],
+      }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Marca repetidos contra el historial ANTES de gastar tokens de NVIDIA en ellos.
     const marcadosPrevios = negocios.map((n) => ({ ...n, repetido: clavesPrevias.has(dedupKey(n.nombre, ciudad)) }));
-    const nuevosCandidatos = (excluirRepetidos ? marcadosPrevios.filter((n) => !n.repetido) : marcadosPrevios).slice(0, cantidad);
+    const disponibles = excluirRepetidos ? marcadosPrevios.filter((n) => !n.repetido) : marcadosPrevios;
+    // Intercala las fuentes antes de recortar a `cantidad`: Maps entra primero
+    // y llena la lista, asi que sin esto los perfiles de Instagram/Facebook
+    // quedarian siempre fuera del corte.
+    const porFuente = new Map<string, Negocio[]>();
+    for (const n of disponibles) {
+      const k = n.fuente ?? FUENTE_LABEL.maps;
+      if (!porFuente.has(k)) porFuente.set(k, []);
+      porFuente.get(k)!.push(n);
+    }
+    const colas = [...porFuente.values()];
+    const intercalados: typeof disponibles = [];
+    for (let i = 0; intercalados.length < disponibles.length; i++) {
+      let avanzo = false;
+      for (const cola of colas) {
+        if (i < cola.length) { intercalados.push(cola[i] as (typeof disponibles)[number]); avanzo = true; }
+      }
+      if (!avanzo) break;
+    }
+    const nuevosCandidatos = intercalados.slice(0, cantidad);
     const aProcesar = nuevosCandidatos.filter((n) => !n.repetido);
 
     // --- 2) NVIDIA NIM: scoring + mensajes SOLO sobre los negocios nuevos ---
@@ -333,9 +487,12 @@ Deno.serve(async (req) => {
     for (const n of aProcesar) {
       if (!porIdx.has(n.idx)) { porIdx.set(n.idx, enriquecerFallback(n, servicio)); conFallback++; }
     }
-    const aviso = conFallback > 0
-      ? `${conFallback} de ${aProcesar.length} leads se completaron sin IA (el modelo gratuito no alcanzó a responder). Los datos de contacto son igual de reales; solo el texto sugerido viene de plantilla.`
-      : "";
+    const aviso = [
+      conFallback > 0
+        ? `${conFallback} de ${aProcesar.length} leads se completaron sin IA (el modelo gratuito no alcanzó a responder). Los datos de contacto son igual de reales; solo el texto sugerido viene de plantilla.`
+        : null,
+      ...avisosFuente,
+    ].filter(Boolean).join(" ");
 
     const marcados: Lead[] = nuevosCandidatos.map((n) => {
       const e = porIdx.get(n.idx) ?? {};
@@ -351,6 +508,7 @@ Deno.serve(async (req) => {
         propuesta_valor: (e.propuesta_valor as string) ?? "",
         mensaje_whatsapp: (e.mensaje_whatsapp as string) ?? "",
         mensaje_email: (e.mensaje_email as string) ?? "",
+        mensaje_instagram: (e.mensaje_instagram as string) ?? "",
       };
     });
 
@@ -361,7 +519,7 @@ Deno.serve(async (req) => {
       con_whatsapp: nuevos.filter((l) => (l.telefono ?? "").trim()).length,
       sin_web_pct: Math.round((nuevos.filter((l) => !(l.web ?? "").trim()).length / (nuevos.length || 1)) * 100),
       sin_email_pct: 100,
-      con_instagram_pct: 0,
+      con_instagram_pct: Math.round((nuevos.filter((l) => (l.instagram ?? "").trim()).length / (nuevos.length || 1)) * 100),
       score_promedio: Math.round(nuevos.reduce((a, l) => a + (l.score ?? 0), 0) / (nuevos.length || 1)),
       distribucion_tipo: nuevos.reduce((acc: Record<string, number>, l) => {
         const t = l.tipo_lead || "Nuevo";
@@ -377,7 +535,7 @@ Deno.serve(async (req) => {
         creado_por: userId, nicho, ciudad, servicio,
         cantidad_solicitada: cantidad, cantidad_encontrada: marcados.length,
         nuevos: nuevos.length, repetidos: marcados.length - nuevos.length,
-        estadisticas: stats, motor: "serpapi_nvidia",
+        estadisticas: stats, motor: `serpapi_nvidia:${fuentes.join("+")}`,
       })
       .select("id").single();
 
@@ -388,14 +546,16 @@ Deno.serve(async (req) => {
         busqueda_id: busquedaId, creado_por: userId,
         nombre: l.nombre ?? "", ciudad, region: "",
         web: l.web ?? "", telefono: l.telefono ?? "", whatsapp: l.telefono ?? "",
-        email: "", instagram: "", direccion: l.direccion ?? "",
-        google_maps: l.google_maps ?? "", fuente: "Google Maps (SerpApi)",
+        email: "", instagram: l.instagram ?? "", facebook: l.facebook ?? "",
+        direccion: l.direccion ?? "",
+        google_maps: l.google_maps ?? "", fuente: l.fuente ?? FUENTE_LABEL.maps,
         score: typeof l.score === "number" ? l.score : null,
         nivel: l.nivel ?? "", tipo_lead: l.tipo_lead ?? "Nuevo",
         problemas: l.problemas ?? [],
         propuesta_valor: l.propuesta_valor ?? "",
         mensaje_whatsapp: l.mensaje_whatsapp ?? "",
         mensaje_email: l.mensaje_email ?? "",
+        mensaje_instagram: l.mensaje_instagram ?? "",
       }));
       if (rows.length) {
         const { data: inserted, error: insErr } = await svc

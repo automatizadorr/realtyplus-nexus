@@ -9,7 +9,7 @@
 // Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o CRON_SECRET).
 // En config.toml: verify_jwt = false (lo llama pg_cron, no el navegador).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { applyDomain, corsHeaders, EMAIL_RE, esc, fillTemplate, pickPais, resendKeyFor } from "../_shared/correo.ts";
+import { applyDomain, corsHeaders, EMAIL_RE, esc, fillTemplate, normalizarModo, pickPais, resendKeyFor } from "../_shared/correo.ts";
 
 const MAX_POR_CORRIDA = 100;
 
@@ -84,7 +84,9 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(enviados + fallidos);
+      // La fila guarda con qué cuenta Resend quiso enviar quien programó el
+      // correo; si no lo dice (filas viejas), se alternan como siempre.
+      const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(enviados + fallidos, normalizarModo(row.remitente_modo));
 
       const subject = fillTemplate(row.asunto ?? "", row);
       const rawHtml = typeof row.html === "string" && row.html.trim()

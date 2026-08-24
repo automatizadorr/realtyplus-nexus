@@ -14,16 +14,38 @@ export const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const TZ = "America/Santiago";
 export const LIMITE_DIA = 200; // 2 cuentas Resend gratis: 100 + 100 = 200 correos/día.
 
-export function resendKeyFor(i: number): { key: string; index: number; domain: string } {
+// Modo de remitente elegido por el vendedor (vendedores.remitente_modo).
+//   auto        -> alterna las dos cuentas Resend (200/dia entre ambas)
+//   resend1     -> fija send.lexhouse-ai.com (100/dia)
+//   resend2     -> fija lexhouse-ai.online   (100/dia)
+//   particular  -> el vendedor manda desde su propio correo; el envio no pasa
+//                  por aqui (lo abre su cliente de correo), asi que si llega
+//                  igual se trata como "auto".
+export type RemitenteModo = "auto" | "resend1" | "resend2" | "particular";
+
+export function normalizarModo(v: unknown): RemitenteModo {
+  return v === "resend1" || v === "resend2" || v === "particular" ? v : "auto";
+}
+
+/** Cupo diario segun el modo: fijar una sola cuenta corta el cupo a la mitad. */
+export function limiteDiaPara(modo: RemitenteModo): number {
+  return modo === "resend1" || modo === "resend2" ? LIMITE_DIA / 2 : LIMITE_DIA;
+}
+
+export function resendKeyFor(i: number, modo: RemitenteModo = "auto"): { key: string; index: number; domain: string } {
   const k1 = Deno.env.get("RESEND_API_KEY_1");
   const k2 = Deno.env.get("RESEND_API_KEY_2");
   const fallback = Deno.env.get("RESEND_API_KEY");
   const key1 = k1 || fallback;
   if (!key1) throw new Error("Falta RESEND_API_KEY_1 o RESEND_API_KEY (fallback)");
-  if (!k2) return { key: key1, index: 0, domain: "send.lexhouse-ai.com" };
-  return i % 2 === 0
-    ? { key: key1, index: 0, domain: "send.lexhouse-ai.com" }
-    : { key: k2, index: 1, domain: "lexhouse-ai.online" };
+  const cuenta1 = { key: key1, index: 0, domain: "send.lexhouse-ai.com" };
+  if (!k2) return cuenta1;
+  const cuenta2 = { key: k2, index: 1, domain: "lexhouse-ai.online" };
+  // Con la cuenta fijada no se alterna: todos los correos de la tanda salen
+  // del mismo dominio, que es justo lo que se pide al elegir resend1/resend2.
+  if (modo === "resend1") return cuenta1;
+  if (modo === "resend2") return cuenta2;
+  return i % 2 === 0 ? cuenta1 : cuenta2;
 }
 
 export function applyDomain(email: string, domain: string): string {

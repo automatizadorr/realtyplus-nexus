@@ -195,7 +195,10 @@ export default function ReactivacionTab() {
         if (error) throw error;
         if (cancel) return;
 
-        let filas = (data ?? []) as LeadRow[];
+        // El types.ts generado va atrasado respecto de leads_campana
+        // (vendedor_id/etapa_venta/primer_contacto_at aun no estan ahi), asi
+        // que PostgREST tipa la fila como error de columna inexistente.
+        let filas = ((data ?? []) as unknown) as LeadRow[];
         if (extraExcluir) filas = filas.filter(r => !extraExcluir!.has((r.email || "").trim().toLowerCase()));
         setRows(filas);
         setTotal(count ?? filas.length);

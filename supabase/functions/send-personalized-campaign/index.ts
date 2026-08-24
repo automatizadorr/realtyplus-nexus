@@ -4,7 +4,7 @@
 // nunca confiando en el cliente) — mismo criterio que send-n8n-webhook.
 // El secreto RESEND_API_KEY se guarda en los secrets del proyecto Supabase.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { applyDomain, corsHeaders, EMAIL_RE, fillTemplate, LIMITE_DIA, pickPais, resendKeyFor, TZ, zonedToUtc } from "../_shared/correo.ts";
+import { applyDomain, corsHeaders, EMAIL_RE, fillTemplate, limiteDiaPara, normalizarModo, pickPais, resendKeyFor, TZ, zonedToUtc } from "../_shared/correo.ts";
 
 // Inicio del día de HOY en la zona horaria del negocio, como instante UTC
 // (para contar cuántos correos ya mandó un vendedor "hoy").
@@ -79,6 +79,10 @@ Deno.serve(async (req) => {
     const htmlTpl: string = (body?.html ?? "").toString();
     const textTpl: string = (body?.text ?? "").toString();
     const recipients: Recipient[] = Array.isArray(body?.recipients) ? body.recipients : [];
+    // Cuenta Resend con la que se envia. El cliente puede pedir una fija
+    // (resend1/resend2) para no quemar los dos dominios a la vez; si no pide
+    // nada, se alternan como siempre.
+    const modoRemitente = normalizarModo(body?.remitente);
 
     if (!subjectTpl.trim() || (!htmlTpl.trim() && !textTpl.trim())) {
       return new Response(JSON.stringify({ error: "Falta asunto o cuerpo del correo" }), {
@@ -99,7 +103,7 @@ Deno.serve(async (req) => {
         });
       }
       const r: Recipient = { email: testEmail, nombre: (body?.testNombre ?? "").toString() || undefined };
-      const { key: apiKey, domain: keyDomain } = resendKeyFor(0);
+      const { key: apiKey, domain: keyDomain } = resendKeyFor(0, modoRemitente);
       const subject = `[PRUEBA] ${fillTemplate(subjectTpl, r)}`;
       const payload: Record<string, unknown> = {
         from: `${fromName} <${applyDomain(fromEmail, keyDomain)}>`,
@@ -195,13 +199,14 @@ Deno.serve(async (req) => {
     // --- Auto-batching: hoy solo el cupo diario; el resto se agenda. ---
     // Un vendedor además está acotado a su propio límite diario (vendedores.limite_mensajes_dia),
     // aparte del cupo global compartido de las 2 cuentas Resend (LIMITE_DIA).
-    const cupoHoy = cupoVendedorHoy !== null ? Math.min(LIMITE_DIA, cupoVendedorHoy) : LIMITE_DIA;
+    const limiteResend = limiteDiaPara(modoRemitente);
+    const cupoHoy = cupoVendedorHoy !== null ? Math.min(limiteResend, cupoVendedorHoy) : limiteResend;
     const hoy = valid.slice(0, cupoHoy);
     const excedente = valid.slice(cupoHoy);
     const limitadoPorVendedor = cupoVendedorHoy !== null && excedente.length > 0 && cupoHoy === cupoVendedorHoy;
 
     for (const r of hoy) {
-      const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(sent + failed);
+      const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(sent + failed, modoRemitente);
       const subject = fillTemplate(subjectTpl, r);
       const payload: Record<string, unknown> = {
         from: `${fromName} <${applyDomain(fromEmail, keyDomain)}>`,
@@ -259,7 +264,7 @@ Deno.serve(async (req) => {
       const row: Record<string, unknown>[] = [];
       for (let i = 0; i < excedente.length; i++) {
         const r = excedente[i];
-        const dia = Math.floor(i / LIMITE_DIA) + 1; // mañana = día 1
+        const dia = Math.floor(i / limiteResend) + 1; // mañana = día 1
         const fecha = new Date();
         fecha.setUTCDate(fecha.getUTCDate() + dia);
         const ymd = fecha.toISOString().slice(0, 10);
@@ -281,6 +286,7 @@ Deno.serve(async (req) => {
           from_name: fromName,
           from_email: fromEmail,
           reply_to: replyTo ?? null,
+          remitente_modo: modoRemitente,
           enviar_en: zonedToUtc(ymd, "09:30", TZ),
           creado_por: userId,
         });
@@ -305,7 +311,7 @@ Deno.serve(async (req) => {
       omitidos_ajenos: omitidosAjenos || undefined,
       aviso: [
         programados > 0 && limitadoPorVendedor ? `${programados} programado(s) porque ya usaste tu cupo diario de correos (${cupoVendedorHoy}/día). Se reintenta mañana.` : null,
-        programados > 0 && !limitadoPorVendedor ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${LIMITE_DIA}/día).` : null,
+        programados > 0 && !limitadoPorVendedor ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${limiteResend}/día).` : null,
         omitidosAjenos > 0 ? `${omitidosAjenos} destinatario(s) se omitieron por no ser leads tuyos.` : null,
       ].filter(Boolean).join(" ") || undefined,
       results,

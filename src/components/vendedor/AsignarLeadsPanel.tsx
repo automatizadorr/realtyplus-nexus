@@ -80,7 +80,9 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
         const { data, count, error } = await query;
         if (error) throw error;
         if (cancel) return;
-        setRows((data ?? []) as LeadRow[]);
+        // Ver nota en ReactivacionTab: el types.ts generado no incluye aun
+        // las columnas de vendedor en leads_campana.
+        setRows(((data ?? []) as unknown) as LeadRow[]);
         setTotal(count ?? 0);
       } catch (e) {
         if (!cancel) toast({
@@ -114,7 +116,8 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     if (!vendedorAsignar || selected.size === 0) return;
     setAsignando(true);
     try {
-      const { error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
         .from("leads_campana")
         .update({ vendedor_id: vendedorAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo", primer_contacto_at: null })
         .in("id", [...selected]);
