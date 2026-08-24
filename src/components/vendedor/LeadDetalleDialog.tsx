@@ -122,6 +122,9 @@ export default function LeadDetalleDialog({
   const [resultadoLlamada, setResultadoLlamada] = useState("");
   const [seguimiento, setSeguimiento] = useState("");
   const [moviendo, setMoviendo] = useState(false);
+  // Marcar "perdido" pide motivo (lo exige la RPC). Se pregunta inline, dentro
+  // de la misma ficha: un window.prompt bloquea el navegador y se ve mal.
+  const [motivoPerdido, setMotivoPerdido] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     if (!leadId) return;
@@ -137,7 +140,7 @@ export default function LeadDetalleDialog({
   }, [leadId]);
 
   useEffect(() => { if (open && leadId) cargar(); }, [open, leadId, cargar]);
-  useEffect(() => { if (!open) { setData(null); setResultadoLlamada(""); } }, [open]);
+  useEffect(() => { if (!open) { setData(null); setResultadoLlamada(""); setMotivoPerdido(null); } }, [open]);
 
   const lead = data?.lead;
   const prospecto = (data?.prospecto ?? null) as Record<string, unknown> | null;
@@ -193,21 +196,16 @@ export default function LeadDetalleDialog({
     onCambio?.();
   };
 
-  const moverEtapa = async (destino: Etapa) => {
+  const moverEtapa = async (destino: Etapa, motivoCierre?: string) => {
     if (!leadId) return;
-    if (destino === "perdido") {
-      const motivo = window.prompt("¿Por qué se perdió este lead?")?.trim();
-      if (!motivo) return;
-      setMoviendo(true);
-      const { error } = await sb.rpc("vendedor_mover_etapa", { _lead_id: leadId, _etapa: destino, _motivo_cierre: motivo });
-      setMoviendo(false);
-      if (error) { toast({ title: "No se pudo mover", description: error.message, variant: "destructive" }); return; }
-    } else {
-      setMoviendo(true);
-      const { error } = await sb.rpc("vendedor_mover_etapa", { _lead_id: leadId, _etapa: destino, _motivo_cierre: null });
-      setMoviendo(false);
-      if (error) { toast({ title: "No se pudo mover", description: error.message, variant: "destructive" }); return; }
-    }
+    if (destino === "perdido" && !motivoCierre?.trim()) { setMotivoPerdido(""); return; }
+    setMoviendo(true);
+    const { error } = await sb.rpc("vendedor_mover_etapa", {
+      _lead_id: leadId, _etapa: destino, _motivo_cierre: motivoCierre?.trim() || null,
+    });
+    setMoviendo(false);
+    if (error) { toast({ title: "No se pudo mover", description: error.message, variant: "destructive" }); return; }
+    setMotivoPerdido(null);
     await cargar();
     onCambio?.();
     toast({ title: `Movido a ${ETAPA_LABEL[destino]}` });
@@ -440,6 +438,29 @@ export default function LeadDetalleDialog({
                   <Archive className="h-3 w-3" /> Archivar
                 </Button>
               </div>
+
+              {motivoPerdido !== null && (
+                <div className="w-full space-y-1.5 rounded-md border border-red-500/30 bg-red-500/5 p-2.5">
+                  <Label className="text-xs">¿Por qué se perdió este lead?</Label>
+                  <Textarea
+                    autoFocus value={motivoPerdido} onChange={(e) => setMotivoPerdido(e.target.value)}
+                    placeholder="Ej: no le interesó, precio, ya tiene proveedor…"
+                    className="min-h-[60px] bg-background text-sm"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button" size="sm" disabled={!motivoPerdido.trim() || moviendo}
+                      onClick={() => moverEtapa("perdido", motivoPerdido)}
+                      className="h-7 bg-red-600 px-2.5 text-[11px] hover:bg-red-700"
+                    >
+                      Marcar perdido
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setMotivoPerdido(null)} className="h-7 px-2 text-[11px] text-muted-foreground">
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Notas */}
