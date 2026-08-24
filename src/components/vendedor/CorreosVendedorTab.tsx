@@ -59,6 +59,10 @@ export default function CorreosVendedorTab({
   const [eliminando, setEliminando] = useState(false);
   const [inicializado, setInicializado] = useState(false);
   const [enviandoPrueba, setEnviandoPrueba] = useState(false);
+  // A qué casilla se manda la prueba. Por defecto la propia (no gasta cupo);
+  // se puede cambiar a cualquier correo para ver cómo llega en Gmail, Outlook
+  // o en la casilla de un colega.
+  const [correoPrueba, setCorreoPrueba] = useState("");
 
   const propias = useMemo(() => plantillasEmail.filter((p) => p.creado_por === user?.id), [plantillasEmail, user?.id]);
   const compartidas = useMemo(() => plantillasEmail.filter((p) => p.creado_por !== user?.id), [plantillasEmail, user?.id]);
@@ -66,6 +70,8 @@ export default function CorreosVendedorTab({
 
   // Al entrar, abre directo el editor: la primera plantilla propia si existe,
   // o el formulario en blanco listo para crear — nunca una lista intermedia.
+  useEffect(() => { if (user?.email && !correoPrueba) setCorreoPrueba(user.email); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.email]);
+
   useEffect(() => {
     if (inicializado) return;
     if (propias.length > 0) setPlantillaId(propias[0].id);
@@ -158,21 +164,29 @@ export default function CorreosVendedorTab({
   // Envía el correo real (vía Resend) a la propia casilla del vendedor, para
   // revisar en Gmail/Outlook si cae en Principal, Promociones o Spam antes
   // de usarlo con leads de verdad.
+  const destinoPrueba = (correoPrueba || user?.email || "").trim();
+  const pruebaAOtro = Boolean(destinoPrueba) && destinoPrueba.toLowerCase() !== (user?.email ?? "").toLowerCase();
+
   const enviarPrueba = async () => {
-    if (!user?.email || !form.asunto.trim()) return;
+    if (!destinoPrueba || !form.asunto.trim()) return;
     setEnviandoPrueba(true);
     try {
       const nombreRemitente = await fromName();
       const { data, error } = await supabase.functions.invoke("send-personalized-campaign", {
         body: {
           ...bodyRemitente(remitente),
-          test: true, testNombre: "Juan Pérez",
+          test: true, testNombre: "Juan Pérez", testTo: destinoPrueba,
           subject: form.asunto, text: form.cuerpo, html: composeHtml(nombreRemitente),
         },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: `Prueba enviada a ${user.email}`, description: "Revisa Principal, Promociones y Spam para ver dónde cayó." });
+      toast({
+        title: `Prueba enviada a ${data?.to ?? destinoPrueba}`,
+        description: data?.conto_cupo
+          ? "Revisa Principal, Promociones y Spam. Ojo: al ir a una casilla que no es la tuya, gastó 1 de tu cupo diario."
+          : "Revisa Principal, Promociones y Spam para ver dónde cayó.",
+      });
     } catch (e) {
       toast({ title: "No se pudo enviar la prueba", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
@@ -287,17 +301,30 @@ export default function CorreosVendedorTab({
         <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview((v) => !v)} className="gap-1.5">
           <Eye className="h-4 w-4" /> {showPreview ? "Ocultar vista previa" : "Vista previa"}
         </Button>
-        <Button
-          type="button" variant="outline" size="sm" onClick={enviarPrueba}
-          disabled={enviandoPrueba || !form.asunto.trim() || !form.cuerpo.trim()}
-          className="gap-1.5"
-        >
-          {enviandoPrueba ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar prueba a mi correo
-        </Button>
+        <div className="flex min-w-[260px] flex-1 items-center gap-1.5">
+          <Input
+            value={correoPrueba} onChange={(e) => setCorreoPrueba(e.target.value)}
+            placeholder="correo@ejemplo.com" inputMode="email" aria-label="Correo al que mandar la prueba"
+            className="h-9 text-xs"
+          />
+          <Button
+            type="button" variant="outline" size="sm" onClick={enviarPrueba}
+            disabled={enviandoPrueba || !destinoPrueba || !form.asunto.trim() || !form.cuerpo.trim()}
+            className="shrink-0 gap-1.5"
+          >
+            {enviandoPrueba ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar prueba
+          </Button>
+        </div>
         <Button type="button" size="sm" onClick={guardar} disabled={saving || !form.nombre.trim()} className="ml-auto gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Guardar diseño
         </Button>
       </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        {pruebaAOtro
+          ? "La prueba va a una casilla que no es la tuya: se envía igual, pero cuenta 1 correo de tu cupo diario."
+          : "Las pruebas a tu propia casilla no gastan cupo. Cambia el correo de arriba para probar cómo llega en otra bandeja."}
+      </p>
 
       {showPreview && (
         <Card>

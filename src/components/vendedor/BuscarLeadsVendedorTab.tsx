@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Radar, Search, Loader2, MapPin, Globe, MessageCircle, History, Trash2,
   Sparkles, CheckCircle2, Copy, X, XCircle, Star, Instagram, Facebook, Kanban,
-  Inbox, ArrowRightCircle, Map as MapIcon,
+  Inbox, ArrowRightCircle, Map as MapIcon, Mail as MailIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import LeadDetailDialog, { type Lead, waLink } from "@/components/prospeccion/LeadDetailDialog";
-import { instagramPerfil, facebookPerfil } from "@/lib/redes";
+import { facebookMessenger, facebookPerfil, instagramDm, instagramPerfil, mensajeRedes } from "@/lib/redes";
 
 // Saca el mensaje real del cuerpo de la respuesta cuando la edge function
 // devuelve un no-2xx (supabase-js solo entrega un texto genérico).
@@ -74,6 +74,74 @@ const FUENTES = [
   { valor: "facebook", label: "Facebook", icon: Facebook, detalle: "Páginas de negocio para Messenger." },
 ] as const;
 type Fuente = (typeof FUENTES)[number]["valor"];
+
+// Un boton por canal encontrado. Cada uno abre la mensajeria de esa red con
+// el mensaje que redacto la IA: WhatsApp lo acepta en la URL; Instagram y
+// Facebook no, asi que ahi se copia al portapapeles y se abre el chat.
+function CanalesLead({ lead, onCopiado }: { lead: Lead; onCopiado: (canal: string) => void }) {
+  const wa = waLink(lead);
+  const ig = instagramDm(lead.instagram);
+  const igPerfil = instagramPerfil(lead.instagram);
+  const fb = facebookMessenger(lead.facebook);
+  const fbPerfil = facebookPerfil(lead.facebook);
+  const email = (lead.email ?? "").trim();
+  const msgRedes = mensajeRedes({
+    mensajeIa: lead.mensaje_instagram,
+    nombre: lead.nombre,
+    gancho: Array.isArray(lead.problemas) && lead.problemas.length ? lead.problemas[0] : null,
+    propuestaValor: lead.propuesta_valor,
+  });
+
+  const abrirRed = async (url: string, canal: string) => {
+    try { await navigator.clipboard.writeText(msgRedes); onCopiado(canal); } catch { /* puede copiarlo a mano */ }
+    window.open(url, "_blank", "noreferrer");
+  };
+
+  const nada = !wa && !ig && !fb && !email;
+  if (nada) return <span className="text-xs text-muted-foreground">—</span>;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {wa && (
+        <a
+          href={`${wa}?text=${encodeURIComponent(lead.mensaje_whatsapp || msgRedes)}`}
+          target="_blank" rel="noreferrer" title={`WhatsApp a ${lead.telefono}`}
+          className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-500/20"
+        >
+          <MessageCircle className="h-3 w-3" /> WhatsApp
+        </a>
+      )}
+      {ig && (
+        <button
+          type="button" onClick={() => abrirRed(ig, "Instagram")} title={`Instagram: ${igPerfil}`}
+          className="inline-flex items-center gap-1 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2 py-0.5 text-[11px] font-medium text-fuchsia-700 hover:bg-fuchsia-500/20"
+        >
+          <Instagram className="h-3 w-3" /> Instagram
+        </button>
+      )}
+      {fb && (
+        <button
+          type="button" onClick={() => abrirRed(fb, "Messenger")} title={`Facebook: ${fbPerfil}`}
+          className="inline-flex items-center gap-1 rounded-full border border-[#1877F2]/30 bg-[#1877F2]/10 px-2 py-0.5 text-[11px] font-medium text-[#1877F2] hover:bg-[#1877F2]/20"
+        >
+          <Facebook className="h-3 w-3" /> Messenger
+        </button>
+      )}
+      {email && (
+        <a
+          href={`mailto:${email}?body=${encodeURIComponent(lead.mensaje_email || msgRedes)}`}
+          title={`Email a ${email}`}
+          className="inline-flex items-center gap-1 rounded-full border border-[#003DA5]/30 bg-[#003DA5]/10 px-2 py-0.5 text-[11px] font-medium text-[#003DA5] hover:bg-[#003DA5]/20"
+        >
+          <MailIcon className="h-3 w-3" /> Email
+        </a>
+      )}
+      {lead.telefono && (
+        <span className="text-[10px] text-muted-foreground">{lead.telefono}</span>
+      )}
+    </div>
+  );
+}
 
 function tipoBadge(tipo?: string) {
   const t = (tipo || "").toLowerCase();
@@ -165,6 +233,17 @@ export default function BuscarLeadsVendedorTab() {
     else filtered.forEach((l) => n.add(leadKey(l)));
     return n;
   });
+  // Sobre que actuan los botones de "pasar al CRM": lo seleccionado si hay
+  // seleccion, y si no, todos los resultados visibles. Solo cuentan los que
+  // quedaron guardados en el historial (los repetidos no tienen id nuevo).
+  const guardados = useMemo(
+    () => (selectedLeads.length ? selectedLeads : filtered).filter((l) => Boolean(l.id)),
+    [selectedLeads, filtered],
+  );
+  const alcance = selectedLeads.length
+    ? `los ${guardados.length} seleccionados`
+    : `los ${guardados.length}`;
+
   const limpiarFiltros = () => { setTipoFilter("all"); setEstadoFilter("all"); setOcultarDescartar(false); setOrdenScore("desc"); setSelected(new Set()); };
   const abrirDetalle = (l: Lead) => { setDetail(l); setDetailOpen(true); };
 
@@ -215,10 +294,10 @@ export default function BuscarLeadsVendedorTab() {
   //   yaContactados = false -> entra a la Bandeja, etapa "nuevo"
   //   yaContactados = true  -> entra al Pipeline, etapa "contactado"
   // ---------------------------------------------------------------------
-  const sincronizar = async (yaContactados: boolean) => {
-    const ids = selectedLeads.map((l) => l.id).filter(Boolean) as string[];
+  const sincronizar = async (yaContactados: boolean, lista: Lead[]) => {
+    const ids = lista.map((l) => l.id).filter(Boolean) as string[];
     if (!ids.length) {
-      toast({ title: "Sin leads guardados", description: "Selecciona prospectos ya guardados en tu historial.", variant: "destructive" });
+      toast({ title: "Sin leads guardados", description: "Los prospectos repetidos no se vuelven a guardar, así que no tienen ficha que pasar al CRM.", variant: "destructive" });
       return;
     }
     setSincronizando(true);
@@ -446,6 +525,23 @@ export default function BuscarLeadsVendedorTab() {
                     Resultados <Badge variant="secondary">{filtered.length}</Badge>
                     {repetidos > 0 && <Badge variant="outline">{repetidos} repetidos ocultos</Badge>}
                   </span>
+                  {/* Los leads extraidos no se quedan aca: de una pasan al CRM. */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button
+                      type="button" size="sm" disabled={sincronizando || guardados.length === 0}
+                      onClick={() => sincronizar(false, guardados)} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90"
+                    >
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Inbox className="h-3.5 w-3.5" />}
+                      Pasar {alcance} a la Bandeja
+                    </Button>
+                    <Button
+                      type="button" size="sm" variant="outline" disabled={sincronizando || guardados.length === 0}
+                      onClick={() => sincronizar(true, guardados)} className="gap-1.5"
+                    >
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Kanban className="h-3.5 w-3.5" />}
+                      Pasar {alcance} al Pipeline
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -500,14 +596,14 @@ export default function BuscarLeadsVendedorTab() {
                     <Badge variant="secondary">{selectedLeads.length} seleccionados</Badge>
                     <Button
                       type="button" size="sm" disabled={sincronizando}
-                      onClick={() => sincronizar(false)} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90"
+                      onClick={() => sincronizar(false, selectedLeads)} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90"
                     >
                       {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Inbox className="h-3.5 w-3.5" />}
                       Pasar a mi Bandeja
                     </Button>
                     <Button
                       type="button" size="sm" variant="outline" disabled={sincronizando}
-                      onClick={() => sincronizar(true)} className="gap-1.5"
+                      onClick={() => sincronizar(true, selectedLeads)} className="gap-1.5"
                     >
                       {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                       Ya los contacté · al Pipeline
@@ -539,7 +635,7 @@ export default function BuscarLeadsVendedorTab() {
                             <input type="checkbox" aria-label="Seleccionar todos" className="h-4 w-4 accent-[#003DA5]" checked={allChecked} onChange={toggleAll} />
                           </TableHead>
                           <TableHead>Negocio</TableHead>
-                          <TableHead>Contacto</TableHead>
+                          <TableHead className="min-w-[220px]">Canales</TableHead>
                           <TableHead className="w-16">
                             <Tooltip><TooltipTrigger asChild><span className="cursor-help underline decoration-dotted">Score</span></TooltipTrigger><TooltipContent>{SCORE_HINT}</TooltipContent></Tooltip>
                           </TableHead>
@@ -566,18 +662,10 @@ export default function BuscarLeadsVendedorTab() {
                               </div>
                             </TableCell>
                             <TableCell className="text-xs">
-                              {l.telefono && <div className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-emerald-600" /> {l.telefono}</div>}
-                              {instagramPerfil(l.instagram) && (
-                                <a href={instagramPerfil(l.instagram)!} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-fuchsia-600 hover:underline">
-                                  <Instagram className="h-3 w-3" /> {l.instagram}
-                                </a>
-                              )}
-                              {facebookPerfil(l.facebook) && (
-                                <a href={facebookPerfil(l.facebook)!} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[#1877F2] hover:underline">
-                                  <Facebook className="h-3 w-3" /> {l.facebook}
-                                </a>
-                              )}
-                              {!l.telefono && !l.instagram && !l.facebook && "—"}
+                              <CanalesLead
+                                lead={l}
+                                onCopiado={(canal) => toast({ title: `Mensaje copiado`, description: `Pégalo en el chat de ${canal} que se acaba de abrir.` })}
+                              />
                             </TableCell>
                             <TableCell>
                               <Tooltip><TooltipTrigger asChild><span className="cursor-help font-mono text-sm font-semibold">{typeof l.score === "number" ? l.score : "—"}</span></TooltipTrigger><TooltipContent>{SCORE_HINT}</TooltipContent></Tooltip>
@@ -651,13 +739,35 @@ export default function BuscarLeadsVendedorTab() {
                             ) : !expandedLeads?.length ? (
                               <div className="px-3 py-6 text-center text-sm text-muted-foreground">Sin leads en esta búsqueda.</div>
                             ) : (
-                              <div className="max-h-[60vh] overflow-auto">
+                              <div>
+                                {/* Misma salida que en "Buscar": lo encontrado no se queda
+                                    en el historial, pasa al flujo de trabajo. */}
+                                <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/20 px-3 py-2">
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {expandedLeads.filter((l) => l.lead_campana_id).length} de {expandedLeads.length} ya están en tu CRM
+                                  </span>
+                                  <Button
+                                    type="button" size="sm" disabled={sincronizando}
+                                    onClick={() => sincronizar(false, expandedLeads)}
+                                    className="ml-auto h-7 gap-1.5 bg-[#003DA5] px-2 text-[11px] hover:bg-[#003DA5]/90"
+                                  >
+                                    {sincronizando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Inbox className="h-3 w-3" />} A la Bandeja
+                                  </Button>
+                                  <Button
+                                    type="button" size="sm" variant="outline" disabled={sincronizando}
+                                    onClick={() => sincronizar(true, expandedLeads)}
+                                    className="h-7 gap-1.5 px-2 text-[11px]"
+                                  >
+                                    {sincronizando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Kanban className="h-3 w-3" />} Al Pipeline
+                                  </Button>
+                                </div>
+                                <div className="max-h-[60vh] overflow-auto">
                                 <Table>
                                   <TableHeader>
                                     <TableRow>
                                       <TableHead>Negocio</TableHead>
                                       <TableHead className="hidden sm:table-cell">Tipo</TableHead>
-                                      <TableHead className="hidden md:table-cell">Contacto</TableHead>
+                                      <TableHead className="hidden md:table-cell min-w-[220px]">Canales</TableHead>
                                       <TableHead className="hidden lg:table-cell w-16">Score</TableHead>
                                       <TableHead className="w-20"></TableHead>
                                     </TableRow>
@@ -673,7 +783,10 @@ export default function BuscarLeadsVendedorTab() {
                                           {l.tipo_lead ? <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${tipoBadge(l.tipo_lead)}`}>{TIPO_SHORT[l.tipo_lead] || l.tipo_lead}</span> : <span className="text-[11px] text-muted-foreground">—</span>}
                                         </TableCell>
                                         <TableCell className="hidden md:table-cell text-[11px] text-muted-foreground">
-                                          {l.telefono ? <span className="inline-flex items-center gap-0.5"><MessageCircle className="h-2.5 w-2.5 text-emerald-600" /> {l.telefono}</span> : "—"}
+                                          <CanalesLead
+                                            lead={l}
+                                            onCopiado={(canal) => toast({ title: "Mensaje copiado", description: `Pégalo en el chat de ${canal} que se acaba de abrir.` })}
+                                          />
                                         </TableCell>
                                         <TableCell className="hidden lg:table-cell"><span className="font-mono text-xs">{l.score ?? "—"}</span></TableCell>
                                         <TableCell>
@@ -685,6 +798,7 @@ export default function BuscarLeadsVendedorTab() {
                                     ))}
                                   </TableBody>
                                 </Table>
+                                </div>
                               </div>
                             )}
                           </div>

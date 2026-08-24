@@ -90,20 +90,51 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Envío de PRUEBA: manda 1 solo correo a la propia casilla del usuario
-    // logueado (admin o vendedor), para revisar en dónde cae (Principal /
-    // Promociones / Spam). Ignora el filtro "solo tus leads" del vendedor
-    // porque el destinatario siempre es él mismo, nunca un lead ajeno. No
-    // cuenta contra su cupo diario ni queda en el log de campañas reales.
+    // --- Envío de PRUEBA: manda 1 SOLO correo a la casilla que se indique
+    // (`testTo`), o a la del propio usuario si no se indica ninguna, para
+    // revisar en dónde cae (Principal / Promociones / Spam).
+    //
+    // Ignora el filtro "solo tus leads" del vendedor: probar contra la casilla
+    // de un colega o contra una cuenta de Gmail/Outlook propia es justo el
+    // punto de la prueba. Para que eso no se convierta en una vía de envío sin
+    // control: es 1 destinatario por llamada y, cuando la prueba NO va a la
+    // propia casilla del usuario, se registra en correo_envios y por lo tanto
+    // consume su cupo diario igual que un correo real.
     if (body?.test === true) {
-      const testEmail = (userData.user.email ?? "").trim().toLowerCase();
+      const propio = (userData.user.email ?? "").trim().toLowerCase();
+      const pedido = (body?.testTo ?? "").toString().trim().toLowerCase();
+      const testEmail = pedido || propio;
       if (!testEmail) {
-        return new Response(JSON.stringify({ error: "Tu sesión no tiene un correo con el que probar" }), {
+        return new Response(JSON.stringify({ error: "Indica a qué correo mandar la prueba" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (!EMAIL_RE.test(testEmail)) {
+        return new Response(JSON.stringify({ error: `"${testEmail}" no parece un correo válido` }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const esAjena = testEmail !== propio;
+
+      // Cupo: una prueba a una casilla ajena cuenta como envío real.
+      if (esAjena && !isAdmin) {
+        const { data: perfilPrueba } = await svc.from("vendedores").select("limite_mensajes_dia").eq("user_id", userData.user.id).maybeSingle();
+        const limitePersonal = perfilPrueba?.limite_mensajes_dia ?? 55;
+        const { count: yaHoy } = await svc
+          .from("correo_envios")
+          .select("id", { count: "exact", head: true })
+          .eq("enviado_por", userData.user.id)
+          .neq("estado", "fallido")
+          .gte("enviado_at", inicioDeHoyUTC());
+        if ((yaHoy ?? 0) >= limitePersonal) {
+          return new Response(JSON.stringify({ error: `Ya usaste tu cupo de hoy (${limitePersonal} correos). Las pruebas a tu propia casilla no gastan cupo.` }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       const r: Recipient = { email: testEmail, nombre: (body?.testNombre ?? "").toString() || undefined };
-      const { key: apiKey, domain: keyDomain } = resendKeyFor(0, modoRemitente);
+      const { key: apiKey, index: keyIdxPrueba, domain: keyDomain } = resendKeyFor(0, modoRemitente);
       const subject = `[PRUEBA] ${fillTemplate(subjectTpl, r)}`;
       const payload: Record<string, unknown> = {
         from: `${fromName} <${applyDomain(fromEmail, keyDomain)}>`,
@@ -123,7 +154,18 @@ Deno.serve(async (req) => {
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.id) {
-          return new Response(JSON.stringify({ success: true, prueba: true, sent: 1, to: testEmail, id: data.id }), {
+          if (esAjena) {
+            const { error: logErr } = await svc.from("correo_envios").insert({
+              resend_id: data.id, email: testEmail, nombre: r.nombre ?? null,
+              asunto: subject, enviado_por: userData.user.id, estado: "enviado",
+              resend_key_index: keyIdxPrueba,
+            });
+            if (logErr) console.error("correo_envios (prueba) insert error:", logErr.message);
+          }
+          return new Response(JSON.stringify({
+            success: true, prueba: true, sent: 1, to: testEmail, id: data.id,
+            conto_cupo: esAjena,
+          }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }

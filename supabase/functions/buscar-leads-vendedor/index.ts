@@ -26,10 +26,14 @@ type Negocio = {
   idx: number;
   nombre: string; direccion?: string; telefono?: string; web?: string;
   rating?: number; reviews?: number; categoria?: string; google_maps?: string;
-  // Redes: solo se llenan cuando el negocio se encontro en Instagram/Facebook.
+  // Redes del negocio. Se llenan desde la busqueda en Instagram/Facebook y
+  // tambien desde la web que publica su ficha de Google Maps, asi un mismo
+  // negocio termina con todos los canales que se le encontraron.
   instagram?: string; facebook?: string;
-  /** De donde salio: "Google Maps (SerpApi)" | "Instagram" | "Facebook". */
+  /** Etiqueta legible: "Google Maps (SerpApi) + Instagram". */
   fuente?: string;
+  /** Todas las fuentes donde aparecio, en orden de aparicion. */
+  fuentes?: string[];
   /** Bio / descripcion del perfil, para que la IA tenga contexto real. */
   descripcion?: string;
 };
@@ -177,6 +181,43 @@ function handleDesdeUrl(url: string, red: "instagram" | "facebook"): string | nu
   }
 }
 
+// Une dos apariciones del MISMO negocio (misma clave nombre|ciudad) en una
+// sola ficha: Google Maps aporta telefono y direccion, Instagram y Facebook
+// aportan el perfil para escribir por DM. Antes la segunda aparicion se
+// descartaba entera y se perdia el canal.
+function fusionarNegocio(base: Negocio, extra: Negocio): Negocio {
+  const prefiere = (a?: string, b?: string) => (a ?? "").trim() || (b ?? "").trim() || "";
+  const fuentes = [...new Set([...(base.fuentes ?? []), ...(extra.fuentes ?? [])])];
+  return {
+    ...base,
+    nombre: base.nombre || extra.nombre,
+    direccion: prefiere(base.direccion, extra.direccion),
+    telefono: prefiere(base.telefono, extra.telefono),
+    web: prefiere(base.web, extra.web),
+    instagram: prefiere(base.instagram, extra.instagram),
+    facebook: prefiere(base.facebook, extra.facebook),
+    google_maps: prefiere(base.google_maps, extra.google_maps),
+    categoria: prefiere(base.categoria, extra.categoria),
+    // Se queda la descripcion mas larga: suele ser la que trae contexto util.
+    descripcion: (extra.descripcion ?? "").length > (base.descripcion ?? "").length
+      ? extra.descripcion : base.descripcion,
+    rating: base.rating ?? extra.rating,
+    reviews: base.reviews ?? extra.reviews,
+    fuentes,
+    fuente: fuentes.join(" + "),
+  };
+}
+
+// Muchas fichas de Google Maps publican como "web" su propio Instagram o su
+// pagina de Facebook. De ahi sale un canal extra gratis, sin otra busqueda.
+function redDesdeWeb(web: string): { instagram?: string; facebook?: string } {
+  const ig = handleDesdeUrl(web, "instagram");
+  if (ig) return { instagram: ig };
+  const fb = handleDesdeUrl(web, "facebook");
+  if (fb) return { facebook: fb };
+  return {};
+}
+
 async function buscarEnRed(
   apiKey: string, red: "instagram" | "facebook", nicho: string, ciudad: string, limite: number, timeoutMs: number,
 ): Promise<Negocio[]> {
@@ -209,6 +250,7 @@ async function buscarEnRed(
       facebook: red === "facebook" ? handle : undefined,
       descripcion: ((r.snippet as string) ?? "").slice(0, 400),
       fuente: FUENTE_LABEL[red],
+      fuentes: [FUENTE_LABEL[red]],
       google_maps: "",
     });
     if (salida.length >= limite) break;
@@ -332,12 +374,19 @@ Deno.serve(async (req) => {
     }
 
     // --- 1) SerpApi: Google Maps, datos estructurados reales ---
-    const negocios: Negocio[] = [];
-    const vistos = new Set<string>();
+    // Los resultados se acumulan por clave (nombre|ciudad) y se FUSIONAN: si el
+    // mismo negocio aparece en Maps y en Instagram, queda una sola ficha con
+    // telefono y perfil, no dos fichas a medias.
+    const porClave = new Map<string, Negocio>();
+    const agregar = (n: Negocio) => {
+      const key = dedupKey(n.nombre, ciudad);
+      const previo = porClave.get(key);
+      porClave.set(key, previo ? fusionarNegocio(previo, n) : n);
+    };
     const avisosFuente: string[] = [];
     let start = 0;
     // Pagina hasta juntar suficientes candidatos nuevos (máx 3 páginas ~60 resultados).
-    for (let pagina = 0; fuentes.includes("maps") && pagina < 3 && negocios.length < cantidad * 2 && Date.now() - t0 < 45000; pagina++) {
+    for (let pagina = 0; fuentes.includes("maps") && pagina < 3 && porClave.size < cantidad * 2 && Date.now() - t0 < 45000; pagina++) {
       const url = new URL("https://serpapi.com/search.json");
       url.searchParams.set("engine", "google_maps");
       url.searchParams.set("type", "search");
@@ -353,7 +402,7 @@ Deno.serve(async (req) => {
         // Timeout o corte de red: si ya juntamos negocios seguimos con lo que hay.
         const m = e instanceof Error ? e.message : String(e);
         console.error("buscar-leads-vendedor SerpApi fetch:", m);
-        if (negocios.length > 0) break;
+        if (porClave.size > 0) break;
         // Con redes pedidas la busqueda sigue: Maps solo aporta una parte.
         if (fuentes.some((f) => f !== "maps")) { avisosFuente.push(`Google Maps no respondió (${m}).`); break; }
         return new Response(JSON.stringify({ error: `SerpApi no respondió a tiempo (${m}). Reintenta en unos segundos.` }), {
@@ -363,7 +412,7 @@ Deno.serve(async (req) => {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = data?.error || `HTTP ${res.status}`;
-        if (negocios.length > 0) break;
+        if (porClave.size > 0) break;
         if (fuentes.some((f) => f !== "maps")) { avisosFuente.push(`Google Maps: ${msg}.`); break; }
         return new Response(JSON.stringify({ error: `SerpApi: ${msg}` }), {
           status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -374,20 +423,22 @@ Deno.serve(async (req) => {
       for (const r of results) {
         const nombre = (r.title as string ?? "").trim();
         if (!nombre) continue;
-        const key = dedupKey(nombre, ciudad);
-        if (vistos.has(key)) continue;
-        vistos.add(key);
-        negocios.push({
-          idx: negocios.length,
+        const web = (r.website as string) ?? "";
+        agregar({
+          idx: 0, // se reasigna al final, cuando ya estan todas las fuentes fusionadas
           nombre,
           direccion: (r.address as string) ?? "",
           telefono: (r.phone as string) ?? "",
-          web: (r.website as string) ?? "",
+          web,
+          // Si la "web" de la ficha es en realidad su Instagram o su Facebook,
+          // se guarda como red y no solo como sitio.
+          ...redDesdeWeb(web),
           rating: typeof r.rating === "number" ? r.rating : undefined,
           reviews: typeof r.reviews === "number" ? r.reviews : undefined,
           categoria: (r.type as string) ?? "",
           google_maps: (r.place_id as string) ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : "",
           fuente: FUENTE_LABEL.maps,
+          fuentes: [FUENTE_LABEL.maps],
         });
       }
       start += 20;
@@ -410,17 +461,15 @@ Deno.serve(async (req) => {
           avisosFuente.push(`${FUENTE_LABEL[redes[i]]} no devolvió resultados (${m}).`);
           continue;
         }
-        for (const n of r.value) {
-          const key = dedupKey(n.nombre, ciudad);
-          if (vistos.has(key)) continue;
-          vistos.add(key);
-          negocios.push({ ...n, idx: negocios.length });
-        }
+        // Si el negocio ya estaba (por Maps o por la otra red), se fusiona en
+        // vez de descartarse: asi la ficha termina con todos sus canales.
+        for (const n of r.value) agregar(n);
       }
     }
 
     // Los idx se reasignan al final: son la clave con la que el modelo
-    // devuelve cada negocio enriquecido, y las redes entraron después.
+    // devuelve cada negocio enriquecido, y las fuentes se fusionaron recién ahora.
+    const negocios: Negocio[] = [...porClave.values()];
     for (let i = 0; i < negocios.length; i++) negocios[i].idx = i;
 
     if (negocios.length === 0) {
@@ -441,7 +490,7 @@ Deno.serve(async (req) => {
     // quedarian siempre fuera del corte.
     const porFuente = new Map<string, Negocio[]>();
     for (const n of disponibles) {
-      const k = n.fuente ?? FUENTE_LABEL.maps;
+      const k = n.fuentes?.[0] ?? FUENTE_LABEL.maps;
       if (!porFuente.has(k)) porFuente.set(k, []);
       porFuente.get(k)!.push(n);
     }
