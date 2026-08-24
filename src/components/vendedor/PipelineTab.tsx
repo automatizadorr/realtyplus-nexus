@@ -64,7 +64,8 @@ const ORIGENES: { valor: string; label: string }[] = [
   { valor: "all", label: "Todos los orígenes" },
   { valor: "buscar_leads", label: "Buscar Leads" },
   { valor: "manual_vendedor", label: "Alta manual" },
-  { valor: "campana", label: "Campañas / bot" },
+  // Todo lo que no cargó el vendedor: importaciones, campañas y el bot.
+  { valor: "campana", label: "Campaña / importados" },
 ];
 
 function waLinkCampana(l: LeadCampana): string | null {
