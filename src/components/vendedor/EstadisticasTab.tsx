@@ -13,6 +13,16 @@ const sb = supabase as any;
 // plantilla, a diferencia de las otras donas que sí tienen semántica).
 const PALETA_PLANTILLAS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#f43f5e", "#06b6d4", "#a78bfa", "#84cc16"];
 
+// Un color fijo por canal para que el grafico se lea igual sesion tras sesion.
+const CANAL_COLOR: Record<string, string> = {
+  whatsapp: "#25D366", email: "#003DA5", llamada: "#f59e0b",
+  instagram: "#d946ef", facebook: "#1877F2",
+};
+const CANAL_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp", email: "Email", llamada: "Llamada",
+  instagram: "Instagram", facebook: "Facebook",
+};
+
 // Punto de acento fijo (sin parpadeo): un brillo constante, no una animación
 // de encendido/apagado.
 function AcentoFijo() {
@@ -240,6 +250,10 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
 
   const [plantillasUsadas, setPlantillasUsadas] = useState<{ plantilla_id: string; canal: string; nombre: string | null; usos: number }[]>([]);
   const [ganadosPorSemana, setGanadosPorSemana] = useState<{ semana: string; ganados: number }[]>([]);
+  // Canales de contacto: ademas de WhatsApp y email, ahora hay llamada
+  // telefonica, Instagram y Facebook.
+  const [porCanal, setPorCanal] = useState<{ canal: string; contactos: number }[]>([]);
+  const [resultadosLlamadas, setResultadosLlamadas] = useState<{ resultado: string; llamadas: number }[]>([]);
 
   useEffect(() => {
     sb.rpc("vendedor_plantillas_usadas").then(({ data }: { data: typeof plantillasUsadas | null }) => {
@@ -248,7 +262,29 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
     sb.rpc("vendedor_ganados_por_semana", { _semanas: 8 }).then(({ data }: { data: { semana: string; ganados: number }[] | null }) => {
       if (data) setGanadosPorSemana(data);
     });
+    sb.rpc("vendedor_contactos_por_canal", { _dias: 30 }).then(({ data }: { data: { canal: string; contactos: number }[] | null }) => {
+      if (data) setPorCanal(data);
+    });
+    sb.rpc("vendedor_resultados_llamadas", { _dias: 30 }).then(({ data }: { data: { resultado: string; llamadas: number }[] | null }) => {
+      if (data) setResultadosLlamadas(data);
+    });
   }, []);
+
+  const canalData: Segmento[] = useMemo(() => porCanal.map((c) => ({
+    key: `canal:${c.canal}`,
+    value: Number(c.contactos),
+    color: CANAL_COLOR[c.canal] ?? "#94a3b8",
+    label: CANAL_LABEL[c.canal] ?? c.canal,
+    detalle: `${c.contactos} contacto(s) por ${CANAL_LABEL[c.canal] ?? c.canal} en los últimos 30 días.`,
+  })), [porCanal]);
+
+  const llamadasData: Segmento[] = useMemo(() => resultadosLlamadas.map((r, i) => ({
+    key: `llamada:${r.resultado}`,
+    value: Number(r.llamadas),
+    color: PALETA_PLANTILLAS[i % PALETA_PLANTILLAS.length],
+    label: r.resultado,
+    detalle: `${r.llamadas} llamada(s) terminaron en "${r.resultado}".`,
+  })), [resultadosLlamadas]);
 
   const construirDona = (canal: "whatsapp" | "email"): Segmento[] =>
     plantillasUsadas
@@ -328,6 +364,22 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
           centro={plantillasEmailData.reduce((acc, d) => acc + d.value, 0)}
           centroLabel="envíos"
           delay={0.25}
+        />
+        <Dona
+          titulo="Contactos por canal (30 días)"
+          nota="Por dónde estás contactando de verdad: WhatsApp, email, llamada, Instagram y Facebook."
+          data={canalData}
+          centro={canalData.reduce((acc, d) => acc + d.value, 0)}
+          centroLabel="contactos"
+          delay={0.3}
+        />
+        <Dona
+          titulo="Resultado de tus llamadas (30 días)"
+          nota="Cómo terminaron las llamadas que registraste desde la ficha del lead."
+          data={llamadasData}
+          centro={llamadasData.reduce((acc, d) => acc + d.value, 0)}
+          centroLabel="llamadas"
+          delay={0.35}
         />
       </div>
     </div>
