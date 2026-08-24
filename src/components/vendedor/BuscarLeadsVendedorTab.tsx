@@ -197,6 +197,9 @@ export default function BuscarLeadsVendedorTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Puente con la Bandeja/Pipeline (item 1).
   const [sincronizando, setSincronizando] = useState(false);
+  // Id de la búsqueda del historial que se está mandando al CRM, para que el
+  // spinner salga solo en esa fila y no en todas.
+  const [busquedaSincronizando, setBusquedaSincronizando] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading) { setElapsed(0); return; }
@@ -298,7 +301,7 @@ export default function BuscarLeadsVendedorTab() {
     const ids = lista.map((l) => l.id).filter(Boolean) as string[];
     if (!ids.length) {
       toast({ title: "Sin leads guardados", description: "Los prospectos repetidos no se vuelven a guardar, así que no tienen ficha que pasar al CRM.", variant: "destructive" });
-      return;
+      return 0;
     }
     setSincronizando(true);
     try {
@@ -328,10 +331,37 @@ export default function BuscarLeadsVendedorTab() {
         variant: total === 0 && Number(r.omitidos) > 0 ? "destructive" : "default",
       });
       setSelected(new Set());
+      return total;
     } catch (e) {
       toast({ title: "No se pudo sincronizar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+      return 0;
     } finally {
       setSincronizando(false);
+    }
+  };
+
+  // Manda al CRM una búsqueda entera del historial SIN tener que abrirla:
+  // se traen sus prospectos y se pasan por el mismo puente. Al terminar se
+  // recarga el historial para que los contadores (contactados) se actualicen.
+  const sincronizarBusqueda = async (b: Busqueda, yaContactados: boolean) => {
+    setBusquedaSincronizando(b.id);
+    try {
+      const { data, error } = await sb
+        .from("prospeccion_leads")
+        .select("id, lead_campana_id")
+        .eq("busqueda_id", b.id);
+      if (error) throw error;
+      const lista = (data ?? []) as Lead[];
+      if (!lista.length) {
+        toast({ title: "Esa búsqueda no tiene leads guardados", variant: "destructive" });
+        return;
+      }
+      const movidos = await sincronizar(yaContactados, lista);
+      if (movidos > 0) await cargarHistorial();
+    } catch (e) {
+      toast({ title: "No se pudo sincronizar la búsqueda", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setBusquedaSincronizando(null);
     }
   };
 
@@ -725,9 +755,29 @@ export default function BuscarLeadsVendedorTab() {
                               {b.clientes ? ` · ${b.clientes} clientes` : ""}
                             </div>
                           </button>
-                          <div className="flex items-center gap-2">
+                          {/* La búsqueda entera se manda al CRM sin abrirla:
+                              abrirla solo para eso era un paso de más. */}
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <Badge variant="secondary">score {b.estadisticas?.score_promedio ?? "—"}</Badge>
-                            <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); borrarBusqueda(b.id); }} className="text-muted-foreground hover:text-red-600">
+                            <Button
+                              type="button" size="sm" disabled={sincronizando || b.total_leads === 0}
+                              onClick={(e) => { e.stopPropagation(); sincronizarBusqueda(b, false); }}
+                              title="Pasar los leads de esta búsqueda a tu Bandeja"
+                              className="h-7 gap-1.5 bg-[#003DA5] px-2 text-[11px] hover:bg-[#003DA5]/90"
+                            >
+                              {busquedaSincronizando === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Inbox className="h-3 w-3" />}
+                              <span className="hidden sm:inline">A la Bandeja</span>
+                            </Button>
+                            <Button
+                              type="button" size="sm" variant="outline" disabled={sincronizando || b.total_leads === 0}
+                              onClick={(e) => { e.stopPropagation(); sincronizarBusqueda(b, true); }}
+                              title="Marcarlos como contactados y pasarlos al Pipeline"
+                              className="h-7 gap-1.5 px-2 text-[11px]"
+                            >
+                              {busquedaSincronizando === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Kanban className="h-3 w-3" />}
+                              <span className="hidden sm:inline">Al Pipeline</span>
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); borrarBusqueda(b.id); }} className="text-muted-foreground hover:text-red-600" title="Borrar búsqueda">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -790,9 +840,25 @@ export default function BuscarLeadsVendedorTab() {
                                         </TableCell>
                                         <TableCell className="hidden lg:table-cell"><span className="font-mono text-xs">{l.score ?? "—"}</span></TableCell>
                                         <TableCell>
-                                          <Button type="button" variant="ghost" size="sm" className="gap-1 text-[#003DA5]" onClick={(e) => { e.stopPropagation(); abrirDetalle(l); }}>
-                                            <Sparkles className="h-3.5 w-3.5" /> Mensaje
-                                          </Button>
+                                          <div className="flex items-center gap-0.5">
+                                            <Button type="button" variant="ghost" size="sm" className="gap-1 px-1.5 text-[#003DA5]" onClick={(e) => { e.stopPropagation(); abrirDetalle(l); }} title="Ver mensaje sugerido">
+                                              <Sparkles className="h-3.5 w-3.5" />
+                                            </Button>
+                                            {l.lead_campana_id ? (
+                                              <span className="inline-flex items-center gap-0.5 px-1 text-[10px] font-medium text-[#003DA5]" title="Ya está en tu Bandeja/Pipeline">
+                                                <ArrowRightCircle className="h-3 w-3" /> CRM
+                                              </span>
+                                            ) : (
+                                              <Button
+                                                type="button" variant="ghost" size="sm" disabled={sincronizando}
+                                                className="gap-1 px-1.5 text-muted-foreground hover:text-[#003DA5]"
+                                                onClick={(e) => { e.stopPropagation(); sincronizar(true, [l]); }}
+                                                title="Pasar este lead al Pipeline"
+                                              >
+                                                <Kanban className="h-3.5 w-3.5" />
+                                              </Button>
+                                            )}
+                                          </div>
                                         </TableCell>
                                       </TableRow>
                                     ))}
