@@ -33,10 +33,6 @@ import {
 } from "@/components/vendedor/types";
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 
-// leads_campana con las columnas nuevas aún no está en el types.ts generado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id, instagram, facebook, mensaje_instagram, notas_vendedor, origen, ultimo_contacto_at";
 
 // Cada columna trae de a 10 tarjetas y el resto se carga bajo demanda: con
@@ -253,6 +249,10 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const filtrosRef = useRef(filtros);
   filtrosRef.current = filtros;
 
+  // Único `any` del módulo, y a propósito: el builder de PostgREST es un tipo
+  // recursivo y tiparlo genéricamente aquí hace que TypeScript se rinda
+  // ("Type instantiation is excessively deep"). El resultado se vuelve a tipar
+  // en cada consulta, que es donde importa.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aplicarFiltros = (query: any) => {
     const f = filtrosRef.current;
@@ -269,7 +269,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
 
   const cargarColumna = async (etapa: Etapa, pagina: number, append: boolean) => {
     setCols((prev) => ({ ...prev, [etapa]: { ...prev[etapa], cargandoMas: true } }));
-    const base = sb
+    const base = supabase
       .from("leads_campana")
       .select(COLUMNAS, { count: "exact" })
       .not("primer_contacto_at", "is", null)
@@ -296,7 +296,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   };
 
   const cargarHoyCount = async () => {
-    const { count } = await sb
+    const { count } = await supabase
       .from("leads_campana")
       .select("id", { count: "exact", head: true })
       .not("primer_contacto_at", "is", null)
@@ -306,7 +306,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   };
 
   const cargarHoy = async () => {
-    const base = sb
+    const base = supabase
       .from("leads_campana")
       .select(COLUMNAS)
       .not("primer_contacto_at", "is", null)
@@ -322,7 +322,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     const [, { data: perfil }] = await Promise.all([
       Promise.all(ETAPAS_PIPELINE.map((etapa) => cargarColumna(etapa, 0, false))),
       supabase.auth.getUser().then(({ data: u }) =>
-        u?.user ? sb.from("vendedores").select("rol_venta, nombre_display").eq("user_id", u.user.id).maybeSingle() : { data: null },
+        u?.user ? supabase.from("vendedores").select("rol_venta, nombre_display").eq("user_id", u.user.id).maybeSingle() : { data: null },
       ),
       cargarHoyCount(),
     ]);
@@ -390,7 +390,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   };
 
   const moverEtapa = async (leadId: string, etapaOrigen: Etapa, etapaDestino: Etapa, motivoCierre?: string) => {
-    const { error } = await sb.rpc("vendedor_mover_etapa", { _lead_id: leadId, _etapa: etapaDestino, _motivo_cierre: motivoCierre ?? null });
+    const { error } = await supabase.rpc("vendedor_mover_etapa", { _lead_id: leadId, _etapa: etapaDestino, _motivo_cierre: motivoCierre ?? null });
     if (error) { toast({ title: "No se pudo mover", description: error.message, variant: "destructive" }); return; }
     moverLocal(leadId, etapaOrigen, etapaDestino, motivoCierre);
   };
@@ -403,7 +403,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData?.user?.id;
     if (!uid) return;
-    await sb.from("contactos_log").insert({
+    await supabase.from("contactos_log").insert({
       lead_id: leadId, user_id: uid, canal: "whatsapp", plantilla_id: plantillaId, mensaje_final: mensaje, origen: "leads_campana",
     });
   };

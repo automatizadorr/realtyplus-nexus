@@ -22,10 +22,6 @@ import type { PlantillaEmail, PlantillaWa, RolVenta } from "@/components/vendedo
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 import { bodyRemitente, describirRemitente, useRemitente } from "@/hooks/use-remitente";
 
-// leads_campana.primer_contacto_at aún no está en el types.ts generado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 type LeadEnBandeja = {
   id: string; nombre: string | null; telefono: string | null; email: string | null;
   pais: string | null; fecha_asignacion: string | null; origen: string | null;
@@ -103,12 +99,13 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
   const esParticular = remitente.remitente_modo === "particular";
 
   useEffect(() => {
-    sb.from("plantilla_favoritos").select("canal, plantilla_id").then(({ data }: { data: { canal: Canal; plantilla_id: string }[] | null }) => {
-      if (data) setFavoritos(new Set(data.map((f) => favKey(f.canal, f.plantilla_id))));
+    // `canal` viene como text de la BD; acá solo puede ser whatsapp o email.
+    supabase.from("plantilla_favoritos").select("canal, plantilla_id").then(({ data }) => {
+      if (data) setFavoritos(new Set(data.map((f) => favKey(f.canal as Canal, f.plantilla_id))));
     });
     supabase.auth.getUser().then(async ({ data: u }) => {
       if (!u?.user) return;
-      const { data } = await sb.from("vendedores").select("rol_venta, nombre_display").eq("user_id", u.user.id).maybeSingle();
+      const { data } = await supabase.from("vendedores").select("rol_venta, nombre_display").eq("user_id", u.user.id).maybeSingle();
       setMiRol((data?.rol_venta as RolVenta | undefined) ?? undefined);
       setMiNombre((data?.nombre_display as string | undefined) ?? null);
     });
@@ -128,15 +125,15 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     const eraFavorita = favoritos.has(key);
     setFavoritos((s) => { const n = new Set(s); if (eraFavorita) n.delete(key); else n.add(key); return n; });
     if (eraFavorita) {
-      await sb.from("plantilla_favoritos").delete().eq("user_id", uid).eq("canal", canal).eq("plantilla_id", plantillaId);
+      await supabase.from("plantilla_favoritos").delete().eq("user_id", uid).eq("canal", canal).eq("plantilla_id", plantillaId);
     } else {
-      await sb.from("plantilla_favoritos").insert({ user_id: uid, canal, plantilla_id: plantillaId });
+      await supabase.from("plantilla_favoritos").insert({ user_id: uid, canal, plantilla_id: plantillaId });
     }
   };
 
   const cargar = async (p: number = page) => {
     setLoading(true);
-    let query = sb
+    let query = supabase
       .from("leads_campana")
       .select("id, nombre, telefono, email, pais, fecha_asignacion, origen", { count: "exact" })
       .is("primer_contacto_at", null)
@@ -198,7 +195,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData?.user?.id;
     if (!uid) return;
-    await sb.from("contactos_log").insert({
+    await supabase.from("contactos_log").insert({
       lead_id: leadId, user_id: uid, canal, plantilla_id: plantillaId, mensaje_final: mensaje, origen: "leads_campana",
     });
   };
@@ -227,7 +224,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     if (ids.length === 0) return 0;
     setLiberando(true);
     try {
-      const { data, error } = await sb.rpc("vendedor_liberar_a_pipeline", { _lead_ids: ids });
+      const { data, error } = await supabase.rpc("vendedor_liberar_a_pipeline", { _lead_ids: ids });
       if (error) throw error;
       const n = (data ?? [])[0]?.liberados ?? 0;
       // Al liberar, la ventana (offset/limit) actual corre sola: se vuelve a

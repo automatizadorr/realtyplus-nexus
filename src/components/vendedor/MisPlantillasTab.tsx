@@ -12,9 +12,6 @@ import type { PlantillaWa } from "@/components/vendedor/types";
 
 type Stat = { plantilla_id: string; canal: string; usos: number; respondieron: number; tasa_pct: number | null };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 // Plantillas de WhatsApp del vendedor. El diseño de correos (HTML, botón,
 // logo, etc.) vive en su propia sección "Correos Personalizados"
 // (CorreosVendedorTab), con su propio ítem en el sidebar.
@@ -31,7 +28,7 @@ export default function MisPlantillasTab({
   const [stats, setStats] = useState<Stat[]>([]);
 
   useEffect(() => {
-    sb.rpc("plantilla_stats").then(({ data }: { data: Stat[] | null }) => setStats(data ?? []));
+    supabase.rpc("plantilla_stats").then(({ data }: { data: Stat[] | null }) => setStats(data ?? []));
   }, []);
 
   const statsById = useMemo(() => {
@@ -47,14 +44,14 @@ export default function MisPlantillasTab({
   const abrirEditar = (p: PlantillaWa) => { setEditing(p); setDialogOpen(true); };
 
   const eliminar = async (p: PlantillaWa) => {
-    const { error } = await sb.from("plantillas_whatsapp").delete().eq("id", p.id);
+    const { error } = await supabase.from("plantillas_whatsapp").delete().eq("id", p.id);
     if (error) { toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Plantilla borrada" });
     onChanged();
   };
 
   const toggleActiva = async (p: PlantillaWa, activa: boolean) => {
-    const { error } = await sb.from("plantillas_whatsapp").update({ activa }).eq("id", p.id);
+    const { error } = await supabase.from("plantillas_whatsapp").update({ activa }).eq("id", p.id);
     if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
     onChanged();
   };

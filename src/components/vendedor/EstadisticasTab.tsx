@@ -6,9 +6,6 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { supabase } from "@/integrations/supabase/client";
 import { ETAPA_LABEL, type CorreosResumen, type VendedorKpis } from "@/components/vendedor/types";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 // Paleta cíclica para las plantillas más usadas (no hay un color fijo por
 // plantilla, a diferencia de las otras donas que sí tienen semántica).
 const PALETA_PLANTILLAS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#f43f5e", "#06b6d4", "#a78bfa", "#84cc16"];
@@ -256,16 +253,16 @@ export default function EstadisticasTab({ kpis, correos }: { kpis: VendedorKpis 
   const [resultadosLlamadas, setResultadosLlamadas] = useState<{ resultado: string; llamadas: number }[]>([]);
 
   useEffect(() => {
-    sb.rpc("vendedor_plantillas_usadas").then(({ data }: { data: typeof plantillasUsadas | null }) => {
+    supabase.rpc("vendedor_plantillas_usadas").then(({ data }: { data: typeof plantillasUsadas | null }) => {
       if (data) setPlantillasUsadas(data);
     });
-    sb.rpc("vendedor_ganados_por_semana", { _semanas: 8 }).then(({ data }: { data: { semana: string; ganados: number }[] | null }) => {
+    supabase.rpc("vendedor_ganados_por_semana", { _semanas: 8 }).then(({ data }: { data: { semana: string; ganados: number }[] | null }) => {
       if (data) setGanadosPorSemana(data);
     });
-    sb.rpc("vendedor_contactos_por_canal", { _dias: 30 }).then(({ data }: { data: { canal: string; contactos: number }[] | null }) => {
+    supabase.rpc("vendedor_contactos_por_canal", { _dias: 30 }).then(({ data }: { data: { canal: string; contactos: number }[] | null }) => {
       if (data) setPorCanal(data);
     });
-    sb.rpc("vendedor_resultados_llamadas", { _dias: 30 }).then(({ data }: { data: { resultado: string; llamadas: number }[] | null }) => {
+    supabase.rpc("vendedor_resultados_llamadas", { _dias: 30 }).then(({ data }: { data: { resultado: string; llamadas: number }[] | null }) => {
       if (data) setResultadosLlamadas(data);
     });
   }, []);

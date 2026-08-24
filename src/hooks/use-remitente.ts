@@ -4,10 +4,6 @@ import {
   REMITENTE_CUPO, REMITENTE_DOMINIO, type RemitenteConfig, type RemitenteModo,
 } from "@/components/vendedor/types";
 
-// Las columnas remitente_* de `vendedores` todavía no están en el types.ts generado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 const POR_DEFECTO: RemitenteConfig = {
   remitente_modo: "auto",
   remitente_from_name: null,
@@ -34,7 +30,7 @@ export function useRemitente() {
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData?.user?.id;
     if (!uid) { setCargando(false); return; }
-    const { data } = await sb
+    const { data } = await supabase
       .from("vendedores")
       .select("remitente_modo, remitente_from_name, remitente_local, remitente_particular, remitente_reply_to")
       .eq("user_id", uid)
@@ -46,7 +42,7 @@ export function useRemitente() {
   useEffect(() => { cargar(); }, [cargar]);
 
   const guardar = useCallback(async (next: RemitenteConfig) => {
-    const { error } = await sb.rpc("vendedor_set_remitente", {
+    const { error } = await supabase.rpc("vendedor_set_remitente", {
       _modo: next.remitente_modo,
       _from_name: next.remitente_from_name,
       _local: next.remitente_local,

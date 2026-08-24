@@ -23,10 +23,6 @@ import {
   type LeadCampana, type LeadDetalle, type PlantillaEmail, type PlantillaWa, type RolVenta,
 } from "@/components/vendedor/types";
 
-// RPCs y columnas nuevas todavía no están en el types.ts generado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 const CANAL_LABEL: Record<ContactoLog["canal"], string> = {
   whatsapp: "WhatsApp", email: "Email", llamada: "Llamada", instagram: "Instagram", facebook: "Facebook",
 };
@@ -129,7 +125,7 @@ export default function LeadDetalleDialog({
   const cargar = useCallback(async () => {
     if (!leadId) return;
     setCargando(true);
-    const { data: d, error } = await sb.rpc("vendedor_lead_detalle", { _lead_id: leadId });
+    const { data: d, error } = await supabase.rpc("vendedor_lead_detalle", { _lead_id: leadId });
     setCargando(false);
     if (error) { toast({ title: "No se pudo cargar la ficha", description: error.message, variant: "destructive" }); return; }
     const detalle = d as LeadDetalle;
@@ -159,7 +155,7 @@ export default function LeadDetalleDialog({
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData?.user?.id;
     if (!uid || !leadId) return;
-    const { error } = await sb.from("contactos_log").insert({
+    const { error } = await supabase.from("contactos_log").insert({
       lead_id: leadId, user_id: uid, canal, plantilla_id: plantillaId ?? null,
       mensaje_final: mensaje, origen: "leads_campana", resultado: resultado ?? null,
     });
@@ -189,7 +185,7 @@ export default function LeadDetalleDialog({
   const guardarNotas = async () => {
     if (!leadId) return;
     setGuardandoNotas(true);
-    const { error } = await sb.rpc("vendedor_set_notas_lead", { _lead_id: leadId, _notas: notas });
+    const { error } = await supabase.rpc("vendedor_set_notas_lead", { _lead_id: leadId, _notas: notas });
     setGuardandoNotas(false);
     if (error) { toast({ title: "No se pudieron guardar las notas", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Notas guardadas" });
@@ -200,7 +196,7 @@ export default function LeadDetalleDialog({
     if (!leadId) return;
     if (destino === "perdido" && !motivoCierre?.trim()) { setMotivoPerdido(""); return; }
     setMoviendo(true);
-    const { error } = await sb.rpc("vendedor_mover_etapa", {
+    const { error } = await supabase.rpc("vendedor_mover_etapa", {
       _lead_id: leadId, _etapa: destino, _motivo_cierre: motivoCierre?.trim() || null,
     });
     setMoviendo(false);
@@ -214,7 +210,7 @@ export default function LeadDetalleDialog({
   const programarSeguimiento = async () => {
     if (!leadId || !seguimiento) return;
     const iso = new Date(`${seguimiento}T09:00:00`).toISOString();
-    const { error } = await sb.rpc("vendedor_set_proximo_contacto", { _lead_id: leadId, _fecha: iso });
+    const { error } = await supabase.rpc("vendedor_set_proximo_contacto", { _lead_id: leadId, _fecha: iso });
     if (error) { toast({ title: "No se pudo programar", description: error.message, variant: "destructive" }); return; }
     toast({ title: `Seguimiento el ${new Date(iso).toLocaleDateString("es-CL")}` });
     await cargar();
@@ -223,7 +219,7 @@ export default function LeadDetalleDialog({
 
   const archivar = async () => {
     if (!leadId) return;
-    const { error } = await sb.rpc("vendedor_archivar_lead", { _lead_id: leadId, _archivado: true });
+    const { error } = await supabase.rpc("vendedor_archivar_lead", { _lead_id: leadId, _archivado: true });
     if (error) { toast({ title: "No se pudo archivar", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Lead archivado" });
     onOpenChange(false);

@@ -13,7 +13,7 @@ export default function ReactivacionChatTab() {
   const [allTags, setAllTags] = useState<LeadTag[]>([]);
 
   const refreshTags = async () => {
-    const { data } = await (supabase as any).from("lead_tags").select("*").order("nombre");
+    const { data } = await supabase.from("lead_tags").select("*").order("nombre");
     setAllTags((data || []) as LeadTag[]);
   };
 

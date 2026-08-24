@@ -3,9 +3,6 @@ import { NavLink } from "react-router-dom";
 import { Inbox, Kanban, RotateCcw, Radar, FileText, Palette, PieChart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 // Mismas secciones que el sidebar del vendedor, pero dentro de la página.
 // El sidebar se colapsa en móvil y obliga a salir del contexto en escritorio;
 // esta barra deja el flujo completo (Bandeja → Pipeline → herramientas) a un
@@ -25,7 +22,7 @@ export default function SeccionesNav() {
 
   useEffect(() => {
     let vivo = true;
-    sb.rpc("vendedor_bandeja_count").then(({ data }: { data: number | null }) => {
+    supabase.rpc("vendedor_bandeja_count").then(({ data }: { data: number | null }) => {
       if (vivo && typeof data === "number") setEnBandeja(data);
     });
     return () => { vivo = false; };

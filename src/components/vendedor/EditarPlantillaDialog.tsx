@@ -12,9 +12,6 @@ import type { PlantillaWa } from "@/components/vendedor/types";
 
 const VARIABLES_HINT = "Variables: {{nombre}} {{empresa}} {{ciudad}} {{pais}} {{propuesta_valor}} {{gancho}}";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 // Diálogo de edición de plantillas de WhatsApp (Mis Plantillas). El diseño de
 // correo vive aparte, inline, en la sección "Diseño de Correo"
 // (CorreosVendedorTab) — no en un diálogo.
@@ -41,8 +38,8 @@ export default function EditarPlantillaDialog({
     setSaving(true);
     const payload = { nombre: form.nombre, contenido: form.contenido, creado_por: user.id, activa: true };
     const { error } = plantilla
-      ? await sb.from("plantillas_whatsapp").update(payload).eq("id", plantilla.id)
-      : await sb.from("plantillas_whatsapp").insert(payload);
+      ? await supabase.from("plantillas_whatsapp").update(payload).eq("id", plantilla.id)
+      : await supabase.from("plantillas_whatsapp").insert(payload);
     setSaving(false);
     if (error) { toast({ title: "No se pudo guardar", description: error.message, variant: "destructive" }); return; }
     toast({ title: plantilla ? "Plantilla actualizada" : "Plantilla creada" });

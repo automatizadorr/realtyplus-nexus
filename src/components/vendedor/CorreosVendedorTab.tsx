@@ -20,9 +20,6 @@ import type { PlantillaEmail } from "@/components/vendedor/types";
 
 const VARIABLES_HINT = "Variables: {{nombre}} {{empresa}} {{ciudad}} {{pais}} {{propuesta_valor}} {{gancho}}";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 type Form = {
   nombre: string; asunto: string; cuerpo: string;
   designMode: DesignMode; titulo: string; ctaText: string; ctaUrl: string;
@@ -99,7 +96,7 @@ export default function CorreosVendedorTab({
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData?.user?.id;
     if (!uid) return "Tu corredora";
-    const { data } = await sb.from("vendedores").select("nombre_display").eq("user_id", uid).maybeSingle();
+    const { data } = await supabase.from("vendedores").select("nombre_display").eq("user_id", uid).maybeSingle();
     return data?.nombre_display || userData.user?.email || "Tu corredora";
   };
 
@@ -136,10 +133,10 @@ export default function CorreosVendedorTab({
         avatar_url: form.avatarUrl || null, footer_text: form.footerText || null,
       };
       if (actual) {
-        const { error } = await sb.from("plantillas_email").update(campos).eq("id", actual.id);
+        const { error } = await supabase.from("plantillas_email").update(campos).eq("id", actual.id);
         if (error) throw error;
       } else {
-        const { data, error } = await sb.from("plantillas_email")
+        const { data, error } = await supabase.from("plantillas_email")
           .insert({ ...campos, creado_por: user.id, activa: true })
           .select("id").single();
         if (error) throw error;
@@ -156,7 +153,7 @@ export default function CorreosVendedorTab({
 
   const toggleActiva = async (v: boolean) => {
     if (!actual) return;
-    const { error } = await sb.from("plantillas_email").update({ activa: v }).eq("id", actual.id);
+    const { error } = await supabase.from("plantillas_email").update({ activa: v }).eq("id", actual.id);
     if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
     onChanged();
   };
@@ -197,7 +194,7 @@ export default function CorreosVendedorTab({
   const eliminar = async () => {
     if (!actual || actual.creado_por !== user?.id) return;
     setEliminando(true);
-    const { error } = await sb.from("plantillas_email").delete().eq("id", actual.id);
+    const { error } = await supabase.from("plantillas_email").delete().eq("id", actual.id);
     setEliminando(false);
     if (error) { toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Diseño borrado" });

@@ -7,10 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { LeadCampana } from "@/components/vendedor/types";
 
-// leads_campana con las columnas nuevas aún no está en el types.ts generado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, fecha_asignacion";
 
 export default function ArchivadosDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -21,7 +17,7 @@ export default function ArchivadosDialog({ open, onClose }: { open: boolean; onC
 
   const cargar = async () => {
     setLoading(true);
-    const { data, error } = await sb
+    const { data, error } = await supabase
       .from("leads_campana")
       .select(COLUMNAS)
       .eq("archivado", true)
@@ -35,7 +31,7 @@ export default function ArchivadosDialog({ open, onClose }: { open: boolean; onC
 
   const desarchivar = async (leadId: string) => {
     setRestaurando(leadId);
-    const { error } = await sb.rpc("vendedor_archivar_lead", { _lead_id: leadId, _archivado: false });
+    const { error } = await supabase.rpc("vendedor_archivar_lead", { _lead_id: leadId, _archivado: false });
     setRestaurando(null);
     if (error) { toast({ title: "No se pudo desarchivar", description: error.message, variant: "destructive" }); return; }
     setLeads((prev) => prev.filter((l) => l.id !== leadId));

@@ -12,9 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PAISES_PROSPECCION } from "@/lib/paises";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 type Form = {
   nombre: string; telefono: string; email: string; pais: string;
   instagram: string; facebook: string; notas: string;
@@ -46,7 +43,7 @@ export default function RegistroManualDialog({
   const guardar = async () => {
     if (!puedeGuardar) return;
     setGuardando(true);
-    const { data, error } = await sb.rpc("vendedor_registrar_lead_manual", {
+    const { data, error } = await supabase.rpc("vendedor_registrar_lead_manual", {
       _nombre: form.nombre.trim(),
       _telefono: form.telefono.trim() || null,
       _email: form.email.trim() || null,

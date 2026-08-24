@@ -36,11 +36,6 @@ async function mensajeDeError(error: unknown): Promise<string> {
   return error instanceof Error ? error.message : String(error);
 }
 
-
-// leads_campana con las columnas nuevas aún no está en el types.ts generado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 type Stats = {
   total?: number; con_whatsapp?: number; sin_web_pct?: number;
   score_promedio?: number; distribucion_tipo?: Record<string, number>;
@@ -305,7 +300,7 @@ export default function BuscarLeadsVendedorTab() {
     }
     setSincronizando(true);
     try {
-      const { data, error } = await sb.rpc("vendedor_prospectos_a_pipeline", {
+      const { data, error } = await supabase.rpc("vendedor_prospectos_a_pipeline", {
         _prospecto_ids: ids, _ya_contactados: yaContactados,
       });
       if (error) throw error;
@@ -346,7 +341,7 @@ export default function BuscarLeadsVendedorTab() {
   const sincronizarBusqueda = async (b: Busqueda, yaContactados: boolean) => {
     setBusquedaSincronizando(b.id);
     try {
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from("prospeccion_leads")
         .select("id, lead_campana_id")
         .eq("busqueda_id", b.id);
@@ -368,7 +363,7 @@ export default function BuscarLeadsVendedorTab() {
   const cargarHistorial = async () => {
     setHistLoading(true);
     try {
-      const { data, error } = await sb.rpc("prospeccion_historial");
+      const { data, error } = await supabase.rpc("prospeccion_historial");
       if (error) throw error;
       setHistorial((data ?? []) as Busqueda[]);
     } catch (e) {
@@ -382,7 +377,7 @@ export default function BuscarLeadsVendedorTab() {
     if (expandedBusquedaId === b.id) { setExpandedBusquedaId(null); setExpandedLeads(null); return; }
     setExpandedBusquedaId(b.id); setExpandedLoading(true);
     try {
-      const { data, error: err } = await sb.from("prospeccion_leads").select("*").eq("busqueda_id", b.id).order("score", { ascending: false });
+      const { data, error: err } = await supabase.from("prospeccion_leads").select("*").eq("busqueda_id", b.id).order("score", { ascending: false });
       if (err) throw err;
       setExpandedLeads((data ?? []) as Lead[]);
     } catch (e) {
@@ -394,7 +389,7 @@ export default function BuscarLeadsVendedorTab() {
   };
 
   const borrarBusqueda = async (id: string) => {
-    const { error } = await sb.from("prospeccion_busquedas").delete().eq("id", id);
+    const { error } = await supabase.from("prospeccion_busquedas").delete().eq("id", id);
     if (error) { toast({ title: "No se pudo borrar", description: error.message, variant: "destructive" }); return; }
     setHistorial((h) => (h ?? []).filter((b) => b.id !== id));
     toast({ title: "Búsqueda borrada" });
@@ -402,7 +397,7 @@ export default function BuscarLeadsVendedorTab() {
 
   const cambiarEstado = async (lead: Lead, estado: string) => {
     if (!lead.id) return;
-    const { error } = await sb.from("prospeccion_leads").update({ estado_gestion: estado }).eq("id", lead.id);
+    const { error } = await supabase.from("prospeccion_leads").update({ estado_gestion: estado }).eq("id", lead.id);
     if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
     setLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, estado_gestion: estado } : l)));
     setDetail((d) => (d && d.id === lead.id ? { ...d, estado_gestion: estado } : d));
@@ -411,7 +406,7 @@ export default function BuscarLeadsVendedorTab() {
 
   const guardarNotas = async (lead: Lead, notas: string) => {
     if (!lead.id) return;
-    const { error } = await sb.from("prospeccion_leads").update({ notas }).eq("id", lead.id);
+    const { error } = await supabase.from("prospeccion_leads").update({ notas }).eq("id", lead.id);
     if (error) { toast({ title: "No se pudieron guardar las notas", description: error.message, variant: "destructive" }); return; }
     setLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, notas } : l)));
     setExpandedLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, notas } : l)));

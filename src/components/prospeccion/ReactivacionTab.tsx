@@ -78,10 +78,6 @@ export default function ReactivacionTab() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // RPC de facets (país) no está en el types.ts generado.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sb = supabase as any;
-
   // Catálogos
   const [tags, setTags] = useState<Tag[]>([]);
   const [paises, setPaises] = useState<{ pais: string; n: number }[]>([]);
@@ -120,7 +116,7 @@ export default function ReactivacionTab() {
   useEffect(() => {
     supabase.from("lead_tags").select("id, nombre, color, es_permanente").order("nombre")
       .then(({ data }) => { if (data) setTags(orderTags(data as Tag[])); });
-    sb.rpc("leads_campana_paises").then(({ data }: { data: { pais: string; n: number }[] | null }) => {
+    supabase.rpc("leads_campana_paises").then(({ data }: { data: { pais: string; n: number }[] | null }) => {
       if (data) setPaises(data);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,7 +127,7 @@ export default function ReactivacionTab() {
 
   // Emails que ya recibieron correo (estado <> fallido). Tope 5000 para rendimiento.
   const emailsConCorreo = async (): Promise<Set<string>> => {
-    const { data } = await sb.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(5000);
+    const { data } = await supabase.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(5000);
     return new Set(
       (data ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean),
     );
@@ -140,7 +136,7 @@ export default function ReactivacionTab() {
     const emails = rows.map((r) => (r.email || "").trim().toLowerCase()).filter(Boolean);
     const map: Record<string, { estado: string; enviado_at: string | null; count: number }> = {};
     if (!emails.length) return map;
-    const { data } = await sb
+    const { data } = await supabase
       .from("correo_envios")
       .select("email, estado, enviado_at")
       .in("email", emails)
@@ -195,10 +191,7 @@ export default function ReactivacionTab() {
         if (error) throw error;
         if (cancel) return;
 
-        // El types.ts generado va atrasado respecto de leads_campana
-        // (vendedor_id/etapa_venta/primer_contacto_at aun no estan ahi), asi
-        // que PostgREST tipa la fila como error de columna inexistente.
-        let filas = ((data ?? []) as unknown) as LeadRow[];
+        let filas = (data ?? []) as LeadRow[];
         if (extraExcluir) filas = filas.filter(r => !extraExcluir!.has((r.email || "").trim().toLowerCase()));
         setRows(filas);
         setTotal(count ?? filas.length);
@@ -260,7 +253,7 @@ export default function ReactivacionTab() {
       // Filtro client-side para soloSinCorreo
       let filas = (data ?? []) as Pick<LeadRow, "nombre" | "email" | "pais" | "resumen_ia">[];
       if (soloSinCorreo) {
-        const { data: correos } = await sb.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(5000);
+        const { data: correos } = await supabase.from("correo_envios").select("email").not("estado", "eq", "fallido").limit(5000);
         const setExcluir = new Set((correos ?? []).map((r: { email: string }) => (r.email || "").trim().toLowerCase()).filter(Boolean));
         filas = filas.filter(l => !setExcluir.has((l.email || "").trim().toLowerCase()));
       }
@@ -296,7 +289,7 @@ export default function ReactivacionTab() {
   const cargarSinCorreoEnCorreos = async () => {
     setCargandoSin(true);
     try {
-      const { data: enviados } = await sb
+      const { data: enviados } = await supabase
         .from("correo_envios")
         .select("email")
         .not("estado", "eq", "fallido")

@@ -11,10 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
-// RPC de facets (país) no está en el types.ts generado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 const PAGE_SIZE = 15;
 const LOTES = [100, 200, 300, 500, 600, 700, 800, 900];
 
@@ -50,7 +46,7 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   useEffect(() => {
-    sb.rpc("leads_campana_paises").then(({ data }: { data: { pais: string; n: number }[] | null }) => {
+    supabase.rpc("leads_campana_paises").then(({ data }: { data: { pais: string; n: number }[] | null }) => {
       if (data) setPaises(data);
     });
   }, []);
@@ -80,9 +76,7 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
         const { data, count, error } = await query;
         if (error) throw error;
         if (cancel) return;
-        // Ver nota en ReactivacionTab: el types.ts generado no incluye aun
-        // las columnas de vendedor en leads_campana.
-        setRows(((data ?? []) as unknown) as LeadRow[]);
+        setRows((data ?? []) as LeadRow[]);
         setTotal(count ?? 0);
       } catch (e) {
         if (!cancel) toast({
@@ -116,8 +110,7 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     if (!vendedorAsignar || selected.size === 0) return;
     setAsignando(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("leads_campana")
         .update({ vendedor_id: vendedorAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo", primer_contacto_at: null })
         .in("id", [...selected]);
@@ -136,7 +129,7 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     if (!vendedorAsignar) return;
     setEnviandoLote(true);
     try {
-      const { data, error } = await sb.rpc("admin_asignar_leads", {
+      const { data, error } = await supabase.rpc("admin_asignar_leads", {
         _vendedor_id: vendedorAsignar,
         _cantidad: loteCantidad === "todos" ? null : Number(loteCantidad),
         _pais: pais,
