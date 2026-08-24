@@ -15,6 +15,7 @@ import BandejaTab from "@/components/vendedor/BandejaTab";
 import ReactivacionChatTab from "@/components/vendedor/ReactivacionChatTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
 import ArchivadosDialog from "@/components/vendedor/ArchivadosDialog";
+import SeccionesNav from "@/components/vendedor/SeccionesNav";
 import type { CorreosResumen, PlantillaEmail, PlantillaWa, RolVenta, VendedorKpis } from "@/components/vendedor/types";
 
 // plantillas_* / RPC vendedor_kpis aún no están en el types.ts generado.
@@ -140,9 +141,11 @@ export default function MisLeads() {
         </p>
       )}
 
-      {/* Sin TabsList: la navegación entre secciones vive solo en el sidebar
-          (Bandeja/Pipeline/Leads DataBase/Mis Plantillas/Diseño de Correo/
-          Estadísticas). El valor activo viene de la URL (/mis-leads/:tab). */}
+      {/* La navegación entre secciones vive en el sidebar Y aquí dentro: en
+          móvil el sidebar se colapsa y en escritorio obliga a salir del
+          contexto, así que la misma lista está a un clic dentro de la página.
+          El valor activo del Tabs viene de la URL (/mis-leads/:tab). */}
+      {miRol && <SeccionesNav />}
       <Tabs value={tabActivo}>
         <TabsContent value="bandeja">
           <BandejaTab

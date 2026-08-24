@@ -1,17 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft, ChevronRight, Star, Eye, Pencil } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft,
+  ChevronRight, Star, Eye, Pencil, UserPlus, Search, X, Kanban, Radar, AtSign, ChevronDown, Send,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
 import EditarPlantillaDialog from "@/components/vendedor/EditarPlantillaDialog";
-import type { PlantillaEmail, PlantillaWa } from "@/components/vendedor/types";
+import RegistroManualDialog from "@/components/vendedor/RegistroManualDialog";
+import RemitenteCard from "@/components/vendedor/RemitenteCard";
+import LeadDetalleDialog from "@/components/vendedor/LeadDetalleDialog";
+import type { PlantillaEmail, PlantillaWa, RolVenta } from "@/components/vendedor/types";
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
+import { bodyRemitente, describirRemitente, useRemitente } from "@/hooks/use-remitente";
 
 // leads_campana.primer_contacto_at aún no está en el types.ts generado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,12 +28,16 @@ const sb = supabase as any;
 
 type LeadEnBandeja = {
   id: string; nombre: string | null; telefono: string | null; email: string | null;
-  pais: string | null; fecha_asignacion: string | null;
+  pais: string | null; fecha_asignacion: string | null; origen: string | null;
 };
 
 // Se trae de a 25 (no toda la bandeja de una), para no volver lenta la
 // plataforma cuando a un vendedor le asignan lotes grandes de golpe.
 const PAGE_SIZE = 25;
+
+// Un mailto con demasiados destinatarios supera el largo de URL que aceptan
+// Windows/macOS y el cliente de correo lo trunca en silencio.
+const MAX_BCC_PARTICULAR = 40;
 
 function waLink(l: LeadEnBandeja): string | null {
   const raw = (l.telefono || "").replace(/[^\d]/g, "");
@@ -42,6 +55,11 @@ function ordenarPorFavorito<T extends { id: string }>(items: T[], canal: Canal, 
     const favB = favoritos.has(favKey(canal, b.id)) ? 0 : 1;
     return favA - favB;
   });
+}
+
+// PostgREST separa las condiciones de `or(...)` por comas.
+function sanearBusqueda(q: string): string {
+  return q.trim().replace(/[,()*]/g, " ").replace(/\s+/g, " ");
 }
 
 export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados, onPlantillasChanged }: {
@@ -65,15 +83,42 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
   const [enviandoCorreos, setEnviandoCorreos] = useState(false);
   const [liberando, setLiberando] = useState(false);
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
-  const [editando, setEditando] = useState<{ canal: Canal; plantilla: PlantillaWa | PlantillaEmail } | null>(null);
+  // Solo plantillas de WhatsApp: el diseño del correo se edita en su propia
+  // sección ("Diseño de Correo"), que es un editor visual completo.
+  const [editando, setEditando] = useState<PlantillaWa | null>(null);
+  // Alta manual (item 2) y ficha del lead (item 4) desde la propia Bandeja.
+  const [registroAbierto, setRegistroAbierto] = useState(false);
+  const [detalleId, setDetalleId] = useState<string | null>(null);
+  const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
+  const [miNombre, setMiNombre] = useState<string | null>(null);
+  // Buscador de la bandeja (server-side, no solo sobre la página cargada).
+  const [qInput, setQInput] = useState("");
+  const [q, setQ] = useState("");
+  // Remitente de correo elegido por el vendedor (item 7). Se puede cambiar
+  // aquí mismo, sin ir a "Diseño de Correo".
+  const { config: remitente } = useRemitente();
+  const [remitenteAbierto, setRemitenteAbierto] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const esParticular = remitente.remitente_modo === "particular";
 
   useEffect(() => {
     sb.from("plantilla_favoritos").select("canal, plantilla_id").then(({ data }: { data: { canal: Canal; plantilla_id: string }[] | null }) => {
       if (data) setFavoritos(new Set(data.map((f) => favKey(f.canal, f.plantilla_id))));
     });
+    supabase.auth.getUser().then(async ({ data: u }) => {
+      if (!u?.user) return;
+      const { data } = await sb.from("vendedores").select("rol_venta, nombre_display").eq("user_id", u.user.id).maybeSingle();
+      setMiRol((data?.rol_venta as RolVenta | undefined) ?? undefined);
+      setMiNombre((data?.nombre_display as string | undefined) ?? null);
+    });
   }, []);
+
+  // Debounce del buscador: 350 ms sin teclear y recién ahí se consulta.
+  useEffect(() => {
+    const t = setTimeout(() => setQ(qInput), 350);
+    return () => clearTimeout(t);
+  }, [qInput]);
 
   const toggleFavorito = async (canal: Canal, plantillaId: string) => {
     const { data: userData } = await supabase.auth.getUser();
@@ -81,7 +126,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     if (!uid) return;
     const key = favKey(canal, plantillaId);
     const eraFavorita = favoritos.has(key);
-    setFavoritos((s) => { const n = new Set(s); eraFavorita ? n.delete(key) : n.add(key); return n; });
+    setFavoritos((s) => { const n = new Set(s); if (eraFavorita) n.delete(key); else n.add(key); return n; });
     if (eraFavorita) {
       await sb.from("plantilla_favoritos").delete().eq("user_id", uid).eq("canal", canal).eq("plantilla_id", plantillaId);
     } else {
@@ -91,14 +136,17 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
 
   const cargar = async (p: number = page) => {
     setLoading(true);
-    const { data, count, error } = await sb
+    let query = sb
       .from("leads_campana")
-      .select("id, nombre, telefono, email, pais, fecha_asignacion", { count: "exact" })
+      .select("id, nombre, telefono, email, pais, fecha_asignacion, origen", { count: "exact" })
       .is("primer_contacto_at", null)
       // Un lead archivado (duplicado de teléfono, número inmarcable, o archivado
       // a mano) no debe seguir apareciendo en la bandeja. El Pipeline ya filtraba
       // esto; la Bandeja no, y por eso los archivados seguían a la vista.
-      .not("archivado", "is", true)
+      .not("archivado", "is", true);
+    const texto = sanearBusqueda(q);
+    if (texto) query = query.or(`nombre.ilike.%${texto}%,email.ilike.%${texto}%,telefono.ilike.%${texto}%`);
+    const { data, count, error } = await query
       .order("fecha_asignacion", { ascending: true })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1);
     if (error) toast({ title: "Error al cargar la bandeja", description: error.message, variant: "destructive" });
@@ -114,6 +162,11 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
 
   useEffect(() => { cargar(page); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [page]);
   useEffect(() => { setPage((p) => Math.min(p, totalPages - 1)); }, [totalPages]);
+  // Al buscar se vuelve a la primera página (si ya estaba en 0, se recarga).
+  useEffect(() => {
+    if (page === 0) cargar(0); else setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   const toggleSel = (id: string) => {
     setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -187,15 +240,43 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     }
   };
 
+  // Con remitente "particular" no se pasa por Resend: se abre el cliente de
+  // correo del vendedor con los destinatarios en copia oculta. No hay
+  // estadísticas de entrega, pero tampoco gasta cupo.
+  const enviarPorClienteDeCorreo = (destinatarios: LeadEnBandeja[]): number => {
+    if (!emailPlantilla) return 0;
+    const conEmail = destinatarios.filter((l) => l.email).slice(0, MAX_BCC_PARTICULAR);
+    if (conEmail.length === 0) return 0;
+    const asunto = fillTemplate(emailPlantilla.asunto, {});
+    const cuerpo = fillTemplate(emailPlantilla.cuerpo_text || emailPlantilla.cuerpo_html, {});
+    const bcc = conEmail.map((l) => l.email).join(",");
+    window.location.href = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+    for (const l of conEmail) registrarContacto(l.id, "email", emailPlantilla.id, asunto);
+    return conEmail.length;
+  };
+
   const enviarCorreosYLiberar = async () => {
     if (!emailPlantilla || selected.size === 0) return;
     setEnviandoCorreos(true);
     try {
       const seleccionados = leads.filter((l) => selected.has(l.id));
       const conEmail = seleccionados.filter((l) => l.email);
-      if (conEmail.length > 0) {
+
+      if (esParticular) {
+        const n = enviarPorClienteDeCorreo(seleccionados);
+        if (n === 0) {
+          toast({ title: "Ninguno de los seleccionados tiene email", variant: "destructive" });
+        } else {
+          const extra = conEmail.length - n;
+          toast({
+            title: `Se abrió tu correo con ${n} destinatario(s) en copia oculta`,
+            description: extra > 0 ? `Quedaron ${extra} fuera: manda de a ${MAX_BCC_PARTICULAR} como máximo.` : undefined,
+          });
+        }
+      } else if (conEmail.length > 0) {
         const { data, error } = await supabase.functions.invoke("send-personalized-campaign", {
           body: {
+            ...bodyRemitente(remitente),
             subject: emailPlantilla.asunto,
             html: emailPlantilla.cuerpo_html,
             text: emailPlantilla.cuerpo_text || undefined,
@@ -211,6 +292,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
           variant: data?.failed ? "destructive" : "default",
         });
       }
+
       const n = await liberarAPipeline(seleccionados.map((l) => l.id));
       toast({ title: `${n} lead(s) pasados al Pipeline` });
     } catch (e) {
@@ -228,11 +310,40 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
 
   return (
     <div className="space-y-4">
-      <p className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
-        Estos leads te fueron asignados pero todavía <span className="font-semibold text-foreground">no aparecen en tu Pipeline</span>.
-        Elige una plantilla de WhatsApp y/o email, contáctalos, y pásalos al Pipeline cuando quieras — así no se te acumulan todos de golpe.
-        {total > PAGE_SIZE && ` Se muestran de a ${PAGE_SIZE} a la vez (tienes ${total.toLocaleString("es-CL")} en total).`}
-      </p>
+      <div className="flex flex-wrap items-start gap-2">
+        <p className="min-w-[240px] flex-1 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
+          Estos leads te fueron asignados pero todavía <span className="font-semibold text-foreground">no aparecen en tu Pipeline</span>.
+          Elige una plantilla de WhatsApp y/o email, contáctalos, y pásalos al Pipeline cuando quieras — así no se te acumulan todos de golpe.
+          {total > PAGE_SIZE && ` Se muestran de a ${PAGE_SIZE} a la vez (tienes ${total.toLocaleString("es-CL")} en total).`}
+        </p>
+        {/* Accesos directos al resto del flujo, sin volver al sidebar (item 8). */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button type="button" size="sm" onClick={() => setRegistroAbierto(true)} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90">
+            <UserPlus className="h-3.5 w-3.5" /> Registrar lead
+          </Button>
+          <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+            <Link to="/mis-leads/buscar-leads"><Radar className="h-3.5 w-3.5" /> Buscar leads</Link>
+          </Button>
+          <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+            <Link to="/mis-leads/pipeline"><Kanban className="h-3.5 w-3.5" /> Ir al Pipeline</Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Remitente de correo, plegable: se usa justo antes de enviar. */}
+      <div>
+        <button
+          type="button" onClick={() => setRemitenteAbierto((v) => !v)}
+          className="flex w-full items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-left text-xs hover:bg-muted/40"
+        >
+          <AtSign className="h-3.5 w-3.5 text-[#003DA5]" />
+          <span className="font-medium">Envías como:</span>
+          <span className="truncate font-mono text-[11px] text-muted-foreground">{describirRemitente(remitente)}</span>
+          {esParticular && <Badge variant="secondary" className="text-[10px]">sin Resend</Badge>}
+          <ChevronDown className={`ml-auto h-3.5 w-3.5 shrink-0 transition-transform ${remitenteAbierto ? "rotate-180" : ""}`} />
+        </button>
+        {remitenteAbierto && <div className="mt-2"><RemitenteCard compacto /></div>}
+      </div>
 
       <Card>
         <CardContent className="space-y-3 p-4">
@@ -259,7 +370,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
                 </Button>
                 <Button
                   type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0"
-                  disabled={!waPlantilla} onClick={() => waPlantilla && setEditando({ canal: "whatsapp", plantilla: waPlantilla })}
+                  disabled={!waPlantilla} onClick={() => waPlantilla && setEditando(waPlantilla)}
                   aria-label="Editar plantilla"
                 >
                   <Pencil className="h-4 w-4 text-muted-foreground" />
@@ -293,11 +404,10 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
                   <Star className={`h-4 w-4 ${emailPlantillaId && favoritos.has(favKey("email", emailPlantillaId)) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
                 </Button>
                 <Button
-                  type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0"
-                  disabled={!emailPlantilla} onClick={() => emailPlantilla && setEditando({ canal: "email", plantilla: emailPlantilla })}
-                  aria-label="Editar plantilla"
+                  type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0" asChild
+                  aria-label="Editar el diseño del correo"
                 >
-                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                  <Link to="/mis-leads/diseno-correo"><Pencil className="h-4 w-4 text-muted-foreground" /></Link>
                 </Button>
               </div>
               {emailPlantillaId && (
@@ -320,8 +430,8 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
               type="button" size="sm" disabled={!emailPlantilla || selected.size === 0 || enviandoCorreos || liberando}
               onClick={enviarCorreosYLiberar} className="gap-1.5"
             >
-              {enviandoCorreos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MailIcon className="h-3.5 w-3.5" />}
-              Enviar correos y pasar a Pipeline
+              {enviandoCorreos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : esParticular ? <Send className="h-3.5 w-3.5" /> : <MailIcon className="h-3.5 w-3.5" />}
+              {esParticular ? "Abrir en mi correo y pasar a Pipeline" : "Enviar correos y pasar a Pipeline"}
             </Button>
             <Button
               type="button" size="sm" variant="outline" disabled={selected.size === 0 || liberando || enviandoCorreos}
@@ -330,12 +440,30 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
               {liberando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRightCircle className="h-3.5 w-3.5" />}
               Pasar a Pipeline sin correo
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={cargar} className="ml-auto gap-1.5 text-muted-foreground">
+            <Button type="button" size="sm" variant="ghost" onClick={() => cargar(page)} className="ml-auto gap-1.5 text-muted-foreground">
               <RefreshCw className="h-3.5 w-3.5" /> Actualizar
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={qInput} onChange={(e) => setQInput(e.target.value)}
+          placeholder="Buscar en la bandeja por nombre, email o teléfono…"
+          className="h-9 pl-8 text-xs"
+        />
+        {qInput && (
+          <button
+            type="button" onClick={() => setQInput("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Limpiar búsqueda"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       <div className="overflow-x-auto rounded-lg border">
         <Table>
@@ -359,7 +487,10 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
             ) : leads.length === 0 ? (
               <TableRow><TableCell colSpan={4}>
                 <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
-                  <Inbox className="h-6 w-6" /> Tu bandeja está vacía. Los nuevos leads que te asigne el admin aparecerán aquí.
+                  <Inbox className="h-6 w-6" />
+                  {q
+                    ? "Ningún lead de la bandeja coincide con esa búsqueda."
+                    : "Tu bandeja está vacía. Los nuevos leads que te asigne el admin aparecerán aquí — o regístralos tú mismo."}
                 </div>
               </TableCell></TableRow>
             ) : (
@@ -375,15 +506,19 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
                         checked={selected.has(l.id)} onChange={() => toggleSel(l.id)}
                       />
                     </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{l.nombre || "—"}</div>
+                    <TableCell className="cursor-pointer" onClick={() => setDetalleId(l.id)}>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        {l.nombre || "—"}
+                        {l.origen === "buscar_leads" && <Radar className="h-3 w-3 text-[#003DA5]" aria-label="vino de Buscar Leads" />}
+                        {l.origen === "manual_vendedor" && <UserPlus className="h-3 w-3 text-[#003DA5]" aria-label="alta manual" />}
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                        {l.telefono && <span>{l.telefono}</span>}
+                        {l.telefono && !l.telefono.startsWith("sin-tel-") && <span>{l.telefono}</span>}
                         {l.email && <span>{l.email}</span>}
                         {!l.email && <span className="italic">sin email</span>}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-xs">{l.pais || "—"}</TableCell>
+                    <TableCell className="hidden text-xs sm:table-cell">{l.pais || "—"}</TableCell>
                     <TableCell>
                       {link ? (
                         <Button
@@ -422,9 +557,20 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
       <EditarPlantillaDialog
         open={!!editando}
         onOpenChange={(v) => !v && setEditando(null)}
-        canal={editando?.canal ?? "whatsapp"}
-        plantilla={editando?.plantilla ?? null}
+        plantilla={editando}
         onSaved={() => onPlantillasChanged?.()}
+      />
+
+      <RegistroManualDialog
+        open={registroAbierto} onOpenChange={setRegistroAbierto}
+        onCreado={() => { cargar(0); onLiberados?.(); }}
+      />
+
+      <LeadDetalleDialog
+        leadId={detalleId} open={!!detalleId} onOpenChange={(o) => !o && setDetalleId(null)}
+        plantillasWa={plantillasWa} plantillasEmail={plantillasEmail}
+        miRol={miRol} vendedorNombre={miNombre}
+        onCambio={() => cargar(page)}
       />
     </div>
   );

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Radar, Search, Loader2, MapPin, Globe, MessageCircle, History, Trash2,
-  Sparkles, CheckCircle2, Copy, X, XCircle, Star,
+  Sparkles, CheckCircle2, Copy, X, XCircle, Star, Instagram, Facebook, Kanban,
+  Inbox, ArrowRightCircle, Map as MapIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import LeadDetailDialog, { type Lead, waLink } from "@/components/prospeccion/LeadDetailDialog";
+import { instagramPerfil, facebookPerfil } from "@/lib/redes";
 
 // Saca el mensaje real del cuerpo de la respuesta cuando la edge function
 // devuelve un no-2xx (supabase-js solo entrega un texto genérico).
@@ -62,6 +65,16 @@ const ESTADO_LABEL: Record<string, string> = {
 };
 const SCORE_HINT = "0–100: qué tan probable es que este negocio necesite tu servicio.";
 
+// De dónde salen los prospectos. Google Maps trae datos de contacto duros
+// (teléfono, dirección); Instagram y Facebook traen perfiles con los que se
+// puede abrir conversación por DM aunque no publiquen teléfono.
+const FUENTES = [
+  { valor: "maps", label: "Google Maps", icon: MapIcon, detalle: "Teléfono, dirección y reseñas reales." },
+  { valor: "instagram", label: "Instagram", icon: Instagram, detalle: "Perfiles del rubro para escribir por DM." },
+  { valor: "facebook", label: "Facebook", icon: Facebook, detalle: "Páginas de negocio para Messenger." },
+] as const;
+type Fuente = (typeof FUENTES)[number]["valor"];
+
 function tipoBadge(tipo?: string) {
   const t = (tipo || "").toLowerCase();
   if (t.includes("caliente")) return "bg-red-500/15 text-red-600 border-red-500/30";
@@ -90,6 +103,7 @@ export default function BuscarLeadsVendedorTab() {
   const [ciudad, setCiudad] = useState("");
   const [servicio, setServicio] = useState("un servicio para hacer crecer su negocio con tecnología e inteligencia artificial");
   const [cantidad, setCantidad] = useState(15);
+  const [fuentes, setFuentes] = useState<Fuente[]>(["maps"]);
   const [excluirRepetidos, setExcluirRepetidos] = useState(true);
   const [loading, setLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -113,6 +127,8 @@ export default function BuscarLeadsVendedorTab() {
   const [ocultarDescartar, setOcultarDescartar] = useState(false);
   const [ordenScore, setOrdenScore] = useState<"desc" | "asc">("desc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Puente con la Bandeja/Pipeline (item 1).
+  const [sincronizando, setSincronizando] = useState(false);
 
   useEffect(() => {
     if (!loading) { setElapsed(0); return; }
@@ -120,8 +136,15 @@ export default function BuscarLeadsVendedorTab() {
     return () => clearInterval(iv);
   }, [loading]);
 
+  const nombresFuentes = FUENTES.filter((f) => fuentes.includes(f.valor)).map((f) => f.label).join(" + ") || "Google Maps";
   const faseProgreso =
-    elapsed < 8 ? "Buscando negocios reales en Google Maps…" : "Puntuando oportunidades y redactando mensajes…";
+    elapsed < 8 ? `Buscando negocios reales en ${nombresFuentes}…` : "Puntuando oportunidades y redactando mensajes…";
+
+  const toggleFuente = (f: Fuente) => setFuentes((prev) => {
+    // Nunca se quedan las tres apagadas: sin fuente no hay búsqueda posible.
+    if (prev.includes(f)) return prev.length === 1 ? prev : prev.filter((x) => x !== f);
+    return [...prev, f];
+  });
 
   const filtered = useMemo(() => {
     let list = leads ?? [];
@@ -153,7 +176,7 @@ export default function BuscarLeadsVendedorTab() {
     setLoading(true); setLeads(null); setStats(null); setRepetidos(0); setSearchError(null); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke("buscar-leads-vendedor", {
-        body: { nicho, ciudad, servicio, cantidad, excluir_repetidos: excluirRepetidos },
+        body: { nicho, ciudad, servicio, cantidad, excluir_repetidos: excluirRepetidos, fuentes },
       });
       // supabase-js resume cualquier no-2xx como "Edge Function returned a non-2xx
       // status code" y esconde el motivo real; el cuerpo viene en error.context.
@@ -182,15 +205,55 @@ export default function BuscarLeadsVendedorTab() {
     toast({ title: `${links.length} links de WhatsApp copiados` });
   };
 
-  const marcarContactado = async () => {
+  // ---------------------------------------------------------------------
+  // Puente Buscar Leads -> Bandeja / Pipeline.
+  //
+  // Antes esto era un callejón sin salida: el prospecto se marcaba
+  // "contactado" en la tabla de prospección y ahí moría — no aparecía en la
+  // Bandeja ni en el Pipeline, así que el vendedor perdía el seguimiento.
+  // Ahora un solo RPC crea (o reutiliza) el lead en leads_campana:
+  //   yaContactados = false -> entra a la Bandeja, etapa "nuevo"
+  //   yaContactados = true  -> entra al Pipeline, etapa "contactado"
+  // ---------------------------------------------------------------------
+  const sincronizar = async (yaContactados: boolean) => {
     const ids = selectedLeads.map((l) => l.id).filter(Boolean) as string[];
-    if (!ids.length) { toast({ title: "Sin leads guardados", variant: "destructive" }); return; }
-    const { error } = await sb.from("prospeccion_leads").update({ estado_gestion: "contactado" }).in("id", ids);
-    if (error) { toast({ title: "No se pudo actualizar", description: error.message, variant: "destructive" }); return; }
-    const idSet = new Set(ids);
-    setLeads((ls) => (ls ?? []).map((l) => (l.id && idSet.has(l.id) ? { ...l, estado_gestion: "contactado" } : l)));
-    toast({ title: `${ids.length} marcados como contactados` });
-    setSelected(new Set());
+    if (!ids.length) {
+      toast({ title: "Sin leads guardados", description: "Selecciona prospectos ya guardados en tu historial.", variant: "destructive" });
+      return;
+    }
+    setSincronizando(true);
+    try {
+      const { data, error } = await sb.rpc("vendedor_prospectos_a_pipeline", {
+        _prospecto_ids: ids, _ya_contactados: yaContactados,
+      });
+      if (error) throw error;
+      const r = (data ?? [])[0] ?? { creados: 0, vinculados: 0, omitidos: 0 };
+      const total = Number(r.creados) + Number(r.vinculados);
+      const destino = yaContactados ? "Pipeline" : "Bandeja";
+
+      // Refleja el resultado en la tabla sin volver a consultar.
+      const idSet = new Set(ids);
+      const parche = (l: Lead): Lead => (l.id && idSet.has(l.id)
+        ? { ...l, lead_campana_id: l.lead_campana_id ?? "pendiente", estado_gestion: yaContactados && (l.estado_gestion ?? "nuevo") === "nuevo" ? "contactado" : l.estado_gestion }
+        : l);
+      setLeads((ls) => (ls ?? []).map(parche));
+      setExpandedLeads((ls) => (ls ?? []).map(parche));
+
+      toast({
+        title: total > 0 ? `${total} lead(s) en tu ${destino}` : `Nada nuevo para tu ${destino}`,
+        description: [
+          Number(r.creados) ? `${r.creados} creado(s)` : null,
+          Number(r.vinculados) ? `${r.vinculados} ya existía(n) y se actualizaron` : null,
+          Number(r.omitidos) ? `${r.omitidos} omitido(s): ese teléfono ya es de otro vendedor` : null,
+        ].filter(Boolean).join(" · ") || undefined,
+        variant: total === 0 && Number(r.omitidos) > 0 ? "destructive" : "default",
+      });
+      setSelected(new Set());
+    } catch (e) {
+      toast({ title: "No se pudo sincronizar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setSincronizando(false);
+    }
   };
 
   const cargarHistorial = async () => {
@@ -248,15 +311,24 @@ export default function BuscarLeadsVendedorTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#003DA5]/10 text-[#003DA5]">
           <Radar className="h-5 w-5" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="font-display text-xl font-semibold tracking-tight">Buscar Leads</h2>
           <p className="text-sm text-muted-foreground">
-            Busca negocios reales en Google Maps y genera mensajes de contacto listos. Motor gratuito (SerpApi + NVIDIA).
+            Busca negocios reales en Google Maps, Instagram y Facebook, y genera mensajes de contacto listos.
+            Lo que marques pasa a tu Bandeja o a tu Pipeline. Motor gratuito (SerpApi + NVIDIA).
           </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+            <Link to="/mis-leads/bandeja"><Inbox className="h-3.5 w-3.5" /> Bandeja</Link>
+          </Button>
+          <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+            <Link to="/mis-leads/pipeline"><Kanban className="h-3.5 w-3.5" /> Pipeline</Link>
+          </Button>
         </div>
       </div>
 
@@ -291,6 +363,30 @@ export default function BuscarLeadsVendedorTab() {
                     {[10, 15, 20, 25, 30].map((n) => <option key={n} value={n}>{n} leads</option>)}
                   </select>
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Dónde buscar</Label>
+                <div className="flex flex-wrap gap-2">
+                  {FUENTES.map((f) => {
+                    const activa = fuentes.includes(f.valor);
+                    const Icon = f.icon;
+                    return (
+                      <button
+                        key={f.valor} type="button" onClick={() => toggleFuente(f.valor)}
+                        title={f.detalle} aria-pressed={activa}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                          activa ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input hover:bg-muted"
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" /> {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {FUENTES.find((f) => fuentes.includes(f.valor))?.detalle}
+                  {fuentes.length > 1 && " Los resultados de redes vienen con perfil para escribir por DM, no siempre con teléfono."}
+                </p>
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <Switch checked={excluirRepetidos} onCheckedChange={setExcluirRepetidos} />
@@ -402,8 +498,19 @@ export default function BuscarLeadsVendedorTab() {
                 {selectedLeads.length > 0 && (
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#003DA5]/30 bg-[#003DA5]/5 p-2">
                     <Badge variant="secondary">{selectedLeads.length} seleccionados</Badge>
-                    <Button type="button" size="sm" variant="outline" onClick={marcarContactado} className="gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Marcar contactado
+                    <Button
+                      type="button" size="sm" disabled={sincronizando}
+                      onClick={() => sincronizar(false)} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90"
+                    >
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Inbox className="h-3.5 w-3.5" />}
+                      Pasar a mi Bandeja
+                    </Button>
+                    <Button
+                      type="button" size="sm" variant="outline" disabled={sincronizando}
+                      onClick={() => sincronizar(true)} className="gap-1.5"
+                    >
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                      Ya los contacté · al Pipeline
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => copiarWa(selectedLeads)} className="gap-1.5">
                       <Copy className="h-3.5 w-3.5" /> Copiar WhatsApp
@@ -459,7 +566,18 @@ export default function BuscarLeadsVendedorTab() {
                               </div>
                             </TableCell>
                             <TableCell className="text-xs">
-                              {l.telefono ? <div className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-emerald-600" /> {l.telefono}</div> : "—"}
+                              {l.telefono && <div className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-emerald-600" /> {l.telefono}</div>}
+                              {instagramPerfil(l.instagram) && (
+                                <a href={instagramPerfil(l.instagram)!} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-fuchsia-600 hover:underline">
+                                  <Instagram className="h-3 w-3" /> {l.instagram}
+                                </a>
+                              )}
+                              {facebookPerfil(l.facebook) && (
+                                <a href={facebookPerfil(l.facebook)!} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[#1877F2] hover:underline">
+                                  <Facebook className="h-3 w-3" /> {l.facebook}
+                                </a>
+                              )}
+                              {!l.telefono && !l.instagram && !l.facebook && "—"}
                             </TableCell>
                             <TableCell>
                               <Tooltip><TooltipTrigger asChild><span className="cursor-help font-mono text-sm font-semibold">{typeof l.score === "number" ? l.score : "—"}</span></TooltipTrigger><TooltipContent>{SCORE_HINT}</TooltipContent></Tooltip>
@@ -468,7 +586,14 @@ export default function BuscarLeadsVendedorTab() {
                               <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${tipoBadge(l.tipo_lead)}`}>{l.tipo_lead || "Nuevo"}</span>
                             </TableCell>
                             <TableCell>
-                              <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${estadoBadge(l.estado_gestion)}`}>{ESTADO_LABEL[l.estado_gestion || "nuevo"] ?? l.estado_gestion}</span>
+                              <div className="flex flex-col items-start gap-0.5">
+                                <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${estadoBadge(l.estado_gestion)}`}>{ESTADO_LABEL[l.estado_gestion || "nuevo"] ?? l.estado_gestion}</span>
+                                {l.lead_campana_id && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#003DA5]">
+                                    <ArrowRightCircle className="h-2.5 w-2.5" /> en tu CRM
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">{Array.isArray(l.problemas) && l.problemas.length ? l.problemas[0] : "—"}</TableCell>
                             <TableCell>

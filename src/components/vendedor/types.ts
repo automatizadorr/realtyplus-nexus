@@ -33,6 +33,49 @@ export type LeadCampana = {
   motivo_cierre: string | null;
   fecha_proximo_contacto: string | null;
   vendedor_id: string | null;
+  // Datos que llegan desde Buscar Leads (o del alta manual) y viajan con el
+  // lead al Pipeline, para no tener que volver a la prospeccion.
+  instagram?: string | null;
+  facebook?: string | null;
+  mensaje_instagram?: string | null;
+  notas_vendedor?: string | null;
+  prospecto_id?: string | null;
+  origen?: string | null;
+  ultimo_contacto_at?: string | null;
+};
+
+// Ficha completa que devuelve la RPC vendedor_lead_detalle.
+export type ContactoLog = {
+  canal: "whatsapp" | "email" | "llamada" | "instagram" | "facebook";
+  resultado: string | null;
+  mensaje_final: string | null;
+  created_at: string;
+};
+export type EtapaLog = { etapa_anterior: string | null; etapa_nueva: string; created_at: string };
+export type LeadDetalle = {
+  lead: LeadCampana & Record<string, unknown>;
+  prospecto: Record<string, unknown> | null;
+  etapas: EtapaLog[];
+  contactos: ContactoLog[];
+};
+
+// Modo de remitente de correo del vendedor. Las dos cuentas Resend gratis
+// tienen 100 correos/dia cada una; "auto" las alterna para llegar a 200.
+export type RemitenteModo = "auto" | "resend1" | "resend2" | "particular";
+export const REMITENTE_DOMINIO: Record<Exclude<RemitenteModo, "particular">, string> = {
+  auto: "send.lexhouse-ai.com / lexhouse-ai.online",
+  resend1: "send.lexhouse-ai.com",
+  resend2: "lexhouse-ai.online",
+};
+export const REMITENTE_CUPO: Record<RemitenteModo, number | null> = {
+  auto: 200, resend1: 100, resend2: 100, particular: null,
+};
+export type RemitenteConfig = {
+  remitente_modo: RemitenteModo;
+  remitente_from_name: string | null;
+  remitente_local: string | null;
+  remitente_particular: string | null;
+  remitente_reply_to: string | null;
 };
 
 export const ETAPAS = ["nuevo", "contactado", "interesado", "demo", "ganado", "perdido"] as const;
@@ -78,4 +121,64 @@ export const ETAPAS_PERMITIDAS: Record<RolVenta, Etapa[]> = {
   setter: ["contactado", "interesado", "perdido"],
   closer: ["interesado", "demo", "ganado", "perdido"],
   ambos: ["contactado", "interesado", "demo", "ganado", "perdido"],
+};
+
+// ---------------------------------------------------------------------
+// Paleta por etapa. Una sola fuente de verdad para las columnas del
+// kanban, el borde de cada tarjeta y la barra de progreso del lead.
+// ---------------------------------------------------------------------
+export type EtapaColor = {
+  /** Color plano (barra de progreso, punto de la columna). */
+  hex: string;
+  /** Clases de badge/pill. */
+  badge: string;
+  /** Borde izquierdo de la tarjeta. */
+  card: string;
+  /** Fondo tenue de la cabecera de columna. */
+  head: string;
+};
+
+export const ETAPA_COLOR: Record<Etapa, EtapaColor> = {
+  nuevo: {
+    hex: "#94a3b8",
+    badge: "bg-slate-500/15 text-slate-600 border-slate-500/30",
+    card: "border-l-slate-400",
+    head: "bg-slate-500/10",
+  },
+  contactado: {
+    hex: "#003DA5",
+    badge: "bg-[#003DA5]/15 text-[#003DA5] border-[#003DA5]/30",
+    card: "border-l-[#003DA5]",
+    head: "bg-[#003DA5]/10",
+  },
+  interesado: {
+    hex: "#0891b2",
+    badge: "bg-cyan-500/15 text-cyan-700 border-cyan-500/30",
+    card: "border-l-cyan-500",
+    head: "bg-cyan-500/10",
+  },
+  demo: {
+    hex: "#7c3aed",
+    badge: "bg-violet-500/15 text-violet-700 border-violet-500/30",
+    card: "border-l-violet-500",
+    head: "bg-violet-500/10",
+  },
+  ganado: {
+    hex: "#059669",
+    badge: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+    card: "border-l-emerald-500",
+    head: "bg-emerald-500/10",
+  },
+  perdido: {
+    hex: "#dc2626",
+    badge: "bg-red-500/15 text-red-600 border-red-500/30",
+    card: "border-l-red-500",
+    head: "bg-red-500/10",
+  },
+};
+
+// Avance del lead en el embudo, 0-100. "perdido" se muestra completo pero en
+// rojo: el proceso terminó, solo que sin venta.
+export const ETAPA_PROGRESO: Record<Etapa, number> = {
+  nuevo: 8, contactado: 30, interesado: 55, demo: 78, ganado: 100, perdido: 100,
 };

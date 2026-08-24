@@ -23,6 +23,12 @@ export type Lead = {
   propuesta_valor?: string; mensaje_whatsapp?: string; mensaje_email?: string;
   estado_gestion?: string; notas?: string; repetido?: boolean;
   en_campana?: boolean;
+  // Puente con el Pipeline del vendedor: si tiene lead_campana_id, este
+  // prospecto ya vive en su Bandeja/Pipeline (leads_campana).
+  lead_campana_id?: string | null;
+  mensaje_instagram?: string;
+  facebook?: string;
+  rating?: number;
 };
 
 export const ESTADOS = ["nuevo", "contactado", "respondio", "cliente", "descartado"] as const;

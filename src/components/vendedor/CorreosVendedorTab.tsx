@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Palette, Eye, Loader2, Trash2, Lock, Send } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Palette, Eye, Loader2, Trash2, Lock, Send, Inbox, Kanban } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fillTemplate } from "@/lib/fillTemplate";
 import { bodyToHtml, buildProEmail, buildPlainEmail, LEXHOUSE_LOGO_URL } from "@/lib/emailTemplates";
 import EmailDesignCard, { type DesignMode } from "@/components/correos/EmailDesignCard";
+import RemitenteCard from "@/components/vendedor/RemitenteCard";
+import { bodyRemitente, useRemitente } from "@/hooks/use-remitente";
 import type { PlantillaEmail } from "@/components/vendedor/types";
 
 const VARIABLES_HINT = "Variables: {{nombre}} {{empresa}} {{ciudad}} {{pais}} {{propuesta_valor}} {{gancho}}";
@@ -46,6 +49,9 @@ export default function CorreosVendedorTab({
 }) {
   const { toast } = useToast();
   const { user } = useAuth();
+  // Remitente elegido por el vendedor: qué cuenta Resend usa (o si manda
+  // desde su correo particular). Se configura aquí y también en la Bandeja.
+  const { config: remitente } = useRemitente();
   const [plantillaId, setPlantillaId] = useState<string>(NUEVA);
   const [form, setForm] = useState<Form>(formVacio());
   const [showPreview, setShowPreview] = useState(false);
@@ -81,6 +87,9 @@ export default function CorreosVendedorTab({
   }, [plantillaId, inicializado]);
 
   const fromName = async (): Promise<string> => {
+    // Prioriza el nombre configurado como remitente; si no hay, el nombre del
+    // perfil de vendedor y, en último caso, su correo.
+    if (remitente.remitente_from_name?.trim()) return remitente.remitente_from_name.trim();
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData?.user?.id;
     if (!uid) return "Tu corredora";
@@ -156,6 +165,7 @@ export default function CorreosVendedorTab({
       const nombreRemitente = await fromName();
       const { data, error } = await supabase.functions.invoke("send-personalized-campaign", {
         body: {
+          ...bodyRemitente(remitente),
           test: true, testNombre: "Juan Pérez",
           subject: form.asunto, text: form.cuerpo, html: composeHtml(nombreRemitente),
         },
@@ -191,7 +201,20 @@ export default function CorreosVendedorTab({
           <h2 className="font-display text-xl font-semibold tracking-tight">Diseño de Correo</h2>
           <p className="text-sm text-muted-foreground">El HTML que se envía en los correos: título, botones, colores y firma. El logo de LexHouse queda siempre fijo.</p>
         </div>
+        {/* Accesos directos al resto del flujo, sin volver al sidebar. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+            <Link to="/mis-leads/bandeja"><Inbox className="h-3.5 w-3.5" /> Enviar desde la Bandeja</Link>
+          </Button>
+          <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+            <Link to="/mis-leads/pipeline"><Kanban className="h-3.5 w-3.5" /> Pipeline</Link>
+          </Button>
+        </div>
       </div>
+
+      {/* Desde qué correo sale el envío: cuál de las dos cuentas Resend se usa
+          (y su cupo diario) o el correo particular del vendedor. */}
+      <RemitenteCard />
 
       <Card>
         <CardContent className="space-y-3 p-4">

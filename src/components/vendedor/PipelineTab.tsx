@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
-import { Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock, Archive, ListOrdered, ArrowRight, X } from "lucide-react";
+import {
+  Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock,
+  ListOrdered, ArrowRight, X, Search, SlidersHorizontal, Instagram, PhoneCall, Radar, UserPlus,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -20,8 +24,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
+import { PAISES_PROSPECCION } from "@/lib/paises";
+import EtapaProgreso from "@/components/vendedor/EtapaProgreso";
+import LeadDetalleDialog from "@/components/vendedor/LeadDetalleDialog";
 import {
-  ETAPAS_PIPELINE, ETAPA_LABEL, ETAPAS_PERMITIDAS, type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa, type RolVenta,
+  ETAPA_COLOR, ETAPAS_PIPELINE, ETAPA_LABEL, ETAPAS_PERMITIDAS,
+  type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa, type RolVenta,
 } from "@/components/vendedor/types";
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 
@@ -29,14 +37,35 @@ import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id";
+const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id, instagram, facebook, mensaje_instagram, notas_vendedor, origen, ultimo_contacto_at";
 
-// Cada columna se carga de a 25 (no todo el pipeline de una), para no volver
-// lenta la plataforma cuando un vendedor tiene cientos o miles de leads.
-const PAGE_SIZE = 25;
+// Cada columna trae de a 10 tarjetas y el resto se carga bajo demanda: con
+// filtros activos el vendedor casi nunca necesita más, y la primera pintada
+// del kanban es mucho más liviana.
+const PAGE_SIZE = 10;
 
 type ColState = { leads: LeadCampana[]; total: number; pagina: number; cargandoMas: boolean };
 const columnaVacia = (): ColState => ({ leads: [], total: 0, pagina: 0, cargandoMas: false });
+
+// Filtros del kanban. Se aplican del lado del servidor (no sobre la página ya
+// cargada), así "buscar" encuentra leads que están más allá de las 10 visibles.
+type Filtros = {
+  q: string;
+  pais: string;      // "all" | nombre del país
+  origen: string;    // "all" | campana | buscar_leads | manual_vendedor
+  respondio: boolean;
+  vencidos: boolean;
+};
+const filtrosVacios = (): Filtros => ({ q: "", pais: "all", origen: "all", respondio: false, vencidos: false });
+const hayFiltros = (f: Filtros) =>
+  Boolean(f.q.trim()) || f.pais !== "all" || f.origen !== "all" || f.respondio || f.vencidos;
+
+const ORIGENES: { valor: string; label: string }[] = [
+  { valor: "all", label: "Todos los orígenes" },
+  { valor: "buscar_leads", label: "Buscar Leads" },
+  { valor: "manual_vendedor", label: "Alta manual" },
+  { valor: "campana", label: "Campañas / bot" },
+];
 
 function waLinkCampana(l: LeadCampana): string | null {
   const raw = (l.telefono || "").replace(/[^\d]/g, "");
@@ -66,197 +95,77 @@ function finDeHoyISO(): string {
   return d.toISOString();
 }
 
-function Contactar({
-  lead, plantillasWa, plantillasEmail, onEnviado,
-}: {
+// PostgREST separa las condiciones de `or(...)` por comas: una coma dentro del
+// texto buscado rompería la consulta entera.
+function sanearBusqueda(q: string): string {
+  return q.trim().replace(/[,()*]/g, " ").replace(/\s+/g, " ");
+}
+
+// ---------------------------------------------------------------------
+// Tarjeta compacta. Todo el detalle (contactar, guion de llamada, redes,
+// historial) vive en LeadDetalleDialog: la tarjeta solo tiene que decir de
+// un vistazo quién es, cuánto avanzó y si pide atención.
+// ---------------------------------------------------------------------
+function LeadCard({ lead, selected, onToggleSelect, onAbrir }: {
   lead: LeadCampana;
-  plantillasWa: PlantillaWa[];
-  plantillasEmail: PlantillaEmail[];
-  onEnviado: () => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const [waPlantilla, setWaPlantilla] = useState("");
-  const [emailPlantilla, setEmailPlantilla] = useState("");
-  const [waPreview, setWaPreview] = useState("");
-  const [emailPreview, setEmailPreview] = useState("");
-  const wa = waLinkCampana(lead);
-
-  const registrar = async (canal: "whatsapp" | "email", plantillaId: string, mensaje: string) => {
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData?.user?.id;
-    if (!uid) return;
-    await sb.from("contactos_log").insert({
-      lead_id: lead.id, user_id: uid, canal, plantilla_id: plantillaId, mensaje_final: mensaje, origen: "leads_campana",
-    });
-    onEnviado();
-  };
-
-  const enviarWa = () => {
-    const p = plantillasWa.find((x) => x.id === waPlantilla);
-    if (!p || !wa) return;
-    const msg = waPreview || fillTemplate(p.contenido, { nombre: lead.nombre || undefined, pais: lead.pais || undefined });
-    window.open(`${wa}?text=${encodeURIComponent(msg)}`, "_blank", "noreferrer");
-    registrar("whatsapp", p.id, msg);
-  };
-
-  const enviarEmail = () => {
-    const p = plantillasEmail.find((x) => x.id === emailPlantilla);
-    if (!p || !lead.email) return;
-    const asunto = fillTemplate(p.asunto, { nombre: lead.nombre || undefined, pais: lead.pais || undefined });
-    const cuerpo = emailPreview || fillTemplate(p.cuerpo_text || p.cuerpo_html, { nombre: lead.nombre || undefined, pais: lead.pais || undefined });
-    window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
-    registrar("email", p.id, `${asunto}\n\n${cuerpo}`);
-  };
-
-  if (!abierto) {
-    return (
-      <Button type="button" size="sm" variant="outline" className="h-7 gap-1 px-2 text-[11px]" onClick={() => setAbierto(true)}>
-        <MessageCircle className="h-3 w-3" /> Contactar
-      </Button>
-    );
-  }
-
-  return (
-    <div className="space-y-2 rounded-md border bg-muted/30 p-2">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Select value={waPlantilla} onValueChange={(v) => { setWaPlantilla(v); const p = plantillasWa.find((x) => x.id === v); setWaPreview(p ? fillTemplate(p.contenido, { nombre: lead.nombre || undefined, pais: lead.pais || undefined }) : ""); }}>
-          <SelectTrigger className="h-7 w-[140px] text-[11px]"><SelectValue placeholder="Plantilla WA" /></SelectTrigger>
-          <SelectContent>{plantillasWa.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}</SelectContent>
-        </Select>
-        {!wa && <span className="text-[10px] text-muted-foreground">sin WhatsApp</span>}
-      </div>
-      {waPlantilla && (
-        <div className="space-y-1">
-          <Textarea value={waPreview} onChange={(e) => setWaPreview(e.target.value)} className="min-h-[60px] bg-background text-xs" />
-          <Button type="button" size="sm" disabled={!wa || !waPreview.trim()} onClick={enviarWa} className="h-7 gap-1 bg-emerald-600 px-2 text-[11px] hover:bg-emerald-700">
-            <MessageCircle className="h-3 w-3" /> Enviar WA
-          </Button>
-        </div>
-      )}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Select value={emailPlantilla} onValueChange={(v) => { setEmailPlantilla(v); const p = plantillasEmail.find((x) => x.id === v); setEmailPreview(p ? fillTemplate(p.cuerpo_text || p.cuerpo_html, { nombre: lead.nombre || undefined, pais: lead.pais || undefined }) : ""); }}>
-          <SelectTrigger className="h-7 w-[140px] text-[11px]"><SelectValue placeholder="Plantilla email" /></SelectTrigger>
-          <SelectContent>{plantillasEmail.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}</SelectContent>
-        </Select>
-        {!lead.email && <span className="text-[10px] text-muted-foreground">sin email</span>}
-      </div>
-      {emailPlantilla && (
-        <div className="space-y-1">
-          <Textarea value={emailPreview} onChange={(e) => setEmailPreview(e.target.value)} className="min-h-[60px] bg-background text-xs" />
-          <Button type="button" size="sm" variant="outline" disabled={!lead.email || !emailPreview.trim()} onClick={enviarEmail} className="h-7 gap-1 px-2 text-[11px]">
-            <MailIcon className="h-3 w-3" /> Enviar email
-          </Button>
-        </div>
-      )}
-      <Button type="button" size="sm" variant="ghost" className="h-6 px-1 text-[10px] text-muted-foreground" onClick={() => setAbierto(false)}>Cerrar</Button>
-    </div>
-  );
-}
-
-function Seguimiento({ lead, onProgramado }: { lead: LeadCampana; onProgramado: (fecha: string) => void }) {
-  const { toast } = useToast();
-  const [abierto, setAbierto] = useState(false);
-  const [fecha, setFecha] = useState(lead.fecha_proximo_contacto ? lead.fecha_proximo_contacto.slice(0, 10) : "");
-  const [saving, setSaving] = useState(false);
-
-  const guardar = async () => {
-    if (!fecha) return;
-    setSaving(true);
-    const iso = new Date(`${fecha}T09:00:00`).toISOString();
-    const { error } = await sb.rpc("vendedor_set_proximo_contacto", { _lead_id: lead.id, _fecha: iso });
-    setSaving(false);
-    if (error) { toast({ title: "No se pudo programar", description: error.message, variant: "destructive" }); return; }
-    onProgramado(iso);
-    setAbierto(false);
-  };
-
-  if (!abierto) {
-    return (
-      <Button type="button" size="sm" variant="ghost" className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground" onClick={() => setAbierto(true)}>
-        <CalendarClock className="h-3 w-3" /> {lead.fecha_proximo_contacto ? "Cambiar seguimiento" : "Programar seguimiento"}
-      </Button>
-    );
-  }
-  return (
-    <div className="flex items-center gap-1.5">
-      <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-6 rounded border px-1.5 text-[10px]" />
-      <Button type="button" size="sm" disabled={!fecha || saving} onClick={guardar} className="h-6 px-2 text-[10px]">Guardar</Button>
-      <Button type="button" size="sm" variant="ghost" className="h-6 px-1 text-[10px] text-muted-foreground" onClick={() => setAbierto(false)}>x</Button>
-    </div>
-  );
-}
-
-function LeadCard({ lead, plantillasWa, plantillasEmail, onEnviado, onProgramado, onArchivar, selected, onToggleSelect }: {
-  lead: LeadCampana; plantillasWa: PlantillaWa[]; plantillasEmail: PlantillaEmail[]; onEnviado: () => void;
-  onProgramado: (leadId: string, fecha: string) => void;
-  onArchivar: (leadId: string) => void;
   selected: boolean;
   onToggleSelect: (leadId: string) => void;
+  onAbrir: (leadId: string) => void;
 }) {
-  // Se puede agarrar la tarjeta desde cualquier parte (no solo el ícono):
-  // los listeners van en el wrapper completo. Los controles interactivos
-  // (Contactar/Seguimiento) cortan la propagación para que un clic ahí
-  // nunca se confunda con un intento de arrastre.
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   const dias = diasDesde(lead.fecha_asignacion);
-  const seguimientoVencido = lead.fecha_proximo_contacto && new Date(lead.fecha_proximo_contacto).getTime() <= Date.now();
+  const etapa = ((lead.etapa_venta as Etapa) || "contactado") as Etapa;
+  const color = ETAPA_COLOR[etapa];
+  const seguimientoVencido = Boolean(lead.fecha_proximo_contacto && new Date(lead.fecha_proximo_contacto).getTime() <= Date.now());
+  const sinTelefono = !lead.telefono || lead.telefono.startsWith("sin-tel-");
 
   return (
     <div
       ref={setNodeRef} style={style} {...listeners} {...attributes}
       className={`touch-none cursor-grab active:cursor-grabbing ${isDragging ? "z-50 opacity-60" : ""}`}
     >
-      <Card className="mb-2">
-        <CardContent className="space-y-2 p-3">
+      <Card
+        className={`mb-1.5 border-l-[3px] transition-shadow hover:shadow-md ${color.card}`}
+        onClick={() => onAbrir(lead.id)}
+        role="button" tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter") onAbrir(lead.id); }}
+      >
+        <CardContent className="space-y-1.5 p-2">
           <div className="flex items-start gap-1.5">
-            <div onPointerDown={(e) => e.stopPropagation()} className="mt-0.5 shrink-0">
+            <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} className="mt-0.5 shrink-0">
               <input
                 type="checkbox" aria-label={`Seleccionar ${lead.nombre || "lead"}`}
-                className="h-3.5 w-3.5 accent-[#003DA5]"
+                className="h-3 w-3 accent-[#003DA5]"
                 checked={selected} onChange={() => onToggleSelect(lead.id)}
               />
             </div>
-            <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <GripVertical className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{lead.nombre || "—"}</div>
-              <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+              <div className="truncate text-[13px] font-medium leading-tight">{lead.nombre || "—"}</div>
+              <div className="flex flex-wrap items-center gap-x-1.5 text-[10px] leading-tight text-muted-foreground">
                 {lead.pais && <span className="inline-flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {lead.pais}</span>}
                 {dias !== null && <span>· {dias}d</span>}
+                {lead.origen === "buscar_leads" && <Radar className="h-2.5 w-2.5 text-[#003DA5]" aria-label="vino de Buscar Leads" />}
+                {lead.origen === "manual_vendedor" && <UserPlus className="h-2.5 w-2.5 text-[#003DA5]" aria-label="alta manual" />}
               </div>
             </div>
-            {lead.ha_respondido && <Badge variant="secondary" className="shrink-0 text-[10px] text-emerald-600">respondió</Badge>}
           </div>
 
-          {lead.fecha_proximo_contacto && (
-            <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${
-              seguimientoVencido ? "border-amber-400/40 bg-amber-500/10 text-amber-700" : "border-input text-muted-foreground"
-            }`}>
-              <CalendarClock className="h-2.5 w-2.5" /> Seguimiento {new Date(lead.fecha_proximo_contacto).toLocaleDateString("es-CL")}
-            </span>
-          )}
+          <EtapaProgreso etapa={etapa} compacto />
 
-          {(lead.telefono || lead.email) && (
-            <div className="space-y-0.5 text-[11px] text-muted-foreground">
-              {lead.telefono && <div className="flex items-center gap-1"><MessageCircle className="h-2.5 w-2.5 text-emerald-600" /> {lead.telefono}</div>}
-              {lead.email && <div className="flex items-center gap-1"><MailIcon className="h-2.5 w-2.5" /> {lead.email}</div>}
-            </div>
-          )}
-          <div onPointerDown={(e) => e.stopPropagation()}>
-            <Contactar lead={lead} plantillasWa={plantillasWa} plantillasEmail={plantillasEmail} onEnviado={onEnviado} />
-          </div>
-          <div onPointerDown={(e) => e.stopPropagation()}>
-            <Seguimiento lead={lead} onProgramado={(fecha) => onProgramado(lead.id, fecha)} />
-          </div>
-          <div onPointerDown={(e) => e.stopPropagation()}>
-            <Button
-              type="button" size="sm" variant="ghost"
-              className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-red-600"
-              onClick={() => onArchivar(lead.id)}
-              title="Archivar (ej: número no existe)"
-            >
-              <Archive className="h-3 w-3" /> Archivar
-            </Button>
+          <div className="flex flex-wrap items-center gap-1">
+            {lead.ha_respondido && (
+              <span className="rounded-full bg-emerald-500/15 px-1.5 py-px text-[9px] font-medium text-emerald-700">respondió</span>
+            )}
+            {seguimientoVencido && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-px text-[9px] font-medium text-amber-700">
+                <CalendarClock className="h-2.5 w-2.5" /> {new Date(lead.fecha_proximo_contacto!).toLocaleDateString("es-CL")}
+              </span>
+            )}
+            {!sinTelefono && <PhoneCall className="h-2.5 w-2.5 text-muted-foreground" aria-label="con teléfono" />}
+            {lead.email && <MailIcon className="h-2.5 w-2.5 text-muted-foreground" aria-label="con email" />}
+            {lead.instagram && <Instagram className="h-2.5 w-2.5 text-muted-foreground" aria-label="con Instagram" />}
           </div>
         </CardContent>
       </Card>
@@ -271,13 +180,17 @@ function Column({
   onCargarMas: () => void; children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: etapa });
+  const color = ETAPA_COLOR[etapa];
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-72 shrink-0 flex-col rounded-lg border bg-muted/20 p-2 transition-colors ${isOver ? "border-[#003DA5] bg-[#003DA5]/5" : ""}`}
+      className={`flex w-60 shrink-0 flex-col rounded-lg border bg-muted/20 p-1.5 transition-colors ${isOver ? "border-[#003DA5] bg-[#003DA5]/5" : ""}`}
     >
-      <div className="mb-2 flex items-center justify-between px-1">
-        <span className="text-xs font-semibold">{ETAPA_LABEL[etapa]}</span>
+      <div className={`mb-1.5 flex items-center justify-between rounded-md px-2 py-1 ${color.head}`}>
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color.hex }} />
+          {ETAPA_LABEL[etapa]}
+        </span>
         <Badge variant="secondary" className="text-[10px]">{leads.length}/{total}</Badge>
       </div>
       <div className="min-h-[60px] flex-1">
@@ -285,10 +198,10 @@ function Column({
         {hasMore && (
           <Button
             type="button" variant="ghost" size="sm" onClick={onCargarMas} disabled={cargandoMas}
-            className="w-full gap-1.5 text-xs text-muted-foreground"
+            className="w-full gap-1.5 text-[11px] text-muted-foreground"
           >
             {cargandoMas ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            Cargar 25 más
+            Cargar {PAGE_SIZE} más
           </Button>
         )}
       </div>
@@ -308,6 +221,14 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const [motivo, setMotivo] = useState("");
   const [soloHoy, setSoloHoy] = useState(false);
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
+  const [miNombre, setMiNombre] = useState<string | null>(null);
+  // Ficha completa del lead (item 4): se abre al hacer clic en la tarjeta.
+  const [detalleId, setDetalleId] = useState<string | null>(null);
+  // Buscador + filtros (item 3). `filtros` es lo aplicado; `q` se escribe con
+  // debounce para no disparar una consulta por tecla.
+  const [filtros, setFiltros] = useState<Filtros>(filtrosVacios());
+  const [qInput, setQInput] = useState("");
+  const [panelFiltros, setPanelFiltros] = useState(false);
   // Envío de WhatsApp en cola: selección de tarjetas + una plantilla en
   // común, igual patrón que la Bandeja. Cada apertura de wa.me pide su
   // propio clic ("Siguiente") para no chocar con el bloqueo de pop-ups.
@@ -320,14 +241,40 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  // Debounce del buscador: 350 ms sin teclear y recién ahí se consulta.
+  useEffect(() => {
+    const t = setTimeout(() => setFiltros((f) => (f.q === qInput ? f : { ...f, q: qInput })), 350);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  // Los filtros se leen dentro de callbacks que no se re-crean por dependencia,
+  // así que se guarda la última versión en una ref.
+  const filtrosRef = useRef(filtros);
+  filtrosRef.current = filtros;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aplicarFiltros = (query: any) => {
+    const f = filtrosRef.current;
+    let q = query;
+    const texto = sanearBusqueda(f.q);
+    if (texto) q = q.or(`nombre.ilike.%${texto}%,email.ilike.%${texto}%,telefono.ilike.%${texto}%`);
+    if (f.pais !== "all") q = q.eq("pais", f.pais);
+    if (f.origen === "campana") q = q.or("origen.is.null,and(origen.neq.buscar_leads,origen.neq.manual_vendedor)");
+    else if (f.origen !== "all") q = q.eq("origen", f.origen);
+    if (f.respondio) q = q.is("ha_respondido", true);
+    if (f.vencidos) q = q.lte("fecha_proximo_contacto", finDeHoyISO());
+    return q;
+  };
+
   const cargarColumna = async (etapa: Etapa, pagina: number, append: boolean) => {
     setCols((prev) => ({ ...prev, [etapa]: { ...prev[etapa], cargandoMas: true } }));
-    const { data, count, error } = await sb
+    const base = sb
       .from("leads_campana")
       .select(COLUMNAS, { count: "exact" })
       .not("primer_contacto_at", "is", null)
       .not("archivado", "is", true)
-      .eq("etapa_venta", etapa)
+      .eq("etapa_venta", etapa);
+    const { data, count, error } = await aplicarFiltros(base)
       .order("fecha_asignacion", { ascending: false })
       .range(pagina * PAGE_SIZE, pagina * PAGE_SIZE + PAGE_SIZE - 1);
     if (error) {
@@ -358,13 +305,13 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   };
 
   const cargarHoy = async () => {
-    const { data, error } = await sb
+    const base = sb
       .from("leads_campana")
       .select(COLUMNAS)
       .not("primer_contacto_at", "is", null)
       .not("archivado", "is", true)
-      .lte("fecha_proximo_contacto", finDeHoyISO())
-      .order("fecha_proximo_contacto", { ascending: true });
+      .lte("fecha_proximo_contacto", finDeHoyISO());
+    const { data, error } = await aplicarFiltros(base).order("fecha_proximo_contacto", { ascending: true });
     if (error) { toast({ title: "Error al cargar lo de hoy", description: error.message, variant: "destructive" }); return; }
     setHoyLeads((data ?? []) as LeadCampana[]);
   };
@@ -374,11 +321,12 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     const [, { data: perfil }] = await Promise.all([
       Promise.all(ETAPAS_PIPELINE.map((etapa) => cargarColumna(etapa, 0, false))),
       supabase.auth.getUser().then(({ data: u }) =>
-        u?.user ? sb.from("vendedores").select("rol_venta").eq("user_id", u.user.id).maybeSingle() : { data: null },
+        u?.user ? sb.from("vendedores").select("rol_venta, nombre_display").eq("user_id", u.user.id).maybeSingle() : { data: null },
       ),
       cargarHoyCount(),
     ]);
     setMiRol((perfil?.rol_venta as RolVenta | undefined) ?? undefined);
+    setMiNombre((perfil?.nombre_display as string | undefined) ?? null);
     if (soloHoy) await cargarHoy();
     setLoading(false);
   };
@@ -390,6 +338,17 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [soloHoy]);
 
+  // Cualquier cambio de filtro recarga desde la página 0 (y limpia la
+  // selección: seleccionar en una vista y enviar en otra sería un error caro).
+  const primerRender = useRef(true);
+  useEffect(() => {
+    if (primerRender.current) { primerRender.current = false; return; }
+    setSelected(new Set());
+    if (soloHoy) cargarHoy();
+    else ETAPAS_PIPELINE.forEach((etapa) => cargarColumna(etapa, 0, false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros]);
+
   const vista = (etapa: Etapa): LeadCampana[] => {
     if (hoyLeads) {
       return hoyLeads.filter((l) => ((l.etapa_venta as Etapa) || "contactado") === etapa && requiereHoy(l));
@@ -400,6 +359,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const hasMoreVista = (etapa: Etapa): boolean => (hoyLeads ? false : cols[etapa].leads.length < cols[etapa].total);
 
   const totalGeneral = ETAPAS_PIPELINE.reduce((acc, e) => acc + cols[e].total, 0);
+  const paisesDisponibles = useMemo(() => PAISES_PROSPECCION, []);
 
   const buscarLead = (id: string): { lead: LeadCampana; etapa: Etapa } | null => {
     for (const etapa of ETAPAS_PIPELINE) {
@@ -407,17 +367,6 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       if (encontrado) return { lead: encontrado, etapa };
     }
     return null;
-  };
-
-  const onProgramado = (leadId: string, fecha: string) => {
-    const actualizar = (l: LeadCampana) => (l.id === leadId ? { ...l, fecha_proximo_contacto: fecha } : l);
-    setCols((prev) => {
-      const next = { ...prev };
-      for (const etapa of ETAPAS_PIPELINE) next[etapa] = { ...prev[etapa], leads: prev[etapa].leads.map(actualizar) };
-      return next;
-    });
-    setHoyLeads((prev) => prev && prev.map(actualizar));
-    cargarHoyCount();
   };
 
   const moverLocal = (leadId: string, etapaOrigen: Etapa, etapaDestino: Etapa, motivoCierre?: string) => {
@@ -443,25 +392,6 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     const { error } = await sb.rpc("vendedor_mover_etapa", { _lead_id: leadId, _etapa: etapaDestino, _motivo_cierre: motivoCierre ?? null });
     if (error) { toast({ title: "No se pudo mover", description: error.message, variant: "destructive" }); return; }
     moverLocal(leadId, etapaOrigen, etapaDestino, motivoCierre);
-  };
-
-  // Archivar: para leads con número inexistente/imposible de contactar.
-  // Desaparece del Pipeline (las consultas ya filtran archivado=true).
-  const archivarLead = async (leadId: string) => {
-    const encontrado = buscarLead(leadId);
-    if (!encontrado) return;
-    const { error } = await sb.rpc("vendedor_archivar_lead", { _lead_id: leadId, _archivado: true });
-    if (error) { toast({ title: "No se pudo archivar", description: error.message, variant: "destructive" }); return; }
-    const { etapa } = encontrado;
-    if (hoyLeads) {
-      setHoyLeads((prev) => prev && prev.filter((l) => l.id !== leadId));
-    } else {
-      setCols((prev) => ({
-        ...prev,
-        [etapa]: { ...prev[etapa], leads: prev[etapa].leads.filter((l) => l.id !== leadId), total: Math.max(prev[etapa].total - 1, 0) },
-      }));
-    }
-    toast({ title: "Lead archivado" });
   };
 
   const toggleSelect = (leadId: string) => {
@@ -548,12 +478,14 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   };
 
   const activeLead = activeId ? buscarLead(activeId)?.lead : undefined;
+  const filtrosActivos = hayFiltros(filtros);
+  const limpiarFiltros = () => { setQInput(""); setFiltros(filtrosVacios()); };
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Arrastra una tarjeta desde cualquier parte para mover su etapa. Cada columna carga de a 25 leads.
+          Haz clic en una tarjeta para ver su ficha completa; arrástrala para cambiar de etapa.
         </p>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5 text-sm">
@@ -566,6 +498,68 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
         </div>
       </div>
 
+      {/* Buscador + filtros. Consultan la base entera, no solo lo ya cargado. */}
+      <div className="space-y-2 rounded-lg border bg-muted/20 p-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={qInput} onChange={(e) => setQInput(e.target.value)}
+              placeholder="Buscar por nombre, email o teléfono…"
+              className="h-8 pl-8 text-xs"
+            />
+            {qInput && (
+              <button
+                type="button" onClick={() => setQInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Limpiar búsqueda"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <Button
+            type="button" size="sm" variant={panelFiltros || filtrosActivos ? "secondary" : "outline"}
+            onClick={() => setPanelFiltros((v) => !v)} className="h-8 gap-1.5 text-xs"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" /> Filtros
+            {filtrosActivos && <span className="rounded-full bg-[#003DA5] px-1.5 text-[10px] text-white">on</span>}
+          </Button>
+          {filtrosActivos && (
+            <Button type="button" size="sm" variant="ghost" onClick={limpiarFiltros} className="h-8 gap-1 text-xs text-muted-foreground">
+              <X className="h-3.5 w-3.5" /> Limpiar
+            </Button>
+          )}
+        </div>
+
+        {panelFiltros && (
+          <div className="flex flex-wrap items-center gap-3 border-t pt-2">
+            <Select value={filtros.pais} onValueChange={(v) => setFiltros((f) => ({ ...f, pais: v }))}>
+              <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los países</SelectItem>
+                {paisesDisponibles.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filtros.origen} onValueChange={(v) => setFiltros((f) => ({ ...f, origen: v }))}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ORIGENES.map((o) => <SelectItem key={o.valor} value={o.valor}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <label className="flex items-center gap-1.5 text-xs">
+              <Switch checked={filtros.respondio} onCheckedChange={(v) => setFiltros((f) => ({ ...f, respondio: v }))} />
+              Solo los que respondieron
+            </label>
+            <label className="flex items-center gap-1.5 text-xs">
+              <Switch checked={filtros.vencidos} onCheckedChange={(v) => setFiltros((f) => ({ ...f, vencidos: v }))} />
+              Seguimiento vencido
+            </label>
+          </div>
+        )}
+      </div>
+
+      {/* Cola de WhatsApp sobre la selección actual. */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-2">
         <Select value={waPlantillaId} onValueChange={setWaPlantillaId}>
           <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Plantilla WhatsApp" /></SelectTrigger>
@@ -603,8 +597,9 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       {loading ? (
         <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando…</div>
       ) : !soloHoy && totalGeneral === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          Todavía no tienes leads de campaña asignados.
+        <div className="space-y-3 rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+          <p>{filtrosActivos ? "Ningún lead coincide con estos filtros." : "Todavía no tienes leads de campaña en el Pipeline."}</p>
+          {filtrosActivos && <Button type="button" variant="outline" size="sm" onClick={limpiarFiltros}>Limpiar filtros</Button>}
         </div>
       ) : soloHoy && hoyCount === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
@@ -612,7 +607,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {ETAPAS_PIPELINE.map((etapa) => (
               <Column
                 key={etapa} etapa={etapa} leads={vista(etapa)} total={totalVista(etapa)}
@@ -621,9 +616,9 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
               >
                 {vista(etapa).map((l) => (
                   <LeadCard
-                    key={l.id} lead={l} plantillasWa={plantillasWa} plantillasEmail={plantillasEmail}
-                    onEnviado={() => {}} onProgramado={onProgramado} onArchivar={archivarLead}
+                    key={l.id} lead={l}
                     selected={selected.has(l.id)} onToggleSelect={toggleSelect}
+                    onAbrir={setDetalleId}
                   />
                 ))}
               </Column>
@@ -631,13 +626,20 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
           </div>
           <DragOverlay>
             {activeLead ? (
-              <Card className="w-72 opacity-90 shadow-lg">
-                <CardContent className="p-3 text-sm font-medium">{activeLead.nombre || "—"}</CardContent>
+              <Card className="w-60 opacity-90 shadow-lg">
+                <CardContent className="p-2 text-[13px] font-medium">{activeLead.nombre || "—"}</CardContent>
               </Card>
             ) : null}
           </DragOverlay>
         </DndContext>
       )}
+
+      <LeadDetalleDialog
+        leadId={detalleId} open={!!detalleId} onOpenChange={(o) => !o && setDetalleId(null)}
+        plantillasWa={plantillasWa} plantillasEmail={plantillasEmail}
+        miRol={miRol} vendedorNombre={miNombre}
+        onCambio={cargarTodo}
+      />
 
       <Dialog open={!!perdidoDialog} onOpenChange={(o) => !o && setPerdidoDialog(null)}>
         <DialogContent className="max-w-sm">
