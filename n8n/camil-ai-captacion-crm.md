@@ -1,6 +1,6 @@
-# Camil-AI → CRM: captación automática de leads (Fase B)
+# Sofía / Camil-AI → CRM: captación automática de leads (Fase B)
 
-Parche sobre el workflow **Camil-AI** de n8n (`ouf0maiCEFpDc60d`, 62 nodos, activo).
+Parche sobre el workflow **Sofía** de n8n (`ouf0maiCEFpDc60d`, activo).
 Cierra el circuito entre el bot de WhatsApp y el Pipeline del vendedor en el CRM Nexus:
 cuando el bot escala una conversación a un humano, o cuando el lead agenda una reunión,
 el lead queda marcado como "captado por el sistema IA" y entra al Pipeline en etapa
@@ -26,8 +26,8 @@ En el n8n local hay dos bots activos, cada uno sobre **su propia cuenta de Meta*
 
 | id | nombre | agente | credencial WhatsApp | nodos |
 |---|---|---|---|---|
-| `ouf0maiCEFpDc60d` | **Camil-AI** | Camil-AI, timezone Madrid, tool `Crea1`, parseador v2 | trigger `RealtyPLus-AI` / envío `RealtyPlus- enviar Mensaje` (phoneNumberId fijo `1070824479455864`) | 65 |
-| `2oKGpZR85DFAr4R6` | Meta - LexHouse Camil-AI | LeyIA, timezone Santiago, tool `Reserva`, parseador v3 | trigger `AI-MAX` / envío `AI-MAX - ENVIAR MENSAJE` (responde al número por el que entró) | 51 |
+| `ouf0maiCEFpDc60d` | **Sofía** | **Sofía**, timezone Santiago, tool `Crea1`, parseador v2 | trigger `RealtyPLus-AI` / envío `RealtyPlus- enviar Mensaje` (phoneNumberId fijo `1070824479455864`) | 65 |
+| `2oKGpZR85DFAr4R6` | Meta - LexHouse Camil-AI | **Camil-AI**, timezone Santiago, tool `Reserva`, parseador v3 | trigger `AI-MAX` / envío `AI-MAX - ENVIAR MENSAJE` (responde al número por el que entró) | 51 |
 
 **`ouf0maiCEFpDc60d` es el sistema de IA de LexHouse Nexus: ahí van TODAS las
 actualizaciones del CRM.** Tiene el parche completo — escalación, movimientos de
@@ -35,7 +35,7 @@ reunión, `reunion_estado` en el parseador y en el prompt.
 
 **En el flujo de Meta va solo la escalación.** Decisión de Mario: se le quitó
 todo lo de agendamiento (los nodos `📅 ¿Movimiento de reunión?` y
-`📅 Reunión al CRM (Nexus)`, el bloque de reunión del prompt de LeyIA y los
+`📅 Reunión al CRM (Nexus)`, el bloque de reunión del prompt del agente y los
 campos `reunion_estado`/`reunion_agendada` del parseador v3). Lo que conserva es
 `🎯 Captar Lead en CRM (Nexus)`, colgado de su IF de escalación junto a
 `📧 Alerta Comercial (Gmail)` y `📱 Notificar Operador WhatsApp`.
@@ -43,6 +43,24 @@ campos `reunion_estado`/`reunion_agendada` del parseador v3). Lo que conserva es
 Notas al parchear el de Meta, por si hay que volver a tocarlo: su trigger se
 llama `WhatsApp Trigger` (sin el `1`), y su parseador v3 tiene cuatro ramas de
 parseo, una de las cuales asigna `escalar` dos veces.
+
+### Renombre de los agentes (2026-08-25)
+
+Los nombres se cruzaron a propósito, por decisión de Mario:
+
+- `ouf0maiCEFpDc60d`: el agente pasó de llamarse Camil-AI a **Sofía** (mismo
+  nombre que la agente del chat web de lexhouse-ai.com, edge function
+  `sofia-chat`, aunque son motores distintos), y su zona horaria pasó de Madrid
+  a **Santiago de Chile**. Se cambiaron el `setZone` del prompt y de los dos
+  Gmail, la etiqueta "(Zona horaria de …)", los ejemplos ISO `+02:00` → `-04:00`
+  (incluidos los del tool `Crea1`) y la gramática al femenino ("la Asesora
+  Comercial", "especializada"). Las 9 apariciones de "Madrid" eran todas de zona
+  horaria — ninguna del mercado español — así que se cambiaron todas.
+  El workflow también se renombró a `Sofía`: eso cambia lo que se guarda en
+  `escalaciones.workflow_name` de las filas nuevas.
+- `2oKGpZR85DFAr4R6`: el agente pasó de LeyIA a **Camil-AI** (14 apariciones:
+  prompt, Gmail de escalación, WhatsApp al operador, Gmail de error y dos notas
+  del canvas). El nombre del workflow se dejó igual.
 
 ## Estado
 
