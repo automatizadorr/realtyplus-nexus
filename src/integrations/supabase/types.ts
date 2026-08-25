@@ -1690,7 +1690,62 @@ export type Database = {
           asignados: number
         }[]
       }
+      admin_busquedas_vendedor: {
+        Args: { _user_id: string }
+        Returns: {
+          cantidad_encontrada: number
+          ciudad: string
+          contactados: number
+          created_at: string
+          en_crm: number
+          id: string
+          nicho: string
+          nuevos: number
+          total_leads: number
+        }[]
+      }
       admin_captados_ia_sin_asignar: { Args: never; Returns: number }
+      admin_contactos_vendedor: {
+        Args: { _limite?: number; _user_id: string }
+        Returns: {
+          canal: string
+          created_at: string
+          lead_nombre: string
+          lead_telefono: string
+          mensaje: string
+          resultado: string
+        }[]
+      }
+      admin_kpis_vendedores: {
+        Args: never
+        Returns: {
+          activo: boolean
+          archivados: number
+          busquedas: number
+          captados_ia: number
+          contactado: number
+          cta_email: number
+          cta_facebook: number
+          cta_instagram: number
+          cta_llamada: number
+          cta_whatsapp: number
+          demo: number
+          en_bandeja: number
+          ganado: number
+          interesado: number
+          leads_total: number
+          nombre_display: string
+          perdido: number
+          prospectos: number
+          recibe_traspasos: boolean
+          rol_venta: string
+          traspaso_dados: number
+          traspaso_recibidos: number
+          ultima_actividad: string
+          user_id: string
+          vencidos: number
+        }[]
+      }
       admin_listar_vendedores: {
         Args: never
         Returns: {

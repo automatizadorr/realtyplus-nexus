@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PAISES_PROSPECCION } from "@/lib/paises";
 import AsignarLeadsPanel from "@/components/vendedor/AsignarLeadsPanel";
+import KpisVendedoresPanel from "@/components/vendedor/KpisVendedoresPanel";
 import type { RolVenta } from "@/components/vendedor/types";
 
 type VendedorRow = {
@@ -169,6 +170,8 @@ export default function AdminVendedores() {
           ))}
         </div>
       )}
+
+      {!loading && vendedores.length > 0 && <KpisVendedoresPanel />}
 
       {!loading && vendedores.length > 0 && (
         <AsignarLeadsPanel vendedores={vendedores.filter((v) => v.activo).map((v) => ({ user_id: v.user_id, nombre_display: v.nombre_display }))} />
