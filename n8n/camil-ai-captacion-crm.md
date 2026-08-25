@@ -128,6 +128,26 @@ mismo bloque.
 Si alguno de los 9 workflows inactivos que referenciaban las credenciales
 borradas se reactiva, hay que reasignarle credencial de calendario a mano.
 
+### Avisos de los movimientos de reunión (2026-08-25)
+
+La rama de reunión captaba el lead en el CRM pero **en silencio**: a diferencia
+de la de escalación, no tenía Gmail, ni fila en `escalaciones`, ni WhatsApp al
+operador. Como además el lead queda **sin asignar**, no aparecía en el Pipeline
+de nadie — solo en el panel "Asignar leads" del admin. Desde fuera parecía que
+"no escalaba", cuando en realidad la captación sí ocurría (`success: true`).
+
+Se le colgaron al IF `📅 ¿Movimiento de reunión?` tres nodos más, en paralelo al
+HTTP:
+
+- `📧 Aviso de Reunión (Gmail)` — asunto y cuerpo propios, que dicen si agendó,
+  reagendó o canceló; separado del correo de escalación para no confundirlos.
+- `📥 Registrar Reunión (Supabase)` — fila en `escalaciones` con
+  `motivo = reunion_<estado>`, para que quede el mismo historial consultable.
+- `📱 Notificar Operador WhatsApp` — mensaje inmediato al número del operador.
+
+Los tres con `onError: continueRegularOutput`: un aviso caído no puede cortarle
+la conversación al lead.
+
 ## Estado
 
 Aplicado sobre los dos workflows vivos (2026-08-25): `ouf0maiCEFpDc60d` en 65
