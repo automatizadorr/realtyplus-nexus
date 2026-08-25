@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Loader2, Inbox, MessageCircle, Mail as MailIcon, ArrowRightCircle, RefreshCw, ChevronLeft,
-  ChevronRight, Star, Eye, Pencil, UserPlus, Search, X, Kanban, Radar, AtSign, ChevronDown, Send,
+  ChevronRight, Star, Eye, Pencil, UserPlus, Search, X, Kanban, Radar, AtSign, ChevronDown, Send, Bot,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,6 +25,7 @@ import { bodyRemitente, describirRemitente, useRemitente } from "@/hooks/use-rem
 type LeadEnBandeja = {
   id: string; nombre: string | null; telefono: string | null; email: string | null;
   pais: string | null; fecha_asignacion: string | null; origen: string | null;
+  escalado_ia_at: string | null; escalado_ia_motivo: string | null;
 };
 
 // Se trae de a 25 (no toda la bandeja de una), para no volver lenta la
@@ -135,7 +136,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     setLoading(true);
     let query = supabase
       .from("leads_campana")
-      .select("id, nombre, telefono, email, pais, fecha_asignacion, origen", { count: "exact" })
+      .select("id, nombre, telefono, email, pais, fecha_asignacion, origen, escalado_ia_at, escalado_ia_motivo", { count: "exact" })
       .is("primer_contacto_at", null)
       // Un lead archivado (duplicado de teléfono, número inmarcable, o archivado
       // a mano) no debe seguir apareciendo en la bandeja. El Pipeline ya filtraba
@@ -508,6 +509,12 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
                         {l.nombre || "—"}
                         {l.origen === "buscar_leads" && <Radar className="h-3 w-3 text-[#003DA5]" aria-label="vino de Buscar Leads" />}
                         {l.origen === "manual_vendedor" && <UserPlus className="h-3 w-3 text-[#003DA5]" aria-label="alta manual" />}
+                        {l.escalado_ia_at && (
+                          <Bot
+                            className="h-3 w-3 text-emerald-600"
+                            aria-label={`Captado por el sistema IA${l.escalado_ia_motivo ? `: ${l.escalado_ia_motivo}` : ""}`}
+                          />
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                         {l.telefono && !l.telefono.startsWith("sin-tel-") && <span>{l.telefono}</span>}

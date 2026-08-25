@@ -507,6 +507,8 @@ export type Database = {
           dias_reales: number | null
           email: string | null
           equipo_id: string | null
+          escalado_ia_at: string | null
+          escalado_ia_motivo: string | null
           estado: string | null
           etapa_venta: string
           facebook: string | null
@@ -544,6 +546,8 @@ export type Database = {
           dias_reales?: number | null
           email?: string | null
           equipo_id?: string | null
+          escalado_ia_at?: string | null
+          escalado_ia_motivo?: string | null
           estado?: string | null
           etapa_venta?: string
           facebook?: string | null
@@ -581,6 +585,8 @@ export type Database = {
           dias_reales?: number | null
           email?: string | null
           equipo_id?: string | null
+          escalado_ia_at?: string | null
+          escalado_ia_motivo?: string | null
           estado?: string | null
           etapa_venta?: string
           facebook?: string | null
@@ -1667,6 +1673,7 @@ export type Database = {
           _busqueda?: string
           _cantidad?: number
           _pais?: string
+          _solo_captados_ia?: boolean
           _solo_sin_asignar?: boolean
           _vendedor_id: string
         }
@@ -1674,6 +1681,7 @@ export type Database = {
           asignados: number
         }[]
       }
+      admin_captados_ia_sin_asignar: { Args: never; Returns: number }
       admin_listar_vendedores: {
         Args: never
         Returns: {
@@ -1685,6 +1693,16 @@ export type Database = {
           rol_venta: string
           telefono_contacto: string
           user_id: string
+        }[]
+      }
+      bot_capta_lead: {
+        Args: { _motivo?: string; _telefono: string }
+        Returns: {
+          etapa_anterior: string
+          etapa_nueva: string
+          lead_id: string
+          vendedor_id: string
+          ya_estaba: boolean
         }[]
       }
       complete_onboarding: { Args: never; Returns: undefined }

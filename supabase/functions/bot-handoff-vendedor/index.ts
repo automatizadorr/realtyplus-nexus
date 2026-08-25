@@ -1,25 +1,38 @@
-// Fase B del pipeline: Camil-AI (n8n) llama esto cuando un lead de
-// leads_campana responde/califica. YA NO asigna un vendedor automático
-// (el reparto pasó a ser 100% manual, ver [[project_nexus_pipeline_vendedor]]):
-// solo apaga bot_activo para que Camil-AI no le siga escribiendo mientras
-// el admin decide a quién enviárselo desde el panel. El aviso de la
-// escalación al admin ya lo maneja la rama "🚨 ¿Escalar a Humano?" propia
-// del workflow (email + tabla escalaciones + Sheets) — esto es un paso
-// aparte, en simultáneo.
+// Fase B del pipeline: Camil-AI (n8n) llama esto cuando capta un lead de
+// leads_campana — o sea cuando la conversación se escala a un humano o
+// cuando el lead agenda una reunión por Google Calendar.
+//
+// NO asigna vendedor automáticamente: el reparto sigue siendo 100% manual
+// desde el panel "Asignar leads" del admin (decisión de Mario, ver
+// [[project_nexus_pipeline_vendedor]]). Lo que sí hace, vía el RPC
+// `bot_capta_lead`:
+//   - marca el lead como captado por IA (escalado_ia_at / escalado_ia_motivo),
+//     que es lo que pinta el badge "Captado por IA" en el CRM
+//   - apaga bot_activo para que Camil-AI no le siga escribiendo
+//   - lo sube a etapa "contactado" si seguía en "nuevo", y da por hecho el
+//     primer contacto, así entra al Pipeline y no a la Bandeja
+//   - deja el salto de etapa en leads_campana_etapa_log
+//
+// Si el lead ya tenía vendedor, aparece de inmediato en su Pipeline. Si no,
+// queda "sin asignar" y marcado, esperando que el admin lo reparta — y al
+// repartirlo conserva la etapa "contactado" (ver admin_asignar_leads).
+//
+// El aviso de la escalación al admin lo maneja aparte la rama "🚨 ¿Escalar a
+// Humano?" del propio workflow (email + tabla escalaciones + Sheets); esto
+// corre en paralelo, no la reemplaza.
 //
 // Auth: header X-Webhook-Secret (secreto dedicado BOT_HANDOFF_SECRET).
 //
-// Conectado desde el workflow "Canil-AI" (n8n, localhost:5678, id
-// ouf0maiCEFpDc60d) en la rama "🚨 ¿Escalar a Humano?" → nodo HTTP Request
-// "🎯 Entregar a Vendedor (Nexus)", en paralelo a "📥 Registrar Escalación".
+// Conectado desde el workflow "Camil-AI" (n8n, localhost:5678, id
+// ouf0maiCEFpDc60d), en dos puntos:
+//   - rama "🚨 ¿Escalar a Humano?" → nodo HTTP "🎯 Entregar a Vendedor (Nexus)",
+//     en paralelo a "📥 Registrar Escalación"
+//   - después del nodo de Google Calendar "Crea" (reunión agendada)
 //
 // Body:
 //   telefono: string   (requerido) — mismo formato que usa Camil-AI para el lead
-//   motivo?: string    contexto opcional para el log de etapa
-//
-// Efecto: bot_activo = false. Si el lead todavía no tiene vendedor_id,
-// queda "sin asignar" (visible para el admin en el panel) hasta que lo
-// envíe a alguien. Idempotente: no pisa nada si ya se había apagado.
+//   motivo?: string    qué gatilló la captación; se muestra en la ficha del lead
+//   tipo?: "escalacion" | "reunion"  solo define el motivo por defecto
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -30,6 +43,11 @@ const corsHeaders = {
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+const MOTIVO_POR_TIPO: Record<string, string> = {
+  escalacion: "Camil-AI escaló la conversación a un humano",
+  reunion: "El lead agendó una reunión con Camil-AI",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -46,30 +64,41 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const telefono = (body?.telefono ?? "").toString().replace(/\D/g, "");
-    const motivo: string = typeof body?.motivo === "string" ? body.motivo.trim() : "Escalado por Camil-AI";
     if (!telefono) return json({ error: "telefono requerido" }, 400);
+
+    const tipo = typeof body?.tipo === "string" ? body.tipo.trim().toLowerCase() : "escalacion";
+    const motivo = (typeof body?.motivo === "string" && body.motivo.trim())
+      ? body.motivo.trim()
+      : (MOTIVO_POR_TIPO[tipo] ?? MOTIVO_POR_TIPO.escalacion);
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: lead, error: leadErr } = await supabase
-      .from("leads_campana")
-      .select("id, vendedor_id, bot_activo")
-      .or(`telefono.eq.${telefono},telefono.like.${telefono}@%`)
-      .maybeSingle();
-    if (leadErr) throw leadErr;
-    if (!lead) return json({ success: false, error: `Lead no encontrado para teléfono: ${telefono}` }, 404);
+    const { data, error } = await supabase.rpc("bot_capta_lead", {
+      _telefono: telefono,
+      _motivo: motivo,
+    });
+    if (error) throw error;
 
-    if (lead.bot_activo === false) {
-      return json({ success: true, skipped: true, reason: "El bot ya estaba apagado para este lead", lead_id: lead.id, vendedor_id: lead.vendedor_id });
+    // El RPC devuelve cero filas cuando ningún lead vivo calza con ese
+    // teléfono: es un caso normal (contacto que nunca entró a la campaña),
+    // no un error del bot, pero el workflow necesita distinguirlo.
+    const r = (data ?? [])[0];
+    if (!r) {
+      return json({ success: false, error: `Lead no encontrado para teléfono: ${telefono}` }, 404);
     }
 
-    const { error: updateErr } = await supabase
-      .from("leads_campana")
-      .update({ bot_activo: false })
-      .eq("id", lead.id);
-    if (updateErr) throw updateErr;
-
-    return json({ success: true, lead_id: lead.id, vendedor_id: lead.vendedor_id, motivo });
+    return json({
+      success: true,
+      lead_id: r.lead_id,
+      vendedor_id: r.vendedor_id,
+      // true = ya venía marcado de una captación anterior; la llamada es
+      // idempotente y no pisa la fecha original.
+      ya_estaba_captado: r.ya_estaba,
+      etapa_anterior: r.etapa_anterior,
+      etapa: r.etapa_nueva,
+      sin_asignar: !r.vendedor_id,
+      motivo,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("bot-handoff-vendedor error:", msg);

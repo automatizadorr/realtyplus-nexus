@@ -5,7 +5,7 @@ import {
 } from "@dnd-kit/core";
 import {
   Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock,
-  ListOrdered, ArrowRight, X, Search, SlidersHorizontal, Instagram, PhoneCall, Radar, UserPlus,
+  ListOrdered, ArrowRight, X, Search, SlidersHorizontal, Instagram, PhoneCall, Radar, UserPlus, Bot,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +33,7 @@ import {
 } from "@/components/vendedor/types";
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 
-const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id, instagram, facebook, mensaje_instagram, notas_vendedor, origen, ultimo_contacto_at";
+const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id, instagram, facebook, mensaje_instagram, notas_vendedor, origen, ultimo_contacto_at, escalado_ia_at, escalado_ia_motivo";
 
 // Cada columna trae de a 10 tarjetas y el resto se carga bajo demanda: con
 // filtros activos el vendedor casi nunca necesita más, y la primera pintada
@@ -51,10 +51,11 @@ type Filtros = {
   origen: string;    // "all" | campana | buscar_leads | manual_vendedor
   respondio: boolean;
   vencidos: boolean;
+  captadosIa: boolean;  // solo los que converso el bot Camil-AI
 };
-const filtrosVacios = (): Filtros => ({ q: "", pais: "all", origen: "all", respondio: false, vencidos: false });
+const filtrosVacios = (): Filtros => ({ q: "", pais: "all", origen: "all", respondio: false, vencidos: false, captadosIa: false });
 const hayFiltros = (f: Filtros) =>
-  Boolean(f.q.trim()) || f.pais !== "all" || f.origen !== "all" || f.respondio || f.vencidos;
+  Boolean(f.q.trim()) || f.pais !== "all" || f.origen !== "all" || f.respondio || f.vencidos || f.captadosIa;
 
 const ORIGENES: { valor: string; label: string }[] = [
   { valor: "all", label: "Todos los orígenes" },
@@ -145,6 +146,7 @@ function LeadCard({ lead, selected, onToggleSelect, onAbrir }: {
                 {dias !== null && <span>· {dias}d</span>}
                 {lead.origen === "buscar_leads" && <Radar className="h-2.5 w-2.5 text-[#003DA5]" aria-label="vino de Buscar Leads" />}
                 {lead.origen === "manual_vendedor" && <UserPlus className="h-2.5 w-2.5 text-[#003DA5]" aria-label="alta manual" />}
+                {lead.escalado_ia_at && <Bot className="h-2.5 w-2.5 text-emerald-600" aria-label="captado por el sistema IA" />}
               </div>
             </div>
           </div>
@@ -263,6 +265,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     if (f.origen === "campana") q = q.or("origen.is.null,and(origen.neq.buscar_leads,origen.neq.manual_vendedor)");
     else if (f.origen !== "all") q = q.eq("origen", f.origen);
     if (f.respondio) q = q.is("ha_respondido", true);
+    if (f.captadosIa) q = q.not("escalado_ia_at", "is", null);
     if (f.vencidos) q = q.lte("fecha_proximo_contacto", finDeHoyISO());
     return q;
   };
@@ -555,6 +558,10 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
             <label className="flex items-center gap-1.5 text-xs">
               <Switch checked={filtros.vencidos} onCheckedChange={(v) => setFiltros((f) => ({ ...f, vencidos: v }))} />
               Seguimiento vencido
+            </label>
+            <label className="flex items-center gap-1.5 text-xs">
+              <Switch checked={filtros.captadosIa} onCheckedChange={(v) => setFiltros((f) => ({ ...f, captadosIa: v }))} />
+              <Bot className="h-3 w-3 text-emerald-600" /> Captados por IA
             </label>
           </div>
         )}

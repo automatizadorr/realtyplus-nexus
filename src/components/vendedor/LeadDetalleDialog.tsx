@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Loader2, MapPin, Mail as MailIcon, MessageCircle, Phone, PhoneCall, Instagram, Facebook,
-  Download, Copy, Check, CalendarClock, Archive, StickyNote, History, ExternalLink, Radar,
+  Download, Copy, Check, CalendarClock, Archive, StickyNote, History, ExternalLink, Radar, Bot,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -260,6 +260,11 @@ export default function LeadDetalleDialog({
                 {lead.ha_respondido && (
                   <Badge variant="secondary" className="text-[10px] text-emerald-600">respondió</Badge>
                 )}
+                {lead.escalado_ia_at && (
+                  <Badge variant="secondary" className="gap-1 text-[10px] text-emerald-700">
+                    <Bot className="h-3 w-3" /> captado por IA
+                  </Badge>
+                )}
               </DialogTitle>
               <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 {lead.pais && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {lead.pais}</span>}
@@ -267,6 +272,21 @@ export default function LeadDetalleDialog({
                 {lead.origen && <span className="capitalize">· origen: {String(lead.origen).replace(/_/g, " ")}</span>}
               </DialogDescription>
             </DialogHeader>
+
+            {/* Captación por Camil-AI: el bot ya conversó con este lead, así que
+                el vendedor no está haciendo un contacto en frío. */}
+            {lead.escalado_ia_at && (
+              <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
+                <Bot className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <div>
+                  <div className="text-xs font-semibold text-emerald-700">Captado por el sistema IA</div>
+                  <p className="text-muted-foreground">
+                    {lead.escalado_ia_motivo || "Camil-AI ya conversó con este lead por WhatsApp."}
+                    {" "}({soloFecha(lead.escalado_ia_at)}). El bot quedó apagado para que no se pisen los mensajes.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Avance en el embudo */}
             <div className="rounded-lg border bg-muted/20 p-3">

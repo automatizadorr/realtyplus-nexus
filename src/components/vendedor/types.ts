@@ -42,6 +42,10 @@ export type LeadCampana = {
   prospecto_id?: string | null;
   origen?: string | null;
   ultimo_contacto_at?: string | null;
+  // Captacion por el bot Camil-AI: cuando escalo la conversacion a humano o
+  // el lead agendo reunion. Marca el lead como "ya converso con la IA".
+  escalado_ia_at?: string | null;
+  escalado_ia_motivo?: string | null;
 };
 
 // Ficha completa que devuelve la RPC vendedor_lead_detalle.

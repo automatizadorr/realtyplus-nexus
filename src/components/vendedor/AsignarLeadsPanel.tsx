@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Loader2, UserPlus, ChevronLeft, ChevronRight, Users2, Layers } from "lucide-react";
+import { Search, Loader2, UserPlus, ChevronLeft, ChevronRight, Users2, Layers, Bot } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +17,9 @@ const LOTES = [100, 200, 300, 500, 600, 700, 800, 900];
 type LeadRow = {
   id: string; nombre: string | null; telefono: string | null; email: string | null;
   pais: string | null; vendedor_id: string | null; fecha_asignacion: string | null;
+  // Captado por Camil-AI: el bot ya converso con el lead (escalo a humano o
+  // agendo reunion). Estos NO vuelven a la Bandeja al asignarlos.
+  escalado_ia_at: string | null; escalado_ia_motivo: string | null;
 };
 
 type VendedorOpt = { user_id: string; nombre_display: string | null };
@@ -29,6 +32,8 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
   const [pais, setPais] = useState("all");
   const [paises, setPaises] = useState<{ pais: string; n: number }[]>([]);
   const [soloSinAsignar, setSoloSinAsignar] = useState(true);
+  const [soloCaptadosIa, setSoloCaptadosIa] = useState(false);
+  const [captadosIaPendientes, setCaptadosIaPendientes] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [refreshTick, setRefreshTick] = useState(0);
 
@@ -51,8 +56,8 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     });
   }, []);
 
-  useEffect(() => { setPage(0); }, [qDebounced, pais, soloSinAsignar]);
-  useEffect(() => { setSelected(new Set()); }, [page, qDebounced, pais, soloSinAsignar]);
+  useEffect(() => { setPage(0); }, [qDebounced, pais, soloSinAsignar, soloCaptadosIa]);
+  useEffect(() => { setSelected(new Set()); }, [page, qDebounced, pais, soloSinAsignar, soloCaptadosIa]);
 
   useEffect(() => {
     let cancel = false;
@@ -61,17 +66,19 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
       try {
         let query = supabase
           .from("leads_campana")
-          .select("id, nombre, telefono, email, pais, vendedor_id, fecha_asignacion", { count: "exact" })
+          .select("id, nombre, telefono, email, pais, vendedor_id, fecha_asignacion, escalado_ia_at, escalado_ia_motivo", { count: "exact" })
         // Nunca ofrecer para asignar un lead archivado: sería devolverle al
         // vendedor un duplicado o un número inmarcable que ya se sacó de circulación.
         .not("archivado", "is", true);
         if (soloSinAsignar) query = query.is("vendedor_id", null);
+        if (soloCaptadosIa) query = query.not("escalado_ia_at", "is", null);
         if (pais !== "all") query = query.eq("pais", pais);
         const term = qDebounced.trim();
         if (term) query = query.or(`nombre.ilike.%${term}%,email.ilike.%${term}%,telefono.ilike.%${term}%`);
-        query = query
-          .order("dias_reales", { ascending: false, nullsFirst: false })
-          .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+        query = soloCaptadosIa
+          ? query.order("escalado_ia_at", { ascending: false, nullsFirst: false })
+          : query.order("dias_reales", { ascending: false, nullsFirst: false });
+        query = query.range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
         const { data, count, error } = await query;
         if (error) throw error;
@@ -91,7 +98,15 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     run();
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, pais, soloSinAsignar, page, refreshTick]);
+  }, [qDebounced, pais, soloSinAsignar, soloCaptadosIa, page, refreshTick]);
+
+  // Contador propio: cuantos leads calientes de Camil-AI estan esperando
+  // reparto, para que se vean sin tener que activar el filtro.
+  useEffect(() => {
+    supabase.rpc("admin_captados_ia_sin_asignar").then(({ data, error }) => {
+      if (!error && typeof data === "number") setCaptadosIaPendientes(data);
+    });
+  }, [refreshTick]);
 
   const toggleSel = (id: string) => {
     setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -110,12 +125,34 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
     if (!vendedorAsignar || selected.size === 0) return;
     setAsignando(true);
     try {
-      const { error } = await supabase
-        .from("leads_campana")
-        .update({ vendedor_id: vendedorAsignar, fecha_asignacion: new Date().toISOString(), etapa_venta: "nuevo", primer_contacto_at: null })
-        .in("id", [...selected]);
-      if (error) throw error;
-      toast({ title: `${selected.size} leads enviados` });
+      const ahora = new Date().toISOString();
+      const ids = [...selected];
+      // Los captados por Camil-AI ya tuvieron su primer contacto, asi que van
+      // directo al Pipeline en etapa "contactado"; el resto entra a la Bandeja
+      // como siempre. Son dos updates porque los valores difieren por fila.
+      const idsIa = rows.filter((r) => selected.has(r.id) && r.escalado_ia_at).map((r) => r.id);
+      const idsFrios = ids.filter((id) => !idsIa.includes(id));
+
+      if (idsFrios.length) {
+        const { error } = await supabase
+          .from("leads_campana")
+          .update({ vendedor_id: vendedorAsignar, fecha_asignacion: ahora, etapa_venta: "nuevo", primer_contacto_at: null })
+          .in("id", idsFrios);
+        if (error) throw error;
+      }
+      if (idsIa.length) {
+        const { error } = await supabase
+          .from("leads_campana")
+          .update({ vendedor_id: vendedorAsignar, fecha_asignacion: ahora, etapa_venta: "contactado" })
+          .in("id", idsIa);
+        if (error) throw error;
+      }
+      toast({
+        title: `${selected.size} leads enviados`,
+        description: idsIa.length
+          ? `${idsIa.length} captado(s) por IA entran directo al Pipeline en "contactado".`
+          : undefined,
+      });
       setSelected(new Set());
       setRefreshTick((t) => t + 1);
     } catch (e) {
@@ -135,6 +172,7 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
         _pais: pais,
         _solo_sin_asignar: soloSinAsignar,
         _busqueda: qDebounced.trim() || null,
+        _solo_captados_ia: soloCaptadosIa,
       });
       if (error) throw error;
       const asignados = (data ?? [])[0]?.asignados ?? 0;
@@ -162,6 +200,21 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {captadosIaPendientes !== null && captadosIaPendientes > 0 && (
+          <button
+            type="button"
+            onClick={() => { setSoloCaptadosIa(true); setSoloSinAsignar(true); }}
+            className="flex w-full items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2 text-left text-xs hover:bg-emerald-500/10"
+          >
+            <Bot className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>
+              <strong className="font-semibold text-emerald-700">{captadosIaPendientes}</strong>{" "}
+              lead(s) captado(s) por Camil-AI esperando reparto. Ya conversaron con el bot: al asignarlos entran
+              directo al Pipeline en "contactado", sin pasar por la Bandeja.
+            </span>
+          </button>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="relative sm:col-span-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -176,9 +229,14 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
               ))}
             </SelectContent>
           </Select>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={soloSinAsignar} onCheckedChange={setSoloSinAsignar} /> Solo sin asignar
-          </label>
+          <div className="flex flex-col justify-center gap-1.5">
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={soloSinAsignar} onCheckedChange={setSoloSinAsignar} /> Solo sin asignar
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={soloCaptadosIa} onCheckedChange={setSoloCaptadosIa} /> Solo captados por IA
+            </label>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -256,11 +314,24 @@ export default function AsignarLeadsPanel({ vendedores }: { vendedores: Vendedor
                       />
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">{l.nombre || "—"}</div>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        {l.nombre || "—"}
+                        {l.escalado_ia_at && (
+                          <Bot
+                            className="h-3.5 w-3.5 shrink-0 text-emerald-600"
+                            aria-label="Captado por el sistema IA"
+                          />
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                         {l.telefono && <span>{l.telefono}</span>}
                         {l.email && <span>{l.email}</span>}
                       </div>
+                      {l.escalado_ia_at && (
+                        <div className="text-[11px] text-emerald-700">
+                          Captado por el sistema IA{l.escalado_ia_motivo ? ` — ${l.escalado_ia_motivo}` : ""}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-xs">{l.pais || "—"}</TableCell>
                     <TableCell>
