@@ -17,7 +17,25 @@ marcado y en etapa `contactado` para que el admin lo reparta desde "Asignar lead
 
 ---
 
-## 1. Nodo HTTP — escalación a humano (PENDIENTE: falta el valor de BOT_HANDOFF_SECRET)
+---
+
+## Estado
+
+Los cinco parches están **aplicados** sobre el workflow vivo (2026-08-25): quedó
+en 65 nodos y sigue activo. El secreto no viaja dentro del workflow: los dos
+nodos HTTP usan el credential Header Auth `Nexus bot-handoff`
+(`zLDkSgmw5BzyYKn9`), que lleva el header `x-webhook-secret`.
+
+**Falta un paso, y es manual:** el valor de `BOT_HANDOFF_SECRET` en Supabase
+(Edge Functions → Secrets) tiene que ser el mismo que quedó guardado en ese
+credential. El valor original se perdió — los secretos de Edge Functions son de
+solo escritura y el dashboard solo muestra un digest — así que hay que
+sobrescribirlo. Hasta que eso pase, los dos nodos reciben `401 Unauthorized` y,
+por el `onError: continueRegularOutput`, la conversación del bot sigue normal
+pero el lead no se marca.
+
+---
+## 1. Nodo HTTP — escalación a humano — APLICADO 2026-08-25
 
 Se cuelga de la salida **true** del IF `🚨 ¿Escalar a Humano?`, en paralelo a
 `📥 Registrar Escalación (Supabase)`, `📧 Alerta Comercial (Gmail)` y
@@ -38,21 +56,20 @@ conversación del bot con el lead no se puede cortar por eso.
   "parameters": {
     "method": "POST",
     "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/bot-handoff-vendedor",
-    "sendHeaders": true,
-    "headerParameters": {
-      "parameters": [
-        { "name": "x-webhook-secret", "value": "<BOT_HANDOFF_SECRET>" }
-      ]
-    },
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
     "sendBody": true,
     "specifyBody": "json",
     "jsonBody": "={{ JSON.stringify({ telefono: $('WhatsApp Trigger1').item.json.contacts[0].wa_id, motivo: $('🧩 Parseador Nexus4').item.json.motivo_escalacion || 'sin_motivo_especificado', tipo: 'escalacion' }) }}",
     "options": { "timeout": 30000 }
+  },
+  "credentials": {
+    "httpHeaderAuth": { "id": "zLDkSgmw5BzyYKn9", "name": "Nexus bot-handoff" }
   }
 }
 ```
 
-## 2. Nodo IF — ¿agendó reunión? (PENDIENTE, va junto con el nodo 3)
+## 2. Nodo IF — ¿agendó reunión? — APLICADO 2026-08-25
 
 El agendamiento **no** se puede detectar poniendo un nodo después del Google
 Calendar: `Crea1`, `Modifica`, `Consulta` y `Disponibilidad` son *tools* del AI
@@ -97,7 +114,7 @@ ese filtro la function se llamaría una vez por burbuja de WhatsApp.
 }
 ```
 
-## 3. Nodo HTTP — reunión agendada (PENDIENTE: falta el valor de BOT_HANDOFF_SECRET)
+## 3. Nodo HTTP — reunión agendada — APLICADO 2026-08-25
 
 Va colgado de la salida **true** del IF anterior.
 
@@ -111,16 +128,15 @@ Va colgado de la salida **true** del IF anterior.
   "parameters": {
     "method": "POST",
     "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/bot-handoff-vendedor",
-    "sendHeaders": true,
-    "headerParameters": {
-      "parameters": [
-        { "name": "x-webhook-secret", "value": "<BOT_HANDOFF_SECRET>" }
-      ]
-    },
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
     "sendBody": true,
     "specifyBody": "json",
     "jsonBody": "={{ JSON.stringify({ telefono: $json.telefono, motivo: 'El lead agendó una reunión con Camil-AI', tipo: 'reunion' }) }}",
     "options": { "timeout": 30000 }
+  },
+  "credentials": {
+    "httpHeaderAuth": { "id": "zLDkSgmw5BzyYKn9", "name": "Nexus bot-handoff" }
   }
 }
 ```
