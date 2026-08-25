@@ -195,6 +195,9 @@ export default function BuscarLeadsVendedorTab() {
   // Id de la búsqueda del historial que se está mandando al CRM, para que el
   // spinner salga solo en esa fila y no en todas.
   const [busquedaSincronizando, setBusquedaSincronizando] = useState<string | null>(null);
+  // Id del prospecto que se está mandando al Pipeline de a uno, mismo motivo:
+  // el envío unitario no debe bloquear ni girar en las demás filas.
+  const [leadSincronizando, setLeadSincronizando] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading) { setElapsed(0); return; }
@@ -292,13 +295,16 @@ export default function BuscarLeadsVendedorTab() {
   //   yaContactados = false -> entra a la Bandeja, etapa "nuevo"
   //   yaContactados = true  -> entra al Pipeline, etapa "contactado"
   // ---------------------------------------------------------------------
-  const sincronizar = async (yaContactados: boolean, lista: Lead[]) => {
+  //
+  // `unitario` = el botón de una sola fila: el spinner y el bloqueo se acotan
+  // a ese lead (no a toda la tabla) y no se limpia la selección en curso.
+  const sincronizar = async (yaContactados: boolean, lista: Lead[], unitario = false) => {
     const ids = lista.map((l) => l.id).filter(Boolean) as string[];
     if (!ids.length) {
       toast({ title: "Sin leads guardados", description: "Los prospectos repetidos no se vuelven a guardar, así que no tienen ficha que pasar al CRM.", variant: "destructive" });
       return 0;
     }
-    setSincronizando(true);
+    if (unitario) setLeadSincronizando(ids[0]); else setSincronizando(true);
     try {
       const { data, error } = await supabase.rpc("vendedor_prospectos_a_pipeline", {
         _prospecto_ids: ids, _ya_contactados: yaContactados,
@@ -325,14 +331,24 @@ export default function BuscarLeadsVendedorTab() {
         ].filter(Boolean).join(" · ") || undefined,
         variant: total === 0 && Number(r.omitidos) > 0 ? "destructive" : "default",
       });
-      setSelected(new Set());
+      if (!unitario) setSelected(new Set());
       return total;
     } catch (e) {
       toast({ title: "No se pudo sincronizar", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
       return 0;
     } finally {
-      setSincronizando(false);
+      if (unitario) setLeadSincronizando(null); else setSincronizando(false);
     }
+  };
+
+  // Botón "Pipeline" de una fila: manda ese prospecto solo, ya como
+  // contactado (etapa "contactado" del Pipeline, igual que el envío masivo).
+  const enviarUnoAlPipeline = (l: Lead) => {
+    if (!l.id) {
+      toast({ title: "Este prospecto no tiene ficha", description: "Es un repetido: ya lo tenías de una búsqueda anterior, búscalo en el Historial.", variant: "destructive" });
+      return;
+    }
+    void sincronizar(true, [l], true);
   };
 
   // Manda al CRM una búsqueda entera del historial SIN tener que abrirla:
@@ -667,7 +683,7 @@ export default function BuscarLeadsVendedorTab() {
                           <TableHead>Tipo</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead className="min-w-[220px]">Gancho</TableHead>
-                          <TableHead className="w-24"></TableHead>
+                          <TableHead className="w-44"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -710,9 +726,29 @@ export default function BuscarLeadsVendedorTab() {
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">{Array.isArray(l.problemas) && l.problemas.length ? l.problemas[0] : "—"}</TableCell>
                             <TableCell>
-                              <Button type="button" variant="ghost" size="sm" className="gap-1 text-[#003DA5]" onClick={(e) => { e.stopPropagation(); abrirDetalle(l); }}>
-                                <Sparkles className="h-3.5 w-3.5" /> Mensaje
-                              </Button>
+                              <div className="flex items-center justify-end gap-0.5">
+                                <Button type="button" variant="ghost" size="sm" className="gap-1 text-[#003DA5]" onClick={(e) => { e.stopPropagation(); abrirDetalle(l); }}>
+                                  <Sparkles className="h-3.5 w-3.5" /> Mensaje
+                                </Button>
+                                {l.lead_campana_id ? (
+                                  <span className="inline-flex items-center gap-1 px-1.5 text-[11px] font-medium text-[#003DA5]" title="Ya está en tu Bandeja/Pipeline">
+                                    <ArrowRightCircle className="h-3.5 w-3.5" /> CRM
+                                  </span>
+                                ) : (
+                                  <Button
+                                    type="button" variant="ghost" size="sm"
+                                    disabled={sincronizando || leadSincronizando === l.id}
+                                    className="gap-1 text-muted-foreground hover:text-[#003DA5]"
+                                    onClick={(e) => { e.stopPropagation(); enviarUnoAlPipeline(l); }}
+                                    title="Pasar solo este lead a tu Pipeline"
+                                  >
+                                    {leadSincronizando === l.id
+                                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      : <Kanban className="h-3.5 w-3.5" />}
+                                    Pipeline
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -814,7 +850,7 @@ export default function BuscarLeadsVendedorTab() {
                                       <TableHead className="hidden sm:table-cell">Tipo</TableHead>
                                       <TableHead className="hidden md:table-cell min-w-[220px]">Canales</TableHead>
                                       <TableHead className="hidden lg:table-cell w-16">Score</TableHead>
-                                      <TableHead className="w-20"></TableHead>
+                                      <TableHead className="w-36"></TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -845,12 +881,16 @@ export default function BuscarLeadsVendedorTab() {
                                               </span>
                                             ) : (
                                               <Button
-                                                type="button" variant="ghost" size="sm" disabled={sincronizando}
-                                                className="gap-1 px-1.5 text-muted-foreground hover:text-[#003DA5]"
-                                                onClick={(e) => { e.stopPropagation(); sincronizar(true, [l]); }}
-                                                title="Pasar este lead al Pipeline"
+                                                type="button" variant="ghost" size="sm"
+                                                disabled={sincronizando || leadSincronizando === l.id}
+                                                className="gap-1 px-1.5 text-xs text-muted-foreground hover:text-[#003DA5]"
+                                                onClick={(e) => { e.stopPropagation(); enviarUnoAlPipeline(l); }}
+                                                title="Pasar solo este lead a tu Pipeline"
                                               >
-                                                <Kanban className="h-3.5 w-3.5" />
+                                                {leadSincronizando === l.id
+                                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                  : <Kanban className="h-3.5 w-3.5" />}
+                                                Pipeline
                                               </Button>
                                             )}
                                           </div>
