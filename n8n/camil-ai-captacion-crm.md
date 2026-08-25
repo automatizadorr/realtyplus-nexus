@@ -87,6 +87,35 @@ Para probarlo: escribirle al bot "quiero hablar con una persona". Debe
 responder que un asesor lo contactará y, en la ejecución, el parseador tiene que
 mostrar `escalar: true` con `motivo_escalacion: "solicitud_humana"`.
 
+### Agendamiento en Sofía: la credencial de Calendar (2026-08-25)
+
+Con la escalación ya funcionando, agendar seguía fallando: `Disponibilidad`
+devolvía `notFound`. No era la zona horaria ni el prompt.
+
+Los cinco nodos de calendario de Sofía apuntaban al calendario
+`realtyplus.leads@gmail.com`, y la única credencial que lo alcanzaba
+(`calendar realty- plus`) llevaba **desconectada desde el 9 de julio**
+("Access could not be refreshed because the connected account…"). Al cambiarla
+por `automatizador`, la autenticación pasaba pero Google seguía respondiendo
+`notFound`: esa cuenta no ve ese calendario.
+
+Se comprobó consultando qué calendarios alcanza cada credencial (endpoint
+`/rest/dynamic-node-parameters/resource-locator-results`): `automatizador` y
+`calrndar` son la **misma cuenta** y solo ven `automatizador.ex@gmail.com` más
+los feriados de Chile.
+
+Decisión de Mario: se abandona la cuenta de RealtyPlus. La credencial
+`calendar realty- plus` se **eliminó** — la referenciaban 6 workflows, todos
+inactivos (Isabel AI, los agendadores viejos, "whatsapp full"); si alguno se
+reactiva hay que reasignarle credencial. Los cinco nodos de Sofía
+(`Crea1`, `Disponibilidad`, `Modifica`, `Consulta`, `Cancela`) quedaron
+apuntando a `automatizador.ex@gmail.com`.
+
+Pendiente de criterio: las reuniones de clientes caen ahora en el calendario
+personal de esa cuenta. Si se quiere separarlas, crear un calendario dedicado
+bajo `automatizador.ex@gmail.com` y apuntar los cinco nodos ahí — la credencial
+ya sirve, no hace falta OAuth nuevo.
+
 ## Estado
 
 Aplicado sobre los dos workflows vivos (2026-08-25): `ouf0maiCEFpDc60d` en 65
