@@ -46,6 +46,10 @@ export type LeadCampana = {
   // el lead agendo reunion. Marca el lead como "ya converso con la IA".
   escalado_ia_at?: string | null;
   escalado_ia_motivo?: string | null;
+  // Traspaso setter -> closer. Si traspasado_at existe y el lead ya no es
+  // tuyo, lo ves en solo lectura: lo calificaste tu y lo cerrara otro.
+  setter_id?: string | null;
+  traspasado_at?: string | null;
 };
 
 // Ficha completa que devuelve la RPC vendedor_lead_detalle.

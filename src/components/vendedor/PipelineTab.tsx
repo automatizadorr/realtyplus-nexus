@@ -33,7 +33,7 @@ import {
 } from "@/components/vendedor/types";
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 
-const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id, instagram, facebook, mensaje_instagram, notas_vendedor, origen, ultimo_contacto_at, escalado_ia_at, escalado_ia_motivo";
+const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id, instagram, facebook, mensaje_instagram, notas_vendedor, origen, ultimo_contacto_at, escalado_ia_at, escalado_ia_motivo, setter_id, traspasado_at";
 
 // Cada columna trae de a 10 tarjetas y el resto se carga bajo demanda: con
 // filtros activos el vendedor casi nunca necesita más, y la primera pintada
@@ -107,13 +107,15 @@ function sanearBusqueda(q: string): string {
 // historial) vive en LeadDetalleDialog: la tarjeta solo tiene que decir de
 // un vistazo quién es, cuánto avanzó y si pide atención.
 // ---------------------------------------------------------------------
-function LeadCard({ lead, selected, onToggleSelect, onAbrir }: {
+function LeadCard({ lead, selected, soloLectura, onToggleSelect, onAbrir }: {
   lead: LeadCampana;
   selected: boolean;
+  // Lo calificó este vendedor pero ya es de un closer: se ve, no se toca.
+  soloLectura: boolean;
   onToggleSelect: (leadId: string) => void;
   onAbrir: (leadId: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id, disabled: soloLectura });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   const dias = diasDesde(lead.fecha_asignacion);
   const etapa = ((lead.etapa_venta as Etapa) || "contactado") as Etapa;
@@ -124,7 +126,7 @@ function LeadCard({ lead, selected, onToggleSelect, onAbrir }: {
   return (
     <div
       ref={setNodeRef} style={style} {...listeners} {...attributes}
-      className={`touch-none cursor-grab active:cursor-grabbing ${isDragging ? "z-50 opacity-60" : ""}`}
+      className={`touch-none ${soloLectura ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${isDragging ? "z-50 opacity-60" : ""}`}
     >
       <Card
         className={`mb-1.5 border-l-[3px] transition-shadow hover:shadow-md ${color.card}`}
@@ -141,7 +143,7 @@ function LeadCard({ lead, selected, onToggleSelect, onAbrir }: {
                 checked={selected} onChange={() => onToggleSelect(lead.id)}
               />
             </div>
-            <GripVertical className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+            {!soloLectura && <GripVertical className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />}
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13px] font-medium leading-tight">{lead.nombre || "—"}</div>
               <div className="flex flex-wrap items-center gap-x-1.5 text-[10px] leading-tight text-muted-foreground">
@@ -154,6 +156,12 @@ function LeadCard({ lead, selected, onToggleSelect, onAbrir }: {
               </div>
             </div>
           </div>
+
+          {soloLectura && (
+            <div className="flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              <ArrowRight className="h-2.5 w-2.5" /> Lo calificaste tú; ahora lo cierra un closer
+            </div>
+          )}
 
           <EtapaProgreso etapa={etapa} compacto />
 
@@ -236,6 +244,12 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   // común, igual patrón que la Bandeja. Cada apertura de wa.me pide su
   // propio clic ("Siguiente") para no chocar con el bloqueo de pop-ups.
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Hace falta para distinguir "mío" de "lo califiqué y ya es de un closer":
+  // la RLS le muestra al setter ambos.
+  const [uid, setUid] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id ?? null));
+  }, []);
   const [waPlantillaId, setWaPlantillaId] = useState("");
   const [cola, setCola] = useState<{ ids: string[]; idx: number } | null>(null);
   // Un mismo número no puede recibir el mensaje dos veces aunque esté cargado en
@@ -397,9 +411,18 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   };
 
   const moverEtapa = async (leadId: string, etapaOrigen: Etapa, etapaDestino: Etapa, motivoCierre?: string) => {
-    const { error } = await supabase.rpc("vendedor_mover_etapa", { _lead_id: leadId, _etapa: etapaDestino, _motivo_cierre: motivoCierre ?? null });
+    const { data, error } = await supabase.rpc("vendedor_mover_etapa", { _lead_id: leadId, _etapa: etapaDestino, _motivo_cierre: motivoCierre ?? null });
     if (error) { toast({ title: "No se pudo mover", description: error.message, variant: "destructive" }); return; }
     moverLocal(leadId, etapaOrigen, etapaDestino, motivoCierre);
+    // Al marcar "interesado", un setter entrega el lead al closer de turno.
+    // Hay que decírselo, si no parece que el lead se hubiera perdido.
+    const r = (data ?? {}) as { traspasado?: boolean; closer_nombre?: string; aviso?: string };
+    if (r.traspasado) {
+      toast({ title: `Lead entregado a ${r.closer_nombre ?? "un closer"}`, description: "Lo sigues viendo en tu Pipeline, pero ya no lo puedes mover." });
+      void cargarTodo();
+    } else if (r.aviso) {
+      toast({ title: "Sin closer disponible", description: r.aviso, variant: "destructive" });
+    }
   };
 
   const toggleSelect = (leadId: string) => {
@@ -630,6 +653,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
                   <LeadCard
                     key={l.id} lead={l}
                     selected={selected.has(l.id)} onToggleSelect={toggleSelect}
+                    soloLectura={Boolean(l.traspasado_at) && Boolean(uid) && l.vendedor_id !== uid}
                     onAbrir={setDetalleId}
                   />
                 ))}

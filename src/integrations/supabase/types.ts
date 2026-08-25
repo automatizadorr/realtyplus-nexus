@@ -532,9 +532,11 @@ export type Database = {
           prospecto_id: string | null
           puntuacion: number | null
           resumen_ia: string | null
+          setter_id: string | null
           tag_ids: string[] | null
           telefono: string
           timezone: string | null
+          traspasado_at: string | null
           ultimo_contacto_at: string | null
           updated_at: string | null
           vendedor_id: string | null
@@ -571,9 +573,11 @@ export type Database = {
           prospecto_id?: string | null
           puntuacion?: number | null
           resumen_ia?: string | null
+          setter_id?: string | null
           tag_ids?: string[] | null
           telefono: string
           timezone?: string | null
+          traspasado_at?: string | null
           ultimo_contacto_at?: string | null
           updated_at?: string | null
           vendedor_id?: string | null
@@ -610,9 +614,11 @@ export type Database = {
           prospecto_id?: string | null
           puntuacion?: number | null
           resumen_ia?: string | null
+          setter_id?: string | null
           tag_ids?: string[] | null
           telefono?: string
           timezone?: string | null
+          traspasado_at?: string | null
           ultimo_contacto_at?: string | null
           updated_at?: string | null
           vendedor_id?: string | null
@@ -1500,6 +1506,7 @@ export type Database = {
           created_by: string | null
           limite_mensajes_dia: number
           nombre_display: string | null
+          recibe_traspasos: boolean
           remitente_from_name: string | null
           remitente_local: string | null
           remitente_modo: string
@@ -1515,6 +1522,7 @@ export type Database = {
           created_by?: string | null
           limite_mensajes_dia?: number
           nombre_display?: string | null
+          recibe_traspasos?: boolean
           remitente_from_name?: string | null
           remitente_local?: string | null
           remitente_modo?: string
@@ -1530,6 +1538,7 @@ export type Database = {
           created_by?: string | null
           limite_mensajes_dia?: number
           nombre_display?: string | null
+          recibe_traspasos?: boolean
           remitente_from_name?: string | null
           remitente_local?: string | null
           remitente_modo?: string
@@ -1791,6 +1800,7 @@ export type Database = {
           total_leads: number
         }[]
       }
+      siguiente_closer: { Args: never; Returns: string }
       sync_id_contacto_from_sheet: { Args: never; Returns: Json }
       tel_norm: { Args: { _tel: string }; Returns: string }
       telefonos_contactados_wa: {
@@ -1861,7 +1871,7 @@ export type Database = {
       }
       vendedor_mover_etapa: {
         Args: { _etapa: string; _lead_id: string; _motivo_cierre?: string }
-        Returns: undefined
+        Returns: Json
       }
       vendedor_plantillas_usadas: {
         Args: never
@@ -1929,6 +1939,7 @@ export type Database = {
         Args: { _activo: boolean; _lead_id: string }
         Returns: undefined
       }
+      vendedor_traspasados: { Args: never; Returns: number }
       vendedor_ve_lead: {
         Args: { _lead_id: string; _user_id: string }
         Returns: boolean
