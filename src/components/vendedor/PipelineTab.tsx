@@ -61,7 +61,10 @@ const ORIGENES: { valor: string; label: string }[] = [
   { valor: "all", label: "Todos los orígenes" },
   { valor: "buscar_leads", label: "Buscar Leads" },
   { valor: "manual_vendedor", label: "Alta manual" },
-  // Todo lo que no cargó el vendedor: importaciones, campañas y el bot.
+  // Escribió al WhatsApp del bot sin estar en ninguna campaña: la ficha la
+  // abrió el propio bot al captarlo.
+  { valor: "whatsapp_inbound", label: "WhatsApp entrante" },
+  // Todo lo demás que no cargó el vendedor: importaciones y campañas.
   { valor: "campana", label: "Campaña / importados" },
 ];
 
@@ -147,6 +150,7 @@ function LeadCard({ lead, selected, onToggleSelect, onAbrir }: {
                 {lead.origen === "buscar_leads" && <Radar className="h-2.5 w-2.5 text-[#003DA5]" aria-label="vino de Buscar Leads" />}
                 {lead.origen === "manual_vendedor" && <UserPlus className="h-2.5 w-2.5 text-[#003DA5]" aria-label="alta manual" />}
                 {lead.escalado_ia_at && <Bot className="h-2.5 w-2.5 text-emerald-600" aria-label="captado por el sistema IA" />}
+                {lead.origen === "whatsapp_inbound" && <MessageCircle className="h-2.5 w-2.5 text-emerald-600" aria-label="escribió al WhatsApp del bot" />}
               </div>
             </div>
           </div>
@@ -262,7 +266,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
     const texto = sanearBusqueda(f.q);
     if (texto) q = q.or(`nombre.ilike.%${texto}%,email.ilike.%${texto}%,telefono.ilike.%${texto}%`);
     if (f.pais !== "all") q = q.eq("pais", f.pais);
-    if (f.origen === "campana") q = q.or("origen.is.null,and(origen.neq.buscar_leads,origen.neq.manual_vendedor)");
+    if (f.origen === "campana") q = q.or("origen.is.null,and(origen.neq.buscar_leads,origen.neq.manual_vendedor,origen.neq.whatsapp_inbound)");
     else if (f.origen !== "all") q = q.eq("origen", f.origen);
     if (f.respondio) q = q.is("ha_respondido", true);
     if (f.captadosIa) q = q.not("escalado_ia_at", "is", null);

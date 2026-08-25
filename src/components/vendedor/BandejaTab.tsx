@@ -509,6 +509,9 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
                         {l.nombre || "—"}
                         {l.origen === "buscar_leads" && <Radar className="h-3 w-3 text-[#003DA5]" aria-label="vino de Buscar Leads" />}
                         {l.origen === "manual_vendedor" && <UserPlus className="h-3 w-3 text-[#003DA5]" aria-label="alta manual" />}
+                        {l.origen === "whatsapp_inbound" && (
+                          <MessageCircle className="h-3 w-3 text-emerald-600" aria-label="escribió al WhatsApp del bot" />
+                        )}
                         {l.escalado_ia_at && (
                           <Bot
                             className="h-3 w-3 text-emerald-600"

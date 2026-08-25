@@ -1696,11 +1696,18 @@ export type Database = {
         }[]
       }
       bot_capta_lead: {
-        Args: { _motivo?: string; _telefono: string }
+        Args: {
+          _motivo?: string
+          _nombre?: string
+          _pais?: string
+          _telefono: string
+        }
         Returns: {
+          creado: boolean
           etapa_anterior: string
           etapa_nueva: string
           lead_id: string
+          revivido: boolean
           vendedor_id: string
           ya_estaba: boolean
         }[]

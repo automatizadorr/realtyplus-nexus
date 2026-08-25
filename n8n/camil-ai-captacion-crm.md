@@ -188,6 +188,31 @@ entregárselo a un vendedor. Va SOLO en ese turno; en los mensajes siguientes no
 incluyas. Si 'Crea1' falló o todavía no la llamaste, NUNCA lo pongas en true.
 ```
 
+## Inbound fuera de campaña
+
+Desde `20260907100000_bot_capta_lead_inbound.sql`, si el teléfono **no existe**
+en `leads_campana`, `bot_capta_lead` **crea la ficha** con
+`origen = 'whatsapp_inbound'`, ya marcada como captada por IA y en etapa
+`contactado`. Antes devolvía 404 y la conversación se perdía: el bot atiende
+gente que llega por la web o por anuncios, no solo leads de campaña.
+
+Orden de búsqueda, que importa:
+
+1. Lead vivo con ese teléfono → se marca.
+2. Lead **archivado** con ese teléfono → se revive y se marca. Si la persona
+   está conversando con el bot ahora, el motivo por el que se archivó
+   (duplicado, número inmarcable) ya no aplica; y como `telefono` es UNIQUE,
+   insertar uno nuevo reventaría la constraint.
+3. No existe → se crea.
+
+Los dos nodos HTTP mandan además `nombre` con el perfil de WhatsApp
+(`$('WhatsApp Trigger…').first().json?.contacts?.[0]?.profile?.name`). Si viene
+vacío, el RPC arma `Contacto WhatsApp <últimos 4 dígitos>`. Ese nombre también
+rellena fichas viejas que quedaron sin nombre útil.
+
+La respuesta de la function trae `creado` y `revivido` para distinguir los tres
+casos desde n8n.
+
 ## Cómo probarlo sin molestar a un lead real
 
 1. Crear un lead de prueba en `leads_campana` con un teléfono propio.
