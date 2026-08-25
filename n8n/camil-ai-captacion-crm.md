@@ -26,6 +26,10 @@ En el n8n local hay dos bots activos, cada uno sobre **su propia cuenta de Meta*
 
 | id | nombre | agente | credencial WhatsApp | nodos |
 |---|---|---|---|---|
+Para qué es cada uno, los dos de LexHouse: **Sofía** es el sistema de
+activación y reactivación de LexHouse Nexus; **Camil-AI** atiende el WhatsApp
+de las landings del ecosistema.
+
 | `ouf0maiCEFpDc60d` | **Sofía** | **Sofía**, timezone Santiago, tool `Crea1`, parseador v2 | trigger `RealtyPLus-AI` / envío `RealtyPlus- enviar Mensaje` (phoneNumberId fijo `1070824479455864`) | 65 |
 | `2oKGpZR85DFAr4R6` | Meta - LexHouse Camil-AI | **Camil-AI**, timezone Santiago, tool `Reserva`, parseador v3 | trigger `AI-MAX` / envío `AI-MAX - ENVIAR MENSAJE` (responde al número por el que entró) | 51 |
 
@@ -111,10 +115,18 @@ reactiva hay que reasignarle credencial. Los cinco nodos de Sofía
 (`Crea1`, `Disponibilidad`, `Modifica`, `Consulta`, `Cancela`) quedaron
 apuntando a `automatizador.ex@gmail.com`.
 
-Pendiente de criterio: las reuniones de clientes caen ahora en el calendario
-personal de esa cuenta. Si se quiere separarlas, crear un calendario dedicado
-bajo `automatizador.ex@gmail.com` y apuntar los cinco nodos ahí — la credencial
-ya sirve, no hace falta OAuth nuevo.
+**Calendario unificado.** Los 10 nodos de calendario de los dos flujos (5 y 5)
+usan el mismo calendario `automatizador.ex@gmail.com` con la credencial
+`automatizador`, que quedó como la única de Google Calendar: también se eliminó
+`calrndar`, duplicada de la misma cuenta, que usaban 3 workflows inactivos
+(`cazador realty-plus`, `aguas don benjamin`, `REALTYPLUS IA`).
+
+Mario descartó un calendario dedicado: no hace falta, los dos sistemas son de
+LexHouse. Compartir agenda además evita que los dos agentes agenden encima del
+mismo bloque.
+
+Si alguno de los 9 workflows inactivos que referenciaban las credenciales
+borradas se reactiva, hay que reasignarle credencial de calendario a mano.
 
 ## Estado
 
