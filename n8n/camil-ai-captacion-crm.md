@@ -188,6 +188,31 @@ entregárselo a un vendedor. Va SOLO en ese turno; en los mensajes siguientes no
 incluyas. Si 'Crea1' falló o todavía no la llamaste, NUNCA lo pongas en true.
 ```
 
+## Movimientos de reunión: agendar, reagendar y cancelar
+
+El contrato con el agente es **un solo campo**, `reunion_estado`, con tres
+valores: `"agendada"` | `"modificada"` | `"cancelada"`. Se declara en el turno
+en que la herramienta de calendario correspondiente (`Crea1`/`Reserva`,
+`Modifica`, `Cancela`) devolvió éxito. Reemplaza al booleano
+`reunion_agendada` de la primera versión; el parseador lo sigue aceptando y lo
+traduce a `"agendada"`, por si el modelo arrastra el formato viejo.
+
+Una cancelación importa tanto o más que un agendamiento: el lead se enfría y
+hay que contactarlo. Por eso los tres casos hacen lo mismo — marcan el lead,
+apagan el bot y lo dejan en `contactado` — y lo que cambia es el motivo que ve
+el vendedor en la ficha:
+
+- `agendada` → "El lead agendó una reunión con el bot"
+- `modificada` → "El lead reagendó su reunión: revisar la nueva fecha"
+- `cancelada` → "El lead canceló su reunión: contactar antes de que se enfríe"
+
+El motivo **sí se sobrescribe** en cada llamada, a propósito: la ficha debe
+mostrar lo último que pasó. La fecha `escalado_ia_at` no se toca nunca.
+
+El IF pasó a llamarse `📅 ¿Movimiento de reunión?` y su condición es
+`reunion_estado` no vacío (más `message_index === 1`). El nodo HTTP manda
+`tipo: $json.reunion_estado` y ya no manda motivo: lo pone la function.
+
 ## Inbound fuera de campaña
 
 Desde `20260907100000_bot_capta_lead_inbound.sql`, si el teléfono **no existe**

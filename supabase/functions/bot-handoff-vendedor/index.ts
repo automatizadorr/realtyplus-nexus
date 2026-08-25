@@ -28,14 +28,16 @@
 //
 // Conectado desde el workflow "Camil-AI" (n8n, localhost:5678, id
 // ouf0maiCEFpDc60d), en dos puntos:
-//   - rama "🚨 ¿Escalar a Humano?" → nodo HTTP "🎯 Entregar a Vendedor (Nexus)",
+//   - rama "🚨 ¿Escalar a Humano?" → nodo HTTP "🎯 Captar Lead en CRM (Nexus)",
 //     en paralelo a "📥 Registrar Escalación"
-//   - después del nodo de Google Calendar "Crea" (reunión agendada)
+//   - rama "📅 ¿Movimiento de reunión?" → nodo HTTP "📅 Reunión al CRM (Nexus)",
+//     que cubre agendar, reagendar y cancelar
 //
 // Body:
 //   telefono: string   (requerido) — mismo formato que usa el bot para el lead
 //   motivo?: string    qué gatilló la captación; se muestra en la ficha del lead
-//   tipo?: "escalacion" | "reunion"  solo define el motivo por defecto
+//   tipo?: "escalacion" | "agendada" | "modificada" | "cancelada"
+//                      solo define el motivo por defecto que se muestra en la ficha
 //   nombre?: string    nombre del perfil de WhatsApp; se usa si hay que crear
 //                      la ficha, o para rellenar un nombre vacío
 //   pais?: string      opcional, si el workflow lo sabe
@@ -50,9 +52,14 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+// `tipo` no cambia lo que se hace en la base — siempre se marca el lead y se
+// apaga el bot — solo el texto que verá el vendedor en la ficha.
 const MOTIVO_POR_TIPO: Record<string, string> = {
-  escalacion: "Camil-AI escaló la conversación a un humano",
-  reunion: "El lead agendó una reunión con Camil-AI",
+  escalacion: "El bot escaló la conversación a un humano",
+  reunion: "El lead agendó una reunión con el bot",
+  agendada: "El lead agendó una reunión con el bot",
+  modificada: "El lead reagendó su reunión: revisar la nueva fecha",
+  cancelada: "El lead canceló su reunión: contactar antes de que se enfríe",
 };
 
 Deno.serve(async (req) => {
