@@ -62,6 +62,31 @@ Los nombres se cruzaron a propósito, por decisión de Mario:
   prompt, Gmail de escalación, WhatsApp al operador, Gmail de error y dos notas
   del canvas). El nombre del workflow se dejó igual.
 
+### Por qué la escalación no disparaba (2026-08-25)
+
+El nodo de captación colgado del IF de escalación nunca corría, en ninguno de
+los dos flujos. No era la infraestructura: en todas las ejecuciones el
+parseador devolvía `escalar: false` con `_parse_source: json_direct`, o sea el
+JSON del agente llegaba bien formado y el modelo simplemente no activaba la
+bandera.
+
+La causa estaba en el prompt. El bloque "REGLA ANTI-BUCLE Y ESCALACIÓN" solo
+daba **una** condición para escalar — repetir la misma pregunta ≥3 veces o
+pasar 8 turnos sin cita — y después listaba `solicitud_humana`,
+`alta_intencion_cerrar`, `cliente_molesto` y `caso_complejo` como *valores
+válidos* de `motivo_escalacion`, **sin decir nunca cuándo usarlos**. Si el lead
+pedía hablar con una persona, el agente no cumplía ninguna condición y seguía
+conversando.
+
+El bloque se reemplazó en los dos prompts por uno donde **cada motivo trae su
+condición explícita**, más las reglas de que el mensaje visible no mencione
+sistemas internos, que se escale una sola vez por conversación, y que ante la
+duda se escale.
+
+Para probarlo: escribirle al bot "quiero hablar con una persona". Debe
+responder que un asesor lo contactará y, en la ejecución, el parseador tiene que
+mostrar `escalar: true` con `motivo_escalacion: "solicitud_humana"`.
+
 ## Estado
 
 Aplicado sobre los dos workflows vivos (2026-08-25): `ouf0maiCEFpDc60d` en 65
