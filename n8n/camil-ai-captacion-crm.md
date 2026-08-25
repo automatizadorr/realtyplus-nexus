@@ -17,7 +17,7 @@ marcado y en etapa `contactado` para que el admin lo reparta desde "Asignar lead
 
 ---
 
-## 1. Nodo HTTP — escalación a humano
+## 1. Nodo HTTP — escalación a humano (PENDIENTE: falta el valor de BOT_HANDOFF_SECRET)
 
 Se cuelga de la salida **true** del IF `🚨 ¿Escalar a Humano?`, en paralelo a
 `📥 Registrar Escalación (Supabase)`, `📧 Alerta Comercial (Gmail)` y
@@ -52,7 +52,7 @@ conversación del bot con el lead no se puede cortar por eso.
 }
 ```
 
-## 2. Nodo IF — ¿agendó reunión?
+## 2. Nodo IF — ¿agendó reunión? (PENDIENTE, va junto con el nodo 3)
 
 El agendamiento **no** se puede detectar poniendo un nodo después del Google
 Calendar: `Crea1`, `Modifica`, `Consulta` y `Disponibilidad` son *tools* del AI
@@ -97,7 +97,7 @@ ese filtro la function se llamaría una vez por burbuja de WhatsApp.
 }
 ```
 
-## 3. Nodo HTTP — reunión agendada
+## 3. Nodo HTTP — reunión agendada (PENDIENTE: falta el valor de BOT_HANDOFF_SECRET)
 
 Va colgado de la salida **true** del IF anterior.
 
@@ -125,7 +125,7 @@ Va colgado de la salida **true** del IF anterior.
 }
 ```
 
-## 4. Parche al nodo Code `🧩 Parseador Nexus4`
+## 4. Parche al nodo Code `🧩 Parseador Nexus4` — APLICADO 2026-08-25
 
 Tres cambios, todos espejo de cómo ya se trata `escalar`:
 
@@ -135,7 +135,7 @@ Tres cambios, todos espejo de cómo ya se trata `escalar`:
    y `reunion_agendada = Boolean(extracted.reunion_agendada);`
 3. Agregarlo al objeto que se emite, al lado de `escalar` y `motivo_escalacion`.
 
-## 5. Parche al system prompt del `AI Agent1`
+## 5. Parche al system prompt del `AI Agent1` — APLICADO 2026-08-25
 
 Se agrega al final del bloque "⚠️ REGLA ANTI-BUCLE Y ESCALACIÓN":
 
