@@ -12,6 +12,7 @@ import CorreosVendedorTab from "@/components/vendedor/CorreosVendedorTab";
 import BuscarLeadsVendedorTab from "@/components/vendedor/BuscarLeadsVendedorTab";
 import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
 import BandejaTab from "@/components/vendedor/BandejaTab";
+import CalendarioAgendamientos from "@/components/vendedor/CalendarioAgendamientos";
 import ReactivacionChatTab from "@/components/vendedor/ReactivacionChatTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
 import ArchivadosDialog from "@/components/vendedor/ArchivadosDialog";
@@ -35,7 +36,7 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["bandeja", "pipeline", "reactivacion", "plantillas", "diseno-correo", "buscar-leads", "estadisticas"] as const;
+const TABS_VALIDOS = ["bandeja", "pipeline", "agenda", "reactivacion", "plantillas", "diseno-correo", "buscar-leads", "estadisticas"] as const;
 
 export default function MisLeads() {
   const { user } = useAuth();
@@ -156,6 +157,12 @@ export default function MisLeads() {
 
         <TabsContent value="pipeline">
           <PipelineTab plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas} />
+        </TabsContent>
+
+        <TabsContent value="agenda">
+          {/* compacto: el vendedor ya sabe que los leads son suyos, no hace
+              falta repetir su nombre en cada tarjeta. */}
+          <CalendarioAgendamientos titulo="Mi agenda" compacto />
         </TabsContent>
 
         <TabsContent value="reactivacion">

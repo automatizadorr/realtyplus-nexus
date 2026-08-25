@@ -41,6 +41,12 @@
 //   nombre?: string    nombre del perfil de WhatsApp; se usa si hay que crear
 //                      la ficha, o para rellenar un nombre vacío
 //   pais?: string      opcional, si el workflow lo sabe
+//   reunion_at?: string  ISO 8601 de la reunión que el agente acaba de crear,
+//                      mover o cancelar. Es la única forma que tiene el CRM de
+//                      saber CUÁNDO es: la hora vive en Google Calendar y n8n
+//                      no puede prestarle esa credencial a Supabase.
+//   reunion_fin?: string  ISO 8601 opcional; si no viene se asume 1 hora.
+//   meet_link?: string    enlace de Google Meet que devolvió la herramienta.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -104,9 +110,30 @@ Deno.serve(async (req) => {
       return json({ success: false, error: `No se pudo captar el lead con teléfono: ${telefono}` }, 500);
     }
 
+    // Si el bot mandó la hora, se guarda la reunión y se disparan los avisos.
+    // Un fallo acá no puede tumbar la captación del lead, que es lo importante.
+    let agendamiento_id: string | null = null;
+    const reunionAt = typeof body?.reunion_at === "string" ? body.reunion_at.trim() : "";
+    if (reunionAt && !Number.isNaN(Date.parse(reunionAt))) {
+      const estado = ["agendada", "modificada", "cancelada"].includes(tipo) ? tipo : "agendada";
+      const fin = typeof body?.reunion_fin === "string" && !Number.isNaN(Date.parse(body.reunion_fin))
+        ? body.reunion_fin : null;
+      const { data: ag, error: agErr } = await supabase.rpc("registrar_agendamiento", {
+        _lead_id: r.lead_id,
+        _fecha: new Date(reunionAt).toISOString(),
+        _estado: estado,
+        _fin: fin ? new Date(fin).toISOString() : null,
+        _origen: typeof body?.origen === "string" ? body.origen.slice(0, 60) : "whatsapp",
+        _meet: typeof body?.meet_link === "string" ? body.meet_link.slice(0, 500) : null,
+      });
+      if (agErr) console.error("registrar_agendamiento error:", agErr.message);
+      else agendamiento_id = ag as string | null;
+    }
+
     return json({
       success: true,
       lead_id: r.lead_id,
+      agendamiento_id,
       vendedor_id: r.vendedor_id,
       // true = ya venía marcado de una captación anterior; la llamada es
       // idempotente y no pisa la fecha original.

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import NotificacionesCampana from "@/components/NotificacionesCampana";
 import { AppSidebar } from "@/components/AppSidebar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -53,7 +54,10 @@ export function Layout({ children }: LayoutProps) {
                 className="h-9 w-auto object-contain"
               />
             </span>
-            <UserAvatar editable className="ml-auto h-9 w-9" textClassName="text-sm" />
+            <div className="ml-auto flex items-center gap-1">
+              <NotificacionesCampana />
+              <UserAvatar editable className="h-9 w-9" textClassName="text-sm" />
+            </div>
           </header>
           <main className="app-main flex-1 overflow-auto">{children}</main>
         </div>

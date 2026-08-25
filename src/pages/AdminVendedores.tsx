@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PAISES_PROSPECCION } from "@/lib/paises";
 import AsignarLeadsPanel from "@/components/vendedor/AsignarLeadsPanel";
 import KpisVendedoresPanel from "@/components/vendedor/KpisVendedoresPanel";
+import CalendarioAgendamientos from "@/components/vendedor/CalendarioAgendamientos";
 import type { RolVenta } from "@/components/vendedor/types";
 
 type VendedorRow = {
@@ -170,6 +171,8 @@ export default function AdminVendedores() {
           ))}
         </div>
       )}
+
+      {!loading && <CalendarioAgendamientos titulo="Agenda del equipo" />}
 
       {!loading && vendedores.length > 0 && <KpisVendedoresPanel />}
 

@@ -39,6 +39,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      agendamientos: {
+        Row: {
+          created_at: string
+          estado: string
+          fecha_fin: string | null
+          fecha_inicio: string
+          id: string
+          lead_id: string
+          meet_link: string | null
+          notas: string | null
+          origen: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estado?: string
+          fecha_fin?: string | null
+          fecha_inicio: string
+          id?: string
+          lead_id: string
+          meet_link?: string | null
+          notas?: string | null
+          origen?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estado?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          id?: string
+          lead_id?: string
+          meet_link?: string | null
+          notas?: string | null
+          origen?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamientos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_campana"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamientos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vista_inbox_contactos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       connection_state: {
         Row: {
           id: number
@@ -916,6 +970,57 @@ export type Database = {
           },
         ]
       }
+      notificaciones: {
+        Row: {
+          created_at: string
+          cuerpo: string | null
+          id: string
+          lead_id: string | null
+          leida_at: string | null
+          tipo: string
+          titulo: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cuerpo?: string | null
+          id?: string
+          lead_id?: string | null
+          leida_at?: string | null
+          tipo: string
+          titulo: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cuerpo?: string | null
+          id?: string
+          lead_id?: string | null
+          leida_at?: string | null
+          tipo?: string
+          titulo?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_campana"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificaciones_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vista_inbox_contactos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbox: {
         Row: {
           content: string
@@ -1776,6 +1881,29 @@ export type Database = {
           ya_estaba: boolean
         }[]
       }
+      calendario_agendamientos: {
+        Args: { _desde?: string; _hasta?: string }
+        Returns: {
+          captado_ia: boolean
+          es_mio: boolean
+          estado: string
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          lead_email: string
+          lead_etapa: string
+          lead_id: string
+          lead_nombre: string
+          lead_origen: string
+          lead_pais: string
+          lead_telefono: string
+          meet_link: string
+          origen: string
+          setter: string
+          vendedor: string
+          vendedor_id: string
+        }[]
+      }
       complete_onboarding: { Args: never; Returns: undefined }
       correo_envios_resumen: {
         Args: { _dias?: number }
@@ -1828,6 +1956,45 @@ export type Database = {
         }[]
       }
       mi_rol_en_equipo: { Args: { _equipo_id: string }; Returns: string }
+      notificaciones_listar: {
+        Args: { _limite?: number }
+        Returns: {
+          created_at: string
+          cuerpo: string
+          id: string
+          lead_id: string
+          leida_at: string
+          tipo: string
+          titulo: string
+          url: string
+        }[]
+      }
+      notificaciones_marcar_leidas: {
+        Args: { _ids?: string[] }
+        Returns: number
+      }
+      notificaciones_sin_leer: { Args: never; Returns: number }
+      notificar: {
+        Args: {
+          _cuerpo?: string
+          _lead_id?: string
+          _tipo: string
+          _titulo: string
+          _url?: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      notificar_admins: {
+        Args: {
+          _cuerpo?: string
+          _lead_id?: string
+          _tipo: string
+          _titulo: string
+          _url?: string
+        }
+        Returns: number
+      }
       plantilla_stats: {
         Args: never
         Returns: {
@@ -1854,6 +2021,17 @@ export type Database = {
           servicio: string
           total_leads: number
         }[]
+      }
+      registrar_agendamiento: {
+        Args: {
+          _estado?: string
+          _fecha: string
+          _fin?: string
+          _lead_id: string
+          _meet?: string
+          _origen?: string
+        }
+        Returns: string
       }
       siguiente_closer: { Args: never; Returns: string }
       sync_id_contacto_from_sheet: { Args: never; Returns: Json }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Inbox, Kanban, RotateCcw, Radar, FileText, Palette, PieChart } from "lucide-react";
+import { Inbox, Kanban, RotateCcw, Radar, FileText, Palette, PieChart, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Mismas secciones que el sidebar del vendedor, pero dentro de la página.
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 const SECCIONES = [
   { url: "/mis-leads/bandeja", label: "Bandeja", icon: Inbox, badge: "bandeja" as const },
   { url: "/mis-leads/pipeline", label: "Pipeline", icon: Kanban },
+  { url: "/mis-leads/agenda", label: "Agenda", icon: CalendarDays },
   { url: "/mis-leads/buscar-leads", label: "Buscar Leads", icon: Radar },
   { url: "/mis-leads/reactivacion", label: "Leads DataBase", icon: RotateCcw },
   { url: "/mis-leads/plantillas", label: "Mis Plantillas", icon: FileText },
