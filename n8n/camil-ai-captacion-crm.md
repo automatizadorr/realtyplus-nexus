@@ -19,10 +19,33 @@ marcado y en etapa `contactado` para que el admin lo reparta desde "Asignar lead
 
 ---
 
+## ⚠️ Hay DOS workflows activos, y los dos llevan el parche
+
+En el n8n local conviven dos bots activos, ambos con WhatsApp Trigger:
+
+| id | nombre | agente | nodos | detalle |
+|---|---|---|---|---|
+| `ouf0maiCEFpDc60d` | Camil-AI | Camil-AI, timezone Madrid, tool `Crea1` | 65 | parseador v2 |
+| `2oKGpZR85DFAr4R6` | Meta - LexHouse Camil-AI | **LeyIA**, timezone Santiago, tool `Reserva` | 53 | parseador v3, es el que se estaba usando en las pruebas de agosto |
+
+El parche está aplicado en **los dos**. Diferencias del segundo:
+
+- El trigger se llama `WhatsApp Trigger` (sin el `1`), así que los nodos HTTP
+  toman el teléfono de `$json.telefono` — lo calcula el propio parseador — en
+  vez de leerlo del trigger por nombre. Es más robusto y sirve igual en ambos.
+- El parseador v3 tiene cuatro ramas de parseo en vez de dos, y una de ellas
+  asigna `escalar` dos veces; hubo que reemplazar todas las ocurrencias.
+- En el prompt de LeyIA la tool de agendamiento es `Reserva`, no `Crea1`.
+- El IF de escalación de este workflow sale a Gmail + Notificar Operador
+  WhatsApp (no a Supabase/Sheets como el otro).
+
+Conviene decidir cuál de los dos se queda activo: con los dos encendidos, un
+mismo mensaje entrante puede dispararlos a ambos.
+
 ## Estado
 
-Los cinco parches están **aplicados** sobre el workflow vivo (2026-08-25): quedó
-en 65 nodos y sigue activo. El secreto no viaja dentro del workflow: los dos
+Los cinco parches están **aplicados** sobre los dos workflows vivos (2026-08-25):
+`ouf0maiCEFpDc60d` quedó en 65 nodos y `2oKGpZR85DFAr4R6` en 53, ambos activos. El secreto no viaja dentro del workflow: los dos
 nodos HTTP usan el credential Header Auth `Nexus bot-handoff`
 (`zLDkSgmw5BzyYKn9`), que lleva el header `x-webhook-secret`.
 
