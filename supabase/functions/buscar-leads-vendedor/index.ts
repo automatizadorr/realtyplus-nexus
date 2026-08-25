@@ -363,10 +363,13 @@ Deno.serve(async (req) => {
     }
 
     // --- Historial previo del usuario (dedup) ---
+    // Limite explicito: sin el, PostgREST puede cortar la lista y el dedupe
+    // quedaria incompleto -> choques con el UNIQUE al guardar.
     const { data: previos } = await svc
       .from("prospeccion_leads")
       .select("dedup_key, id")
-      .eq("creado_por", userId);
+      .eq("creado_por", userId)
+      .limit(20000);
     const clavesPrevias = new Set((previos ?? []).map((r: { dedup_key: string }) => r.dedup_key));
     const idPrevios = new Map<string, string>();
     for (const r of (previos ?? []) as { dedup_key: string; id: string }[]) {
@@ -536,12 +539,15 @@ Deno.serve(async (req) => {
     for (const n of aProcesar) {
       if (!porIdx.has(n.idx)) { porIdx.set(n.idx, enriquecerFallback(n, servicio)); conFallback++; }
     }
-    const aviso = [
+    // El aviso se arma al final (ver `avisos`), porque la persistencia puede
+    // agregar el suyo: si el historial no se guarda, el vendedor tiene que
+    // enterarse en la pantalla y no solo en los logs.
+    const avisos: string[] = [
       conFallback > 0
         ? `${conFallback} de ${aProcesar.length} leads se completaron sin IA (el modelo gratuito no alcanzó a responder). Los datos de contacto son igual de reales; solo el texto sugerido viene de plantilla.`
         : null,
       ...avisosFuente,
-    ].filter(Boolean).join(" ");
+    ].filter((x): x is string => Boolean(x));
 
     const marcados: Lead[] = nuevosCandidatos.map((n) => {
       const e = porIdx.get(n.idx) ?? {};
@@ -589,6 +595,13 @@ Deno.serve(async (req) => {
       .select("id").single();
 
     let busquedaId: string | null = null;
+    if (busqErr || !busq) {
+      // Antes esto solo iba a console.error y la UI igual decía "Guardados en
+      // tu historial": el vendedor daba por hecho que tenía la búsqueda y no
+      // estaba. Ahora se dice en pantalla.
+      console.error("buscar-leads-vendedor persist error:", busqErr?.message);
+      avisos.push("No se pudo guardar esta búsqueda en tu historial; los resultados de abajo son de esta sesión y se pierden al salir.");
+    }
     if (!busqErr && busq) {
       busquedaId = busq.id;
       const rows = nuevos.map((l) => ({
@@ -607,25 +620,39 @@ Deno.serve(async (req) => {
         mensaje_instagram: l.mensaje_instagram ?? "",
       }));
       if (rows.length) {
-        const { data: inserted, error: insErr } = await svc
-          .from("prospeccion_leads").insert(rows).select("id, dedup_key");
+        // upsert en vez de insert: la tabla tiene UNIQUE (creado_por,
+        // dedup_key) y un `insert` en bloque es todo-o-nada, asi que UN solo
+        // choque (un negocio que ya estaba en el historial y se coló en el
+        // dedupe) tiraba abajo los N leads de la búsqueda y el vendedor se
+        // quedaba con una búsqueda vacía sin saber por qué.
+        const { error: insErr } = await svc
+          .from("prospeccion_leads")
+          .upsert(rows, { onConflict: "creado_por,dedup_key", ignoreDuplicates: true });
         if (insErr) {
           console.error("buscar-leads-vendedor insert error:", insErr.message);
-        } else if (inserted) {
-          const idByKey = new Map<string, string>();
-          for (const r of inserted as { id: string; dedup_key: string }[]) if (r.dedup_key) idByKey.set(r.dedup_key, r.id);
-          for (const l of marcados) if (!l.id) l.id = idByKey.get(dedupKey(l.nombre, ciudad));
+          avisos.push("Los resultados no se pudieron guardar en tu historial; pásalos al CRM ahora o se pierden al salir.");
         }
+        // Los ids se releen siempre: con ignoreDuplicates la respuesta no trae
+        // las filas que ya existían, y sin id el lead no se puede pasar al CRM.
+        const claves = rows.map((r) => `${(r.nombre ?? "").trim().toLowerCase()}|${ciudad.trim().toLowerCase()}`);
+        const { data: guardados } = await svc
+          .from("prospeccion_leads")
+          .select("id, dedup_key")
+          .eq("creado_por", userId)
+          .in("dedup_key", claves);
+        const idByKey = new Map<string, string>();
+        for (const r of (guardados ?? []) as { id: string; dedup_key: string }[]) {
+          if (r.dedup_key) idByKey.set(r.dedup_key, r.id);
+        }
+        for (const l of marcados) if (!l.id) l.id = idByKey.get(dedupKey(l.nombre, ciudad));
       }
-    } else if (busqErr) {
-      console.error("buscar-leads-vendedor persist error:", busqErr.message);
     }
 
     const visibles = excluirRepetidos ? nuevos : marcados;
     return new Response(JSON.stringify({
       success: true, busqueda_id: busquedaId,
       count: visibles.length, nuevos: nuevos.length, repetidos: marcados.length - nuevos.length,
-      stats, leads: visibles, aviso,
+      stats, leads: visibles, aviso: avisos.join(" "),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
