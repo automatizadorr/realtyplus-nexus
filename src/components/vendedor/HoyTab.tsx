@@ -22,6 +22,20 @@ const sb = supabase as any;
 
 const PLANTILLA_WA_KEY = "hoy:plantillaWa";
 
+// Por que este lead esta en la cola, en una linea. Se muestra al pasar el
+// mouse por encima del motivo: el vendedor no tiene que adivinar que
+// significa "Sin plan" o "Traspasado".
+const MOTIVO_AYUDA: Record<MotivoCola, string> = {
+  reunion: "Tiene reunión agendada dentro de las próximas 24 horas",
+  respondio: "Te respondió y todavía nadie le contestó",
+  escalado: "La IA no pudo seguir y escaló la conversación a una persona",
+  traspaso: "Te lo traspasaron ya calificado y todavía no lo tocaste",
+  vencido: "El seguimiento que habías agendado ya pasó de fecha",
+  hoy: "Vos mismo agendaste tocarlo hoy",
+  nuevo: "Te lo asignaron y nunca lo contactaste",
+  sin_plan: "Lo contactaste alguna vez y quedó sin próximo paso agendado",
+};
+
 function waLink(l: ColaLead): string | null {
   const raw = (l.telefono || "").replace(/[^\d]/g, "");
   if (raw.length < 8) return null;
@@ -165,13 +179,15 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
     );
   }
 
-  const chips: { clave: MotivoCola | "todos"; label: string; n: number }[] = [
-    { clave: "todos", label: "Todo", n: cola.length },
-    { clave: "reunion", label: "Reuniones", n: resumen?.reuniones ?? 0 },
-    { clave: "respondio", label: "Respondieron", n: resumen?.respuestas ?? 0 },
-    { clave: "vencido", label: "Vencidos", n: resumen?.vencidos ?? 0 },
-    { clave: "nuevo", label: "Sin tocar", n: resumen?.nuevos ?? 0 },
-    { clave: "sin_plan", label: "Sin plan", n: resumen?.sin_plan ?? 0 },
+  // Cada filtro lleva su explicacion en el title: "Sin plan" o "Sin tocar"
+  // no dicen nada por si solos la primera vez que se ven.
+  const chips: { clave: MotivoCola | "todos"; label: string; n: number; ayuda: string }[] = [
+    { clave: "todos", label: "Todo", n: cola.length, ayuda: "Todos los leads que piden atención hoy" },
+    { clave: "reunion", label: "Reuniones", n: resumen?.reuniones ?? 0, ayuda: "Tienen reunión agendada dentro de las próximas 24 horas" },
+    { clave: "respondio", label: "Respondieron", n: resumen?.respuestas ?? 0, ayuda: "Te escribieron o la IA escaló la conversación, y nadie les respondió todavía" },
+    { clave: "vencido", label: "Vencidos", n: resumen?.vencidos ?? 0, ayuda: "El seguimiento que habías agendado ya pasó de fecha" },
+    { clave: "nuevo", label: "Sin tocar", n: resumen?.nuevos ?? 0, ayuda: "Te los asignaron y todavía no los contactaste ni una vez" },
+    { clave: "sin_plan", label: "Sin plan", n: resumen?.sin_plan ?? 0, ayuda: "Los contactaste alguna vez y quedaron sin próximo paso: son los que se pierden" },
   ];
 
   return (
@@ -203,7 +219,7 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
         <div className="flex min-w-max items-center gap-1 px-1">
           {chips.map((c) => (
             <button
-              key={c.clave} type="button"
+              key={c.clave} type="button" title={c.ayuda}
               onClick={() => { setFiltro(c.clave); setIdx(0); }}
               className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 filtro === c.clave ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input text-muted-foreground hover:bg-muted"
@@ -237,7 +253,10 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="truncate text-lg font-semibold">{actual.nombre || "Sin nombre"}</h3>
-                    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${MOTIVO_INFO[actual.motivo].badge}`}>
+                    <span
+                      title={MOTIVO_AYUDA[actual.motivo]}
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${MOTIVO_INFO[actual.motivo].badge}`}
+                    >
                       {MOTIVO_INFO[actual.motivo].label}
                     </span>
                     <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">

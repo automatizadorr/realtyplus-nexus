@@ -37,13 +37,20 @@ type Desenlace = {
   esReunion?: boolean;
   /** El motivo es obligatorio (cierre perdido). */
   pideNota?: boolean;
+  /** Que le pasa al lead con este desenlace, escrito para el vendedor.
+   *  Va debajo del boton: nadie tiene que apretar para averiguar que hace. */
+  efecto: string;
 };
 
 const DESENLACES: Desenlace[] = [
-  { clave: "contesto",    label: "Contestó",      resultado: "contesto",     dias: 1, etapa: "interesado" },
-  { clave: "sin_respuesta", label: "No contestó", resultado: "sin_respuesta", dias: 2, etapa: "contactado" },
-  { clave: "agendo",      label: "Agendó reunión", resultado: "agendo",      dias: null, etapa: "demo", etapaAlt: "interesado", esReunion: true },
-  { clave: "no_interesa", label: "No le interesa", resultado: "no_interesa", dias: 0, etapa: "perdido", pideNota: true },
+  { clave: "contesto", label: "Contestó", resultado: "contesto", dias: 1, etapa: "interesado",
+    efecto: "Vuelve mañana" },
+  { clave: "sin_respuesta", label: "No contestó", resultado: "sin_respuesta", dias: 2, etapa: "contactado",
+    efecto: "Vuelve en 2 días" },
+  { clave: "agendo", label: "Agendó reunión", resultado: "agendo", dias: null, etapa: "demo", etapaAlt: "interesado", esReunion: true,
+    efecto: "Elegís fecha y hora" },
+  { clave: "no_interesa", label: "No le interesa", resultado: "no_interesa", dias: 0, etapa: "perdido", pideNota: true,
+    efecto: "Se cierra el lead" },
 ];
 
 const CANALES: { valor: string; label: string }[] = [
@@ -154,18 +161,32 @@ export default function PasoRapido({ lead, miRol, canalSugerido, onListo }: {
 
   return (
     <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Qué pasó?</span>
-        {DESENLACES.map((d) => (
-          <Button
-            key={d.clave} type="button" size="sm"
-            variant={desenlace === d.clave ? "default" : "outline"}
-            className={desenlace === d.clave ? "bg-[#003DA5] hover:bg-[#003DA5]/90" : ""}
-            onClick={() => setDesenlace(d.clave)}
-          >
-            {d.label}
-          </Button>
-        ))}
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold uppercase tracking-wide text-foreground">¿Qué pasó?</span>{" "}
+          Elegí una y al guardar queda registrado el contacto, movida la etapa y agendado cuándo
+          vuelve a aparecerte este lead.
+        </p>
+        {/* Cada opcion dice abajo que le pasa al lead: el vendedor no tiene
+            que apretar el boton para descubrir que hace. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {DESENLACES.map((d) => {
+            const activo = desenlace === d.clave;
+            return (
+              <button
+                key={d.clave} type="button" onClick={() => setDesenlace(d.clave)}
+                className={`rounded-lg border px-3 py-2 text-left transition ${
+                  activo ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input bg-background hover:bg-muted"
+                }`}
+              >
+                <span className="block text-sm font-medium leading-tight">{d.label}</span>
+                <span className={`mt-0.5 block text-[11px] leading-tight ${activo ? "text-white/80" : "text-muted-foreground"}`}>
+                  {d.efecto}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {elegido && (
