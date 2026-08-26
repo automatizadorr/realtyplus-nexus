@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Mic } from "lucide-react";
+import { SocialRail } from "@/components/global/SocialRail";
 
 // Lazy: el chat de Sofía y (sobre todo) el modal de voz cargan el SDK de
 // ElevenLabs (~490 KB). Se difieren hasta el primer clic para no pesar en el
@@ -220,6 +221,9 @@ export function EcosystemAgentsFab() {
         className="fixed right-4 z-50 flex flex-col items-end gap-3 sm:right-6"
         style={{ bottom: bottomPx }}
       >
+        {/* Redes sociales — por encima de los agentes */}
+        <SocialRail />
+
         {/* Agente de Voz (ElevenLabs) — arriba de todo */}
         <VoiceBubble onClick={() => { setVoiceLoaded(true); setVoiceOpen(true); }} delay={0} reduce={reduce} />
 

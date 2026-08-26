@@ -12,7 +12,6 @@ import lexLogo from "@/assets/lexhouse-logo.webp";
 import { HydroRipple, HydroRippleHandle } from "@/components/ui/hydro-ripple";
 import { EcosystemSwitcher } from "@/components/EcosystemSwitcher";
 import { PublicFooter } from "@/components/public/PublicFooter";
-import { SocialNavLinks } from "@/components/public/SocialNavLinks";
 
 // ── Paleta de marca LexHouse AI (azul · rojo · dorado · navy) ─────────────────
 const INK = "#0F1B2D";       // navy LexHouse (secciones oscuras y texto)
@@ -672,8 +671,6 @@ export default function Index() {
             ))}
           </div>
           <div className="hidden md:flex items-center gap-2">
-            <SocialNavLinks className="hidden lg:flex mr-1" />
-            <span aria-hidden className="hidden lg:block h-6 w-px bg-slate-200" />
             <EcosystemSwitcher current="crm" />
             <Link to="/auth" className="px-4 py-2 text-sm text-slate-600 hover:text-[#0F1B2D] transition-colors">Iniciar sesión</Link>
             <Link to="/auth" className="px-5 py-2 text-sm font-semibold text-white rounded-lg transition-transform hover:scale-105" style={{ background: BRAND }}>
@@ -695,10 +692,6 @@ export default function Index() {
               <a key={href} href={href} className="text-slate-600 text-sm py-1" onClick={() => setMobileMenu(false)}>{label}</a>
             ))}
             <div className="pt-1"><EcosystemSwitcher current="crm" /></div>
-            <div className="pt-2 border-t border-slate-100">
-              <p className="pb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Síguenos</p>
-              <SocialNavLinks variant="stack" onNavigate={() => setMobileMenu(false)} />
-            </div>
             <Link to="/auth" className="mt-1 px-5 py-2.5 text-sm font-semibold text-white rounded-lg text-center" style={{ background: BRAND }} onClick={() => setMobileMenu(false)}>
               Comenzar gratis
             </Link>
