@@ -238,6 +238,30 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
     let sent = 0, failed = 0, programados = 0;
 
+    // --- Techo duro de correos del plan (medidor de consumo) ---
+    // No es el cupo diario de Resend: es el limite del periodo facturado.
+    // Se aplica ANTES de enviar y recorta la tanda, porque cortar a mitad de
+    // camino deja media campana enviada y al usuario sin saber cual mitad.
+    // Todos los clientes salen por el mismo dominio verificado, asi que este
+    // techo no se puede comprar: el volumen de uno se paga con la
+    // entregabilidad de todos.
+    let topeAviso: string | null = null;
+    const { data: cupoPlan } = await svc.rpc("consumo_correos_disponibles", { _user: userId });
+    if (cupoPlan && cupoPlan.ok === false) {
+      return new Response(JSON.stringify({
+        error: `Llegaste al tope de ${cupoPlan.tope} correos de tu plan para este período. ` +
+               `Se renueva el ${new Date(cupoPlan.periodo_fin).toLocaleDateString("es-CL")}.`,
+        tope_alcanzado: true,
+        consumo: cupoPlan,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (cupoPlan && typeof cupoPlan.restantes === "number" && valid.length > cupoPlan.restantes) {
+      const fuera = valid.length - cupoPlan.restantes;
+      valid = valid.slice(0, cupoPlan.restantes);
+      topeAviso = `Quedaron ${fuera} destinatario(s) fuera: es el tope de ${cupoPlan.tope} correos de tu plan ` +
+                  `para este período, que se renueva el ${new Date(cupoPlan.periodo_fin).toLocaleDateString("es-CL")}.`;
+    }
+
     // --- Auto-batching: hoy solo el cupo diario; el resto se agenda. ---
     // Un vendedor además está acotado a su propio límite diario (vendedores.limite_mensajes_dia),
     // aparte del cupo global compartido de las 2 cuentas Resend (LIMITE_DIA).
@@ -355,6 +379,7 @@ Deno.serve(async (req) => {
         programados > 0 && limitadoPorVendedor ? `${programados} programado(s) porque ya usaste tu cupo diario de correos (${cupoVendedorHoy}/día). Se reintenta mañana.` : null,
         programados > 0 && !limitadoPorVendedor ? `${programados} programado(s) para los próximos días (límite diario de Resend: ${limiteResend}/día).` : null,
         omitidosAjenos > 0 ? `${omitidosAjenos} destinatario(s) se omitieron por no ser leads tuyos.` : null,
+        topeAviso,
       ].filter(Boolean).join(" ") || undefined,
       results,
     }), {
