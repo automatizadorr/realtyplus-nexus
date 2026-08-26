@@ -60,7 +60,8 @@ cientos de frames. El movimiento lo pone ffmpeg.
 Regenerar todo:
 
 ```powershell
-.ender-video.ps1
+.
+ender-video.ps1
 ```
 
 Dos trampas que ya están resueltas en el script:
@@ -74,3 +75,26 @@ Dos trampas que ya están resueltas en el script:
 
 Resultado: 1080×1080, 21,4 s, ~1,4 MB. WhatsApp corta en 16 MB, así que sobra
 margen.
+
+## La versión de Instagram
+
+`video-fase3-ig.html` es la misma historia en **9:16 (1080×1920)** para Reels.
+Se regenera con:
+
+```powershell
+.ender-video.ps1 -Ig
+```
+
+No es solo recortar el cuadrado. Reels tiene **zonas muertas**: unos 250 px
+arriba se los lleva el encabezado y unos 420 px abajo el nombre de usuario, el
+texto del post y los botones. Todo el contenido vive entre esas dos franjas, y
+por eso las escenas se rediseñaron en vez de reescalarse — el texto es más
+grande, hay menos palabras por pantalla y las frases se cortan distinto.
+
+Ritmo más rápido que la versión de WhatsApp: escenas de 2,8 s en vez de 3,2 y
+30 fps en vez de 25. Total 18,9 s.
+
+**Falta el audio.** El video sale con una pista silenciosa, y un Reel mudo
+rinde mal: el alcance depende en buena parte del audio. Lo correcto es poner
+un audio en tendencia **desde la app de Instagram al publicar**, que además es
+lo que premia el algoritmo. No conviene incrustarle música acá.

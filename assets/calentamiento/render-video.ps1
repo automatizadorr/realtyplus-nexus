@@ -11,14 +11,14 @@ param(
 )
 $tmp = Join-Path $env:TEMP "calentamiento-video"
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-$html = ($PSScriptRoot -replace '\','/') + "/video-fase3.html"
+$html = ($PSScriptRoot -replace '\','/') + "/" + $Fuente
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 $n = 8
 
 foreach ($i in 1..$n) {
   $out = "{0}\escena{1:d2}.png" -f $tmp, $i
   & $chrome --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 `
-    --window-size=1080,1080 "--screenshot=$out" "file:///$html`?escena=$i" 2>&1 | Out-Null
+    --window-size=$W,$H "--screenshot=$out" "file:///$html`?escena=$i" 2>&1 | Out-Null
 }
 
 $frames = [int]($Dur * $Fps)
@@ -26,7 +26,7 @@ $partes = New-Object System.Collections.Generic.List[string]
 for ($i = 0; $i -lt $n; $i++) {
   # Se escala a 1620 ANTES del zoompan; al reves el texto tiembla.
   $z = if ($i % 2 -eq 0) { "min(zoom+0.00055,1.09)" } else { "if(lte(zoom,1.0),1.09,max(1.001,zoom-0.00055))" }
-  $partes.Add("[$($i):v]scale=1620:1620,zoompan=z='$z':d=$frames" + ":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1080:fps=$Fps,setsar=1[v$i]")
+  $partes.Add("[$($i):v]scale=$SW`:$SH,zoompan=z='$z':d=$frames" + ":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=$Wx$H:fps=$Fps,setsar=1[v$i]")
 }
 $prev = "v0"; $off = $Dur - $Trans
 for ($i = 1; $i -lt $n; $i++) {
@@ -42,7 +42,7 @@ $ff = New-Object System.Collections.Generic.List[string]
 foreach ($i in 1..$n) { $ff.Add("-i"); $ff.Add(("{0}\escena{1:d2}.png" -f $tmp,$i)) }
 $ff.AddRange([string[]]@("-f","lavfi","-i","anullsrc=r=44100:cl=stereo",
   "-filter_complex_script","$tmp\filtro.txt","-map","[vout]","-map","$($n):a",
-  "-c:v","libx264","-preset","veryfast","-crf","23","-pix_fmt","yuv420p","-r","$Fps",
+  "-c:v","libx264","-preset","veryfast","-crf","$Crf","-pix_fmt","yuv420p","-r","$Fps",
   "-c:a","aac","-b:a","64k","-shortest","-movflags","+faststart","-y",$Salida))
 & ffmpeg -hide_banner -loglevel error @ff
 "Listo: $Salida"
