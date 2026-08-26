@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1080px; height: 1080px;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0A1628;
+    color: #fff;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+
+  /* Trama de fondo, la misma idea de blueprint de la landing */
+  body::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,61,165,.16) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,61,165,.16) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  body::after {
+    content: ''; position: absolute;
+    width: 900px; height: 900px; right: -380px; top: -420px;
+    background: radial-gradient(circle, rgba(0,61,165,.45) 0%, transparent 68%);
+  }
+
+  .wrap { position: relative; z-index: 2; padding: 64px 64px 56px; display: flex; flex-direction: column; height: 100%; }
+
+  .marca { display: flex; align-items: center; gap: 14px; margin-bottom: 46px; }
+  .marca .punto { width: 13px; height: 13px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 18px #22C55E; }
+  .marca span { font-size: 22px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #93B4E8; }
+
+  h1 { font-size: 76px; font-weight: 900; line-height: 1.02; letter-spacing: -.028em; margin-bottom: 14px; }
+  h1 em { font-style: normal; color: #5B9BFF; }
+  .bajada { font-size: 30px; color: #A9BDD9; font-weight: 400; margin-bottom: 52px; }
+
+  .fila { display: flex; gap: 26px; flex: 1; }
+
+  .caja { flex: 1; border-radius: 26px; padding: 40px 36px; display: flex; flex-direction: column; }
+  .pasos { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }
+  .mal  { background: rgba(255,255,255,.045); border: 2px solid rgba(248,113,113,.34); }
+  .bien { background: rgba(0,61,165,.24); border: 2px solid rgba(91,155,255,.55); }
+
+  .tag { display: inline-flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800;
+         letter-spacing: .1em; text-transform: uppercase; margin-bottom: 30px; }
+  .mal .tag  { color: #F87171; }
+  .bien .tag { color: #7FB4FF; }
+  .tag .ic { font-size: 25px; }
+
+  .paso { display: flex; gap: 18px; align-items: flex-start; }
+  .hora { font-size: 23px; font-weight: 800; font-variant-numeric: tabular-nums;
+          min-width: 92px; padding-top: 3px; }
+  .mal .hora  { color: #F87171; }
+  .bien .hora { color: #5B9BFF; }
+  .texto { font-size: 26px; line-height: 1.32; color: #E3EBF7; font-weight: 500; }
+
+  .cierre { padding-top: 26px; font-size: 27px; font-weight: 800; line-height: 1.28; }
+  .mal .cierre  { color: #F87171; border-top: 2px solid rgba(248,113,113,.26); }
+  .bien .cierre { color: #6EE7A8; border-top: 2px solid rgba(110,231,168,.3); }
+
+  .pie { margin-top: 44px; display: flex; align-items: center; justify-content: space-between; }
+  .pie .frase { font-size: 31px; font-weight: 700; color: #fff; }
+  .pie .url { font-size: 25px; font-weight: 600; color: #5B9BFF; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="marca"><i class="punto"></i><span>LexHouse AI</span></div>
+
+    <h1>El lead no se pierde.<br><em>Se lo lleva otro.</em></h1>
+    <p class="bajada">Lo que pasa mientras tu WhatsApp está sin responder</p>
+
+    <div class="fila">
+      <div class="caja mal">
+        <div class="tag"><span class="ic">✕</span> Hoy</div>
+        <div class="pasos">
+          <div class="paso"><div class="hora">21:40</div><div class="texto">El lead escribe</div></div>
+          <div class="paso"><div class="hora">21:41</div><div class="texto">Le escribe también a otras 3 corredoras</div></div>
+          <div class="paso"><div class="hora">09:20</div><div class="texto">Recién lo lees</div></div>
+        </div>
+        <div class="cierre">Ya está hablando<br>con quien contestó primero</div>
+      </div>
+
+      <div class="caja bien">
+        <div class="tag"><span class="ic">✓</span> Con LexHouse</div>
+        <div class="pasos">
+          <div class="paso"><div class="hora">21:40</div><div class="texto">El lead escribe</div></div>
+          <div class="paso"><div class="hora">21:40</div><div class="texto">La IA responde y califica</div></div>
+          <div class="paso"><div class="hora">21:43</div><div class="texto">Queda la reunión agendada</div></div>
+        </div>
+        <div class="cierre">Despiertas con<br>la cita en tu calendario</div>
+      </div>
+    </div>
+
+    <div class="pie">
+      <div class="frase">Contesta siempre. Aunque estés durmiendo.</div>
+      <div class="url">lexhouse-ai.com</div>
+    </div>
+  </div>
+</body>
+</html>
