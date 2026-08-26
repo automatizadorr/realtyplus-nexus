@@ -32,9 +32,9 @@ recordatorio hace que Meta lo reclasifique como marketing o lo rechace.
 **Cuerpo**
 
 ```
-Hola {{1}}, te recuerdo tu reunion de hoy a las {{2}} con LexHouse AI.
+Hola {{1}}, te recuerdo tu reunión de hoy a las {{2}} con LexHouse AI.
 
-¿La confirmamos? Si te cambio la agenda, dime y la movemos sin problema.
+¿La confirmamos? Si te cambió la agenda, dime y la movemos sin problema.
 ```
 
 **Ejemplos para las variables** (Meta los exige para revisar):
@@ -74,7 +74,7 @@ ajustar los patrones de esa función.
 **Cuerpo**
 
 ```
-{{1}}, tu reunion con LexHouse AI empieza en un rato, a las {{2}}.
+{{1}}, tu reunión con LexHouse AI empieza en un rato, a las {{2}}.
 
 Nos vemos.
 ```

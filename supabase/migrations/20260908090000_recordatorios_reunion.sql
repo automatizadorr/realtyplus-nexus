@@ -94,9 +94,9 @@ CREATE POLICY "Vendedores leen piezas de recordatorio"
 
 INSERT INTO public.recordatorio_plantillas (tipo, nombre, cuerpo_libre) VALUES
   ('previo', 'Confirmacion 5 h antes',
-   E'{{nombre}}, te recuerdo nuestra reunion de hoy a las {{hora}}.\n\nConfirmame si sigue en pie, y si te cambio la agenda dime y la movemos sin problema.'),
+   E'{{nombre}}, te recuerdo tu reunión de hoy a las {{hora}} con LexHouse AI.\n\n¿La confirmamos? Si te cambió la agenda, dime y la movemos sin problema.'),
   ('inminente', 'Aviso 1 h antes',
-   E'{{nombre}}, nos vemos en 1 hora, a las {{hora}}.{{link}}')
+   E'{{nombre}}, tu reunión con LexHouse AI empieza en un rato, a las {{hora}}.\n\nNos vemos.{{link}}')
 ON CONFLICT (tipo) DO NOTHING;
 
 -- ---------------------------------------------------------------------

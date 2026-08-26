@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:1500px; height:1000px;
+    font-family:'Inter', system-ui, sans-serif;
+    background:#0F172A; color:#E2E8F0;
+    padding:44px 48px;
+  }
+  h1 { font-size:26px; font-weight:800; letter-spacing:-.01em; }
+  .sub { font-size:15px; color:#94A3B8; margin-top:6px; margin-bottom:34px; }
+  .sub b { color:#CBD5E1; font-weight:600; }
+
+  .fila { display:flex; gap:40px; align-items:flex-start; }
+  .col { flex:1; }
+
+  .rotulo { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .rotulo .n { width:26px; height:26px; border-radius:50%; background:#003DA5; color:#fff;
+               display:grid; place-items:center; font-size:14px; font-weight:800; }
+  .rotulo .t { font-size:17px; font-weight:700; color:#fff; }
+  .rotulo .cuando { font-size:13px; font-weight:600; color:#5B9BFF;
+                    background:rgba(91,155,255,.13); border:1px solid rgba(91,155,255,.3);
+                    border-radius:999px; padding:3px 11px; }
+
+  /* Ventana de chat estilo WhatsApp */
+  .tel { border-radius:16px; overflow:hidden; box-shadow:0 18px 40px rgba(0,0,0,.4); }
+  .barra { height:64px; background:#202C33; display:flex; align-items:center; gap:14px; padding:0 20px; }
+  .avatar { width:40px; height:40px; border-radius:50%; background:#00A884;
+            display:grid; place-items:center; font-size:17px; font-weight:700; color:#0B141A; }
+  .quien { color:#E9EDEF; font-size:16px; font-weight:600; }
+  .estado { color:#8696A0; font-size:12px; margin-top:1px; }
+
+  .chat { background:#0B141A; padding:26px 22px 30px; position:relative; min-height:300px;
+          display:flex; flex-direction:column; justify-content:flex-end; }
+  .chat::before { content:''; position:absolute; inset:0; opacity:.05;
+    background-image:radial-gradient(#fff 1px, transparent 1px); background-size:22px 22px; }
+
+  .burbuja { position:relative; z-index:2; align-self:flex-start; max-width:88%;
+             background:#202C33; border-radius:10px 10px 10px 2px; overflow:hidden;
+             box-shadow:0 1px 2px rgba(0,0,0,.35); }
+  .cuerpo { padding:16px 16px 8px; color:#E9EDEF; font-size:17px; line-height:1.5; }
+  .cuerpo p + p { margin-top:13px; }
+  .var { color:#7FB4FF; font-weight:600; }
+  .hora { text-align:right; padding:0 16px 11px; color:#8696A0; font-size:12px; }
+
+  .botones { border-top:1px solid rgba(134,150,160,.22); }
+  .boton { padding:13px; text-align:center; color:#53BDEB; font-size:16px; font-weight:500; }
+  .boton + .boton { border-top:1px solid rgba(134,150,160,.22); }
+
+  .ficha { margin-top:16px; background:#1E293B; border-radius:12px; padding:16px 18px; }
+  .ficha table { width:100%; border-collapse:collapse; font-size:13px; }
+  .ficha td { padding:5px 0; vertical-align:top; }
+  .ficha td:first-child { color:#94A3B8; width:112px; }
+  .ficha td:last-child { color:#E2E8F0; font-weight:600; }
+  .ficha code { font-family:'Consolas', monospace; font-size:12.5px; color:#7FB4FF;
+                background:rgba(91,155,255,.12); padding:1px 6px; border-radius:5px; }
+  .util { color:#6EE7A8 !important; }
+
+  .nota { margin-top:26px; font-size:13.5px; color:#94A3B8; line-height:1.55;
+          border-left:3px solid #003DA5; padding-left:16px; }
+  .nota b { color:#CBD5E1; }
+</style>
+</head>
+<body>
+  <h1>Plantillas de recordatorio · para subir a Meta</h1>
+  <p class="sub">Cuenta <b>AI-MAX</b> · categoría <b>Utilidad (UTILITY)</b> · idioma <b>Español (es)</b> · en azul, las variables</p>
+
+  <div class="fila">
+
+    <div class="col">
+      <div class="rotulo">
+        <span class="n">1</span>
+        <span class="t">recordatorio_reunion_5h</span>
+        <span class="cuando">5 horas antes</span>
+      </div>
+
+      <div class="tel">
+        <div class="barra">
+          <div class="avatar">S</div>
+          <div>
+            <div class="quien">LexHouse AI</div>
+            <div class="estado">cuenta de empresa</div>
+          </div>
+        </div>
+        <div class="chat">
+          <div class="burbuja">
+            <div class="cuerpo">
+              <p>Hola <span class="var">Mario</span>, te recuerdo tu reunión de hoy a las <span class="var">15:30</span> con LexHouse AI.</p>
+              <p>¿La confirmamos? Si te cambió la agenda, dime y la movemos sin problema.</p>
+            </div>
+            <div class="hora">10:30</div>
+            <div class="botones">
+              <div class="boton">Confirmo</div>
+              <div class="boton">Necesito reagendar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ficha">
+        <table>
+          <tr><td>Categoría</td><td class="util">Utilidad (UTILITY)</td></tr>
+          <tr><td>Variables</td><td><code>{{1}}</code> nombre · <code>{{2}}</code> hora</td></tr>
+          <tr><td>Ejemplos</td><td>Mario · 15:30</td></tr>
+          <tr><td>Botones</td><td>Respuesta rápida ×2</td></tr>
+          <tr><td>Encabezado</td><td>ninguno</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="rotulo">
+        <span class="n">2</span>
+        <span class="t">recordatorio_reunion_1h</span>
+        <span class="cuando">1 hora antes</span>
+      </div>
+
+      <div class="tel">
+        <div class="barra">
+          <div class="avatar">S</div>
+          <div>
+            <div class="quien">LexHouse AI</div>
+            <div class="estado">cuenta de empresa</div>
+          </div>
+        </div>
+        <div class="chat">
+          <div class="burbuja">
+            <div class="cuerpo">
+              <p><span class="var">Mario</span>, tu reunión con LexHouse AI empieza en un rato, a las <span class="var">15:30</span>.</p>
+              <p>Nos vemos.</p>
+            </div>
+            <div class="hora">14:30</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ficha">
+        <table>
+          <tr><td>Categoría</td><td class="util">Utilidad (UTILITY)</td></tr>
+          <tr><td>Variables</td><td><code>{{1}}</code> nombre · <code>{{2}}</code> hora</td></tr>
+          <tr><td>Ejemplos</td><td>Mario · 15:30</td></tr>
+          <tr><td>Botones</td><td>ninguno</td></tr>
+          <tr><td>Encabezado</td><td>ninguno</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="nota">
+    Los <b>botones no son decoración</b>: tocar uno cuenta como mensaje del lead y abre la ventana de 24 h.
+    Por eso el segundo recordatorio casi siempre saldrá como <b>texto libre</b> —con el link de Meet incluido—
+    y esta plantilla queda solo de respaldo. El link no va en las plantillas: Meta exige aprobar los botones
+    de URL con dominio fijo, y el de Meet cambia en cada reunión.
+  </p>
+</body>
+</html>
