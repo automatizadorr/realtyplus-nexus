@@ -71,13 +71,22 @@ Dos ramas que salen del mismo Schedule Trigger:
 
 ## Antes de activarlo
 
-1. **Verificar a ojo `🎬 Enviar con multimedia` y `📤 Enviar plantilla`.** Son
-   los dos únicos nodos que no pude validar contra algo que ya funcione: en
-   este n8n ningún workflow manda multimedia ni plantillas HSM, así que sus
-   parámetros van según documentación. Los dos están inertes por ahora — la
-   rama de multimedia no corre mientras las piezas no tengan `media_url`, y la
-   de apertura devuelve cola vacía mientras la fase 0 no tenga
-   `plantilla_nombre`.
+1. **Los dos nodos de envío ya están verificados** contra el catálogo de tipos
+   de n8n (`/types/nodes.json`) y contra un nodo de plantilla que ya funciona en
+   producción (`AI-MAX | Leads Magnet v2`). Tenían cuatro errores, todos
+   corregidos:
+
+   | Nodo | Estaba | Correcto |
+   |---|---|---|
+   | Enviar plantilla | `operation: "send"` | sin `operation` — `sendTemplate` es el valor por defecto del nodo |
+   | Enviar plantilla | `messageType: "template"` | no existe: sus valores son audio/contacts/document/image/location/text/video |
+   | Multimedia | `mediaPath: "useMedialLink"` | `useMediaLink` |
+   | Multimedia | `additionalFields.caption` | `additionalFields.mediaCaption` |
+
+   El formato del campo `template` es `nombre|idioma`, pegado con barra. El
+   ejemplo en producción usa `es_CL`, así que hay que cargar en la fase 0 el
+   idioma **exacto** con el que Meta aprobó la plantilla.
+
 2. **Cargar la infografía y el video** en `calentamiento_piezas.media_url`
    (fases 2 y 3). Sin eso, los tres toques salen como texto plano.
 3. **Probar con un lead propio** antes de encender: poner
