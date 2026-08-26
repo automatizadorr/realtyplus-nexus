@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
+import { conModificador, escribiendoEnCampo } from "@/lib/atajos";
 import LeadDetalleDialog from "@/components/vendedor/LeadDetalleDialog";
 import PasoRapido from "@/components/vendedor/PasoRapido";
 import {
@@ -35,6 +36,15 @@ const MOTIVO_AYUDA: Record<MotivoCola, string> = {
   nuevo: "Te lo asignaron y nunca lo contactaste",
   sin_plan: "Lo contactaste alguna vez y quedó sin próximo paso agendado",
 };
+
+/** Tecla dibujada como tecla: la leyenda de atajos se lee de un vistazo. */
+function Tecla({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px] font-semibold text-foreground">
+      {children}
+    </kbd>
+  );
+}
 
 function waLink(l: ColaLead): string | null {
   const raw = (l.telefono || "").replace(/[^\d]/g, "");
@@ -170,6 +180,22 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
     window.location.href = `tel:${normalizePhone(lead.telefono.replace(/[^\d]/g, ""), lead.pais)}`;
     setCanalUsado("llamada");
   };
+
+  // Atajos: el vendedor no suelta el teclado entre lead y lead.
+  // Las teclas de una letra se ignoran mientras escribe una nota.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!actual || conModificador(e) || escribiendoEnCampo(e.target)) return;
+      const k = e.key.toLowerCase();
+      if (k === "w") { e.preventDefault(); abrirWhatsapp(actual); }
+      else if (k === "l") { e.preventDefault(); llamar(actual); }
+      else if (k === "c") { e.preventDefault(); abrirCorreo(actual); }
+      else if (k === "f") { e.preventDefault(); setDetalleId(actual.id); }
+      else if (k === "s") { e.preventDefault(); saltar(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   if (loading) {
     return (
@@ -326,6 +352,12 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
                   <SkipForward className="h-4 w-4" /> Saltar
                 </Button>
               </div>
+
+              <p className="hidden text-[11px] text-muted-foreground sm:block">
+                Atajos: <Tecla>W</Tecla> WhatsApp · <Tecla>L</Tecla> llamar · <Tecla>C</Tecla> correo ·
+                {" "}<Tecla>F</Tecla> ficha · <Tecla>S</Tecla> saltar · <Tecla>1</Tecla>–<Tecla>4</Tecla> qué pasó ·
+                {" "}<Tecla>Enter</Tecla> guardar y siguiente
+              </p>
 
               {plantillasWa.length > 0 && (
                 <div className="flex items-center gap-2">

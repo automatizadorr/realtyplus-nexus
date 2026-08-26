@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { conModificador, escribiendoEnCampo } from "@/lib/atajos";
 import { ETAPAS_PERMITIDAS, ETAPA_LABEL, type ColaLead, type Etapa, type RolVenta } from "@/components/vendedor/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,6 +160,30 @@ export default function PasoRapido({ lead, miRol, canalSugerido, onListo }: {
     onListo({ etapa: data?.etapa ?? lead.etapa_venta, proximo: data?.proximo_contacto ?? null });
   };
 
+  // 1-4 elige el desenlace, Enter guarda. Dentro de la nota, Enter escribe
+  // una linea nueva y guarda Ctrl+Enter: nadie quiere perder media nota por
+  // apretar Enter sin pensar.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const enCampo = escribiendoEnCampo(e.target);
+      if (e.key === "Enter") {
+        if (!elegido) return;
+        if (enCampo && !(e.ctrlKey || e.metaKey)) return;
+        e.preventDefault();
+        void guardar();
+        return;
+      }
+      if (conModificador(e) || enCampo) return;
+      const n = Number(e.key);
+      if (n >= 1 && n <= DESENLACES.length) {
+        e.preventDefault();
+        setDesenlace(DESENLACES[n - 1].clave);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   return (
     <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
       <div className="space-y-2">
@@ -170,7 +195,7 @@ export default function PasoRapido({ lead, miRol, canalSugerido, onListo }: {
         {/* Cada opcion dice abajo que le pasa al lead: el vendedor no tiene
             que apretar el boton para descubrir que hace. */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {DESENLACES.map((d) => {
+          {DESENLACES.map((d, i) => {
             const activo = desenlace === d.clave;
             return (
               <button
@@ -179,7 +204,10 @@ export default function PasoRapido({ lead, miRol, canalSugerido, onListo }: {
                   activo ? "border-[#003DA5] bg-[#003DA5] text-white" : "border-input bg-background hover:bg-muted"
                 }`}
               >
-                <span className="block text-sm font-medium leading-tight">{d.label}</span>
+                <span className="block text-sm font-medium leading-tight">
+                  <span className={`mr-1 font-mono text-[10px] ${activo ? "text-white/70" : "text-muted-foreground"}`}>{i + 1}</span>
+                  {d.label}
+                </span>
                 <span className={`mt-0.5 block text-[11px] leading-tight ${activo ? "text-white/80" : "text-muted-foreground"}`}>
                   {d.efecto}
                 </span>
@@ -237,6 +265,7 @@ export default function PasoRapido({ lead, miRol, canalSugerido, onListo }: {
           >
             {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             Guardar y siguiente
+            <kbd className="ml-1 rounded border border-white/30 px-1 py-0.5 font-mono text-[10px]">Enter</kbd>
           </Button>
         </>
       )}

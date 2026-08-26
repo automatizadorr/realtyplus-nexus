@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Loader2, RefreshCw, ChevronDown, ChevronRight, MessageCircle,
   Mail as MailIcon, Instagram, Facebook, PhoneCall, Radar, Bot, CalendarClock, Inbox,
+  AlertTriangle, HelpCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,6 +22,9 @@ type Kpi = {
   leads_total: number; en_bandeja: number;
   contactado: number; interesado: number; demo: number; ganado: number; perdido: number;
   archivados: number; captados_ia: number; vencidos: number;
+  // Las dos formas en que un lead se pierde: sin proximo paso agendado, o
+  // respondio y nadie le contesto.
+  sin_plan: number; sin_atender: number;
   traspaso_dados: number; traspaso_recibidos: number;
   cta_whatsapp: number; cta_email: number; cta_instagram: number; cta_facebook: number; cta_llamada: number;
   busquedas: number; prospectos: number;
@@ -126,8 +130,10 @@ export default function KpisVendedoresPanel() {
     leads: a.leads + Number(f.leads_total),
     bandeja: a.bandeja + Number(f.en_bandeja),
     vencidos: a.vencidos + Number(f.vencidos),
+    sinPlan: a.sinPlan + Number(f.sin_plan ?? 0),
+    sinAtender: a.sinAtender + Number(f.sin_atender ?? 0),
     cta: a.cta + Number(f.cta_whatsapp) + Number(f.cta_email) + Number(f.cta_instagram) + Number(f.cta_facebook) + Number(f.cta_llamada),
-  }), { leads: 0, bandeja: 0, vencidos: 0, cta: 0 }), [filas]);
+  }), { leads: 0, bandeja: 0, vencidos: 0, sinPlan: 0, sinAtender: 0, cta: 0 }), [filas]);
 
   return (
     <Card>
@@ -145,6 +151,8 @@ export default function KpisVendedoresPanel() {
           {totales.leads.toLocaleString("es-CL")} leads repartidos · {totales.bandeja.toLocaleString("es-CL")} sin primer contacto ·{" "}
           {totales.cta.toLocaleString("es-CL")} contactos hechos
           {totales.vencidos > 0 && <> · <span className="font-medium text-amber-600">{totales.vencidos} con seguimiento vencido</span></>}
+          {totales.sinAtender > 0 && <> · <span className="font-medium text-red-600">{totales.sinAtender} respondieron y nadie contestó</span></>}
+          {totales.sinPlan > 0 && <> · <span className="font-medium text-orange-600">{totales.sinPlan} sin próximo paso</span></>}
           . Haz clic en una fila para ver su historial de Buscar Leads y los contactos que apretó.
         </p>
       </CardHeader>
@@ -220,6 +228,22 @@ export default function KpisVendedoresPanel() {
                         )}
                         {Number(f.vencidos) > 0 && (
                           <span className="inline-flex items-center gap-0.5 text-amber-600"><CalendarClock className="h-2.5 w-2.5" />{f.vencidos} vencidos</span>
+                        )}
+                        {Number(f.sin_atender ?? 0) > 0 && (
+                          <span
+                            className="inline-flex items-center gap-0.5 font-medium text-red-600"
+                            title="Respondieron (o la IA escaló) y todavía nadie les contestó"
+                          >
+                            <AlertTriangle className="h-2.5 w-2.5" />{f.sin_atender} sin atender
+                          </span>
+                        )}
+                        {Number(f.sin_plan ?? 0) > 0 && (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-orange-600"
+                            title="Contactados alguna vez y sin próximo paso agendado hace 3 días o más: son los que se pierden"
+                          >
+                            <HelpCircle className="h-2.5 w-2.5" />{f.sin_plan} sin plan
+                          </span>
                         )}
                         {Number(f.traspaso_dados) > 0 && <span>{f.traspaso_dados} entregados</span>}
                         {Number(f.traspaso_recibidos) > 0 && <span>{f.traspaso_recibidos} recibidos</span>}
