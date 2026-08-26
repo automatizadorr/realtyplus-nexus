@@ -84,6 +84,34 @@ Dos ramas que salen del mismo Schedule Trigger:
    `calentamiento_pausado = true` a todos los demás, activar, verificar, y
    recién ahí soltar.
 
+## ⚠️ La línea de envío es AI-MAX, no RealtyPlus
+
+La plantilla de apertura se subió a Meta con la cuenta **AI-MAX**, porque la
+cuenta de RealtyPlus tiene un pago pendiente. Los tres nodos de envío de este
+workflow usan la credencial `AI-MAX - ENVIAR MENSAJE` y el número
+`1078596682011236`.
+
+**Consecuencia que hay que tener presente:** el lead responde al número desde
+el que le escribieron. Si la apertura sale por AI-MAX, la respuesta entra por
+AI-MAX, y ese número lo atiende el workflow **`LexHouse Camil-AI`**
+(`2oKGpZR85DFAr4R6`), no Sofía.
+
+Camil-AI tiene solo la rama de escalación: **no captura agendamientos ni
+movimientos de reunión**, porque esa parte se le quitó a propósito. Así que un
+lead que llegue por el calentamiento y agende con Camil-AI no va a aparecer en
+la agenda del CRM.
+
+Tres salidas posibles, a decidir:
+
+1. Pagar RealtyPlus y volver todo a esa línea, que es donde vive Sofía.
+2. Portar a Camil-AI el parche completo de reunión (IF, nodo HTTP y el campo
+   `reunion_estado` en su prompt y su parseador).
+3. Asumir que por ahora el calentamiento solo escala, sin agenda.
+
+**Además:** Sofía sigue enviando por la credencial de RealtyPlus. Si esa cuenta
+se suspende por el pago, Sofía deja de poder responder — eso afecta al bot que
+ya está en producción, no solo al calentamiento.
+
 ## El tope diario, que es lo que protege el número
 
 `calentamiento_config.tope_diario` arranca en **80**. Meta asigna un límite de
