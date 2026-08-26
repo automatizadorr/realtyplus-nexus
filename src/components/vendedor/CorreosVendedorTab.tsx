@@ -215,7 +215,7 @@ export default function CorreosVendedorTab({
         {/* Accesos directos al resto del flujo, sin volver al sidebar. */}
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
-            <Link to="/mis-leads/bandeja"><Inbox className="h-3.5 w-3.5" /> Enviar desde la Bandeja</Link>
+            <Link to="/mis-leads/bandeja"><Inbox className="h-3.5 w-3.5" /> Enviar en tanda desde la Bandeja</Link>
           </Button>
           <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
             <Link to="/mis-leads/pipeline"><Kanban className="h-3.5 w-3.5" /> Pipeline</Link>

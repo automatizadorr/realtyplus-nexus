@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X, UserPlus, Handshake, MessageCircle, CalendarClock, FileText,
-  Trophy, Kanban, Target, Zap, ChevronRight, ChevronLeft, Inbox,
+  Trophy, Target, Zap, ChevronRight, ChevronLeft, Inbox, Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { RolVenta } from "@/components/vendedor/types";
 
 // ---------------------------------------------------------------------
 // Contenido por rol. Cada paso enseña una pantalla/gesto real de la app
-// (Pipeline, Solo hoy, Contactar, Mis Plantillas) con su nombre exacto.
+// (Hoy, "¿Qué pasó?", Pipeline, Mis Plantillas) con su nombre exacto.
 // ---------------------------------------------------------------------
 type Paso = { eyebrow: string; titulo: string; cuerpo: string; icon: React.ElementType };
 
@@ -22,15 +22,21 @@ const PASOS: Record<RolVenta, Paso[]> = {
       icon: UserPlus,
     },
     {
-      eyebrow: "Tu día a día",
-      titulo: "Bandeja primero, después Pipeline",
-      cuerpo: "Los leads nuevos llegan a tu Bandeja: ahí elegís plantilla de WhatsApp y/o email, la previsualizás y contactás. Recién al liberarlos pasan al Pipeline, ya en Contactado. Ahí seguís el seguimiento con el filtro \"Solo hoy\" para lo urgente.",
-      icon: Inbox,
+      eyebrow: "Por dónde empezar",
+      titulo: "Abrí Hoy y trabajá de arriba hacia abajo",
+      cuerpo: "Hoy arma sola tu lista de trabajo y la ordena por urgencia: primero el que respondió o tiene reunión, después los seguimientos vencidos, y al final los que nunca contactaste. Te muestra un lead a la vez con sus botones de WhatsApp, llamada y correo. No tenés que decidir a quién tocar: ya está decidido.",
+      icon: Flame,
+    },
+    {
+      eyebrow: "Después de cada toque",
+      titulo: "Contestá \"¿Qué pasó?\" y listo",
+      cuerpo: "Abajo del lead elegís el desenlace — Contestó, No contestó, Agendó reunión o No le interesa — y con un botón queda todo hecho: el contacto registrado, la etapa movida y el próximo toque agendado. Después salta solo al siguiente lead.",
+      icon: Zap,
     },
     {
       eyebrow: "Cuándo pasás la posta",
       titulo: "De Interesado en adelante, es del closer",
-      cuerpo: "Cuando un lead confirma interés real, movelo a Interesado — ahí lo toma el closer. Si no es un buen fit, movelo a Perdido (te va a pedir el motivo). Podés crear tus propias plantillas en Mis Plantillas.",
+      cuerpo: "Cuando un lead confirma interés real o agenda reunión, pasa a Interesado y el closer lo toma automáticamente (vos lo seguís viendo en solo lectura). Si no es buen fit, elegí No le interesa y escribí el motivo. Tus mensajes propios los guardás en Más → Mis Plantillas.",
       icon: Handshake,
     },
   ],
@@ -42,15 +48,21 @@ const PASOS: Record<RolVenta, Paso[]> = {
       icon: Trophy,
     },
     {
-      eyebrow: "Tu día a día",
-      titulo: "Pipeline y contacto",
-      cuerpo: "Tus leads aparecen en Interesado. Arrastralos a Demo cuando agendes la reunión, y a Ganado o Perdido al resolver. Para escribirles, tocá Contactar: elegís plantilla, revisás y enviás.",
-      icon: Kanban,
+      eyebrow: "Por dónde empezar",
+      titulo: "Abrí Hoy: lo urgente está arriba",
+      cuerpo: "Hoy ordena tu día solo: primero las reuniones de las próximas 24 h, después los que respondieron y esperan, después los leads que te acaban de traspasar sin tocar, y recién ahí los seguimientos vencidos. Un lead a la vez, con sus botones de contacto.",
+      icon: Flame,
+    },
+    {
+      eyebrow: "Después de cada toque",
+      titulo: "Contestá \"¿Qué pasó?\" y listo",
+      cuerpo: "Elegís el desenlace y un botón deja todo hecho: contacto registrado, etapa movida y próximo toque agendado. Si marcás Agendó reunión, ponés fecha y hora y la reunión aparece sola en tu Agenda.",
+      icon: Zap,
     },
     {
       eyebrow: "Al cerrar",
       titulo: "Ganado, Perdido, y tu ranking",
-      cuerpo: "Si cerrás la venta, movelo a Ganado. Si se cae, a Perdido — te va a pedir el motivo (ayuda a entender por qué se pierden ventas). Arriba de tu Pipeline vas a ver tus KPIs y tu puesto frente a los demás.",
+      cuerpo: "El cierre lo hacés desde el Pipeline: arrastrá a Ganado si vendiste, o a Perdido si se cayó (te va a pedir el motivo — ayuda a entender por qué se pierden ventas). Arriba vas a ver tus KPIs y tu puesto frente a los demás.",
       icon: Target,
     },
   ],
@@ -62,16 +74,22 @@ const PASOS: Record<RolVenta, Paso[]> = {
       icon: Zap,
     },
     {
-      eyebrow: "Tu día a día",
-      titulo: "Bandeja primero, después Pipeline",
-      cuerpo: "Los leads nuevos llegan a tu Bandeja: elegís plantilla de WhatsApp y/o email, la previsualizás y contactás. Al liberarlos entran al Pipeline en Contactado, y ahí arrastrás cada lead por toda la secuencia. \"Solo hoy\" te muestra lo urgente.",
-      icon: Inbox,
+      eyebrow: "Por dónde empezar",
+      titulo: "Abrí Hoy y trabajá de arriba hacia abajo",
+      cuerpo: "Hoy arma tu lista sola y la ordena por urgencia: reuniones, los que respondieron, los seguimientos vencidos y los que nunca contactaste. Un lead a la vez, con WhatsApp, llamada y correo a un clic. El Pipeline queda para mirar el embudo completo, no para buscar a quién tocar.",
+      icon: Flame,
+    },
+    {
+      eyebrow: "Después de cada toque",
+      titulo: "Contestá \"¿Qué pasó?\" y listo",
+      cuerpo: "Elegís el desenlace — Contestó, No contestó, Agendó reunión, No le interesa — y con un botón queda el contacto registrado, la etapa movida y el próximo toque agendado. Después salta solo al siguiente lead.",
+      icon: Handshake,
     },
     {
       eyebrow: "De punta a punta",
-      titulo: "De la Bandeja a Ganado, todo tuyo",
-      cuerpo: "Vos decidís cuándo pasa de Contactado a Interesado, cuándo agendar la Demo, y cerrás en Ganado o Perdido (te va a pedir el motivo). Podés crear tus propias plantillas en Mis Plantillas.",
-      icon: Handshake,
+      titulo: "Ningún lead se queda sin próximo paso",
+      cuerpo: "Cada lead vivo tiene siempre una fecha de próximo toque: si no la elegís vos, la pone el sistema. Los que igual quedaron sin plan te aparecen en Hoy marcados \"Sin plan\" — esa es la lista de los que antes se perdían. Cerrás en Ganado o Perdido desde el Pipeline.",
+      icon: CalendarClock,
     },
   ],
 };
@@ -91,20 +109,20 @@ const COLOR: Record<RolVenta, { texto: string; bg: string; solido: string; hover
 };
 
 const ETAPAS_VISUAL = [
-  { id: "bandeja", label: "Bandeja" },
+  { id: "hoy", label: "Hoy" },
   { id: "contactado", label: "Contactado" },
   { id: "interesado", label: "Interesado" },
   { id: "demo", label: "Demo" },
   { id: "ganado", label: "Ganado" },
 ] as const;
 
-// Zona de cada rol dentro de la secuencia real (Bandeja + pipeline, ver
-// vendedor_liberar_a_pipeline / vendedor_mover_etapa). "Bandeja" ya no es una
-// etapa del Pipeline: es el paso previo donde se elige plantilla y se contacta.
+// Zona de cada rol dentro de la secuencia real (ver vendedor_mover_etapa).
+// "Hoy" no es una etapa: es la cola de trabajo por la que pasa todo el mundo
+// antes de mover nada, así que está encendida para los tres roles.
 const ZONA: Record<RolVenta, Set<string>> = {
-  setter: new Set(["bandeja", "contactado", "interesado"]),
-  closer: new Set(["interesado", "demo", "ganado"]),
-  ambos: new Set(["bandeja", "contactado", "interesado", "demo", "ganado"]),
+  setter: new Set(["hoy", "contactado", "interesado"]),
+  closer: new Set(["hoy", "interesado", "demo", "ganado"]),
+  ambos: new Set(["hoy", "contactado", "interesado", "demo", "ganado"]),
 };
 
 const ZONA_TEXTO: Record<RolVenta, string> = {
@@ -131,7 +149,7 @@ function RelayTrack({ rol }: { rol: RolVenta }) {
                 }`}
               >
                 {e.id === "interesado" ? <Handshake className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
-                {e.id === "bandeja" ? <Inbox className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
+                {e.id === "hoy" ? <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : null}
               </div>
               <span className={`w-14 text-center text-[9px] leading-tight sm:w-16 sm:text-[10px] ${activa ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
                 {e.label}
@@ -201,12 +219,13 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolVenta; 
               </motion.div>
             </AnimatePresence>
 
+            {/* Paso 1 = "Hoy": los motivos por los que un lead entra en la cola. */}
             {paso === 1 && (
               <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                 {[
-                  { icon: Inbox, label: "Bandeja + plantillas" },
-                  { icon: CalendarClock, label: "Seguimientos" },
-                  { icon: MessageCircle, label: "Favoritas ⭐" },
+                  { icon: CalendarClock, label: "Reunión < 24 h" },
+                  { icon: MessageCircle, label: "Respondió y espera" },
+                  { icon: Flame, label: "Seguimiento vencido" },
                 ].map(({ icon: I, label }) => (
                   <div key={label} className="flex items-center gap-2 rounded-lg border p-2.5 text-xs">
                     <I className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> {label}
@@ -214,9 +233,28 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolVenta; 
                 ))}
               </div>
             )}
+            {/* Paso 2 = "¿Qué pasó?": lo que deja hecho ese único botón. */}
             {paso === 2 && (
-              <div className="mt-5 flex items-center gap-2 rounded-lg border p-2.5 text-xs">
-                <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> Mis Plantillas: creá y guardá tus propios mensajes
+              <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                {[
+                  { icon: MessageCircle, label: "Registra el contacto" },
+                  { icon: Handshake, label: "Mueve la etapa" },
+                  { icon: CalendarClock, label: "Agenda el próximo toque" },
+                ].map(({ icon: I, label }) => (
+                  <div key={label} className="flex items-center gap-2 rounded-lg border p-2.5 text-xs">
+                    <I className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> {label}
+                  </div>
+                ))}
+              </div>
+            )}
+            {paso === 3 && (
+              <div className="mt-5 space-y-2">
+                <div className="flex items-center gap-2 rounded-lg border p-2.5 text-xs">
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> Más → Mis Plantillas: creá y guardá tus propios mensajes
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border p-2.5 text-xs">
+                  <Inbox className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> Más → Bandeja: solo para mandar la misma plantilla a muchos leads de golpe
+                </div>
               </div>
             )}
           </div>
@@ -256,7 +294,10 @@ export default function RoleOnboarding({ rol, open, onClose }: { rol: RolVenta; 
 // ---------------------------------------------------------------------
 export function useRoleOnboarding(userId: string | undefined, rol: RolVenta | undefined) {
   const [open, setOpen] = useState(false);
-  const key = userId && rol ? `onboarding_${rol}_${userId}` : null;
+  // v2: la app pasó de "Bandeja primero" a la cola de Hoy. Quien ya había
+  // cerrado el tutorial viejo tiene que ver el nuevo igual, así que la clave
+  // cambia de nombre en vez de reutilizarse.
+  const key = userId && rol ? `onboarding_v2_${rol}_${userId}` : null;
 
   useEffect(() => {
     if (!key) return;

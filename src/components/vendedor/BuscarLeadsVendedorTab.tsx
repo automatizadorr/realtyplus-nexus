@@ -4,6 +4,7 @@ import {
   Radar, Search, Loader2, MapPin, Globe, MessageCircle, History, Trash2,
   Sparkles, CheckCircle2, Copy, X, XCircle, Star, Instagram, Facebook, Kanban,
   Inbox, ArrowRightCircle, Map as MapIcon, Mail as MailIcon,
+  Flame,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -312,7 +313,7 @@ export default function BuscarLeadsVendedorTab() {
       if (error) throw error;
       const r = (data ?? [])[0] ?? { creados: 0, vinculados: 0, omitidos: 0 };
       const total = Number(r.creados) + Number(r.vinculados);
-      const destino = yaContactados ? "Pipeline" : "Bandeja";
+      const destino = yaContactados ? "Pipeline" : "cola de Hoy";
 
       // Refleja el resultado en la tabla sin volver a consultar.
       const idSet = new Set(ids);
@@ -439,12 +440,12 @@ export default function BuscarLeadsVendedorTab() {
           <h2 className="font-display text-xl font-semibold tracking-tight">Buscar Leads</h2>
           <p className="text-sm text-muted-foreground">
             Busca negocios reales en Google Maps, Instagram y Facebook, y genera mensajes de contacto listos.
-            Lo que marques pasa a tu Bandeja o a tu Pipeline. Motor gratuito (SerpApi + NVIDIA).
+            Lo que marques entra a tu cola de Hoy (o directo al Pipeline si ya los contactaste). Motor gratuito (SerpApi + NVIDIA).
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
-            <Link to="/mis-leads/bandeja"><Inbox className="h-3.5 w-3.5" /> Bandeja</Link>
+            <Link to="/mis-leads/hoy"><Flame className="h-3.5 w-3.5" /> Hoy</Link>
           </Button>
           <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
             <Link to="/mis-leads/pipeline"><Kanban className="h-3.5 w-3.5" /> Pipeline</Link>
@@ -573,7 +574,7 @@ export default function BuscarLeadsVendedorTab() {
                       onClick={() => sincronizar(false, guardados)} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90"
                     >
                       {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Inbox className="h-3.5 w-3.5" />}
-                      Pasar {alcance} a la Bandeja
+                      Pasar {alcance} a mi cola
                     </Button>
                     <Button
                       type="button" size="sm" variant="outline" disabled={sincronizando || guardados.length === 0}
@@ -640,7 +641,7 @@ export default function BuscarLeadsVendedorTab() {
                       onClick={() => sincronizar(false, selectedLeads)} className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90"
                     >
                       {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Inbox className="h-3.5 w-3.5" />}
-                      Pasar a mi Bandeja
+                      Pasar a mi cola
                     </Button>
                     <Button
                       type="button" size="sm" variant="outline" disabled={sincronizando}
@@ -731,7 +732,7 @@ export default function BuscarLeadsVendedorTab() {
                                   <Sparkles className="h-3.5 w-3.5" /> Mensaje
                                 </Button>
                                 {l.lead_campana_id ? (
-                                  <span className="inline-flex items-center gap-1 px-1.5 text-[11px] font-medium text-[#003DA5]" title="Ya está en tu Bandeja/Pipeline">
+                                  <span className="inline-flex items-center gap-1 px-1.5 text-[11px] font-medium text-[#003DA5]" title="Ya está en tu cola o en tu Pipeline">
                                     <ArrowRightCircle className="h-3.5 w-3.5" /> CRM
                                   </span>
                                 ) : (
@@ -793,11 +794,11 @@ export default function BuscarLeadsVendedorTab() {
                             <Button
                               type="button" size="sm" disabled={sincronizando || b.total_leads === 0}
                               onClick={(e) => { e.stopPropagation(); sincronizarBusqueda(b, false); }}
-                              title="Pasar los leads de esta búsqueda a tu Bandeja"
+                              title="Pasar los leads de esta búsqueda a tu cola de Hoy"
                               className="h-7 gap-1.5 bg-[#003DA5] px-2 text-[11px] hover:bg-[#003DA5]/90"
                             >
                               {busquedaSincronizando === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Inbox className="h-3 w-3" />}
-                              <span className="hidden sm:inline">A la Bandeja</span>
+                              <span className="hidden sm:inline">A mi cola</span>
                             </Button>
                             <Button
                               type="button" size="sm" variant="outline" disabled={sincronizando || b.total_leads === 0}
@@ -832,7 +833,7 @@ export default function BuscarLeadsVendedorTab() {
                                     onClick={() => sincronizar(false, expandedLeads)}
                                     className="ml-auto h-7 gap-1.5 bg-[#003DA5] px-2 text-[11px] hover:bg-[#003DA5]/90"
                                   >
-                                    {sincronizando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Inbox className="h-3 w-3" />} A la Bandeja
+                                    {sincronizando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Inbox className="h-3 w-3" />} A mi cola
                                   </Button>
                                   <Button
                                     type="button" size="sm" variant="outline" disabled={sincronizando}
@@ -876,7 +877,7 @@ export default function BuscarLeadsVendedorTab() {
                                               <Sparkles className="h-3.5 w-3.5" />
                                             </Button>
                                             {l.lead_campana_id ? (
-                                              <span className="inline-flex items-center gap-0.5 px-1 text-[10px] font-medium text-[#003DA5]" title="Ya está en tu Bandeja/Pipeline">
+                                              <span className="inline-flex items-center gap-0.5 px-1 text-[10px] font-medium text-[#003DA5]" title="Ya está en tu cola o en tu Pipeline">
                                                 <ArrowRightCircle className="h-3 w-3" /> CRM
                                               </span>
                                             ) : (
