@@ -84,33 +84,28 @@ Dos ramas que salen del mismo Schedule Trigger:
    `calentamiento_pausado = true` a todos los demás, activar, verificar, y
    recién ahí soltar.
 
-## ⚠️ La línea de envío es AI-MAX, no RealtyPlus
+## Las líneas de WhatsApp, después del cruce
 
-La plantilla de apertura se subió a Meta con la cuenta **AI-MAX**, porque la
-cuenta de RealtyPlus tiene un pago pendiente. Los tres nodos de envío de este
-workflow usan la credencial `AI-MAX - ENVIAR MENSAJE` y el número
-`1078596682011236`.
+La plantilla de apertura se subió a Meta con la cuenta **AI-MAX**, porque la de
+RealtyPlus tiene un pago pendiente. Para que todo quede coherente, Mario cruzó
+las credenciales de los dos bots:
 
-**Consecuencia que hay que tener presente:** el lead responde al número desde
-el que le escribieron. Si la apertura sale por AI-MAX, la respuesta entra por
-AI-MAX, y ese número lo atiende el workflow **`LexHouse Camil-AI`**
-(`2oKGpZR85DFAr4R6`), no Sofía.
+| Línea | Trigger | Envío | Flujo que la atiende |
+|---|---|---|---|
+| **AI-MAX** (`1078596682011236`) | `AI-MAX` | `AI-MAX - ENVIAR MENSAJE` | **Sofía** — el sistema de Nexus |
+| RealtyPlus | `RealtyPLus-AI` | `RealtyPlus- enviar Mensaje` | LexHouse Camil-AI — las landings |
 
-Camil-AI tiene solo la rama de escalación: **no captura agendamientos ni
-movimientos de reunión**, porque esa parte se le quitó a propósito. Así que un
-lead que llegue por el calentamiento y agende con Camil-AI no va a aparecer en
-la agenda del CRM.
+Esto deja el circuito cerrado: la apertura sale por AI-MAX, el lead responde a
+ese mismo número, y quien atiende es **Sofía**, que sí tiene la captura de
+reuniones y de agenda. Si hubiera quedado al revés, un lead que agendara desde
+el calentamiento no habría aparecido nunca en la agenda del CRM.
 
-Tres salidas posibles, a decidir:
+**Un flujo activo por línea**, verificado: no hay dos bots escuchando el mismo
+número, que produciría dos respuestas distintas al mismo mensaje.
 
-1. Pagar RealtyPlus y volver todo a esa línea, que es donde vive Sofía.
-2. Portar a Camil-AI el parche completo de reunión (IF, nodo HTTP y el campo
-   `reunion_estado` en su prompt y su parseador).
-3. Asumir que por ahora el calentamiento solo escala, sin agenda.
-
-**Además:** Sofía sigue enviando por la credencial de RealtyPlus. Si esa cuenta
-se suspende por el pago, Sofía deja de poder responder — eso afecta al bot que
-ya está en producción, no solo al calentamiento.
+Lo que sí queda expuesto al pago pendiente es **Camil-AI**, el bot de las
+landings. Si esa cuenta se suspende, deja de responder ese canal — pero Nexus
+sigue funcionando.
 
 ## El tope diario, que es lo que protege el número
 
