@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays, Loader2, RefreshCw, MessageCircle, Mail as MailIcon, MapPin,
-  Video, Bot, ChevronLeft, ChevronRight, XCircle, RotateCcw,
+  Video, Bot, ChevronLeft, ChevronRight, XCircle, RotateCcw, CheckCircle2, BellRing,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,10 @@ type Cita = {
   fecha_inicio: string; fecha_fin: string | null;
   estado: "agendada" | "modificada" | "cancelada";
   origen: string | null; meet_link: string | null;
+  // El lead respondió el recordatorio de 5 h antes diciendo que sí va.
+  confirmada_at: string | null;
+  // Cuántos de los dos recordatorios (T-5 h y T-1 h) ya salieron.
+  recordatorios: number;
   lead_nombre: string | null; lead_telefono: string | null; lead_email: string | null;
   lead_pais: string | null; lead_etapa: string | null; lead_origen: string | null;
   captado_ia: boolean;
@@ -108,7 +112,8 @@ export default function CalendarioAgendamientos({ titulo = "Agenda de reuniones"
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {vivas} reunión(es) en pie · horas en Santiago de Chile. Las agenda el bot de WhatsApp al hablar con el lead.
+          {vivas} reunión(es) en pie · horas en Santiago de Chile. Las agenda el bot de WhatsApp al hablar con el lead,
+          que además le recuerda la reunión 5 h y 1 h antes.
         </p>
       </CardHeader>
 
@@ -144,8 +149,19 @@ export default function CalendarioAgendamientos({ titulo = "Agenda de reuniones"
                             {c.estado === "modificada" && <RotateCcw className="mr-0.5 inline h-2.5 w-2.5" />}
                             {ESTADO_LABEL[c.estado]}
                           </span>
+                          {c.confirmada_at && c.estado !== "cancelada" && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                              <CheckCircle2 className="h-2.5 w-2.5" /> Confirmada
+                            </span>
+                          )}
                           {c.captado_ia && (
                             <Bot className="h-3 w-3 text-emerald-600" aria-label="captado por el sistema IA" />
+                          )}
+                          {c.recordatorios > 0 && !c.confirmada_at && c.estado !== "cancelada" && (
+                            <BellRing
+                              className="h-3 w-3 text-muted-foreground"
+                              aria-label={`${c.recordatorios} recordatorio(s) enviado(s), sin confirmar`}
+                            />
                           )}
                         </div>
 
