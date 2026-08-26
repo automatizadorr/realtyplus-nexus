@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2, RotateCcw, PieChart, Inbox, Palette } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2, RotateCcw, PieChart, Inbox, Palette, Flame, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
@@ -24,9 +24,11 @@ const vendedorGroups: { label?: string; items: { title: string; url: string; ico
   {
     label: "Ventas",
     items: [
-      { title: "Bandeja", url: "/mis-leads/bandeja", icon: Inbox },
+      // "Hoy" primero y siempre: es la unica pantalla que el vendedor
+      // necesita abrir para saber por donde empezar el dia.
+      { title: "Hoy", url: "/mis-leads/hoy", icon: Flame },
       { title: "Pipeline", url: "/mis-leads/pipeline", icon: Kanban },
-      { title: "Leads DataBase", url: "/mis-leads/reactivacion", icon: RotateCcw },
+      { title: "Agenda", url: "/mis-leads/agenda", icon: CalendarDays },
       { title: "Buscar Leads", url: "/mis-leads/buscar-leads", icon: Radar },
       { title: "Mensajes · Oportunidades", url: "/automation-inbox", icon: MessagesSquare },
     ],
@@ -34,6 +36,8 @@ const vendedorGroups: { label?: string; items: { title: string; url: string; ico
   {
     label: "Herramientas",
     items: [
+      { title: "Bandeja (envíos en tanda)", url: "/mis-leads/bandeja", icon: Inbox },
+      { title: "Leads DataBase", url: "/mis-leads/reactivacion", icon: RotateCcw },
       { title: "Mis Plantillas", url: "/mis-leads/plantillas", icon: FileText },
       { title: "Diseño de Correo", url: "/mis-leads/diseno-correo", icon: Palette },
       { title: "Estadísticas", url: "/mis-leads/estadisticas", icon: PieChart },

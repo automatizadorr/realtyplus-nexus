@@ -12,6 +12,7 @@ import CorreosVendedorTab from "@/components/vendedor/CorreosVendedorTab";
 import BuscarLeadsVendedorTab from "@/components/vendedor/BuscarLeadsVendedorTab";
 import EstadisticasTab from "@/components/vendedor/EstadisticasTab";
 import BandejaTab from "@/components/vendedor/BandejaTab";
+import HoyTab from "@/components/vendedor/HoyTab";
 import CalendarioAgendamientos from "@/components/vendedor/CalendarioAgendamientos";
 import ReactivacionChatTab from "@/components/vendedor/ReactivacionChatTab";
 import RoleOnboarding, { useRoleOnboarding } from "@/components/vendedor/RoleOnboarding";
@@ -36,12 +37,12 @@ function KpiTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const TABS_VALIDOS = ["bandeja", "pipeline", "agenda", "reactivacion", "plantillas", "diseno-correo", "buscar-leads", "estadisticas"] as const;
+const TABS_VALIDOS = ["hoy", "bandeja", "pipeline", "agenda", "reactivacion", "plantillas", "diseno-correo", "buscar-leads", "estadisticas"] as const;
 
 export default function MisLeads() {
   const { user } = useAuth();
   const { tab } = useParams<{ tab: string }>();
-  const tabActivo = (TABS_VALIDOS as readonly string[]).includes(tab ?? "") ? (tab as string) : "pipeline";
+  const tabActivo = (TABS_VALIDOS as readonly string[]).includes(tab ?? "") ? (tab as string) : "hoy";
 
   const [plantillasWa, setPlantillasWa] = useState<PlantillaWa[]>([]);
   const [plantillasEmail, setPlantillasEmail] = useState<PlantillaEmail[]>([]);
@@ -148,6 +149,13 @@ export default function MisLeads() {
           El valor activo del Tabs viene de la URL (/mis-leads/:tab). */}
       {miRol && <SeccionesNav />}
       <Tabs value={tabActivo}>
+        <TabsContent value="hoy">
+          <HoyTab
+            plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas}
+            onCambio={cargarKpis}
+          />
+        </TabsContent>
+
         <TabsContent value="bandeja">
           <BandejaTab
             plantillasWa={plantillasWaActivas} plantillasEmail={plantillasEmailActivas}

@@ -104,6 +104,70 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
   perdido: "Perdido",
 };
 
+// ---------------------------------------------------------------------
+// Cola de trabajo ("Hoy"). Una fila = un lead que pide atención, con el
+// motivo MÁS urgente por el que la pide. Lo calcula la RPC
+// vendedor_cola_hoy: el orden no se decide en el front.
+// ---------------------------------------------------------------------
+export const MOTIVOS_COLA = [
+  "reunion", "respondio", "escalado", "traspaso", "vencido", "hoy", "nuevo", "sin_plan",
+] as const;
+export type MotivoCola = (typeof MOTIVOS_COLA)[number];
+
+export type ColaLead = {
+  id: string;
+  nombre: string | null;
+  telefono: string | null;
+  email: string | null;
+  pais: string | null;
+  etapa_venta: Etapa;
+  ha_respondido: boolean | null;
+  resumen_ia: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  mensaje_instagram: string | null;
+  notas_vendedor: string | null;
+  origen: string | null;
+  fecha_asignacion: string | null;
+  primer_contacto_at: string | null;
+  ultimo_contacto_at: string | null;
+  fecha_proximo_contacto: string | null;
+  traspasado_at: string | null;
+  escalado_ia_at: string | null;
+  escalado_ia_motivo: string | null;
+  reunion_at: string | null;
+  motivo: MotivoCola;
+  motivo_texto: string;
+  prioridad: number;
+};
+
+export type ColaResumen = {
+  total: number; urgentes: number; reuniones: number;
+  respuestas: number; vencidos: number; nuevos: number; sin_plan: number;
+};
+
+// Etiqueta corta + color del motivo. Los cuatro primeros son "urgentes":
+// hay una persona esperando del otro lado.
+export const MOTIVO_INFO: Record<MotivoCola, { label: string; badge: string; punto: string }> = {
+  reunion:   { label: "Reunión",     badge: "bg-violet-500/15 text-violet-700 border-violet-500/30", punto: "bg-violet-500" },
+  respondio: { label: "Respondió",   badge: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30", punto: "bg-emerald-500" },
+  escalado:  { label: "IA escaló",   badge: "bg-amber-500/15 text-amber-700 border-amber-500/30", punto: "bg-amber-500" },
+  traspaso:  { label: "Traspasado",  badge: "bg-cyan-500/15 text-cyan-700 border-cyan-500/30", punto: "bg-cyan-500" },
+  vencido:   { label: "Vencido",     badge: "bg-red-500/15 text-red-600 border-red-500/30", punto: "bg-red-500" },
+  hoy:       { label: "Para hoy",    badge: "bg-[#003DA5]/15 text-[#003DA5] border-[#003DA5]/30", punto: "bg-[#003DA5]" },
+  nuevo:     { label: "Sin tocar",   badge: "bg-slate-500/15 text-slate-600 border-slate-500/30", punto: "bg-slate-400" },
+  sin_plan:  { label: "Sin plan",    badge: "bg-orange-500/15 text-orange-700 border-orange-500/30", punto: "bg-orange-500" },
+};
+
+/** Zona horaria del navegador; la cola necesita saber cuándo termina "hoy" para el vendedor. */
+export function tzNavegador(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Santiago";
+  } catch {
+    return "America/Santiago";
+  }
+}
+
 export type VendedorKpis = {
   asignados: number; contactados: number; interesados: number; demos: number;
   ganados: number; perdidos: number; tasa_respuesta_pct: number; dias_promedio_cierre: number | null;

@@ -130,7 +130,7 @@ const App = () => (
                           <Route path="/buscar-leads" element={<AdminRoute><BuscarLeads /></AdminRoute>} />
                           <Route path="/plantillas" element={<AdminRoute><Plantillas /></AdminRoute>} />
                           <Route path="/vendedores" element={<AdminRoute><AdminVendedores /></AdminRoute>} />
-                          <Route path="/mis-leads" element={<Navigate to="/mis-leads/pipeline" replace />} />
+                          <Route path="/mis-leads" element={<Navigate to="/mis-leads/hoy" replace />} />
                           <Route path="/mis-leads/:tab" element={<VendedorRoute><MisLeads /></VendedorRoute>} />
                           <Route path="/correos-personalizados" element={<OportunidadesRoute><CorreosPersonalizados /></OportunidadesRoute>} />
                           <Route path="/seguimiento-correos" element={<AdminRoute><SeguimientoCorreos /></AdminRoute>} />
