@@ -10,37 +10,13 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
       agendamientos: {
         Row: {
+          confirmada_at: string | null
           created_at: string
           estado: string
           fecha_fin: string | null
@@ -53,6 +29,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          confirmada_at?: string | null
           created_at?: string
           estado?: string
           fecha_fin?: string | null
@@ -65,6 +42,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          confirmada_at?: string | null
           created_at?: string
           estado?: string
           fecha_fin?: string | null
@@ -92,6 +70,108 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      calentamiento_config: {
+        Row: {
+          activo: boolean
+          id: boolean
+          tope_diario: number
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          id?: boolean
+          tope_diario?: number
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          id?: boolean
+          tope_diario?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      calentamiento_envios: {
+        Row: {
+          enviado_at: string
+          fase: number
+          id: string
+          lead_id: string
+          mensaje: string | null
+        }
+        Insert: {
+          enviado_at?: string
+          fase: number
+          id?: string
+          lead_id: string
+          mensaje?: string | null
+        }
+        Update: {
+          enviado_at?: string
+          fase?: number
+          id?: string
+          lead_id?: string
+          mensaje?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calentamiento_envios_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_campana"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calentamiento_envios_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vista_inbox_contactos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calentamiento_piezas: {
+        Row: {
+          activa: boolean
+          created_at: string
+          cuerpo: string
+          fase: number
+          id: string
+          media_tipo: string | null
+          media_url: string | null
+          nombre: string
+          orden: number
+          plantilla_idioma: string | null
+          plantilla_nombre: string | null
+        }
+        Insert: {
+          activa?: boolean
+          created_at?: string
+          cuerpo: string
+          fase: number
+          id?: string
+          media_tipo?: string | null
+          media_url?: string | null
+          nombre: string
+          orden?: number
+          plantilla_idioma?: string | null
+          plantilla_nombre?: string | null
+        }
+        Update: {
+          activa?: boolean
+          created_at?: string
+          cuerpo?: string
+          fase?: number
+          id?: string
+          media_tipo?: string | null
+          media_url?: string | null
+          nombre?: string
+          orden?: number
+          plantilla_idioma?: string | null
+          plantilla_nombre?: string | null
+        }
+        Relationships: []
       }
       connection_state: {
         Row: {
@@ -252,6 +332,62 @@ export type Database = {
           secuencia_nombre?: string | null
           secuencia_paso?: number | null
           ultimo_evento_at?: string | null
+        }
+        Relationships: []
+      }
+      cuenta_usuarios: {
+        Row: {
+          created_at: string
+          cuenta_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cuenta_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cuenta_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cuenta_usuarios_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "cuentas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cuentas: {
+        Row: {
+          activa: boolean
+          ciclo_dia: number
+          created_at: string
+          id: string
+          nombre: string
+          plan: string
+          por_defecto: boolean
+        }
+        Insert: {
+          activa?: boolean
+          ciclo_dia?: number
+          created_at?: string
+          id?: string
+          nombre: string
+          plan?: string
+          por_defecto?: boolean
+        }
+        Update: {
+          activa?: boolean
+          ciclo_dia?: number
+          created_at?: string
+          id?: string
+          nombre?: string
+          plan?: string
+          por_defecto?: boolean
         }
         Relationships: []
       }
@@ -557,6 +693,9 @@ export type Database = {
         Row: {
           archivado: boolean | null
           bot_activo: boolean | null
+          calentamiento_fase: number
+          calentamiento_pausado: boolean
+          calentamiento_ultimo_at: string | null
           created_at: string | null
           dias_reales: number | null
           email: string | null
@@ -598,6 +737,9 @@ export type Database = {
         Insert: {
           archivado?: boolean | null
           bot_activo?: boolean | null
+          calentamiento_fase?: number
+          calentamiento_pausado?: boolean
+          calentamiento_ultimo_at?: string | null
           created_at?: string | null
           dias_reales?: number | null
           email?: string | null
@@ -639,6 +781,9 @@ export type Database = {
         Update: {
           archivado?: boolean | null
           bot_activo?: boolean | null
+          calentamiento_fase?: number
+          calentamiento_pausado?: boolean
+          calentamiento_ultimo_at?: string | null
           created_at?: string | null
           dias_reales?: number | null
           email?: string | null
@@ -1056,6 +1201,57 @@ export type Database = {
           },
         ]
       }
+      plan_limites: {
+        Row: {
+          activacion_usd: number
+          busquedas_incluidas: number
+          conversaciones_incluidas: number
+          correos_incluidos: number
+          correos_tope: number | null
+          excedente_busqueda_usd: number | null
+          excedente_conversacion_usd: number | null
+          excedente_mil_correos_usd: number | null
+          excedente_vendedor_usd: number | null
+          nombre: string
+          plan: string
+          precio_mes_usd: number
+          updated_at: string
+          vendedores_incluidos: number
+        }
+        Insert: {
+          activacion_usd?: number
+          busquedas_incluidas?: number
+          conversaciones_incluidas?: number
+          correos_incluidos?: number
+          correos_tope?: number | null
+          excedente_busqueda_usd?: number | null
+          excedente_conversacion_usd?: number | null
+          excedente_mil_correos_usd?: number | null
+          excedente_vendedor_usd?: number | null
+          nombre: string
+          plan: string
+          precio_mes_usd?: number
+          updated_at?: string
+          vendedores_incluidos?: number
+        }
+        Update: {
+          activacion_usd?: number
+          busquedas_incluidas?: number
+          conversaciones_incluidas?: number
+          correos_incluidos?: number
+          correos_tope?: number | null
+          excedente_busqueda_usd?: number | null
+          excedente_conversacion_usd?: number | null
+          excedente_mil_correos_usd?: number | null
+          excedente_vendedor_usd?: number | null
+          nombre?: string
+          plan?: string
+          precio_mes_usd?: number
+          updated_at?: string
+          vendedores_incluidos?: number
+        }
+        Relationships: []
+      }
       plantilla_favoritos: {
         Row: {
           canal: string
@@ -1392,6 +1588,115 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      recordatorio_plantillas: {
+        Row: {
+          activa: boolean
+          cuerpo_libre: string
+          nombre: string
+          plantilla_idioma: string
+          plantilla_nombre: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          cuerpo_libre: string
+          nombre: string
+          plantilla_idioma?: string
+          plantilla_nombre?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          cuerpo_libre?: string
+          nombre?: string
+          plantilla_idioma?: string
+          plantilla_nombre?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recordatorios_config: {
+        Row: {
+          activo: boolean
+          hora_local_desde: number
+          hora_local_hasta: number
+          id: boolean
+          minutos_inminente: number
+          minutos_previo: number
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          hora_local_desde?: number
+          hora_local_hasta?: number
+          id?: boolean
+          minutos_inminente?: number
+          minutos_previo?: number
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          hora_local_desde?: number
+          hora_local_hasta?: number
+          id?: boolean
+          minutos_inminente?: number
+          minutos_previo?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recordatorios_envios: {
+        Row: {
+          agendamiento_id: string
+          enviado_at: string
+          id: string
+          lead_id: string | null
+          modo: string | null
+          tipo: string
+        }
+        Insert: {
+          agendamiento_id: string
+          enviado_at?: string
+          id?: string
+          lead_id?: string | null
+          modo?: string | null
+          tipo: string
+        }
+        Update: {
+          agendamiento_id?: string
+          enviado_at?: string
+          id?: string
+          lead_id?: string | null
+          modo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recordatorios_envios_agendamiento_id_fkey"
+            columns: ["agendamiento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recordatorios_envios_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_campana"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recordatorios_envios_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vista_inbox_contactos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       secuencia_envios_programados: {
         Row: {
@@ -1809,7 +2114,18 @@ export type Database = {
           total_leads: number
         }[]
       }
+      admin_calentamiento_resumen: {
+        Args: never
+        Returns: {
+          enviados: number
+          fase: number
+          hoy: number
+          leads: number
+          ultimo: string
+        }[]
+      }
       admin_captados_ia_sin_asignar: { Args: never; Returns: number }
+      admin_consumo_resumen: { Args: { _cuenta?: string }; Returns: Json }
       admin_contactos_vendedor: {
         Args: { _limite?: number; _user_id: string }
         Returns: {
@@ -1885,6 +2201,7 @@ export type Database = {
         Args: { _desde?: string; _hasta?: string }
         Returns: {
           captado_ia: boolean
+          confirmada_at: string
           es_mio: boolean
           estado: string
           fecha_fin: string
@@ -1899,12 +2216,34 @@ export type Database = {
           lead_telefono: string
           meet_link: string
           origen: string
+          recordatorios: number
           setter: string
           vendedor: string
           vendedor_id: string
         }[]
       }
+      calentamiento_registrar: {
+        Args: { _fase: number; _lead_id: string; _mensaje?: string }
+        Returns: undefined
+      }
+      calentamiento_reset: { Args: { _telefono: string }; Returns: number }
       complete_onboarding: { Args: never; Returns: undefined }
+      consumo_correos_disponibles: { Args: { _user: string }; Returns: Json }
+      consumo_periodo: {
+        Args: { _cuenta?: string; _desde?: string; _hasta?: string }
+        Returns: {
+          ampliable: boolean
+          etiqueta: string
+          excedente: number
+          excedente_usd: number
+          incluido: number
+          periodo_fin: string
+          periodo_inicio: string
+          recurso: string
+          tope: number
+          usado: number
+        }[]
+      }
       correo_envios_resumen: {
         Args: { _dias?: number }
         Returns: {
@@ -1915,6 +2254,7 @@ export type Database = {
           total: number
         }[]
       }
+      cuenta_de_usuario: { Args: { _user: string }; Returns: string }
       elegir_equipo_para: { Args: { _pais: string }; Returns: string }
       elegir_vendedor_para: { Args: { _pais: string }; Returns: string }
       has_crm_access: { Args: { _user_id: string }; Returns: boolean }
@@ -1940,6 +2280,31 @@ export type Database = {
         Returns: {
           n: number
           pais: string
+        }[]
+      }
+      leads_para_apertura: {
+        Args: { _limite?: number }
+        Returns: {
+          lead_id: string
+          nombre: string
+          plantilla_idioma: string
+          plantilla_nombre: string
+          primer_nombre: string
+          restantes_hoy: number
+          telefono: string
+        }[]
+      }
+      leads_para_calentar: {
+        Args: { _limite?: number }
+        Returns: {
+          cuerpo: string
+          fase: number
+          horas_callado: number
+          lead_id: string
+          media_tipo: string
+          media_url: string
+          nombre: string
+          telefono: string
         }[]
       }
       marcar_leidos_conversacion: {
@@ -1995,6 +2360,13 @@ export type Database = {
         }
         Returns: number
       }
+      periodo_facturacion: {
+        Args: { _cuenta: string }
+        Returns: {
+          fin: string
+          inicio: string
+        }[]
+      }
       plantilla_stats: {
         Args: never
         Returns: {
@@ -2020,6 +2392,34 @@ export type Database = {
           repetidos: number
           servicio: string
           total_leads: number
+        }[]
+      }
+      recordatorio_registrar: {
+        Args: { _agendamiento_id: string; _modo?: string; _tipo: string }
+        Returns: boolean
+      }
+      recordatorio_respuesta: {
+        Args: { _forzar?: boolean; _telefono: string; _texto: string }
+        Returns: Json
+      }
+      recordatorios_pendientes: {
+        Args: { _limite?: number }
+        Returns: {
+          agendamiento_id: string
+          cuerpo: string
+          fecha_inicio: string
+          fecha_local: string
+          hora_local: string
+          lead_id: string
+          meet_link: string
+          minutos_restan: number
+          modo: string
+          nombre: string
+          plantilla_idioma: string
+          plantilla_nombre: string
+          primer_nombre: string
+          telefono: string
+          tipo: string
         }[]
       }
       registrar_agendamiento: {
@@ -2306,9 +2706,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["admin", "user", "sub_admin", "vendedor"],
