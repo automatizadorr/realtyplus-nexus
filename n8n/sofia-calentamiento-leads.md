@@ -23,12 +23,36 @@ decisión de Mario y es la que hace viable el proyecto sin esperas externas.
 | T+6 h | Imagen | Infografía de valor |
 | T+20 h | Video | Cierre suave: "si no es el momento, dímelo" |
 
-## Los nodos
+## El flujo completo
+
+El punto de partida no es la escalera, es **la plantilla**. El 99% de la base
+(8.413 leads de 8.461) nunca escribió nada, y a esos Meta solo deja llegarles
+con una plantilla HSM aprobada.
 
 ```
-⏰ Cada 30 minutos  →  📋 Pedir cola  →  🔁 Un lead por item  →  🖼️ ¿Lleva multimedia?
-                                                                  ├─ sí → 🎬 Enviar con multimedia ─┐
-                                                                  └─ no → 💬 Enviar texto ──────────┴→ ✅ Registrar toque
+                              ¿el lead respondió?
+plantilla de apertura ──┬── no ──→ se deja tranquilo (decisión de Mario: no se insiste)
+                        │
+                        └── sí ──→ se abre la ventana de 24 h ──→ Sofía conversa
+                                        │
+                                        ├── agenda reunión ──→ sale de la secuencia
+                                        └── no agenda y se calla ──→ escalera 2 h / 6 h / 20 h
+```
+
+**Mandar la plantilla NO abre la ventana.** La abre únicamente un mensaje del
+lead — y tocar un botón de respuesta rápida cuenta como mensaje suyo. Por eso
+la plantilla lleva botones: ver `plantilla-apertura-meta.md`.
+
+## Los nodos
+
+Dos ramas que salen del mismo Schedule Trigger:
+
+```
+⏰ Cada 30 minutos ─┬─ 📋 Pedir cola → 🔁 Un lead por item → 🖼️ ¿Lleva multimedia?
+                    │                                          ├─ sí → 🎬 Enviar con multimedia ─┐
+                    │                                          └─ no → 💬 Enviar texto ──────────┴→ ✅ Registrar toque
+                    │
+                    └─ 📨 Pedir cola de apertura → 🔁 Un lead por item (apertura) → 📤 Enviar plantilla → ✅ Registrar apertura
 ```
 
 - **📋 Pedir cola** y **✅ Registrar toque** llaman a la edge function
@@ -47,17 +71,26 @@ decisión de Mario y es la que hace viable el proyecto sin esperas externas.
 
 ## Antes de activarlo
 
-1. **Verificar a ojo el nodo `🎬 Enviar con multimedia`.** Es el único que no
-   pude validar contra un nodo existente: ningún workflow del n8n manda
-   multimedia todavía, así que los nombres de sus parámetros (`mediaPath`,
-   `mediaLink`, `caption`) van según la documentación y no copiados de algo que
-   ya funcione. Mientras las piezas no tengan `media_url`, esa rama no se
-   ejecuta y todo sale por la de texto.
+1. **Verificar a ojo `🎬 Enviar con multimedia` y `📤 Enviar plantilla`.** Son
+   los dos únicos nodos que no pude validar contra algo que ya funcione: en
+   este n8n ningún workflow manda multimedia ni plantillas HSM, así que sus
+   parámetros van según documentación. Los dos están inertes por ahora — la
+   rama de multimedia no corre mientras las piezas no tengan `media_url`, y la
+   de apertura devuelve cola vacía mientras la fase 0 no tenga
+   `plantilla_nombre`.
 2. **Cargar la infografía y el video** en `calentamiento_piezas.media_url`
    (fases 2 y 3). Sin eso, los tres toques salen como texto plano.
 3. **Probar con un lead propio** antes de encender: poner
    `calentamiento_pausado = true` a todos los demás, activar, verificar, y
    recién ahí soltar.
+
+## El tope diario, que es lo que protege el número
+
+`calentamiento_config.tope_diario` arranca en **80**. Meta asigna un límite de
+destinatarios por día y lo sube o lo baja según la calidad del número: si mucha
+gente bloquea o reporta, el número queda restringido y **se cae todo el canal**,
+incluido el bot que ya funciona. Mandar 8.413 plantillas de golpe es la forma
+más rápida de perderlo.
 
 ## Cómo se apaga la secuencia
 

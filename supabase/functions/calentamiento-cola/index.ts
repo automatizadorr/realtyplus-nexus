@@ -15,6 +15,13 @@
 //       -> { leads: [ { lead_id, telefono, nombre, fase, cuerpo,
 //                       media_url, media_tipo, horas_callado } ] }
 //
+//   { "accion": "apertura", "limite"?: 30 }
+//       -> { leads: [ { lead_id, telefono, primer_nombre,
+//                       plantilla_nombre, plantilla_idioma, restantes_hoy } ] }
+//       Solo devuelve leads que NUNCA escribieron: a esos Meta unicamente
+//       deja llegarles con plantilla. Viene vacia mientras la pieza de fase 0
+//       no tenga cargado el nombre de la plantilla aprobada.
+//
 //   { "accion": "registrar", "lead_id": "...", "fase": 1, "mensaje"?: "..." }
 //       -> { ok: true }   se llama DESPUÉS de que WhatsApp aceptó el envío
 //
@@ -50,6 +57,13 @@ Deno.serve(async (req) => {
     if (accion === "cola") {
       const limite = Number.isFinite(body?.limite) ? Math.min(Number(body.limite), 200) : 50;
       const { data, error } = await supabase.rpc("leads_para_calentar", { _limite: limite });
+      if (error) throw error;
+      return json({ leads: data ?? [], total: (data ?? []).length });
+    }
+
+    if (accion === "apertura") {
+      const limite = Number.isFinite(body?.limite) ? Math.min(Number(body.limite), 200) : 30;
+      const { data, error } = await supabase.rpc("leads_para_apertura", { _limite: limite });
       if (error) throw error;
       return json({ leads: data ?? [], total: (data ?? []).length });
     }
