@@ -38,6 +38,9 @@ verify_jwt = false
 [functions.bot-handoff-vendedor]
 verify_jwt = false
 
+[functions.calentamiento-cola]
+verify_jwt = false
+
 [functions.etiquetar-ia]
 verify_jwt = false
 
