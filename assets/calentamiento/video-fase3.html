@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Video fase 3 — escenas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    width:1080px; height:1080px; overflow:hidden;
+    font-family:'Inter', system-ui, sans-serif;
+    background:#0A1628; color:#fff; position:relative;
+  }
+  body::before {
+    content:''; position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(0,61,165,.16) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,61,165,.16) 1px, transparent 1px);
+    background-size:60px 60px;
+  }
+  .glow { position:absolute; width:900px; height:900px; border-radius:50%;
+          background:radial-gradient(circle, rgba(0,61,165,.5) 0%, transparent 68%); }
+
+  /* Solo se muestra la escena pedida por ?escena=N */
+  .escena { position:absolute; inset:0; display:none; z-index:2;
+            padding:96px; flex-direction:column; justify-content:center; }
+  .escena.on { display:flex; }
+
+  .kicker { font-size:26px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+            color:#5B9BFF; margin-bottom:28px; }
+  .kicker.rojo { color:#F87171; }
+  h1 { font-size:96px; font-weight:900; line-height:1.03; letter-spacing:-.03em; }
+  h1.mediano { font-size:78px; }
+  h1 em { font-style:normal; color:#5B9BFF; }
+  h1 .rojo { color:#F87171; }
+  h1 .verde { color:#6EE7A8; }
+  .sub { font-size:34px; color:#A9BDD9; margin-top:30px; line-height:1.35; }
+
+  .reloj { font-size:150px; font-weight:900; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+
+  .burbujas { display:flex; flex-direction:column; gap:20px; margin-top:46px; }
+  .burbuja { align-self:flex-start; background:rgba(255,255,255,.09); border-radius:26px 26px 26px 6px;
+             padding:24px 32px; font-size:32px; max-width:760px; }
+  .burbuja.tenue { opacity:.34; }
+  .burbuja.mia { align-self:flex-end; background:rgba(0,61,165,.55); border-radius:26px 26px 6px 26px; }
+
+  .lista { margin-top:48px; display:flex; flex-direction:column; gap:26px; }
+  .item { display:flex; align-items:center; gap:22px; font-size:44px; font-weight:700; }
+  .item .tic { width:56px; height:56px; border-radius:50%; background:rgba(110,231,168,.16);
+               border:2px solid #6EE7A8; color:#6EE7A8; display:grid; place-items:center; font-size:30px; }
+
+  .pie { position:absolute; left:96px; right:96px; bottom:76px; z-index:3;
+         display:flex; align-items:center; justify-content:space-between; }
+  .pie .marca { display:flex; align-items:center; gap:14px; font-size:26px; font-weight:700;
+                letter-spacing:.14em; text-transform:uppercase; color:#93B4E8; }
+  .pie .punto { width:13px; height:13px; border-radius:50%; background:#22C55E; box-shadow:0 0 18px #22C55E; }
+  .pie .url { font-size:26px; font-weight:600; color:#5B9BFF; }
+</style>
+</head>
+<body>
+  <div class="glow" style="right:-380px; top:-420px;"></div>
+
+  <section class="escena" data-n="1">
+    <div class="kicker">Un martes cualquiera</div>
+    <div class="reloj">21:40</div>
+    <p class="sub">Ya cerraste la oficina.</p>
+  </section>
+
+  <section class="escena" data-n="2">
+    <div class="kicker">21:40</div>
+    <h1 class="mediano">Un lead<br>te escribe.</h1>
+    <div class="burbujas">
+      <div class="burbuja">Hola, vi la casa en Peñalolén 👋<br>¿sigue disponible?</div>
+    </div>
+  </section>
+
+  <section class="escena" data-n="3">
+    <div class="kicker rojo">21:41</div>
+    <h1 class="mediano">Y le escribe<br><span class="rojo">a otras tres.</span></h1>
+    <div class="burbujas">
+      <div class="burbuja tenue">¿sigue disponible?</div>
+      <div class="burbuja tenue">¿sigue disponible?</div>
+      <div class="burbuja tenue">¿sigue disponible?</div>
+    </div>
+  </section>
+
+  <section class="escena" data-n="4">
+    <div class="kicker rojo">A la mañana siguiente</div>
+    <div class="reloj" style="color:#F87171">09:20</div>
+    <p class="sub">Recién abres el WhatsApp.</p>
+  </section>
+
+  <section class="escena" data-n="5">
+    <h1><span class="rojo">Ya eligió</span><br>a quien contestó<br>primero.</h1>
+    <p class="sub">No perdiste el lead. Te lo ganaron por once horas.</p>
+  </section>
+
+  <section class="escena" data-n="6">
+    <div class="kicker">Con LexHouse AI</div>
+    <h1 class="mediano">A las 21:40<br><em>ya está respondido.</em></h1>
+    <div class="burbujas">
+      <div class="burbuja">¿sigue disponible?</div>
+      <div class="burbuja mia">¡Hola! Sí, sigue disponible 🙌<br>¿Te acomoda verla el jueves?</div>
+    </div>
+  </section>
+
+  <section class="escena" data-n="7">
+    <h1 class="mediano">La IA no solo<br>contesta.</h1>
+    <div class="lista">
+      <div class="item"><span class="tic">✓</span> Califica al lead</div>
+      <div class="item"><span class="tic">✓</span> Agenda la reunión</div>
+      <div class="item"><span class="tic">✓</span> Te avisa</div>
+    </div>
+  </section>
+
+  <section class="escena" data-n="8">
+    <h1>Despiertas con<br><span class="verde">la reunión<br>agendada.</span></h1>
+    <p class="sub">Contesta siempre. Aunque estés durmiendo.</p>
+  </section>
+
+  <div class="pie">
+    <div class="marca"><i class="punto"></i> LexHouse AI</div>
+    <div class="url">lexhouse-ai.com</div>
+  </div>
+
+<script>
+  // La escena se elige por querystring: asi Chrome headless puede sacar una
+  // captura por escena sin depender de animaciones ni de esperar tiempos.
+  const n = new URLSearchParams(location.search).get('escena') || '1';
+  const el = document.querySelector(`.escena[data-n="${n}"]`);
+  if (el) el.classList.add('on');
+</script>
+</body>
+</html>

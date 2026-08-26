@@ -49,3 +49,28 @@ WHERE fase = 2;
 - **Sin estadísticas inventadas.** La comparación es una escena concreta —dos
   líneas de tiempo, la misma hora— y no un porcentaje que nadie puede
   respaldar.
+
+## El video de la fase 3
+
+`video-fase3.html` tiene las **8 escenas** de la historia; se elige cuál
+renderizar con `?escena=N`. Son capturas fijas, no una animación CSS: así el
+texto sale nítido, cada escena se corrige por separado, y no hay que capturar
+cientos de frames. El movimiento lo pone ffmpeg.
+
+Regenerar todo:
+
+```powershell
+.ender-video.ps1
+```
+
+Dos trampas que ya están resueltas en el script:
+
+- **`zoompan` cuenta sus frames por cada frame de entrada.** Si la imagen se
+  lee con `-loop 1 -t 3.2`, entran 80 frames y salen 6.400: el video dura 274
+  segundos en vez de 21. Hay que leer la imagen sin `-loop`, para que el
+  demuxer entregue un solo frame.
+- **Escalar a 1620 antes del zoompan.** Si se hace al revés, el texto tiembla
+  al ampliarse.
+
+Resultado: 1080×1080, 21,4 s, ~1,4 MB. WhatsApp corta en 16 MB, así que sobra
+margen.
