@@ -18,6 +18,8 @@ import EditarPlantillaDialog from "@/components/vendedor/EditarPlantillaDialog";
 import RegistroManualDialog from "@/components/vendedor/RegistroManualDialog";
 import RemitenteCard from "@/components/vendedor/RemitenteCard";
 import LeadDetalleDialog from "@/components/vendedor/LeadDetalleDialog";
+import FiltrosLeads from "@/components/vendedor/FiltrosLeads";
+import { aplicarFiltrosLead, filtrosVacios, ordenDe, type FiltrosLead } from "@/lib/filtrosLeads";
 import type { PlantillaEmail, PlantillaWa, RolVenta } from "@/components/vendedor/types";
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
 import { bodyRemitente, describirRemitente, useRemitente } from "@/hooks/use-remitente";
@@ -54,11 +56,6 @@ function ordenarPorFavorito<T extends { id: string }>(items: T[], canal: Canal, 
   });
 }
 
-// PostgREST separa las condiciones de `or(...)` por comas.
-function sanearBusqueda(q: string): string {
-  return q.trim().replace(/[,()*]/g, " ").replace(/\s+/g, " ");
-}
-
 export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados, onPlantillasChanged }: {
   plantillasWa: PlantillaWa[];
   plantillasEmail: PlantillaEmail[];
@@ -88,9 +85,11 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
   const [miNombre, setMiNombre] = useState<string | null>(null);
-  // Buscador de la bandeja (server-side, no solo sobre la página cargada).
-  const [qInput, setQInput] = useState("");
-  const [q, setQ] = useState("");
+  // Filtros de la bandeja (server-side, no solo sobre la página cargada):
+  // país, origen, antigüedad, con correo / con teléfono, orden. Antes acá
+  // solo había un buscador de texto y un vendedor con leads de varios países
+  // no podía separarlos.
+  const [filtros, setFiltros] = useState<FiltrosLead>(filtrosVacios());
   // Remitente de correo elegido por el vendedor (item 7). Se puede cambiar
   // aquí mismo, sin ir a "Diseño de Correo".
   const { config: remitente } = useRemitente();
@@ -112,12 +111,6 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     });
   }, []);
 
-  // Debounce del buscador: 350 ms sin teclear y recién ahí se consulta.
-  useEffect(() => {
-    const t = setTimeout(() => setQ(qInput), 350);
-    return () => clearTimeout(t);
-  }, [qInput]);
-
   const toggleFavorito = async (canal: Canal, plantillaId: string) => {
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData?.user?.id;
@@ -134,7 +127,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
 
   const cargar = async (p: number = page) => {
     setLoading(true);
-    let query = supabase
+    const base = supabase
       .from("leads_campana")
       .select("id, nombre, telefono, email, pais, fecha_asignacion, origen, escalado_ia_at, escalado_ia_motivo", { count: "exact" })
       .is("primer_contacto_at", null)
@@ -142,10 +135,9 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
       // a mano) no debe seguir apareciendo en la bandeja. El Pipeline ya filtraba
       // esto; la Bandeja no, y por eso los archivados seguían a la vista.
       .not("archivado", "is", true);
-    const texto = sanearBusqueda(q);
-    if (texto) query = query.or(`nombre.ilike.%${texto}%,email.ilike.%${texto}%,telefono.ilike.%${texto}%`);
-    const { data, count, error } = await query
-      .order("fecha_asignacion", { ascending: true })
+    const orden = ordenDe(filtros);
+    const { data, count, error } = await aplicarFiltrosLead(base, filtros)
+      .order(orden.columna, { ascending: orden.ascendente })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1);
     if (error) toast({ title: "Error al cargar la bandeja", description: error.message, variant: "destructive" });
     else {
@@ -160,11 +152,12 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
 
   useEffect(() => { cargar(page); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [page]);
   useEffect(() => { setPage((p) => Math.min(p, totalPages - 1)); }, [totalPages]);
-  // Al buscar se vuelve a la primera página (si ya estaba en 0, se recarga).
+  // Al cambiar cualquier filtro se vuelve a la primera página (si ya estaba
+  // en 0, se recarga).
   useEffect(() => {
     if (page === 0) cargar(0); else setPage(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, [filtros]);
 
   const toggleSel = (id: string) => {
     setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -452,23 +445,10 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
         </CardContent>
       </Card>
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={qInput} onChange={(e) => setQInput(e.target.value)}
-          placeholder="Buscar en la bandeja por nombre, email o teléfono…"
-          className="h-9 pl-8 text-xs"
-        />
-        {qInput && (
-          <button
-            type="button" onClick={() => setQInput("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            aria-label="Limpiar búsqueda"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+      <FiltrosLeads
+        filtros={filtros} onChange={setFiltros} resultados={total}
+        visibles={{ origen: true, captadosIa: true, contacto: true, antiguedad: true, orden: true }}
+      />
 
       <div className="overflow-x-auto rounded-lg border">
         <Table>

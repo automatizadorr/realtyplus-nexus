@@ -14,6 +14,8 @@ import { conModificador, escribiendoEnCampo } from "@/lib/atajos";
 import LeadDetalleDialog from "@/components/vendedor/LeadDetalleDialog";
 import PasoRapido from "@/components/vendedor/PasoRapido";
 import EnviarCorreoDialog from "@/components/vendedor/EnviarCorreoDialog";
+import FiltrosLeads from "@/components/vendedor/FiltrosLeads";
+import { contarFiltros, filtrosVacios, type FiltrosLead } from "@/lib/filtrosLeads";
 import {
   ETAPA_LABEL, MOTIVO_INFO, tzNavegador,
   type ColaLead, type ColaResumen, type MotivoCola, type PlantillaEmail, type PlantillaWa, type RolVenta,
@@ -94,6 +96,10 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
   const [filtro, setFiltro] = useState<MotivoCola | "todos">("todos");
+  // Texto y país se resuelven en el servidor: la pantalla trae las primeras
+  // 100 filas de la cola, así que filtrar sobre lo ya cargado escondería
+  // todo lo que quedó más abajo.
+  const [filtros, setFiltros] = useState<FiltrosLead>(filtrosVacios());
   const [hechos, setHechos] = useState(0);
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
@@ -107,7 +113,14 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
   const cargar = useCallback(async (mantenerPosicion = false) => {
     setLoading(true);
     const [{ data: filas, error }, { data: res }] = await Promise.all([
-      sb.rpc("vendedor_cola_hoy", { _tz: tz, _limite: 100 }),
+      sb.rpc("vendedor_cola_hoy", {
+        _tz: tz, _limite: 100,
+        _q: filtros.q.trim() || null,
+        _pais: filtros.pais === "all" ? null : filtros.pais,
+        _motivo: null,
+      }),
+      // Los contadores cuentan TODO a propósito: el badge tiene que decir
+      // cuánto trabajo hay, no cuánto queda del filtro puesto.
       sb.rpc("vendedor_cola_resumen", { _tz: tz }),
     ]);
     if (error) toast({ title: "No se pudo cargar la cola", description: error.message, variant: "destructive" });
@@ -115,7 +128,7 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
     setResumen((res ?? [])[0] ?? null);
     if (!mantenerPosicion) setIdx(0);
     setLoading(false);
-  }, [tz, toast]);
+  }, [tz, toast, filtros.q, filtros.pais]);
 
   useEffect(() => {
     cargar();
@@ -237,6 +250,11 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
         </Button>
       </div>
 
+      <FiltrosLeads
+        filtros={filtros} onChange={setFiltros} resultados={cola.length}
+        visibles={{}}
+      />
+
       <div className="-mx-1 overflow-x-auto pb-1">
         <div className="flex min-w-max items-center gap-1 px-1">
           {chips.map((c) => (
@@ -259,10 +277,14 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <PartyPopper className="h-8 w-8 text-emerald-600" />
             <p className="font-medium">
-              {cola.length === 0 ? "No queda nada pendiente" : "Nada pendiente en este filtro"}
+              {contarFiltros(filtros) > 0
+                ? "Ningún lead coincide con estos filtros"
+                : cola.length === 0 ? "No queda nada pendiente" : "Nada pendiente en este filtro"}
             </p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Cuando un lead responda, venza un seguimiento o te asignen leads nuevos, van a aparecer acá solos.
+              {contarFiltros(filtros) > 0
+                ? "Probá quitar el país o la búsqueda para ver el resto de tu cola."
+                : "Cuando un lead responda, venza un seguimiento o te asignen leads nuevos, van a aparecer acá solos."}
             </p>
           </CardContent>
         </Card>

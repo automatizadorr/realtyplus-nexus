@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
 import {
   Loader2, MapPin, Mail as MailIcon, MessageCircle, RefreshCw, GripVertical, CalendarClock,
-  ListOrdered, ArrowRight, X, Search, SlidersHorizontal, Instagram, PhoneCall, Radar, UserPlus, Bot,
+  ListOrdered, ArrowRight, X, Instagram, PhoneCall, Radar, UserPlus, Bot,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -24,7 +23,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
-import { PAISES_PROSPECCION } from "@/lib/paises";
 import EtapaProgreso from "@/components/vendedor/EtapaProgreso";
 import LeadDetalleDialog from "@/components/vendedor/LeadDetalleDialog";
 import {
@@ -32,6 +30,10 @@ import {
   type Etapa, type LeadCampana, type PlantillaEmail, type PlantillaWa, type RolVenta,
 } from "@/components/vendedor/types";
 import { useGuardiaWhatsapp } from "@/hooks/use-guardia-whatsapp";
+import FiltrosLeads from "@/components/vendedor/FiltrosLeads";
+import {
+  aplicarFiltrosLead, contarFiltros, filtrosVacios, ordenDe, type FiltrosLead,
+} from "@/lib/filtrosLeads";
 
 const COLUMNAS = "id, nombre, telefono, email, pais, etapa_venta, ha_respondido, resumen_ia, fecha_asignacion, fecha_cierre, motivo_cierre, fecha_proximo_contacto, vendedor_id, instagram, facebook, mensaje_instagram, notas_vendedor, origen, ultimo_contacto_at, escalado_ia_at, escalado_ia_motivo, setter_id, traspasado_at";
 
@@ -43,30 +45,16 @@ const PAGE_SIZE = 10;
 type ColState = { leads: LeadCampana[]; total: number; pagina: number; cargandoMas: boolean };
 const columnaVacia = (): ColState => ({ leads: [], total: 0, pagina: 0, cargandoMas: false });
 
-// Filtros del kanban. Se aplican del lado del servidor (no sobre la página ya
-// cargada), así "buscar" encuentra leads que están más allá de las 10 visibles.
-type Filtros = {
-  q: string;
-  pais: string;      // "all" | nombre del país
-  origen: string;    // "all" | campana | buscar_leads | manual_vendedor
-  respondio: boolean;
-  vencidos: boolean;
-  captadosIa: boolean;  // solo los que converso el bot Camil-AI
-};
-const filtrosVacios = (): Filtros => ({ q: "", pais: "all", origen: "all", respondio: false, vencidos: false, captadosIa: false });
-const hayFiltros = (f: Filtros) =>
-  Boolean(f.q.trim()) || f.pais !== "all" || f.origen !== "all" || f.respondio || f.vencidos || f.captadosIa;
+// Los filtros del kanban son los mismos de la Bandeja y de Hoy: viven en
+// src/lib/filtrosLeads.ts. Se aplican del lado del servidor (no sobre las
+// tarjetas ya cargadas), así "buscar" encuentra leads más allá de las 10
+// visibles por columna.
 
-const ORIGENES: { valor: string; label: string }[] = [
-  { valor: "all", label: "Todos los orígenes" },
-  { valor: "buscar_leads", label: "Buscar Leads" },
-  { valor: "manual_vendedor", label: "Alta manual" },
-  // Escribió al WhatsApp del bot sin estar en ninguna campaña: la ficha la
-  // abrió el propio bot al captarlo.
-  { valor: "whatsapp_inbound", label: "WhatsApp entrante" },
-  // Todo lo demás que no cargó el vendedor: importaciones y campañas.
-  { valor: "campana", label: "Campaña / importados" },
-];
+function finDeHoyISO(): string {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.toISOString();
+}
 
 function waLinkCampana(l: LeadCampana): string | null {
   const raw = (l.telefono || "").replace(/[^\d]/g, "");
@@ -88,18 +76,6 @@ function requiereHoy(l: LeadCampana): boolean {
     if (new Date(l.fecha_proximo_contacto).getTime() <= finDeHoy.getTime()) return true;
   }
   return false;
-}
-
-function finDeHoyISO(): string {
-  const d = new Date();
-  d.setHours(23, 59, 59, 999);
-  return d.toISOString();
-}
-
-// PostgREST separa las condiciones de `or(...)` por comas: una coma dentro del
-// texto buscado rompería la consulta entera.
-function sanearBusqueda(q: string): string {
-  return q.trim().replace(/[,()*]/g, " ").replace(/\s+/g, " ");
 }
 
 // ---------------------------------------------------------------------
@@ -235,11 +211,8 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const [miNombre, setMiNombre] = useState<string | null>(null);
   // Ficha completa del lead (item 4): se abre al hacer clic en la tarjeta.
   const [detalleId, setDetalleId] = useState<string | null>(null);
-  // Buscador + filtros (item 3). `filtros` es lo aplicado; `q` se escribe con
-  // debounce para no disparar una consulta por tecla.
-  const [filtros, setFiltros] = useState<Filtros>(filtrosVacios());
-  const [qInput, setQInput] = useState("");
-  const [panelFiltros, setPanelFiltros] = useState(false);
+  // Buscador + filtros compartidos con la Bandeja y con Hoy.
+  const [filtros, setFiltros] = useState<FiltrosLead>(filtrosVacios());
   // Envío de WhatsApp en cola: selección de tarjetas + una plantilla en
   // común, igual patrón que la Bandeja. Cada apertura de wa.me pide su
   // propio clic ("Siguiente") para no chocar con el bloqueo de pop-ups.
@@ -258,12 +231,6 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  // Debounce del buscador: 350 ms sin teclear y recién ahí se consulta.
-  useEffect(() => {
-    const t = setTimeout(() => setFiltros((f) => (f.q === qInput ? f : { ...f, q: qInput })), 350);
-    return () => clearTimeout(t);
-  }, [qInput]);
-
   // Los filtros se leen dentro de callbacks que no se re-crean por dependencia,
   // así que se guarda la última versión en una ref.
   const filtrosRef = useRef(filtros);
@@ -274,19 +241,7 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   // ("Type instantiation is excessively deep"). El resultado se vuelve a tipar
   // en cada consulta, que es donde importa.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aplicarFiltros = (query: any) => {
-    const f = filtrosRef.current;
-    let q = query;
-    const texto = sanearBusqueda(f.q);
-    if (texto) q = q.or(`nombre.ilike.%${texto}%,email.ilike.%${texto}%,telefono.ilike.%${texto}%`);
-    if (f.pais !== "all") q = q.eq("pais", f.pais);
-    if (f.origen === "campana") q = q.or("origen.is.null,and(origen.neq.buscar_leads,origen.neq.manual_vendedor,origen.neq.whatsapp_inbound)");
-    else if (f.origen !== "all") q = q.eq("origen", f.origen);
-    if (f.respondio) q = q.is("ha_respondido", true);
-    if (f.captadosIa) q = q.not("escalado_ia_at", "is", null);
-    if (f.vencidos) q = q.lte("fecha_proximo_contacto", finDeHoyISO());
-    return q;
-  };
+  const aplicarFiltros = (query: unknown) => aplicarFiltrosLead(query, filtrosRef.current);
 
   const cargarColumna = async (etapa: Etapa, pagina: number, append: boolean) => {
     setCols((prev) => ({ ...prev, [etapa]: { ...prev[etapa], cargandoMas: true } }));
@@ -296,8 +251,9 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       .not("primer_contacto_at", "is", null)
       .not("archivado", "is", true)
       .eq("etapa_venta", etapa);
+    const orden = ordenDe(filtrosRef.current);
     const { data, count, error } = await aplicarFiltros(base)
-      .order("fecha_asignacion", { ascending: false })
+      .order(orden.columna, { ascending: orden.ascendente })
       .range(pagina * PAGE_SIZE, pagina * PAGE_SIZE + PAGE_SIZE - 1);
     if (error) {
       toast({ title: "Error al cargar el pipeline", description: error.message, variant: "destructive" });
@@ -381,7 +337,6 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   const hasMoreVista = (etapa: Etapa): boolean => (hoyLeads ? false : cols[etapa].leads.length < cols[etapa].total);
 
   const totalGeneral = ETAPAS_PIPELINE.reduce((acc, e) => acc + cols[e].total, 0);
-  const paisesDisponibles = useMemo(() => PAISES_PROSPECCION, []);
 
   const buscarLead = (id: string): { lead: LeadCampana; etapa: Etapa } | null => {
     for (const etapa of ETAPAS_PIPELINE) {
@@ -509,8 +464,8 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
   };
 
   const activeLead = activeId ? buscarLead(activeId)?.lead : undefined;
-  const filtrosActivos = hayFiltros(filtros);
-  const limpiarFiltros = () => { setQInput(""); setFiltros(filtrosVacios()); };
+  const filtrosActivos = contarFiltros(filtros) > 0;
+  const limpiarFiltros = () => setFiltros(filtrosVacios());
 
   return (
     <div className="space-y-3">
@@ -530,69 +485,10 @@ export default function PipelineTab({ plantillasWa, plantillasEmail }: { plantil
       </div>
 
       {/* Buscador + filtros. Consultan la base entera, no solo lo ya cargado. */}
-      <div className="space-y-2 rounded-lg border bg-muted/20 p-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={qInput} onChange={(e) => setQInput(e.target.value)}
-              placeholder="Buscar por nombre, email o teléfono…"
-              className="h-8 pl-8 text-xs"
-            />
-            {qInput && (
-              <button
-                type="button" onClick={() => setQInput("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Limpiar búsqueda"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <Button
-            type="button" size="sm" variant={panelFiltros || filtrosActivos ? "secondary" : "outline"}
-            onClick={() => setPanelFiltros((v) => !v)} className="h-8 gap-1.5 text-xs"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" /> Filtros
-            {filtrosActivos && <span className="rounded-full bg-[#003DA5] px-1.5 text-[10px] text-white">on</span>}
-          </Button>
-          {filtrosActivos && (
-            <Button type="button" size="sm" variant="ghost" onClick={limpiarFiltros} className="h-8 gap-1 text-xs text-muted-foreground">
-              <X className="h-3.5 w-3.5" /> Limpiar
-            </Button>
-          )}
-        </div>
-
-        {panelFiltros && (
-          <div className="flex flex-wrap items-center gap-3 border-t pt-2">
-            <Select value={filtros.pais} onValueChange={(v) => setFiltros((f) => ({ ...f, pais: v }))}>
-              <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los países</SelectItem>
-                {paisesDisponibles.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filtros.origen} onValueChange={(v) => setFiltros((f) => ({ ...f, origen: v }))}>
-              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ORIGENES.map((o) => <SelectItem key={o.valor} value={o.valor}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <label className="flex items-center gap-1.5 text-xs">
-              <Switch checked={filtros.respondio} onCheckedChange={(v) => setFiltros((f) => ({ ...f, respondio: v }))} />
-              Solo los que respondieron
-            </label>
-            <label className="flex items-center gap-1.5 text-xs">
-              <Switch checked={filtros.vencidos} onCheckedChange={(v) => setFiltros((f) => ({ ...f, vencidos: v }))} />
-              Seguimiento vencido
-            </label>
-            <label className="flex items-center gap-1.5 text-xs">
-              <Switch checked={filtros.captadosIa} onCheckedChange={(v) => setFiltros((f) => ({ ...f, captadosIa: v }))} />
-              <Bot className="h-3 w-3 text-emerald-600" /> Captados por IA
-            </label>
-          </div>
-        )}
-      </div>
+      <FiltrosLeads
+        filtros={filtros} onChange={setFiltros} resultados={totalGeneral}
+        visibles={{ origen: true, respondio: true, vencidos: true, captadosIa: true, contacto: true, antiguedad: true, orden: true }}
+      />
 
       {/* Cola de WhatsApp sobre la selección actual. */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-2">
