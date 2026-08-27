@@ -238,9 +238,9 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     }
   };
 
-  // Con remitente "particular" no se pasa por Resend: se abre el cliente de
-  // correo del vendedor con los destinatarios en copia oculta. No hay
-  // estadísticas de entrega, pero tampoco gasta cupo.
+  // Con remitente "particular" no se pasa por Resend: el correo lo manda el
+  // vendedor desde su propia cuenta, con los destinatarios en copia oculta. No
+  // hay estadísticas de entrega, pero tampoco gasta cupo.
   const enviarPorClienteDeCorreo = (destinatarios: LeadEnBandeja[]): number => {
     if (!emailPlantilla) return 0;
     const conEmail = destinatarios.filter((l) => l.email).slice(0, MAX_BCC_PARTICULAR);
@@ -248,7 +248,14 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
     const asunto = fillTemplate(emailPlantilla.asunto, {});
     const cuerpo = fillTemplate(emailPlantilla.cuerpo_text || emailPlantilla.cuerpo_html, {});
     const bcc = conEmail.map((l) => l.email).join(",");
-    window.location.href = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+    // Se abre el compositor WEB de Gmail, no un `mailto:`. El mailto depende de
+    // que el sistema tenga un programa de correo asociado; en un PC donde el
+    // correo se usa por la web, el navegador abre su pagina de inicio y el
+    // mensaje nunca se escribe -- que es lo que reporto un vendedor.
+    window.open(
+      `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bcc)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`,
+      "_blank", "noreferrer",
+    );
     for (const l of conEmail) registrarContacto(l.id, "email", emailPlantilla.id, asunto);
     return conEmail.length;
   };
@@ -429,7 +436,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
               onClick={enviarCorreosYLiberar} className="gap-1.5"
             >
               {enviandoCorreos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : esParticular ? <Send className="h-3.5 w-3.5" /> : <MailIcon className="h-3.5 w-3.5" />}
-              {esParticular ? "Abrir en mi correo y pasar a Pipeline" : "Enviar correos y pasar a Pipeline"}
+              {esParticular ? "Abrir en Gmail y pasar a Pipeline" : "Enviar correos y pasar a Pipeline"}
             </Button>
             <Button
               type="button" size="sm" variant="outline" disabled={selected.size === 0 || liberando || enviandoCorreos}

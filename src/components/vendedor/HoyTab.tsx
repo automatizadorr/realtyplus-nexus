@@ -13,6 +13,7 @@ import { fillTemplate } from "@/lib/fillTemplate";
 import { conModificador, escribiendoEnCampo } from "@/lib/atajos";
 import LeadDetalleDialog from "@/components/vendedor/LeadDetalleDialog";
 import PasoRapido from "@/components/vendedor/PasoRapido";
+import EnviarCorreoDialog from "@/components/vendedor/EnviarCorreoDialog";
 import {
   ETAPA_LABEL, MOTIVO_INFO, tzNavegador,
   type ColaLead, type ColaResumen, type MotivoCola, type PlantillaEmail, type PlantillaWa, type RolVenta,
@@ -98,6 +99,7 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
   const [miRol, setMiRol] = useState<RolVenta | undefined>(undefined);
   const [miNombre, setMiNombre] = useState<string | null>(null);
   const [canalUsado, setCanalUsado] = useState<string | undefined>(undefined);
+  const [correoAbierto, setCorreoAbierto] = useState(false);
   const [waPlantillaId, setWaPlantillaId] = useState<string>(() => localStorage.getItem(PLANTILLA_WA_KEY) ?? "");
 
   const tz = useMemo(() => tzNavegador(), []);
@@ -166,13 +168,7 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
 
   const abrirCorreo = (lead: ColaLead) => {
     if (!lead.email) { toast({ title: "Ese lead no tiene correo", variant: "destructive" }); return; }
-    const plantilla: PlantillaEmail | undefined = plantillasEmail[0];
-    const asunto = plantilla?.asunto ?? "";
-    const cuerpo = plantilla?.cuerpo_text ?? "";
-    window.location.href = `mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent(
-      fillTemplate(asunto, { nombre: lead.nombre || undefined }),
-    )}&body=${encodeURIComponent(fillTemplate(cuerpo, { nombre: lead.nombre || undefined }))}`;
-    setCanalUsado("email");
+    setCorreoAbierto(true);
   };
 
   const llamar = (lead: ColaLead) => {
@@ -402,6 +398,12 @@ export default function HoyTab({ plantillasWa, plantillasEmail, onCambio }: {
           </div>
         </div>
       )}
+
+      <EnviarCorreoDialog
+        open={correoAbierto} onOpenChange={setCorreoAbierto}
+        lead={actual ?? null} plantillasEmail={plantillasEmail}
+        onEnviado={() => setCanalUsado("email")}
+      />
 
       <LeadDetalleDialog
         leadId={detalleId} open={!!detalleId} onOpenChange={(o) => !o && setDetalleId(null)}

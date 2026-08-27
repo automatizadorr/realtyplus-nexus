@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { normalizePhone } from "@/lib/icebreakers";
 import { fillTemplate } from "@/lib/fillTemplate";
 import { descargarGuion, telLink } from "@/lib/guionLlamada";
+import { enviarCorreoLead, textoAHtml, urlGmail } from "@/lib/correoLead";
+import { useRemitente } from "@/hooks/use-remitente";
 import { facebookMessenger, facebookPerfil, instagramDm, instagramPerfil, mensajeRedes } from "@/lib/redes";
 import EtapaProgreso from "@/components/vendedor/EtapaProgreso";
 import {
@@ -109,12 +111,14 @@ export default function LeadDetalleDialog({
   onCambio?: () => void;
 }) {
   const { toast } = useToast();
+  const { config: remitente } = useRemitente();
   const [data, setData] = useState<LeadDetalle | null>(null);
   const [cargando, setCargando] = useState(false);
   const [notas, setNotas] = useState("");
   const [guardandoNotas, setGuardandoNotas] = useState(false);
   const [waPlantillaId, setWaPlantillaId] = useState("");
   const [emailPlantillaId, setEmailPlantillaId] = useState("");
+  const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [resultadoLlamada, setResultadoLlamada] = useState("");
   const [seguimiento, setSeguimiento] = useState("");
   const [moviendo, setMoviendo] = useState(false);
@@ -173,13 +177,47 @@ export default function LeadDetalleDialog({
     registrarContacto("whatsapp", msg, p.id);
   };
 
-  const enviarEmail = () => {
+  // El correo sale por Resend desde la plataforma. Antes esto era un
+  // `mailto:`, y en una máquina sin programa de correo asociado (Gmail usado
+  // por la web) el navegador abría su página de inicio y el correo nunca se
+  // mandaba. Quien tiene remitente "particular" no puede salir por Resend:
+  // para ese caso se abre el compositor web de Gmail, que tampoco necesita
+  // nada instalado.
+  const enviarEmail = async () => {
     const p = plantillasEmail.find((x) => x.id === emailPlantillaId);
     if (!p || !lead?.email) return;
     const asunto = fillTemplate(p.asunto, vars);
-    const cuerpo = fillTemplate(p.cuerpo_text || p.cuerpo_html, vars);
-    window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
-    registrarContacto("email", `${asunto}\n\n${cuerpo}`, p.id);
+    const cuerpo = fillTemplate(p.cuerpo_text || "", vars);
+
+    if (remitente.remitente_modo === "particular") {
+      window.open(urlGmail(lead.email, asunto, cuerpo), "_blank", "noreferrer");
+      registrarContacto("email", `${asunto}\n\n${cuerpo}`, p.id);
+      return;
+    }
+
+    setEnviandoEmail(true);
+    try {
+      await enviarCorreoLead({
+        remitente,
+        para: lead.email,
+        nombre: lead.nombre, pais: lead.pais,
+        asunto,
+        html: p.cuerpo_html ? fillTemplate(p.cuerpo_html, vars) : textoAHtml(cuerpo),
+        text: cuerpo || undefined,
+      });
+      toast({ title: "Correo enviado", description: `A ${lead.email}.` });
+      // El contacto se anota solo si el servidor confirmó el envío: un
+      // historial con correos que nunca salieron es peor que no tenerlo.
+      registrarContacto("email", `${asunto}\n\n${cuerpo}`, p.id);
+    } catch (e) {
+      toast({
+        title: "No se pudo enviar",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setEnviandoEmail(false);
+    }
   };
 
   const guardarNotas = async () => {
@@ -343,10 +381,12 @@ export default function LeadDetalleDialog({
                   <SelectContent>{plantillasEmail.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}</SelectContent>
                 </Select>
                 <Button
-                  type="button" size="sm" variant="outline" disabled={!lead.email || !emailPlantillaId}
+                  type="button" size="sm" variant="outline"
+                  disabled={!lead.email || !emailPlantillaId || enviandoEmail}
                   onClick={enviarEmail} className="h-8 gap-1.5 px-2.5 text-[11px]"
                 >
-                  <MailIcon className="h-3.5 w-3.5" /> Email
+                  {enviandoEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MailIcon className="h-3.5 w-3.5" />}
+                  {remitente.remitente_modo === "particular" ? "Abrir en Gmail" : "Enviar correo"}
                 </Button>
                 {!lead.email && <span className="text-[11px] text-muted-foreground">sin email</span>}
               </div>
