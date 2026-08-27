@@ -21,6 +21,7 @@ import {
   Flame,
   ArrowRight,
   Reply,
+  Send,
 } from "lucide-react";
 import {
   Table,
@@ -62,6 +63,8 @@ function timeAgo(ms: number): string {
 interface KPIs {
   totalMessages: number;
   botActive: number;
+  /** Leads a los que ya les salió al menos un mensaje. */
+  leadsContacted: number;
   leadsResponded: number;
   responseRate: number;
 }
@@ -164,12 +167,23 @@ export default function Dashboard() {
       inboundPhones.has(String(l.telefono).split("@")[0]),
     ).length;
     const botActive = leadsData.filter((l) => l.bot_activo).length;
+
+    // Contactados = leads a los que efectivamente les salió un mensaje.
+    const leadsContacted = leadsData.filter((l) =>
+      outboundPhones.has(String(l.telefono).split("@")[0]),
+    ).length;
+
+    // La tasa se mide sobre los CONTACTADOS, no sobre la base entera. Dividir
+    // entre los miles de leads cargados y todavía sin tocar no mide la
+    // efectividad del mensaje: mide cuánta base falta por trabajar, y deja el
+    // número siempre cerca de cero.
     const responseRate =
-      leadsData.length > 0 ? (leadsResponded / leadsData.length) * 100 : 0;
+      leadsContacted > 0 ? (leadsResponded / leadsContacted) * 100 : 0;
 
     setKpis({
       totalMessages: countRes.count ?? 0,
       botActive,
+      leadsContacted,
       leadsResponded,
       responseRate,
     });
@@ -459,12 +473,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { title: "Contactos", value: countriesTotal, icon: Users, from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "Total de contactos cargados desde Google Sheets. Es tu universo de leads disponibles para lanzar campañas de reactivación." },
+            { title: "Contactados", value: kpis!.leadsContacted, icon: Send, from: "#818cf8", to: "#6366f1", glow: "129,140,248", explain: "Leads a los que ya les salió al menos un mensaje. Es la base realmente trabajada, y el denominador con el que se mide la tasa de respuesta." },
             { title: "Mensajes", value: kpis!.totalMessages, icon: MessageSquareText, from: "#a78bfa", to: "#8b5cf6", glow: "167,139,250", explain: "Total de mensajes de WhatsApp intercambiados (entrantes + salientes) en el canal de reactivación. Mide el volumen de actividad." },
             { title: "Respondieron", value: kpis!.leadsResponded, icon: Reply, from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "Leads que respondieron al menos un mensaje. Refleja interés real y la calidad de la base contactada." },
-            { title: "Tasa de respuesta", value: kpis!.responseRate, decimals: 1, suffix: "%", gauge: true, icon: TrendingUp, from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "Porcentaje de leads que respondieron sobre el total. Es el termómetro de efectividad de tu mensajería: si sube, tu copy y segmentación funcionan." },
+            { title: "Tasa de respuesta", value: kpis!.responseRate, decimals: 1, suffix: "%", gauge: true, icon: TrendingUp, from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "Porcentaje de leads que respondieron sobre los CONTACTADOS, no sobre la base entera. Mide si el mensaje funciona; los leads todavía sin tocar no cuentan en contra." },
             { title: "Leads calientes", value: hot.count, icon: Flame, from: "#fb923c", to: "#f97316", glow: "251,146,60", explain: "Leads que respondieron y esperan tu réplica (la pelota está en tu lado, sin fallo de envío). Atiéndelos primero: son los más propensos a cerrar. Los ves listados abajo." },
           ].map((t, i) => (
             <StatTile key={t.title} index={i} {...t} />
