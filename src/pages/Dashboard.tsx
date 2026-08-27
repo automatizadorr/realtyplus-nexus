@@ -153,12 +153,21 @@ export default function Dashboard() {
 
     const inboundPhones = new Set<string>();
     const outboundPhones = new Set<string>();
+    // Un envío fallido no es un contacto: ese lead nunca recibió nada. Contarlo
+    // como contactado ensucia el denominador de la tasa de respuesta y, peor,
+    // esconde a un lead que sigue sin trabajar. Si TODOS los intentos hacia un
+    // teléfono fallaron, no entra en contactados; basta uno que haya salido bien.
+    const fallidos = new Set<string>();
     messages.forEach((m) => {
       if (!m.telefono) return;
       const phone = String(m.telefono).split("@")[0];
-      if (m.direccion === "inbound") inboundPhones.add(phone);
-      else if (m.direccion === "outbound") outboundPhones.add(phone);
+      if (m.direccion === "inbound") { inboundPhones.add(phone); return; }
+      if (m.direccion !== "outbound") return;
+      if (tickFase(m.estado_envio) === "fallido") fallidos.add(phone);
+      else outboundPhones.add(phone);
     });
+    // Solo quedan como fallidos los que no tuvieron ningún envío exitoso.
+    outboundPhones.forEach((p) => fallidos.delete(p));
     setInboundSet(inboundPhones);
     setContactedSet(outboundPhones);
     setRawMessages(messages);
@@ -476,7 +485,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { title: "Contactos", value: countriesTotal, icon: Users, from: "#38bdf8", to: "#0ea5e9", glow: "56,189,248", explain: "Total de contactos cargados desde Google Sheets. Es tu universo de leads disponibles para lanzar campañas de reactivación." },
-            { title: "Contactados", value: kpis!.leadsContacted, icon: Send, from: "#818cf8", to: "#6366f1", glow: "129,140,248", explain: "Leads a los que ya les salió al menos un mensaje. Es la base realmente trabajada, y el denominador con el que se mide la tasa de respuesta." },
+            { title: "Contactados", value: kpis!.leadsContacted, icon: Send, from: "#818cf8", to: "#6366f1", glow: "129,140,248", explain: "Leads a los que les salió al menos un mensaje SIN fallar. Los envíos fallidos no cuentan: ese lead nunca recibió nada y sigue pendiente de trabajar. Es el denominador de la tasa de respuesta." },
             { title: "Mensajes", value: kpis!.totalMessages, icon: MessageSquareText, from: "#a78bfa", to: "#8b5cf6", glow: "167,139,250", explain: "Total de mensajes de WhatsApp intercambiados (entrantes + salientes) en el canal de reactivación. Mide el volumen de actividad." },
             { title: "Respondieron", value: kpis!.leadsResponded, icon: Reply, from: "#22d3ee", to: "#06b6d4", glow: "34,211,238", explain: "Leads que respondieron al menos un mensaje. Refleja interés real y la calidad de la base contactada." },
             { title: "Tasa de respuesta", value: kpis!.responseRate, decimals: 1, suffix: "%", gauge: true, icon: TrendingUp, from: "#34d399", to: "#10b981", glow: "52,211,153", explain: "Porcentaje de leads que respondieron sobre los CONTACTADOS, no sobre la base entera. Mide si el mensaje funciona; los leads todavía sin tocar no cuentan en contra." },
