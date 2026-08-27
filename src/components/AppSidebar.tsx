@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileSearch, FileText, Kanban, UserCog as Users2, RotateCcw, PieChart, Inbox, Palette, Flame, CalendarDays } from "lucide-react";
+import { LayoutDashboard, ScanSearch, Megaphone, MessageCircle, Bot, MessagesSquare, Tag, Settings2, LogOut, Mic, ShieldCheck, User, Camera, FolderDown, Mail, MailCheck, Radar, FileText, Kanban, UserCog as Users2, RotateCcw, PieChart, Inbox, Palette, Flame, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import lexLogo from "@/assets/lexhouse-logo.webp";
 import { NavLink } from "@/components/NavLink";
@@ -86,7 +86,6 @@ const groups: { label?: string; items: { title: string; url: string; icon: React
   {
     label: "Herramientas IA",
     items: [
-      { title: "Analizar Contrato IA", url: "/analizar-contrato", icon: FileSearch },
       { title: "CRM Realty Web-AI", url: "/voice-crm", icon: Mic },
     ],
   },

@@ -34,7 +34,6 @@ const TaggedMessages  = lazy(() => import("./pages/TaggedMessages"));
 const TaggedExport    = lazy(() => import("./pages/TaggedExport"));
 const Settings     = lazy(() => import("./pages/Settings"));
 const VoiceCrm     = lazy(() => import("./pages/VoiceCrm"));
-const AnalizarContrato = lazy(() => import("./pages/AnalizarContrato"));
 const Etiquetas    = lazy(() => import("./pages/Etiquetas"));
 const Auth         = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -141,7 +140,6 @@ const App = () => (
                           <Route path="/tagged/export" element={<AdminRoute><TaggedExport /></AdminRoute>} />
                           <Route path="/etiquetas" element={<AdminRoute><Etiquetas /></AdminRoute>} />
                           <Route path="/voice-crm" element={<AdminRoute><VoiceCrm /></AdminRoute>} />
-                          <Route path="/analizar-contrato" element={<AdminRoute><AnalizarContrato /></AdminRoute>} />
                           <Route path="/settings" element={<Settings />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
