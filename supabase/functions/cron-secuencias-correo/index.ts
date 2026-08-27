@@ -9,7 +9,7 @@
 // Auth: header X-Webhook-Secret (AUTO_TAG_CRON_SECRET o CRON_SECRET).
 // En config.toml: verify_jwt = false (lo llama pg_cron, no el navegador).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { applyDomain, corsHeaders, EMAIL_RE, esc, fillTemplate, normalizarModo, pickPais, resendKeyFor } from "../_shared/correo.ts";
+import { applyDomain, corsHeaders, EMAIL_RE, esc, fillTemplate, normalizarModo, pickPais, resendKeyFor, fromHeader } from "../_shared/correo.ts";
 
 const MAX_POR_CORRIDA = 100;
 
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       const html = rawHtml.trim() ? rawHtml : buildHtml(fillTemplate(row.cuerpo ?? "", row), row.cta_texto ?? "", row.cta_url ?? "");
       const fromName = row.from_name ?? "Mario · LexHouse";
       const fromEmail = row.from_email ?? "no-reply@send.lexhouse-ai.com";
-      const from = `${fromName} <${applyDomain(fromEmail, keyDomain)}>`;
+      const from = fromHeader(fromName, applyDomain(fromEmail, keyDomain));
       const payload: Record<string, unknown> = {
         from,
         to: [email],

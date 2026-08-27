@@ -4,7 +4,7 @@
 // nunca confiando en el cliente) — mismo criterio que send-n8n-webhook.
 // El secreto RESEND_API_KEY se guarda en los secrets del proyecto Supabase.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { applyDomain, corsHeaders, EMAIL_RE, fillTemplate, limiteDiaPara, normalizarModo, pickPais, resendKeyFor, TZ, zonedToUtc } from "../_shared/correo.ts";
+import { applyDomain, corsHeaders, EMAIL_RE, fillTemplate, fromHeader, limiteDiaPara, normalizarModo, pickPais, resendKeyFor, TZ, zonedToUtc } from "../_shared/correo.ts";
 
 // Inicio del día de HOY en la zona horaria del negocio, como instante UTC
 // (para contar cuántos correos ya mandó un vendedor "hoy").
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       const { key: apiKey, index: keyIdxPrueba, domain: keyDomain } = resendKeyFor(0, modoRemitente);
       const subject = `[PRUEBA] ${fillTemplate(subjectTpl, r)}`;
       const payload: Record<string, unknown> = {
-        from: `${fromName} <${applyDomain(fromEmail, keyDomain)}>`,
+        from: fromHeader(fromName, applyDomain(fromEmail, keyDomain)),
         to: [testEmail],
         subject,
       };
@@ -275,7 +275,7 @@ Deno.serve(async (req) => {
       const { key: apiKey, index: keyIdx, domain: keyDomain } = resendKeyFor(sent + failed, modoRemitente);
       const subject = fillTemplate(subjectTpl, r);
       const payload: Record<string, unknown> = {
-        from: `${fromName} <${applyDomain(fromEmail, keyDomain)}>`,
+        from: fromHeader(fromName, applyDomain(fromEmail, keyDomain)),
         to: [r.email],
         subject,
       };

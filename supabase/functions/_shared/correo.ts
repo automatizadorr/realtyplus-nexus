@@ -48,6 +48,33 @@ export function resendKeyFor(i: number, modo: RemitenteModo = "auto"): { key: st
   return i % 2 === 0 ? cuenta1 : cuenta2;
 }
 
+// ---------------------------------------------------------------------
+// Cabecera From valida siempre.
+//
+// Resend rechazo 57 correos con "Invalid `from` field": el header se armaba
+// como `${nombre} <${email}>` sin mirar que traia el nombre. Segun RFC 5322,
+// un display name con puntos, comas, parentesis o comillas TIENE que ir
+// entrecomillado -- y un vendedor que escribe "Kelby, LexHouse" o "J. Perez"
+// rompia todos sus envios sin enterarse. Ademas, si el local del remitente
+// quedaba vacio el email salia como "@dominio", que tampoco es valido.
+// ---------------------------------------------------------------------
+const EMAIL_SIMPLE = /^[^@\s<>",]+@[^@\s<>",]+\.[^@\s<>",]+$/;
+const NECESITA_COMILLAS = /[(),:;<>@[\]".\\]/;
+
+export function emailRemitenteValido(email: string, porDefecto = "no-reply@send.lexhouse-ai.com"): string {
+  const limpio = (email ?? "").trim();
+  return EMAIL_SIMPLE.test(limpio) ? limpio : porDefecto;
+}
+
+export function fromHeader(nombre: string, email: string): string {
+  const dir = emailRemitenteValido(email);
+  // Las comillas y los saltos de linea dentro del nombre romperian el header
+  // entero (y son la via clasica de inyeccion de cabeceras).
+  const limpio = (nombre ?? "").replace(/["\\\r\n]/g, "").trim();
+  if (!limpio) return dir;
+  return NECESITA_COMILLAS.test(limpio) ? `"${limpio}" <${dir}>` : `${limpio} <${dir}>`;
+}
+
 export function applyDomain(email: string, domain: string): string {
   const at = email.indexOf("@");
   if (at < 0) return email;
