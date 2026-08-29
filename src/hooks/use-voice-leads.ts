@@ -33,6 +33,7 @@ export type VoiceLead = {
     urgencia?: string;
     liquidez?: string;
     email?: string;
+    summary?: string;
   };
   tool_payload?: {
     Nombre_Lead?: string;
