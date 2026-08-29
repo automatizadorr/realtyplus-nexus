@@ -361,8 +361,8 @@ export default function VoiceCrm() {
                   </a>
                   {detail.duration_seconds && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Duración: {Math.ceil(detail.duration_seconds / 60)} min{f"
-  {detail.cost_usd ? ` • Costo: $${detail.cost_usd}` : ""}
+                      Duración: {Math.ceil(detail.duration_seconds / 60)} min
+                      {detail.cost_usd ? ` • Costo: $${detail.cost_usd}` : ""}
                     </p>
                   )}
                 </div>
