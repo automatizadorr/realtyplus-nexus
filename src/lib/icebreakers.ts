@@ -198,7 +198,7 @@ const CIUDAD_PAIS: Record<string, string> = {
   burgos: "es", salamanca: "es", toledo: "es", santiago: "es", lugo: "es",
   marbella: "es", ibiza: "es", menorca: "es", tenerife: "es", "las palmas": "es",
   // Chile
-  "la serena": "cl", coquimbo: "cl", santiago: "cl", viña: "cl", "viña del mar": "cl",
+  "la serena": "cl", coquimbo: "cl", viña: "cl", "viña del mar": "cl",
   valparaíso: "cl", valparaiso: "cl", concepción: "cl", concepcion: "cl",
   antofagasta: "cl", iquique: "cl", temuco: "cl", "puerto montt": "cl",
   // México
@@ -206,7 +206,7 @@ const CIUDAD_PAIS: Record<string, string> = {
   monterrey: "mx", puebla: "mx", tijuana: "mx", cancún: "mx", cancun: "mx",
   mérida: "mx", merida: "mx", querétaro: "mx", queretaro: "mx",
   // Argentina
-  "buenos aires": "ar", córdoba: "ar", rosario: "ar", mendoza: "ar", "la plata": "ar",
+  "buenos aires": "ar", rosario: "ar", mendoza: "ar", "la plata": "ar",
   "mar del plata": "ar", tucumán: "ar", tucuman: "ar",
   // Colombia
   bogotá: "co", bogota: "co", medellín: "co", medellin: "co", cali: "co",

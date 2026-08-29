@@ -25,11 +25,11 @@ export type EmailCopy = {
   id: string;
   categoria: string;    // grupo en el selector (Por producto / Icebreaker / Tibio / Agendamiento)
   plataforma: string;   // producto del ecosistema
-  dolor: string;        // dolor que ataca
+  dolor?: string;       // dolor que ataca
   badge: string;        // etiqueta corta para el selector
   brandColor: string;   // color de marca del diseño
   subject: string;
-  titulo: string;
+  titulo?: string;
   body: string;
   ctaText: string;
   ctaUrl: string;       // enlace al regalo

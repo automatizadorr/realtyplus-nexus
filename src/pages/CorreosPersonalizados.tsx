@@ -25,6 +25,8 @@ import { EMAIL_COPYS, type EmailCopy, GANCHOS_DOLOR, emailCopyCategorias } from 
 
 type SendResult = { email: string; ok: boolean; id?: string; error?: string; programado?: boolean };
 
+const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+
 const DEFAULT_SUBJECT = "{{empresa}}: que ningún lead se te vuelva a escapar";
 const DEFAULT_BODY = `Hola equipo de {{empresa}},
 
@@ -239,6 +241,7 @@ export default function CorreosPersonalizados() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Wizard: 1 = Destinatarios, 2 = Mensaje (remitente + plantillas + diseño), 3 = Revisión y envío
   const [paso, setPaso] = useState<1 | 2 | 3>(1);
+  const [seguimientoKey, setSeguimientoKey] = useState(0);
 
   // Si venimos desde "Buscar Leads", precargamos los destinatarios importados.
   useEffect(() => {
