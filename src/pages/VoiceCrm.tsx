@@ -14,6 +14,8 @@ import {
   X,
   GripVertical,
   Trash2,
+  Play,
+  ExternalLink,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -289,22 +291,102 @@ export default function VoiceCrm() {
                 <InfoRow icon={TagIcon} label="Propósito" value={detail.proposito} />
                 <InfoRow icon={Clock} label="Horario" value={detail.horario} />
               </div>
-              {detail.resumen && (
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5" /> Resumen de conversación
+
+              {/* Resumen IA (Análisis ElevenLabs) */}
+              {detail.analysis?.summary && (
+                <div className="rounded-lg border bg-primary/5 p-3">
+                  <p className="text-xs font-semibold text-primary mb-1 flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5" /> Resumen IA (Análisis)
                   </p>
-                  <p className="text-sm whitespace-pre-wrap">{detail.resumen}</p>
+                  <p className="text-sm whitespace-pre-wrap">{detail.analysis.summary}</p>
                 </div>
               )}
+
+              {/* Resumen Agente (Tool agente_calificador) */}
+              {detail.tool_payload?.transcripcioncion_resumida_a_texto && (
+                <div className="rounded-lg border bg-amber/5 p-3">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5" /> Resumen Agente (Tool)
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{detail.tool_payload.transcripcioncion_resumida_a_texto}</p>
+                </div>
+              )}
+
+              {/* Campos estructurados del tool */}
+              {(detail.tool_payload || detail.analysis) && (
+                <div className="flex flex-wrap gap-2">
+                  {detail.tool_payload?.perfil_inmobiliario || detail.analysis?.perfil && (
+                    <Badge variant="default">{detail.tool_payload?.perfil_inmobiliario || detail.analysis?.perfil}</Badge>
+                  )}
+                  {detail.tool_payload?.volumen_propiedades && (
+                    <Badge variant="outline">{detail.tool_payload.volumen_propiedades} props</Badge>
+                  )}
+                  {detail.tool_payload?.dolor_principal && (
+                    <Badge variant="outline">{detail.tool_payload.dolor_principal}</Badge>
+                  )}
+                  {detail.tool_payload?.urgencia && (
+                    <Badge variant={detail.tool_payload.urgencia === "Alta" ? "destructive" : "outline"}>
+                      {detail.tool_payload.urgencia}
+                    </Badge>
+                  )}
+                  {detail.tool_payload?.liquides_lead && (
+                    <Badge variant="outline">Liquidez: {detail.tool_payload.liquides_lead}</Badge>
+                  )}
+                  {detail.tool_payload?.email && (
+                    <Badge variant="secondary">{detail.tool_payload.email}</Badge>
+                  )}
+                  {detail.tool_payload?.fecha_reunion && (
+                    <Badge variant="default">
+                      📅 Reunión {detail.tool_payload.fecha_reunion}{detail.tool_payload.hora_reunion ? ` ${detail.tool_payload.hora_reunion}` : ""}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Audio link */}
+              {detail.recording_url && (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <Play className="h-3.5 w-3.5" /> Audio de la llamada
+                  </p>
+                  <a
+                    href={detail.recording_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-primary underline hover:text-primary/80"
+                  >
+                    <Play className="h-4 w-4" />
+                    Escuchar audio
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  {detail.duration_seconds && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Duración: {Math.ceil(detail.duration_seconds / 60)} min{f"
+  {detail.cost_usd ? ` • Costo: $${detail.cost_usd}` : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Transcripción completa */}
+              {detail.transcript && (
+                <details className="rounded-lg border bg-muted/30 p-3">
+                  <summary className="text-xs font-semibold text-muted-foreground cursor-pointer flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5" /> Ver transcripción completa
+                  </summary>
+                  <pre className="text-xs mt-2 whitespace-pre-wrap font-mono">{detail.transcript}</pre>
+                </details>
+              )}
+
               {detail.informe && (
                 <details className="rounded-lg border bg-muted/30 p-3">
                   <summary className="text-xs font-semibold text-muted-foreground cursor-pointer">
-                    Ver informe completo
+                    Ver informe completo (Sheet)
                   </summary>
                   <pre className="text-xs mt-2 whitespace-pre-wrap font-mono">{detail.informe}</pre>
                 </details>
               )}
+
               <div className="flex flex-wrap gap-2 pt-2 border-t">
                 {COLUMNS.map((c) => (
                   <Button

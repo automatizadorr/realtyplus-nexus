@@ -38,6 +38,9 @@ import {
   ArrowDown,
   Filter,
   X,
+  Play,
+  ExternalLink,
+  FileText,
 } from "lucide-react";
 import { useVoiceLeads } from "@/hooks/use-voice-leads";
 import {
@@ -892,6 +895,8 @@ export default function NewStatsSection() {
                   <SortHead k="ubicacion" label="Ubicación" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
                   <SortHead k="presupuesto" label="Presupuesto" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
                   <SortHead k="status" label="Estado" sort={voiceSort.sort} onToggle={voiceSort.toggle} />
+                    <TableHead>Resumen</TableHead>
+                    <TableHead>Audio</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -904,6 +909,24 @@ export default function NewStatsSection() {
                     <TableCell className="text-sm">{v.presupuesto}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{v.status || "nuevo"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm max-w-[200px] truncate">
+                      {v.summary || v.tool_payload?.transcripcioncion_resumida_a_texto || v.analysis?.summary || "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {v.recording_url ? (
+                        <a
+                          href={v.recording_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1 text-primary hover:text-primary/80 text-sm"
+                        >
+                          <Play className="h-3.5 w-3.5" />
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
