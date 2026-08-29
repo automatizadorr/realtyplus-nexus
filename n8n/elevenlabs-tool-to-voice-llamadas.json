@@ -1,0 +1,137 @@
+{
+  "name": "ElevenLabs agente_calificador → Supabase voice_llamadas (Producción)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agente_llamadas_outbound2.0",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "id": "webhook-elevenlabs-tool",
+      "name": "Webhook ElevenLabs Tool",
+      "webhookId": "agente_llamadas_outbound2.0"
+    },
+    {
+      "parameters": {
+        "tableId": "voice_llamadas",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "call_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.conversation_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "call_id",
+              "fieldValue": "={{ $json.conversation_id }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $json.lead_phone }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.transcripcioncion_resumida_a_texto }}"
+            },
+            {
+              "fieldId": "analysis",
+              "fieldValue": "={{ JSON.stringify({ perfil: $json.perfil_inmobiliario, volumen: $json.volumen_propiedades, dolor: $json.dolor_principal, urgencia: $json.urgencia, liquidez: $json.liquides_lead, email: $json.email }) }}"
+            },
+            {
+              "fieldId": "tool_payload",
+              "fieldValue": "={{ JSON.stringify($json) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "direction",
+              "fieldValue": "outbound"
+            },
+            {
+              "fieldId": "provider",
+              "fieldValue": "elevenlabs_twilio"
+            },
+            {
+              "fieldId": "agent_id",
+              "fieldValue": "agent_5801kj0vngjhfrjvnypa36vvagmv"
+            }
+          ]
+        },
+        "options": {
+          "onConflict": "call_id"
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "id": "supabase-upsert-voice",
+      "name": "Upsert voice_llamadas",
+      "credentials": {
+        "supabaseApi": {
+          "id": "URfIkTGt4gkOkJX8",
+          "name": "RealtyPlus AI"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseData": {
+            "success": true,
+            "message": "voice_llamadas upserted"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "id": "respond-webhook",
+      "name": "Responder Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook ElevenLabs Tool": {
+      "main": [
+        [
+          {
+            "node": "Upsert voice_llamadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert voice_llamadas": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "elevenlabs-tool-to-voice-llamadas",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3faaaeb57a6efb20144c6fae7858e71f5701e87a7ae7f8cebb1c01e6b2905892"
+  }
+}

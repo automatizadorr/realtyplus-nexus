@@ -32,6 +32,14 @@ verify_jwt = true
 [functions.voice-leads]
 verify_jwt = true
 
+# Voice Orchestrator — inicia llamadas outbound ElevenLabs+Twilio con variables sincronizadas
+[functions.voice-orchestrator]
+verify_jwt = true
+
+# Voice Tracker — webhook ElevenLabs/Twilio para tracking post-call (duration, transcript, recording)
+[functions.voice-tracker]
+verify_jwt = false
+
 [functions.tag-lead]
 verify_jwt = false
 

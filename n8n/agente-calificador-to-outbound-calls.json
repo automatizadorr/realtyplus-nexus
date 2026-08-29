@@ -1,0 +1,133 @@
+{
+  "name": "ElevenLabs agente_calificador → Supabase outbound_calls",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agente_calificador",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "id": "webhook-agente-calificador",
+      "name": "Webhook agente_calificador",
+      "webhookId": "agente_calificador"
+    },
+    {
+      "parameters": {
+        "tableId": "outbound_calls",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "elevenlabs_conversation_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.conversation_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "elevenlabs_conversation_id",
+              "fieldValue": "={{ $json.conversation_id }}"
+            },
+            {
+              "fieldId": "call_summary",
+              "fieldValue": "={{ $json.transcripcioncion_resumida_a_texto }}"
+            },
+            {
+              "fieldId": "lead_score",
+              "fieldValue": "={{ $json.lead_score || 0 }}"
+            },
+            {
+              "fieldId": "lead_stage",
+              "fieldValue": "={{ $json.lead_stage || 'visita' }}"
+            },
+            {
+              "fieldId": "call_outcome",
+              "fieldValue": "={{ $json.call_outcome || $json.call_objective }}"
+            },
+            {
+              "fieldId": "next_action",
+              "fieldValue": "={{ $json.next_action || $json.fecha_reunion ? 'Visita agendada para ' + $json.fecha_reunion + ' a las ' + $json.hora_reunion : 'Pendiente' }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "webhook_received_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {
+          "onConflict": "elevenlabs_conversation_id"
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "id": "supabase-upsert-outbound",
+      "name": "Upsert outbound_calls",
+      "credentials": {
+        "supabaseApi": {
+          "id": "URfIkTGt4gkOkJX8",
+          "name": "RealtyPlus AI"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseData": {
+            "success": true,
+            "message": "outbound_calls upserted from agente_calificador"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "id": "respond-webhook",
+      "name": "Responder Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook agente_calificador": {
+      "main": [
+        [
+          {
+            "node": "Upsert outbound_calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert outbound_calls": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "agente-calificador-to-outbound-calls",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3faaaeb57a6efb20144c6fae7858e71f5701e87a7ae7f8cebb1c01e6b2905892"
+  }
+}

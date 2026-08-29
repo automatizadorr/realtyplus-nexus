@@ -1,0 +1,127 @@
+{
+  "name": "Voice Orchestrator - ElevenLabs Direct (Outbound)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voz/llamar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "id": "webhook-in",
+      "name": "Webhook Entrada (desde CRM / Botón Llamar)"
+    },
+    {
+      "parameters": {
+        "functionCode": "/* Normaliza datos del lead entrante */\nconst body = items[0].json;\n\nconst leadData = body.lead_data || body;\nconst toNumber = body.to_number || leadData.telefono || leadData.TELEFONO;\nconst callObjective = body.call_objective || 'agendar_visita';\n\nconst normalized = {\n  nombre: leadData.nombre || leadData.NOMBRE || leadData['NOMBRE '] || '',\n  telefono: toNumber,\n  propiedad: leadData.propiedad || leadData.PROPIEDAD || '',\n  tipo_propiedad: leadData.tipo_propiedad || leadData['TIPO PROPIEDAD'] || '',\n  tipo_operacion: leadData.tipo_operacion || leadData['TIPO_OPERACION'] || 'venta',\n  valor_uf: leadData.valor_uf || leadData['VALOR UF'] || '',\n  tipo_moneda: leadData.tipo_moneda || leadData['tipo moneda'] || 'UF',\n  ubicacion: leadData.ubicacion || leadData.UBICACION || '',\n  direccion: leadData.direccion || leadData.DIRECCION || '',\n  dormitorios: leadData.dormitorios || leadData.DORMITORIOS || '',\n  banos: leadData.banos || leadData.BANOS || '',\n  m2_totales: leadData.m2_totales || leadData['M2 TOTALES'] || leadData['M2 CONSTRUIDOS'] || '',\n  resumen: leadData.resumen || leadData.RESUMEN || '',\n  informe: leadData.informe || leadData.INFORME || '',\n  tipo_interes: leadData.tipo_interes || leadData['TIPO INTERES'] || leadData.PROPOSITO || '',\n  call_objective: callObjective,\n  broker_name: 'LexHouse',\n  agent_instructions: 'instrucciones_estandar'\n};\n\nreturn [{ json: { ...body, lead_data: normalized, to_number: toNumber } }];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "id": "normalize-lead",
+      "name": "Normalizar Lead Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/convai/twilio/outbound-call",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{ $credentials.elevenLabsApi.apiKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"agent_id\": \"agent_5801kj0vngjhfrjvnypa36vvagmv\",\n  \"agent_phone_number_id\": \"phnum_2801kv51jv67err933c5ettx80me\",\n  \"to_number\": \"={{ $json.to_number }}\",\n  \"conversation_initiation_client_data\": {\n    \"dynamic_variables\": {\n      \"lead_name\": \"={{ $json.lead_data.nombre }}\",\n      \"broker_name\": \"={{ $json.lead_data.broker_name }}\",\n      \"lead_phone\": \"={{ $json.lead_data.telefono }}\",\n      \"lead_interest\": \"={{ $json.lead_data.tipo_interes }}\",\n      \"lead_notes\": \"={{ $json.lead_data.resumen }}\",\n      \"call_objective\": \"={{ $json.lead_data.call_objective }}\",\n      \"has_property\": \"={{ $json.lead_data.propiedad && $json.lead_data.propiedad.trim().length > 0 ? 'true' : 'false' }}\",\n      \"property_title\": \"={{ $json.lead_data.propiedad }}\",\n      \"property_operation\": \"={{ $json.lead_data.tipo_operacion }}\",\n      \"property_type\": \"={{ $json.lead_data.tipo_propiedad }}\",\n      \"property_price\": \"={{ $json.lead_data.valor_uf ? $json.lead_data.valor_uf.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.') + ' ' + $json.lead_data.tipo_moneda : '' }}\",\n      \"property_city\": \"={{ $json.lead_data.ubicacion }}\",\n      \"property_address\": \"={{ $json.lead_data.direccion }}\",\n      \"property_bedrooms\": \"={{ $json.lead_data.dormitorios ? parseInt($json.lead_data.dormitorios) : '' }}\",\n      \"property_bathrooms\": \"={{ $json.lead_data.banos ? parseInt($json.lead_data.banos) : '' }}\",\n      \"property_sqm\": \"={{ $json.lead_data.m2_totales ? parseInt($json.lead_data.m2_totales) : '' }}\",\n      \"property_description\": \"={{ $json.lead_data.informe }}\",\n      \"agent_instructions\": \"={{ $json.lead_data.agent_instructions }}\"\n    }\n  }\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [750, 300],
+      "id": "call-elevenlabs",
+      "name": "Llamar ElevenLabs Directo",
+      "credentials": {
+        "elevenLabsApi": "ElevenLabs Account"
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = items[0].json;\n\nif (response.error || response.status === 'error') {\n  return [{ json: { success: false, error: response.error?.message || response.detail || 'Error ElevenLabs', details: response } }];\n}\n\nreturn [{ json: {\n  success: true,\n  call_id: response.conversation_id || response.call_id,\n  elevenlabs_conversation_id: response.conversation_id,\n  status: response.status,\n  dynamic_variables_sent: response.conversation_initiation_client_data?.dynamic_variables\n} }];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 300],
+      "id": "handle-response",
+      "name": "Manejar Respuesta"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "id": "respond-webhook",
+      "name": "Responder Webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const error = items[0].json;\nreturn [{ json: { success: false, error: error.error || 'Error desconocido', details: error.details } }];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 500],
+      "id": "handle-error",
+      "name": "Manejar Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 500],
+      "id": "respond-error",
+      "name": "Responder Error"
+    }
+  ],
+  "connections": {
+    "Webhook Entrada (desde CRM / Botón Llamar)": {
+      "main": [[{ "node": "Normalizar Lead Data", "type": "main", "index": 0 }]]
+    },
+    "Normalizar Lead Data": {
+      "main": [[{ "node": "Llamar ElevenLabs Directo", "type": "main", "index": 0 }]]
+    },
+    "Llamar ElevenLabs Directo": {
+      "main": [
+        [{ "node": "Manejar Respuesta", "type": "main", "index": 0 }],
+        [{ "node": "Manejar Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Manejar Respuesta": {
+      "main": [[{ "node": "Responder Webhook", "type": "main", "index": 0 }]]
+    },
+    "Manejar Error": {
+      "main": [[{ "node": "Responder Error", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "voice-elevenlabs-direct-outbound",
+  "meta": { "templateCredsSetupCompleted": false }
+}

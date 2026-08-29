@@ -1,0 +1,176 @@
+{
+  "name": "Voice Orchestrator - Llamadas Outbound Sincronizadas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voz/llamar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "id": "webhook-in",
+      "name": "Webhook Entrada (desde CRM / Botón Llamar)"
+    },
+    {
+      "parameters": {
+        "functionCode": "/* Normaliza datos del lead entrante */\nconst body = items[0].json;\n\n// Acepta tanto datos directos como lead_id para buscar en Supabase\nconst leadData = body.lead_data || body;\nconst toNumber = body.to_number || leadData.telefono || leadData.TELEFONO;\nconst callObjective = body.call_objective || 'agendar_visita';\n\n// Mapear headers del Sheet a campos canónicos\nconst normalized = {\n  nombre: leadData.nombre || leadData.NOMBRE || leadData['NOMBRE '] || '',\n  telefono: toNumber,\n  propiedad: leadData.propiedad || leadData.PROPIEDAD || '',\n  tipo_propiedad: leadData.tipo_propiedad || leadData['TIPO PROPIEDAD'] || '',\n  tipo_operacion: leadData.tipo_operacion || leadData['TIPO_OPERACION'] || 'venta',\n  valor_uf: leadData.valor_uf || leadData['VALOR UF'] || '',\n  tipo_moneda: leadData.tipo_moneda || leadData['tipo moneda'] || 'UF',\n  ubicacion: leadData.ubicacion || leadData.UBICACION || '',\n  direccion: leadData.direccion || leadData.DIRECCION || '',\n  dormitorios: leadData.dormitorios || leadData.DORMITORIOS || '',\n  banos: leadData.banos || leadData.BANOS || '',\n  m2_totales: leadData.m2_totales || leadData['M2 TOTALES'] || leadData['M2 CONSTRUIDOS'] || '',\n  resumen: leadData.resumen || leadData.RESUMEN || '',\n  informe: leadData.informe || leadData.INFORME || '',\n  tipo_interes: leadData.tipo_interes || leadData['TIPO INTERES'] || leadData.PROPOSITO || '',\n  call_objective: callObjective,\n  broker_name: 'LexHouse',\n  agent_instructions: 'instrucciones_estandar'\n};\n\nreturn [{ json: { ...body, lead_data: normalized, to_number: toNumber } }];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 4,
+      "position": [500, 300],
+      "id": "normalize-lead",
+      "name": "Normalizar Lead Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://owykkhwqpnumvgdeugmj.supabase.co/functions/v1/voice-orchestrator",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$credentials.supabaseAnonKey}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { lead_data: $json.lead_data, to_number: $json.to_number, call_objective: $json.call_objective } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [750, 300],
+      "id": "call-orchestrator",
+      "name": "Llamar Voice Orchestrator",
+      "credentials": {
+        "httpHeaderAuth": "Supabase Anon Key"
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = items[0].json;\n\nif (response.error) {\n  return [{ json: { success: false, error: response.error, code: response.code, details: response.details } }];\n}\n\nreturn [{ json: {\n  success: true,\n  call_id: response.call_id,\n  elevenlabs_conversation_id: response.elevenlabs_conversation_id,\n  voz_log_id: response.voz_log_id,\n  remaining_minutes: response.remaining_minutes,\n  dynamic_variables_sent: response.dynamic_variables_sent\n} }];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 4,
+      "position": [1000, 300],
+      "id": "handle-response",
+      "name": "Manejar Respuesta"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "id": "respond-webhook",
+      "name": "Responder Webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const error = items[0].json;\nreturn [{ json: { success: false, error: error.error || 'Error desconocido', code: error.code, details: error.details } }];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 4,
+      "position": [1000, 500],
+      "id": "handle-error",
+      "name": "Manejar Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 2,
+      "position": [1250, 500],
+      "id": "respond-error",
+      "name": "Responder Error"
+    }
+  ],
+  "connections": {
+    "Webhook Entrada (desde CRM / Botón Llamar)": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Llamar Voice Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar Voice Orchestrator": {
+      "main": [
+        [
+          {
+            "node": "Manejar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Manejar Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manejar Respuesta": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manejar Error": {
+      "main": [
+        [
+          {
+            "node": "Responder Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "voice-orchestrator-outbound",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3faaaeb57a6efb20144c6fae7858e71f5701e87a7ae7f8cebb1c01e6b2905892"
+  }
+}

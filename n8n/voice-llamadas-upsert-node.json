@@ -1,0 +1,84 @@
+{
+  "name": "Supabase Upsert voice_llamadas (from agente_calificador)",
+  "nodes": [
+    {
+      "parameters": {
+        "tableId": "voice_llamadas",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "call_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.conversation_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "call_id",
+              "fieldValue": "={{ $json.conversation_id }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $json.lead_phone }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.transcripcioncion_resumida_a_texto }}"
+            },
+            {
+              "fieldId": "analysis",
+              "fieldValue": "={{ JSON.stringify({ perfil: $json.perfil_inmobiliario, volumen: $json.volumen_propiedades, dolor: $json.dolor_principal, urgencia: $json.urgencia, liquidez: $json.liquides_lead, email: $json.email }) }}"
+            },
+            {
+              "fieldId": "tool_payload",
+              "fieldValue": "={{ JSON.stringify($json) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "direction",
+              "fieldValue": "outbound"
+            },
+            {
+              "fieldId": "provider",
+              "fieldValue": "elevenlabs_twilio"
+            },
+            {
+              "fieldId": "agent_id",
+              "fieldValue": "agent_5801kj0vngjhfrjvnypa36vvagmv"
+            }
+          ]
+        },
+        "options": {
+          "onConflict": "call_id"
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1000, 300],
+      "id": "supabase-upsert-voice",
+      "name": "Upsert voice_llamadas",
+      "credentials": {
+        "supabaseApi": {
+          "id": "URfIkTGt4gkOkJX8",
+          "name": "RealtyPlus AI"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "voice-llamadas-upsert-node",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3faaaeb57a6efb20144c6fae7858e71f5701e87a7ae7f8cebb1c01e6b2905892"
+  }
+}
