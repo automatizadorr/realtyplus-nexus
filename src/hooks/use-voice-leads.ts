@@ -33,6 +33,7 @@ export type VoiceLead = {
     urgencia?: string;
     liquidez?: string;
     email?: string;
+    summary?: string;
   };
   tool_payload?: {
     Nombre_Lead?: string;
@@ -71,11 +72,12 @@ export function useVoiceLeads() {
       // First try to get data from voice_llamadas (new structured data)
       let voiceCalls: VoiceLead[] = [];
       try {
-        const { data: calls, error: callsError } = await supabase
+        const { data: callsRaw, error: callsError } = await (supabase as any)
           .from("voice_llamadas")
           .select("*")
           .order("started_at", { ascending: false })
           .limit(200);
+        const calls = callsRaw as any[] | null;
 
         if (!callsError && calls) {
           voiceCalls = calls.map((c, idx) => ({

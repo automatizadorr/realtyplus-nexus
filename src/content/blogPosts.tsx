@@ -17,6 +17,9 @@ import {
   BestPractices,
 } from "./infographics";
 
+const RED = "#DC1C2E";
+const GOLD = "#D4AF37";
+
 /*
   Blog del ecosistema LexHouse AI (lexhouse-ai.homes).
   Objetivo SEO: artículos útiles que enlazan a lexhouse-ai.com (la Plataforma)

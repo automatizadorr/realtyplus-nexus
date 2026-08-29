@@ -473,7 +473,7 @@ export default function BandejaTab({ plantillasWa, plantillasEmail, onLiberados,
               <TableRow><TableCell colSpan={4}>
                 <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
                   <Inbox className="h-6 w-6" />
-                  {q
+                  {!filtrosVacios || JSON.stringify(filtros) !== JSON.stringify(filtrosVacios())
                     ? "Ningún lead de la bandeja coincide con esa búsqueda."
                     : "Tu bandeja está vacía. Los nuevos leads que te asigne el admin aparecerán aquí — o regístralos tú mismo."}
                 </div>
