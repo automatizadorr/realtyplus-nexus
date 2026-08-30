@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /auth
 
 Sitemap: https://lexhouse-ai.homes/sitemap.xml

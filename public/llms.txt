@@ -1,0 +1,27 @@
+# LexHouse AI · CRM
+
+> CRM inmobiliario con IA sobre WhatsApp, del ecosistema LexHouse AI. Sofía, la asesora virtual con IA, responde a cada lead en segundos, lo califica por intención, agenda reuniones y envía un reporte diario a la jefatura. Incluye campañas de WhatsApp masivas, inbox unificado y un scanner para importar leads desde Excel. Plan gratuito disponible. Para corredores e inmobiliarias de Chile, España y Latinoamérica.
+
+## Páginas principales
+- [Inicio](https://lexhouse-ai.homes/)
+- [Blog](https://lexhouse-ai.homes/blog)
+
+## Artículos del blog
+- [Marketing inmobiliario con IA: guía 2026](https://lexhouse-ai.homes/blog/marketing-inmobiliario-ia-guia-2026)
+- [CRM y WhatsApp: cómo una inmobiliaria cierra más](https://lexhouse-ai.homes/blog/crm-whatsapp-inmobiliario-cierres)
+- [Calificar leads inmobiliarios con IA](https://lexhouse-ai.homes/blog/calificar-leads-inmobiliarios-ia)
+- [Chatbot inmobiliario en WhatsApp](https://lexhouse-ai.homes/blog/chatbot-inmobiliario-whatsapp)
+- [Herramientas de IA para agentes inmobiliarios 2026](https://lexhouse-ai.homes/blog/herramientas-ia-agentes-inmobiliarios-2026)
+- [Prospección inmobiliaria con scraping e IA](https://lexhouse-ai.homes/blog/prospeccion-inmobiliaria-scraping-ia)
+- [Correos personalizados para inmobiliarias](https://lexhouse-ai.homes/blog/correos-personalizados-inmobiliaria)
+- [Pipeline de captación con scraping, email y WhatsApp](https://lexhouse-ai.homes/blog/pipeline-captacion-scraping-email-whatsapp)
+- [Reactivar leads inactivos con WhatsApp](https://lexhouse-ai.homes/blog/reactivar-leads-inactivos-whatsapp)
+- [Voz con IA en un CRM inmobiliario](https://lexhouse-ai.homes/blog/voz-ia-crm-inmobiliario)
+- [Importar leads desde Excel con scanner](https://lexhouse-ai.homes/blog/importar-leads-excel-scanner)
+- [Agendar visitas con IA y calendario](https://lexhouse-ai.homes/blog/agendar-visitas-ia-calendario)
+- [Reporte diario a la jefatura inmobiliaria](https://lexhouse-ai.homes/blog/reporte-diario-jefatura-inmobiliaria)
+- [Captación de mandatos de propietarios con IA](https://lexhouse-ai.homes/blog/captacion-mandatos-propietarios-ia)
+
+## Ecosistema LexHouse AI
+- [Plataforma](https://lexhouse-ai.com/): publicación de propiedades y sitio principal de LexHouse AI.
+- [Studio](https://lexhouse-ai.online/): reels y videos de propiedades generados con IA.
