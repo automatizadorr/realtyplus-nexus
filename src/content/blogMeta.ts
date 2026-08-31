@@ -93,4 +93,19 @@ export const BLOG_META: Record<string, RouteMeta> = {
     description:
       "El mandato es el activo más importante de una inmobiliaria. Cómo usar IA para detectar propietarios en venta directa, presentar tu propuesta de valor y ganar el encargo antes que la competencia.",
   },
+  "/blog/pipeline-ventas-inmobiliario-whatsapp": {
+    title: "Pipeline de ventas inmobiliario en WhatsApp: del primer hola al cierre",
+    description:
+      "Las 6 etapas reales del pipeline en WhatsApp y cómo la IA te acompaña en cada una: respuesta inmediata, recordatorios de visita y re-enganche automático.",
+  },
+  "/blog/guia-setter-inmobiliario-ia": {
+    title: "Guía del setter inmobiliario: qué hace y cómo armarlo con IA",
+    description:
+      "El setter cualifica leads y los deriva al closer. Qué hace paso a paso, por qué falla sin sistema y cómo funciona la versión con IA disponible 24/7.",
+  },
+  "/blog/responder-leads-portal-rapido": {
+    title: "Cómo responder leads de portal en menos de 5 minutos sin estar despierto",
+    description:
+      "El que responde rápido cierra. Cómo la IA contesta leads de Portal Inmobiliario, Toctoc y Yapo al minuto, a cualquier hora, sin pegarte al teléfono.",
+  },
 };

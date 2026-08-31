@@ -1571,6 +1571,282 @@ export const POSTS: BlogPost[] = [
       </>
     ),
   },
+
+  // ── Piezas SEO brief 2026-08 (piezas 6 .homes) ──────────────────────
+  {
+    slug: "pipeline-ventas-inmobiliario-whatsapp",
+    title: "Pipeline de ventas inmobiliario en WhatsApp: del primer hola al cierre",
+    description:
+      "El pipeline no es un cuadro en Excel: es el recorrido de cada lead por WhatsApp desde el primer mensaje hasta la firma. Te mostramos las 6 etapas y cómo la IA te mantiene en cada una sin que escapes a nadie.",
+    category: "CRM · WhatsApp",
+    date: "2026-08-31",
+    dateLabel: "31 de agosto de 2026",
+    readingTime: "8 min",
+    keywords:
+      "pipeline inmobiliario whatsapp, pipeline de ventas inmobiliario, seguimiento leads whatsapp, crm inmobiliario whatsapp, gestión de pipeline corredor",
+    Body: () => (
+      <>
+        <P>
+          Un lead que escribe a las 23:47 un sábado no te está probando ansiedad: está ocupado
+          durante la semana y encontró tu aviso en su tiempo libre. Si tú respondes el lunes,
+          ya habló con otros dos. El <strong>pipeline inmobiliario en WhatsApp</strong> es el
+          sistema que garantiza que ningún lead se escape por falta de respuesta.
+        </P>
+
+        <H2>Qué es el pipeline en WhatsApp (y qué no es)</H2>
+        <P>
+          No es un Excel bonito ni una mentalidad. Es un recorrido con etapas marcadas donde cada
+          lead tiene un lugar claro y una acción pendiente. En el CRM .homes se ve como tablero
+          kanban: cada tarjeta es un lead, cada columna una etapa. En tu teléfono, es el mismo
+          recorrido pero ejecutado mensaje a mensaje.
+        </P>
+
+        <H2>Las 6 etapas reales del pipeline</H2>
+        <UL
+          items={[
+            "Nuevo: escribió, aún no sabes quién es ni qué quiere. La IA puede responder y cualificar presupuesto y comuna en los primeros minutos.",
+            "Calificado: tiene presupuesto real y plazo definido. Vale el tiempo de un tour en persona.",
+            "Visita agendada: ya van a ver la casa. La IA manda recordatorio 24 horas antes.",
+            "Oferta / Negociación: están evaluando precio o condiciones. Tú manejas la agenda; la IA maneja el seguimiento.",
+            "Promesa: ya firmaron la promesa de compraventa o arriendo.",
+            "Cierre: escritura, firma de arriendo, pago de comisión. Aquí nace el recomendado.",
+          ]}
+        />
+        <PipelineSteps />
+
+        <H2>El error que mata el pipeline</H2>
+        <P>
+          Crear la tarjeta y después olvidarla. Un lead en «Nuevo» sin acción durante 3 días es un
+          lead muerto. La regla de oro: <strong>cada etapa tiene una SLA de tiempo</strong> —
+          si no se mueve, alguien debe tocarla. La IA hace el toque por ti: recordatorios,
+          re-enganche automático a los 3 días de silencio y escalamiento a vos cuando el lead
+          responde.
+        </P>
+
+        <H2>Cómo la IA te acompaña en cada etapa</H2>
+        <P>
+          Sofía en lexhouse-ai.homes está diseñada exactamente para este pipeline:
+        </P>
+        <UL
+          items={[
+            "Nuevo → responde al instante, cualifica con 2 preguntas clave y deja la conversación archivada si no hay interés.",
+            "Calificado → te avisa para que agendes la visita y sugiere horario según la agenda del lead.",
+            "Visita agendada → manda recordatorio automático 24 h y 1 h antes.",
+            "Oferta → te alerta cada vez que el lead escribe y no respondes en 15 minutos.",
+            "Cierre → te felicita y agrega al cliente a tu lista de «referidos» para futuros contactos.",
+          ]}
+        />
+
+        <H2>Midiendo el pipeline</H2>
+        <P>
+          Solo tres métricas importan: <strong>tiempo de respuesta promedio</strong> (menos es mejor),
+          <strong>% de leads que pasan de Nuevo a Calificado</strong> (más es mejor), y{" "}
+          <strong>cierres por lead nuevo</strong> (el cuello de botella real). Con el CRM las ves
+          de un vistazo; sin él, son tres planillas separadas que nadie actualiza.
+        </P>
+
+        <H2>La lección final</H2>
+        <P>
+          El pipeline no ordena tu día: ordena tu semana y tu comisión de fin de mes. Quien lo
+          tiene en regla sabe qué lead tocar con cada café de la mañana; quien no lo tiene,
+          reinventa el trabajo cada lunes. La IA no reemplaza tu criterio: hace que cada lead
+          llegue a tu criterio con la información lista.
+        </P>
+        <P>
+          El plan Growth (US$199/mes) de{" "}
+          <LexLink to="/">LexHouse AI</LexLink> trae el pipeline completo con Sofía incluida,
+          sin permanencia. Si quieres ver el pipeline funcionando antes de pagar, entra al{" "}
+          <LexLink to="/">plan Gratis</LexLink> y pruébalo con tus leads reales.
+        </P>
+      </>
+    ),
+  },
+  {
+    slug: "guia-setter-inmobiliario-ia",
+    title: "Guía del setter inmobiliario: qué hace y cómo armarlo con IA",
+    description:
+      "El setter es el rol que recibe al lead, lo cualifica y lo deriva al vendedor. Qué hace exactamente, en qué se equivoca sin sistema y cómo la IA lo potencia sin volverte caro.",
+    category: "Ventas · Equipo",
+    date: "2026-08-31",
+    dateLabel: "31 de agosto de 2026",
+    readingTime: "7 min",
+    keywords:
+      "setter inmobiliario, que hace un setter inmobiliario, rol setter closer inmobiliaria, cómo organizar equipo ventas inmobiliaria, setter con ia",
+    Body: () => (
+      <>
+        <P>
+          Hay un patrón que repite en toda inmobiliaria que escala: el cierre empieza a depender
+          de un puñado de estrellas y el resto del equipo se queda sin pipeline. La solución casi
+          siempre es la misma: separar al que <strong>settea</strong> (abre la conversación) del
+          que <strong>cierra</strong> (firma el negocio). Aquí va la guía honesta del rol setter,
+          sus límites y la versión con IA.
+        </P>
+
+        <H2>Qué hace un setter paso a paso</H2>
+        <UL
+          items={[
+            "Recibe el lead entrante (portal, formulario, WhatsApp, referido)",
+            "Hace las primeras preguntas: presupuesto, comuna, plazo, financiamiento",
+            "Aplica criterios de calidad: si no cumple, se descarta; si cumple, avala",
+            "Agenda la visita o la llamada con el closer (venta) o con el corredor (arriendo)",
+            "Documenta todo en el CRM para que el closer no repita preguntas",
+          ]}
+        />
+        <P>
+          El setter no negocia precio y no cierra contratos. Su trabajo es garantizar que el closer
+          solo hable con leads que valen el tiempo de un cierre.
+        </P>
+
+        <H2>Por qué fallan los setters tradicionales</H2>
+        <P>
+          El setter humano tiene un techo claro: horario laboral, cansancio, días flojos y un límite
+          de atención. Un setter que atiende 40 leads al día no da la misma calidad a la primera
+          que a la cuadragésima. Además, el setter humano se atora si el lead escribe a las 23:00:
+          todos sabemos que esos leads son oro y nadie los atiende.
+        </P>
+
+        <H2>El setter con IA (Sofía) que no toma vacaciones</H2>
+        <P>
+          El setter IA hace exactamente lo mismo pero sin techo. En tu lugar: en vez de una persona
+          que atiende 9 horas, tienes una disponible 24/7:
+        </P>
+        <UL
+          items={[
+            "Atiende el lead al minuto de escribir, a cualquier hora",
+            "Hace las preguntas clave con naturalidad y registra las respuestas",
+            "Aplica la misma vara de calidad sin cansancio ni subjetividad",
+            "Califica presupuesto, comuna y plazo; descarta y documenta",
+            "Te alerta cuando el lead califica para derivarlo al humano",
+          ]}
+        />
+        <P>
+          El resultado: el setter humano (si lo tienes) puede enfocarse en los leads «casi listos»
+          y la IA hace de filtro para los 80% que no califican.
+        </P>
+
+        <H2>Separar setter y closer: cuándo hacerlo</H2>
+        <P>
+          Solo tiene sentido cuando tienes volumen. Si atiendes 5 leads al día, no necesitas setter:
+          necesitas responder más rápido. Si atiendes 50 leads y cierran 3, el cuello de botella
+          está en la calidad del lead que llega al closer. Ahí el cambio rinde.
+        </P>
+
+        <H2>Cómo entrenar al setter IA en tu contexto</H2>
+        <P>
+          Sofía viene con el conocimiento base de corretaje inmobiliario chileno. Para ajustarla
+          a tu operación:
+        </P>
+        <UL
+          items={[
+            "Define el rango de presupuesto que aceptas (ej: ventas entre 3.500 y 15.000 UF en Santiago oriente)",
+            "Configura las preguntas clave que tu equipo ya hace",
+            "Decide qué pasa cuando no califica: ¿se descarta o se guarda para más adelante?",
+            "Déjala correr 2 semanas y revisa las conversaciones — ajústala donde se aleje",
+          ]}
+        />
+
+        <H2>La lección final</H2>
+        <P>
+          El setter no es un gasto: es la inversión que multiplica el rendimiento de cada closer.
+          Cuando el closer solo habla con leads que valen su tiempo, cada cierre es más probable.
+          La versión IA logra lo mismo, sin que tengas que pagar un sueldo ni rogar porque contesten
+          a las 23:00.
+        </P>
+        <P>
+          Mira cómo funciona en práctica en{" "}
+          <LexLink to="/">lexhouse-ai.homes</LexLink> y pruébalo con el plan Gratis.
+          Si tu equipo ya tiene un closer estrella, agregar el setter te permite clonar su
+          performance.
+        </P>
+      </>
+    ),
+  },
+  {
+    slug: "responder-leads-portal-rapido",
+    title: "Cómo responder leads de portal en menos de 5 minutos sin estar despierto",
+    description:
+      "El tiempo de respuesta decide quién cierra: el que tarda 1 hora ya perdió. Guía para responder en menos de 5 minutos a toda hora con IA, sin vivir pegado al teléfono.",
+    category: "WhatsApp · Leads",
+    date: "2026-08-31",
+    dateLabel: "31 de agosto de 2026",
+    readingTime: "7 min",
+    keywords:
+      "responder leads rapido portal inmobiliario, tiempo de respuesta portal leads, responder rapido whatsapp inmobiliaria, atención inmediata leads, velocidad respuesta ventas",
+    Body: () => (
+      <>
+        <P>
+          Hay una verdad incómoda en el corretaje moderno: el que responde rápido cierra, y el
+          que no, no. No importa si tu propiedad es mejor ni si tu comisión es más baja: si el
+          lead escribió a las 22:47 y tú respondes a las 9:00 del día siguiente, ya habló con otros
+          dos corredores y agendó visita con el que contestó primero. Esta es la guía para
+          responder en menos de 5 minutos a toda hora sin perder tu vida personal.
+        </P>
+
+        <H2>Por qué 5 minutos y no 1 hora</H2>
+        <P>
+          Portales como Portal Inmobiliario, Toctoc y Yapo funcionan con velocidad: cuando alguien
+          consulta, el algoritmo premia al que responde rápido con mejor posicionamiento y más
+          visitas al aviso. Google y Meta hacen lo mismo con tu WhatsApp. El mercado te está
+          diciendo: la velocidad no es un plus, es el precio de entrada.
+        </P>
+
+        <H2>El problema de responder tú</H2>
+        <UL
+          items={[
+            "No siempre tienes el teléfono en la mano ni el cerebro en modo venta (reuniones, almuerzo, familia)",
+            "Los leads se repiten: preguntan lo mismo (precio, comuna, estacionamiento, gastos comunes)",
+            "Si respondes mal un día se te cierran 3, y no sabes cuál dejó pasar cuál",
+            "La respuesta nocturna es imposible si duermes; la del fin de semana, imposible si tienes vida",
+          ]}
+        />
+
+        <H2>La solución: IA que contesta por ti</H2>
+        <P>
+          Con Sofía en lexhouse-ai.homes configuras un asistente que conoce tu inventario y responde
+          a las preguntas típicas con datos reales, en cualquier momento del día:
+        </P>
+        <UL
+          items={[
+            "Precio, comuna, estacionamiento, bodega, gastos comunes, orientación, año de construcción: contesta con lo que ya sabes",
+            "Disponibilidad de visita: te arma la agenda y te avisa qué horario quedó",
+            "Califica presupuesto y plazo: el lead frío se descarta solo y el calificado avanza",
+            "Te manda resumen cada mañana: a quién respondió, qué quedó pendiente, qué citas tienes",
+          ]}
+        />
+
+        <H2>Qué responde la IA y qué responde el humano</H2>
+        <P>
+          La IA contesta lo factual: precio, ubicación, características, disponibilidad. El humano
+          contesta lo que requiere criterio: «¿Puedo bajar de precio?», «¿Qué tan negociable es?»,
+          «¿Cómo es el barrio de noche?». El filtro respeta tu tiempo y mantiene la calidad de la
+          respuesta.
+        </P>
+
+        <H2>Por qué portales y WhatsApp van de la mano</H2>
+        <P>
+          El 80% de los leads de portal terminan en WhatsApp. La conversación sobrevive en el chat;
+          la del portal se pierde. Configuras tu número de WhatsApp Business y la IA hace el puente:
+          el lead escribió por Portal Inmobiliario a las 23:00, Sofía contestó en 2 minutos y al
+          despertar tú tienes la conversación con los datos ya capturados.
+        </P>
+
+        <H2>La matemática del lead rápido</H2>
+        <P>
+          Atiende rápido y tres cosas pasan: el lead te recuerda mejor, el portal te premia con
+          visibilidad, y tú llegas a la conversación con la ventana todavía abierta. Atiende tarde
+          y el lead se escapa aunque tengas el mejor precio.
+        </P>
+
+        <H2>Conclusión</H2>
+        <P>
+          Responder en menos de 5 minutos no es una hazaña heroica: es una decisión técnica. La IA
+          contesta lo repetitivo a cualquier hora; tú cierras lo que importa. El plan Gratis de{" "}
+          <LexLink to="/">LexHouse AI</LexLink> incluye el WhatsApp con IA para que pruebes esta
+          velocidad con tus leads reales sin pagar un peso.
+        </P>
+      </>
+    ),
+  },
 ];
 
 export const getPost = (slug: string) => POSTS.find((p) => p.slug === slug);
