@@ -3,6 +3,9 @@
 export interface RouteMeta {
   title: string;
   description: string;
+  /** Canonical absoluto que sobreescribe el auto-generado (usado para consolidar
+      canibalización cross-domain — ver SEO-AUDITORIA-2026-08.md, A1). */
+  canonicalOverride?: string;
 }
 
 export const ORIGIN = "https://lexhouse-ai.homes";
@@ -47,6 +50,7 @@ export const BLOG_META: Record<string, RouteMeta> = {
     title: "Chatbot inmobiliario por WhatsApp: capta y responde primero",
     description:
       "Un chatbot inmobiliario con IA en WhatsApp atiende, cualifica y agenda 24/7. Te contamos qué debe hacer un buen asistente y por qué responder primero define quién cierra la venta.",
+    canonicalOverride: "https://lexhouse-ai.com/blog/whatsapp-inmobiliaria",
   },
   "/blog/herramientas-ia-agentes-inmobiliarios-2026": {
     title: "Herramientas de IA para agentes inmobiliarios: guía 2026",
@@ -62,6 +66,7 @@ export const BLOG_META: Record<string, RouteMeta> = {
     title: "Reactivar leads inactivos: la mina de oro que todos ignoran",
     description:
       "Tus leads que no respondieron siguen valiendo. Aprende a reactivar contactos inactivos por WhatsApp con IA: mensajes de re-enganche, acuse de recibo y seguimiento automático sin parecer insistente.",
+    canonicalOverride: "https://lexhouse-ai.com/blog/reactivar-leads-frios-whatsapp",
   },
   "/blog/voz-ia-crm-inmobiliario": {
     title: "CRM por voz con IA: habla y tu pipeline se actualiza solo",

@@ -1,10 +1,14 @@
 import { useEffect } from "react";
+import { BLOG_META } from "@/content/blogMeta";
 
 /*
   useSeo — SEO client-side ligero (sin react-helmet): fija title, description,
   canonical y Open Graph/Twitter al montar la página. Google renderiza JS y lo
   recoge. (Nota: los scrapers sociales que NO ejecutan JS no leerán el OG; para
   eso haría falta prerender/SSR — pendiente si se quieren previews sociales ricas.)
+
+  Si la ruta tiene canonicalOverride en BLOG_META (consolidación cross-domain
+  del A1 de la auditoría SEO), el canonical apunta ahí en vez de a esta página.
 */
 
 const ORIGIN = "https://lexhouse-ai.homes";
@@ -41,7 +45,8 @@ function setCanonical(href: string) {
 
 export function useSeo({ title, description, path, image = DEFAULT_IMAGE, type = "website" }: SeoOpts) {
   useEffect(() => {
-    const url = ORIGIN + path;
+    const override = BLOG_META[path]?.canonicalOverride;
+    const url = override ?? ORIGIN + path;
     document.title = title;
     setMeta("name", "description", description);
     setMeta("property", "og:title", title);

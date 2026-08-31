@@ -33,7 +33,7 @@ function injectMeta(html: string, title: string, description: string, url: strin
 export default async function middleware(request: Request): Promise<Response | undefined> {
   const { pathname } = new URL(request.url);
   const meta = BLOG_META[pathname] ?? BLOG_META["/"];
-  const canonical = `${ORIGIN}${pathname === "/" ? "/" : pathname}`;
+  const canonical = meta.canonicalOverride ?? `${ORIGIN}${pathname === "/" ? "/" : pathname}`;
 
   const base = new URL("/index.html", request.url);
   const res = await fetch(base);
