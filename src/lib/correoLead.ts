@@ -45,6 +45,12 @@ export async function enviarCorreoLead(opts: {
   para: string;
   nombre?: string | null;
   pais?: string | null;
+  // Datos extra para las variables de la plantilla (la edge los reemplaza por
+  // destinatario: {{empresa}}, {{ciudad}}, {{gancho}}). Buscar Leads los tiene
+  // (los genera la IA); los demás flujos los pueden omitir.
+  empresa?: string | null;
+  ciudad?: string | null;
+  gancho?: string | null;
   asunto: string;
   html: string;
   text?: string;
@@ -55,7 +61,14 @@ export async function enviarCorreoLead(opts: {
       subject: opts.asunto,
       html: opts.html,
       text: opts.text || undefined,
-      recipients: [{ email: opts.para, nombre: opts.nombre || undefined, pais: opts.pais || undefined }],
+      recipients: [{
+        email: opts.para,
+        nombre: opts.nombre || undefined,
+        pais: opts.pais || undefined,
+        empresa: opts.empresa || undefined,
+        ciudad: opts.ciudad || undefined,
+        gancho: opts.gancho || undefined,
+      }],
     },
   });
   if (error) throw error;

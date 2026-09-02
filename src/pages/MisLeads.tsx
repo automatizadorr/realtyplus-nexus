@@ -186,7 +186,7 @@ export default function MisLeads() {
         </TabsContent>
 
         <TabsContent value="buscar-leads">
-          <BuscarLeadsVendedorTab />
+          <BuscarLeadsVendedorTab plantillasEmail={plantillasEmailActivas} />
         </TabsContent>
 
         <TabsContent value="estadisticas">

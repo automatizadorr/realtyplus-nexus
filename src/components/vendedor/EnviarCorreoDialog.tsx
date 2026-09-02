@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Send, ExternalLink, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,13 +27,23 @@ import type { PlantillaEmail } from "@/components/vendedor/types";
 // que no dependen de ningún programa instalado.
 // ---------------------------------------------------------------------
 
-export default function EnviarCorreoDialog({ open, onOpenChange, lead, plantillasEmail, onEnviado }: {
+export default function EnviarCorreoDialog({ open, onOpenChange, lead, plantillasEmail, onEnviado, asuntoInicial, cuerpoInicial }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  lead: { id: string; nombre: string | null; email: string | null; pais: string | null } | null;
+  lead: {
+    id?: string; nombre: string | null; email: string | null; pais: string | null;
+    // Extras que enriquecen las variables de las plantillas (Buscar Leads los
+    // trae de la IA: {{ciudad}}, {{empresa}} y {{gancho}} se rellenan también).
+    ciudad?: string | null; propuesta_valor?: string | null; problemas?: string[];
+  } | null;
   plantillasEmail: PlantillaEmail[];
   /** El correo salió: la pantalla marca el canal usado para cerrar el paso. */
   onEnviado?: () => void;
+  /** Borrador ya redactado (mensaje que la IA escribió para este lead). Si
+      viene, no se preselecciona plantilla: el vendedor la puede elegir encima
+      y al cambiarla el texto se reemplaza por el de la plantilla. */
+  asuntoInicial?: string;
+  cuerpoInicial?: string;
 }) {
   const { toast } = useToast();
   const { config: remitente } = useRemitente();
@@ -47,20 +57,36 @@ export default function EnviarCorreoDialog({ open, onOpenChange, lead, plantilla
   const esParticular = remitente.remitente_modo === "particular";
 
   const vars = useMemo(
-    () => ({ nombre: lead?.nombre || undefined, pais: lead?.pais || undefined }),
-    [lead?.nombre, lead?.pais],
+    () => ({
+      nombre: lead?.nombre || undefined, pais: lead?.pais || undefined,
+      ciudad: lead?.ciudad || undefined, propuesta_valor: lead?.propuesta_valor || undefined,
+      problemas: lead?.problemas,
+    }),
+    [lead?.nombre, lead?.pais, lead?.ciudad, lead?.propuesta_valor, lead?.problemas],
   );
 
-  // Al abrir (o al cambiar de plantilla) se rellena el borrador. Si el
-  // vendedor ya escribió algo, no se le pisa.
+  const rellenarDesdePlantilla = useCallback((id: string, list: PlantillaEmail[] = plantillasEmail) => {
+    const p = list.find((x) => x.id === id);
+    setAsunto(fillTemplate(p?.asunto ?? "", vars));
+    setCuerpo(fillTemplate(p?.cuerpo_text ?? "", vars));
+  }, [plantillasEmail, vars]);
+
+  // Al abrir se arma el borrador: con texto inicial (mensaje de la IA) se usa
+  // tal cual y sin plantilla elegida; sin él, la primera plantilla como antes.
+  // El cambio de plantilla lo maneja el onValueChange del select, que rellena.
   useEffect(() => {
     if (!open) return;
     setTocado(false);
-    const p = plantillasEmail.find((x) => x.id === plantillaId) ?? plantillasEmail[0];
-    if (p && !plantillaId) setPlantillaId(p.id);
-    setAsunto(fillTemplate(p?.asunto ?? "", vars));
-    setCuerpo(fillTemplate(p?.cuerpo_text ?? "", vars));
-  }, [open, plantillaId, plantillasEmail, vars]);
+    if (cuerpoInicial || asuntoInicial) {
+      setPlantillaId("");
+      setAsunto(asuntoInicial ?? "");
+      setCuerpo(cuerpoInicial ?? "");
+    } else {
+      const p = plantillasEmail[0];
+      setPlantillaId(p?.id ?? "");
+      rellenarDesdePlantilla(p?.id ?? "", plantillasEmail);
+    }
+  }, [open, asuntoInicial, cuerpoInicial, plantillasEmail, rellenarDesdePlantilla]);
 
   if (!lead) return null;
 
@@ -81,6 +107,8 @@ export default function EnviarCorreoDialog({ open, onOpenChange, lead, plantilla
         : fillTemplate(plantilla.cuerpo_html, vars);
       await enviarCorreoLead({
         remitente, para, nombre: lead.nombre, pais: lead.pais,
+        empresa: lead.nombre, ciudad: lead.ciudad ?? undefined,
+        gancho: Array.isArray(lead.problemas) && lead.problemas.length ? lead.problemas[0] : undefined,
         asunto, html, text: cuerpo || undefined,
       });
       toast({ title: "Correo enviado", description: `A ${para}. Marcá abajo qué pasó para cerrar el paso.` });
@@ -120,7 +148,7 @@ export default function EnviarCorreoDialog({ open, onOpenChange, lead, plantilla
             </p>
 
             {plantillasEmail.length > 0 && (
-              <Select value={plantillaId} onValueChange={(v) => { setPlantillaId(v); setTocado(false); }}>
+              <Select value={plantillaId} onValueChange={(v) => { setPlantillaId(v); rellenarDesdePlantilla(v); setTocado(false); }}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Elegí una plantilla" /></SelectTrigger>
                 <SelectContent>
                   {plantillasEmail.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}

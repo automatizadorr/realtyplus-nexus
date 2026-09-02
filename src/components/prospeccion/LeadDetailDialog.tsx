@@ -75,10 +75,14 @@ type Props = {
   // Solo admin: publicar/despublicar el lead para el equipo de vendedores.
   onCampanaChange?: (lead: Lead, pais: string, enCampana: boolean) => void;
   canPublicar?: boolean;
+  // Envío de correo desde la app (vendedor). Si viene, el botón del mensaje
+  // de email abre el diálogo de envío con plantilla y remitente del vendedor;
+  // si no viene (admin), se mantiene el mailto clásico.
+  onCorreo?: (lead: Lead) => void;
 };
 
 export default function LeadDetailDialog({
-  lead, open, onOpenChange, onEstadoChange, onNotasChange, onCampanaChange, canPublicar,
+  lead, open, onOpenChange, onEstadoChange, onNotasChange, onCampanaChange, canPublicar, onCorreo,
 }: Props) {
   const [notasDraft, setNotasDraft] = useState("");
   const initialWaText = lead
@@ -171,13 +175,17 @@ export default function LeadDetailDialog({
                 <Label className="text-xs">Mensaje de email</Label>
                 <div className="flex gap-2">
                   <CopyBtn text={lead.mensaje_email} label="Mensaje email copiado" />
-                  {lead.email && (
+                  {lead.email && (onCorreo ? (
+                    <Button type="button" size="sm" className="gap-1.5 bg-[#003DA5] hover:bg-[#003DA5]/90" onClick={() => onCorreo(lead)}>
+                      <MailIcon className="h-3.5 w-3.5" /> Enviar
+                    </Button>
+                  ) : (
                     <Button asChild size="sm" variant="outline" className="gap-1.5">
                       <a href={`mailto:${lead.email}?subject=${encodeURIComponent("Sobre " + (lead.nombre || ""))}&body=${encodeURIComponent(lead.mensaje_email)}`}>
                         <MailIcon className="h-3.5 w-3.5" /> Abrir
                       </a>
                     </Button>
-                  )}
+                  ))}
                 </div>
               </div>
               <Textarea readOnly value={lead.mensaje_email} className="min-h-[110px] text-sm" />

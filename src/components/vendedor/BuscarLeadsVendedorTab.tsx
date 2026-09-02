@@ -4,7 +4,7 @@ import {
   Radar, Search, Loader2, MapPin, Globe, MessageCircle, History, Trash2,
   Sparkles, CheckCircle2, Copy, X, XCircle, Star, Instagram, Facebook, Kanban,
   Inbox, ArrowRightCircle, Map as MapIcon, Mail as MailIcon,
-  Flame,
+  Flame, AtSign, ChevronDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,6 +19,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import LeadDetailDialog, { type Lead, waLink } from "@/components/prospeccion/LeadDetailDialog";
 import { facebookMessenger, facebookPerfil, instagramDm, instagramPerfil, mensajeRedes } from "@/lib/redes";
+import EnviarCorreoDialog from "@/components/vendedor/EnviarCorreoDialog";
+import RemitenteCard from "@/components/vendedor/RemitenteCard";
+import { describirRemitente, useRemitente } from "@/hooks/use-remitente";
+import type { PlantillaEmail } from "@/components/vendedor/types";
 
 // Saca el mensaje real del cuerpo de la respuesta cuando la edge function
 // devuelve un no-2xx (supabase-js solo entrega un texto genérico).
@@ -74,7 +78,10 @@ type Fuente = (typeof FUENTES)[number]["valor"];
 // Un boton por canal encontrado. Cada uno abre la mensajeria de esa red con
 // el mensaje que redacto la IA: WhatsApp lo acepta en la URL; Instagram y
 // Facebook no, asi que ahi se copia al portapapeles y se abre el chat.
-function CanalesLead({ lead, onCopiado }: { lead: Lead; onCopiado: (canal: string) => void }) {
+// El correo NO abre un mailto (solo funciona con un programa de correo
+// instalado): abre el mismo dialogo de envio por Resend de Bandeja/Pipeline,
+// con las plantillas del vendedor y su remitente.
+function CanalesLead({ lead, onCopiado, onCorreo }: { lead: Lead; onCopiado: (canal: string) => void; onCorreo: (lead: Lead) => void }) {
   const wa = waLink(lead);
   const ig = instagramDm(lead.instagram);
   const igPerfil = instagramPerfil(lead.instagram);
@@ -124,13 +131,13 @@ function CanalesLead({ lead, onCopiado }: { lead: Lead; onCopiado: (canal: strin
         </button>
       )}
       {email && (
-        <a
-          href={`mailto:${email}?body=${encodeURIComponent(lead.mensaje_email || msgRedes)}`}
-          title={`Email a ${email}`}
+        <button
+          type="button" onClick={() => onCorreo(lead)}
+          title={`Escribir a ${email} con tu plantilla y tu remitente`}
           className="inline-flex items-center gap-1 rounded-full border border-[#003DA5]/30 bg-[#003DA5]/10 px-2 py-0.5 text-[11px] font-medium text-[#003DA5] hover:bg-[#003DA5]/20"
         >
           <MailIcon className="h-3 w-3" /> Email
-        </a>
+        </button>
       )}
       {lead.telefono && (
         <span className="text-[10px] text-muted-foreground">{lead.telefono}</span>
@@ -160,8 +167,19 @@ function estadoBadge(estado?: string) {
 // reales estructurados) + NVIDIA NIM (scoring + mensajes de contacto sobre
 // esos datos ya verificados). Mismo historial/mini-CRM que "Buscar Leads"
 // del admin, pero acotado a lo que el vendedor mismo busca.
-export default function BuscarLeadsVendedorTab() {
+// Las plantillas de correo llegan por prop desde MisLeads (ya estaban cargadas
+// para Bandeja/Pipeline: misma fuente, mismo cacheo).
+export default function BuscarLeadsVendedorTab({ plantillasEmail = [] }: { plantillasEmail?: PlantillaEmail[] }) {
   const { toast } = useToast();
+  // Remitente de correo, igual que en Bandeja: se muestra plegado y se puede
+  // cambiar sin salir de acá (también en Más → Diseño de Correo).
+  const { config: remitente } = useRemitente();
+  const [remitenteAbierto, setRemitenteAbierto] = useState(false);
+  const esParticular = remitente.remitente_modo === "particular";
+  // Lead al que se le está redactando un correo (chip Email de la tabla o
+  // botón del detalle). Al abrirlo el diálogo recibe el mensaje que la IA
+  // escribió para ese negocio como borrador.
+  const [correoLead, setCorreoLead] = useState<Lead | null>(null);
 
   const [nicho, setNicho] = useState("");
   const [ciudad, setCiudad] = useState("");
@@ -227,7 +245,7 @@ export default function BuscarLeadsVendedorTab() {
   const leadKey = (l: Lead) => l.id ?? `${(l.nombre || "").trim().toLowerCase()}|${(l.ciudad || "").trim().toLowerCase()}`;
   const selectedLeads = useMemo(() => filtered.filter((l) => selected.has(leadKey(l))), [filtered, selected]);
 
-  const toggleSel = (l: Lead) => setSelected((s) => { const n = new Set(s); const k = leadKey(l); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const toggleSel = (l: Lead) => setSelected((s) => { const n = new Set(s); const k = leadKey(l); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const allChecked = filtered.length > 0 && filtered.every((l) => selected.has(leadKey(l)));
   const toggleAll = () => setSelected((s) => {
     const n = new Set(s);
@@ -421,6 +439,13 @@ export default function BuscarLeadsVendedorTab() {
     setExpandedLeads((ls) => (ls ?? []).map((l) => (l.id === lead.id ? { ...l, estado_gestion: estado } : l)));
   };
 
+  // Un correo enviado ES un contacto: el prospecto pasa de "nuevo" a
+  // "contactado" en el mini-CRM de prospección. Si ya estaba más avanzado,
+  // no se retrocede.
+  const marcarContactadoAlEnviar = (lead: Lead) => {
+    if (lead.id && (lead.estado_gestion ?? "nuevo") === "nuevo") void cambiarEstado(lead, "contactado");
+  };
+
   const guardarNotas = async (lead: Lead, notas: string) => {
     if (!lead.id) return;
     const { error } = await supabase.from("prospeccion_leads").update({ notas }).eq("id", lead.id);
@@ -526,6 +551,22 @@ export default function BuscarLeadsVendedorTab() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Remitente de correo, plegable: mismo patrón que en la Bandeja.
+              Se usa justo antes de escribir a un lead desde el chip Email. */}
+          <div>
+            <button
+              type="button" onClick={() => setRemitenteAbierto((v) => !v)}
+              className="flex w-full items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-left text-xs hover:bg-muted/40"
+            >
+              <AtSign className="h-3.5 w-3.5 text-[#003DA5]" />
+              <span className="font-medium">Envías como:</span>
+              <span className="truncate font-mono text-[11px] text-muted-foreground">{describirRemitente(remitente)}</span>
+              {esParticular && <Badge variant="secondary" className="text-[10px]">sin Resend</Badge>}
+              <ChevronDown className={`ml-auto h-3.5 w-3.5 shrink-0 transition-transform ${remitenteAbierto ? "rotate-180" : ""}`} />
+            </button>
+            {remitenteAbierto && <div className="mt-2"><RemitenteCard compacto /></div>}
+          </div>
 
           {searchError && (
             <Card className="border-destructive/40">
@@ -707,6 +748,7 @@ export default function BuscarLeadsVendedorTab() {
                               <CanalesLead
                                 lead={l}
                                 onCopiado={(canal) => toast({ title: `Mensaje copiado`, description: `Pégalo en el chat de ${canal} que se acaba de abrir.` })}
+                                onCorreo={setCorreoLead}
                               />
                             </TableCell>
                             <TableCell>
@@ -868,6 +910,7 @@ export default function BuscarLeadsVendedorTab() {
                                           <CanalesLead
                                             lead={l}
                                             onCopiado={(canal) => toast({ title: "Mensaje copiado", description: `Pégalo en el chat de ${canal} que se acaba de abrir.` })}
+                                            onCorreo={setCorreoLead}
                                           />
                                         </TableCell>
                                         <TableCell className="hidden lg:table-cell"><span className="font-mono text-xs">{l.score ?? "—"}</span></TableCell>
@@ -918,6 +961,27 @@ export default function BuscarLeadsVendedorTab() {
       <LeadDetailDialog
         lead={detail} open={detailOpen} onOpenChange={setDetailOpen}
         onEstadoChange={cambiarEstado} onNotasChange={guardarNotas}
+        onCorreo={setCorreoLead}
+      />
+
+      {/* Envío de correo al prospecto: el mensaje que la IA redactó para ese
+          negocio queda como borrador; si el vendedor prefiere, elige una
+          plantilla encima. Sale por Resend (o se abre en su Gmail/Outlook si
+          su remitente es particular). */}
+      <EnviarCorreoDialog
+        open={Boolean(correoLead)}
+        onOpenChange={(o) => { if (!o) setCorreoLead(null); }}
+        lead={correoLead ? {
+          id: correoLead.id, nombre: correoLead.nombre ?? null,
+          email: correoLead.email ?? null, pais: correoLead.pais ?? null,
+          ciudad: correoLead.ciudad ?? null,
+          propuesta_valor: correoLead.propuesta_valor ?? null,
+          problemas: correoLead.problemas,
+        } : null}
+        plantillasEmail={plantillasEmail}
+        asuntoInicial={correoLead?.mensaje_email ? `Sobre ${correoLead.nombre || "tu negocio"}` : undefined}
+        cuerpoInicial={correoLead?.mensaje_email || undefined}
+        onEnviado={correoLead ? () => marcarContactadoAlEnviar(correoLead) : undefined}
       />
     </div>
   );
